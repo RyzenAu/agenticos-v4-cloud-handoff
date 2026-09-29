@@ -26,7 +26,7 @@ import { goalSlots } from "../screen-hands/jev-control";
 import type { ResolveContext, ResolveResult } from "../devices/types";
 import type { CommandInput, DispatchResult } from "../devices/dispatch";
 import type { CommandDone, CommandEvent, JarvisEntry } from "../jev-command";
-import { marginAnswer, parseMarginQuery } from "../jev-margin";
+import { marginAnswer, parseMarginQuery, shownContributionPct, shownFigures, sourceWords, speakFigure } from "../jev-margin";
 import { parsePriceQuery, priceAnswer } from "./answers";
 import { RECEPTIONIST_PACKAGES } from "../../src/lib/receptionist-packages";
 import {
@@ -45,7 +45,7 @@ import {
   type SpecialistId,
   type SurfaceThresholds,
 } from "./contracts";
-import { parsePageContext, referenceIn, resolveReference } from "./context";
+import { createContextMemory, resolveCommandContext } from "./context";
 import { leadActionIn, osPageIn, planRules, rememberToReminder, splitSpokenTarget, type LeadAction, type RulePlan } from "./plan";
 import { thresholdsFor } from "./thresholds";
 import { codingDraftFor } from "./coding";
@@ -103,6 +103,8 @@ export type CommandServiceDeps = {
   thresholds?: (surface: "voice" | "typed") => SurfaceThresholds;
   now?: () => number;
   graceMs?: number;
+  /** How long an identical command from the same person is the same command (default 5 s; 0 turns it off). */
+  dedupeMs?: number;
   remoteTimeoutMs?: number;
 };
 
@@ -117,6 +119,11 @@ export const STOP_WORDS = /^(?:jarvis,?\s+)?(?:stop(?: it| that| now)?|cancel(?:
 
 export function createCommandService(deps: CommandServiceDeps) {
   const live = new Map<string, Live>();
+  /** The last page each verified person sent (a spoken command with none uses it briefly; never across people). */
+  const pageMemory = createContextMemory();
+  /** An identical command from the same person, still running or just finished OK, is the same command (typed + voice echo). */
+  const recent = new Map<string, { jobId: string; at: number }>();
+  const DEDUPE_MS = deps.dedupeMs ?? 5_000;
   const graceMs = deps.graceMs ?? RECONNECT_GRACE_MS;
   const label = (id: string) => deps.deviceLabel?.(id) ?? id;
   /** The job each person has waiting for a yes (one open question per person, as the screen loop has). */
@@ -191,7 +198,11 @@ export function createCommandService(deps: CommandServiceDeps) {
     const utterance = split.utterance || raw;
     const spokenTarget = typeof body.spokenTarget === "string" && body.spokenTarget.trim() ? body.spokenTarget.trim().slice(0, 60) : split.spokenTarget;
     const slots = goalSlots(utterance);
-    const pageContext = parsePageContext(body.pageContext);
+    const nowMs = (deps.now ?? Date.now)();
+    // Typed and spoken take the same resolver; only a spoken command may fall back to this person's last page.
+    const commandContext = resolveCommandContext({ utterance, pageContext: body.pageContext, remembered: pageMemory.recall(principal.personId, nowMs), allowMemory: source === "voice", now: nowMs });
+    const pageContext = commandContext.context;
+    if (commandContext.from === "sent") pageMemory.remember(principal.personId, pageContext, nowMs);
     const jobs = deps.jobs();
     const kind: JobKind = source === "voice" ? "voice" : "command";
     const decisionOf = (d: Omit<JevDecision, "calibrationRunId">): JevDecision => ({ ...d, calibrationRunId: thresholds.calibrationRunId });
@@ -208,13 +219,21 @@ export function createCommandService(deps: CommandServiceDeps) {
       return { type: "done", ok: true, stopped: true, said: stopped.length ? `Stopped ${stopped.length === 1 ? "it" : `${stopped.length} commands`}.` : "Nothing of yours was running.", kind: "answer", jobId: stopped[0] ?? null, runId: "", targetDeviceId: null };
     }
 
+    // A repeat of the same words from the same person while that job runs (or just finished OK) is the same command:
+    // attach to it, never start a second (typed + voice echo, a double tap). Answers to a question are always new.
+    const answering = /^(?:yes|yeah|yep|yes please|go ahead|do it|confirm(?:ed)?|no|nope|leave it)[.!]?$/i.test(raw);
+    // The whole page context (minus its capture time) is part of the key: the same words about different figures are not the same command.
+    const pageSig = pageContext ? JSON.stringify({ ...pageContext, capturedAt: undefined }) : "";
+    const dedupeKey = answering || source === "acceptance" ? null : `${principal.personId}|${utterance.toLowerCase().replace(/\s+/g, " ")}|${spokenTarget ?? ""}|${pageSig}`;
     /** Start a job and stream it; `work` runs inside the job service (its signal is the stop). */
-    const start = async (targetDeviceId: string, work: (ctx: ExecutorContext, out: (e: CommandStreamEvent) => void) => Promise<CommandDoneEvent>): Promise<CommandDoneEvent> => {
+    const start = async (targetDeviceId: string, work: (ctx: ExecutorContext, out: (e: CommandStreamEvent) => void) => Promise<CommandDoneEvent>, opts: { dedupe?: boolean } = {}): Promise<CommandDoneEvent> => {
       // The job records WHO (person, via, actor, device), never the server-only session key (B1: it stays out of every JSON).
       const recorded = { personId: principal.personId, via: principal.via, actor: principal.actor, ...(principal.deviceId ? { deviceId: principal.deviceId } : {}) };
       const job = jobs.create({ kind, principal: recorded, targetDeviceId, title: slots.goal || "Jarvis command" });
       const l: Live = { events: [], listeners: new Set([emit]), done: null, personId: principal.personId, seq: 0 };
       live.set(job.id, l);
+      if (dedupeKey && opts.dedupe !== false) recent.set(dedupeKey, { jobId: job.id, at: nowMs });
+      if (recent.size > 64) for (const [k, v] of recent) if (nowMs - v.at > DEDUPE_MS) recent.delete(k);
       publish(job.id, { type: "job", jobId: job.id, targetDeviceId, ...(targetDeviceId !== "none" ? { deviceLabel: label(targetDeviceId) } : {}), seq: 0 });
       const box: { done: CommandDoneEvent | null } = { done: null };
       const result = await jobs.run(job.id, async (ctx) => {
@@ -277,8 +296,26 @@ export function createCommandService(deps: CommandServiceDeps) {
             : pay.ask
               ? { type: "done", ok: false, ask: true, said: pay.said, kind: "ask", jobId: null, runId: "", targetDeviceId: "none", decision: d }
               : { type: "done", ok: false, refused: true, said: pay.said, kind: "refused", jobId: null, runId: "", targetDeviceId: "none", decision: d };
-        });
+        }, { dedupe: false });
     }
+
+    // A repeat of the same words while that job runs (or just finished OK) attaches to it. After the desk-payment step on
+    // purpose: a payment order is answered from the desk's live state every time, never replayed.
+    const earlier = dedupeKey ? recent.get(dedupeKey) : undefined;
+    const twin = DEDUPE_MS > 0 && earlier && nowMs - earlier.at <= DEDUPE_MS ? live.get(earlier.jobId) : undefined;
+    if (twin && twin.personId === principal.personId && (!twin.done || (twin.done.ok && !twin.done.stopped)))
+      return new Promise<CommandDoneEvent>((resolve) => {
+        for (const e of twin.events) emit(e);
+        if (twin.done) return resolve(twin.done);
+        const follow = (e: CommandStreamEvent) => {
+          emit(e);
+          if (e.type === "done") {
+            twin.listeners.delete(follow);
+            resolve(e);
+          }
+        };
+        twin.listeners.add(follow);
+      });
 
     // 1. Hard refusals: before any device, context or model. Only secrets and private data are refused here.
     //    A money REQUEST is not (owner decision 29 Sep: "money requests are fine"): it goes to the routing
@@ -299,12 +336,12 @@ export function createCommandService(deps: CommandServiceDeps) {
       });
 
     // 2. Page context: "explain this margin", "open that call". Resolved, or asked; never guessed.
-    const ref = referenceIn(utterance);
+    const ref = commandContext.reference;
     if (ref)
       return start("none", async (ctx, out) => {
-        const res = resolveReference(ref, pageContext);
+        const res = commandContext.resolution!;
         if (res.kind !== "resolved") {
-          const d = decisionOf({ op: "context.resolve", target: ref.noun ?? ref.word, confidence: 0, policy: "ask", source: "context", why: res.kind === "ambiguous" ? `${res.candidates.length} matching items on the page` : pageContext ? "nothing on the page matches" : "no page context was sent" });
+          const d = decisionOf({ op: "context.resolve", target: ref.noun ?? ref.word, confidence: 0, policy: "ask", source: "context", why: res.kind === "ambiguous" ? `${res.candidates.length} matching items on the page` : commandContext.from === "stale" ? "the page context is too old to trust" : pageContext ? "nothing on the page matches" : "no page context was sent" });
           out({ type: "decision", decision: d, seq: 0 });
           note(ctx, { intent: `context: ${d.why}`, executor: "none", jev: d, outcome: "asked" });
           return { type: "done", ok: false, ask: true, said: res.said, kind: "ask", jobId: null, runId: "", targetDeviceId: "none", decision: d };
@@ -482,7 +519,7 @@ export function createCommandService(deps: CommandServiceDeps) {
     const started = Date.now();
     let commandId = "";
     const result = await deps.dispatcher.submit(
-      { personId: r.principal.personId, ...(r.spokenTarget ? { spokenTarget: r.spokenTarget } : {}), ...(r.originDeviceId ? { originDeviceId: r.originDeviceId } : {}), executor: call.executor, args: call.args },
+      { personId: r.principal.personId, ...(r.spokenTarget ? { spokenTarget: r.spokenTarget } : {}), ...(r.originDeviceId ? { originDeviceId: r.originDeviceId } : {}), executor: call.executor, args: call.args, commandKey: `${call.executor}:${JSON.stringify(call.args)}` },
       {
         timeoutMs: deps.remoteTimeoutMs ?? 60_000,
         signal: ctx.signal,
@@ -526,18 +563,46 @@ export function createCommandService(deps: CommandServiceDeps) {
     const opening = /\b(?:open|show|go to|pull up|bring up|view)\b/i.test(utterance);
     const explaining = /\b(?:explain|what(?:'s| is| does)|why|how|break down|walk me through|tell me about)\b/i.test(utterance);
     const pkg = item.kind === "package" || item.kind === "margin" || item.kind === "metric" ? RECEPTIONIST_PACKAGES.find((p) => p.id === item.id || item.label.toLowerCase().includes(p.shortName.toLowerCase()) || String(item.data?.packageId ?? "") === p.id) : undefined;
-    if (explaining && pkg) {
-      const clients = typeof item.data?.clients === "number" ? Math.max(1, Math.min(500, item.data.clients)) : 5;
-      const a = marginAnswer({ pkg, scenario: "base", clients });
-      const shown = Object.entries(item.data ?? {}).find(([k]) => /contribution/i.test(k))?.[1];
-      const computed = a.numbers.contributionMarginBps === null ? null : a.numbers.contributionMarginBps / 100;
-      const shownPct = typeof shown === "number" ? shown : typeof shown === "string" ? Number.parseFloat(shown) : NaN;
-      const mismatch = Number.isFinite(shownPct) && computed !== null && Math.abs(shownPct - computed) > 0.15;
-      const d = decisionOf({ op: "answer.margin", target: pkg.shortName, confidence: 1, policy: "act", source: "context", why: `"${item.label}" is the ${tier} item on ${page.page}; numbers from the economics model` });
+    const marginLike = item.kind === "package" || item.kind === "margin" || item.kind === "metric";
+    if (explaining && marginLike) {
+      // The SELECTED item's own figures, quoted as shown, with the page's source and its data state. A package is
+      // also cross-checked against the economics model; a mismatch is flagged, never smoothed over. No model
+      // computes, rounds or writes a number here.
+      const figures = shownFigures(item.data);
+      const src = sourceWords(page.source);
+      const model = pkg ? marginAnswer({ pkg, scenario: "base", clients: typeof item.data?.clients === "number" ? Math.max(1, Math.min(500, item.data.clients)) : 5 }) : null;
+      const shownPct = shownContributionPct(item.data);
+      const computed = model && model.numbers.contributionMarginBps !== null ? model.numbers.contributionMarginBps / 100 : null;
+      const check: "match" | "mismatch" | "not-comparable" = shownPct === null || computed === null ? "not-comparable" : Math.abs(shownPct - computed) > 0.15 ? "mismatch" : "match";
+      const d = decisionOf({ op: "answer.margin", target: pkg?.shortName ?? item.label, confidence: 1, policy: "act", source: "context", why: `"${item.label}" is the ${tier} item on ${page.page}; ${figures.length ? "the figures it shows" : model ? "it shows no figures, so the economics model" : "it shows no figures"}` });
       out({ type: "decision", decision: d, seq: 0 });
-      ctx.step({ intent: `context: ${tier} ${item.kind} "${item.label}" on ${page.page}`, executor: "deterministic", jev: d, ms: 0, outcome: "ok", verification: { method: "economics-model", ok: !mismatch, evidence: `${a.numbers.source}${mismatch ? `; page shows ${shownPct}% vs computed ${computed}%` : ""}` } });
-      const said = `${a.said} Source: ${a.numbers.source}.${mismatch ? ` The page shows ${shownPct}% for this, which doesn't match the model's ${computed?.toFixed(1)}%, so treat the page figure as stale until it refreshes.` : ""}`;
-      return { type: "done", ok: true, said, kind: "answer", decision: d, numbers: a.numbers, verified: !mismatch, ...base };
+      ctx.step({ intent: `context: ${tier} ${item.kind} "${item.label}" on ${page.page}${figures.length ? ` (${figures.length} shown figures)` : ""}`, executor: "deterministic", jev: d, ms: 0, outcome: "ok", verification: { method: figures.length ? "shown-figures" : "economics-model", ok: check !== "mismatch", evidence: `${page.source?.name ?? "no source"} [${page.source?.state ?? "unknown"}]${check === "mismatch" ? `; page shows ${shownPct}% vs model ${computed}%` : ""}` } });
+      const sourceNumbers = { name: page.source?.name ?? null, state: page.source?.state ?? "unknown", updatedAt: page.source?.updatedAt ?? null };
+      if (figures.length) {
+        const cross = !model
+          ? ""
+          : check === "mismatch"
+            ? ` The economics model says ${computed?.toFixed(1)}% contribution margin for this package, which doesn't match the ${shownPct}% shown, so treat the shown figure as suspect until it refreshes.`
+            : check === "match"
+              ? ` That matches the economics model's estimate.`
+              : ` No contribution margin was shown to cross-check; the economics model's estimate is ${(computed ?? 0).toFixed(1)}%.`;
+        const said = `${item.label}: ${figures.map(speakFigure).join(", ")}. ${src.line}${src.live ? "" : " Those are the page's figures, not confirmed live."}${cross}`;
+        return { type: "done", ok: true, said, kind: "answer", decision: d, numbers: { itemId: item.id, itemKind: item.kind, shown: item.data ?? {}, source: sourceNumbers, crossCheck: check, ...(model ? { model: model.numbers } : {}) }, verified: check === "match" ? true : check === "mismatch" ? false : null, ...base };
+      }
+      if (model) {
+        const said = `${item.label} shows no figures, so this is the economics model's answer instead. ${model.said} ${src.line}`;
+        return { type: "done", ok: true, said, kind: "answer", decision: d, numbers: { ...model.numbers, itemId: item.id, itemKind: item.kind, shown: {}, source: sourceNumbers, crossCheck: "not-comparable" }, verified: true, ...base };
+      }
+      // Shown data only, and none shown: said, not delegated and not invented.
+      return { type: "done", ok: false, ask: true, said: `${item.label} doesn't show any figures I can read, and it isn't a package I can work out, so I won't guess. ${src.line}`, kind: "ask", decision: d, numbers: { itemId: item.id, itemKind: item.kind, shown: {}, source: sourceNumbers }, verified: null, ...base };
+    }
+    if (item.kind === "job") {
+      const job = deps.jobs().get(item.id);
+      const d = decisionOf({ op: "answer.job", target: item.id, confidence: 1, policy: "act", source: "context", why: `"${item.label}" is the ${tier} job on ${page.page}` });
+      out({ type: "decision", decision: d, seq: 0 });
+      ctx.step({ intent: `context: ${item.label}${job ? ` is ${job.state}` : " isn't in the job log"}`, executor: "deterministic", jev: d, ms: 0, outcome: job ? "ok" : "asked" });
+      if (!job) return { type: "done", ok: false, ask: true, said: `I can't find ${item.label} in the job log, so I won't guess. Which job do you mean?`, kind: "ask", decision: d, ...base };
+      return { type: "done", ok: true, said: `${job.title || item.label} is ${job.state}${job.targetDeviceId && job.targetDeviceId !== "none" ? ` on ${label(job.targetDeviceId)}` : ""}.`, kind: "answer", decision: d, numbers: { jobId: item.id, state: job.state }, verified: true, ...base };
     }
     if (opening && item.href) {
       const d = decisionOf({ op: "navigate", target: item.href, confidence: 1, policy: "act", source: "context", why: `"${item.label}" is the ${tier} ${item.kind} on ${page.page}` });

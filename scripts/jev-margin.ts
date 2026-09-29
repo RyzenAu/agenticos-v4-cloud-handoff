@@ -49,3 +49,61 @@ export function marginAnswer(q: MarginQuery) {
     },
   };
 }
+
+// ------------------------------------------------------------------------------------------------
+// "Explain this margin" on a selected item: the figures the page SHOWS, quoted as shown, with the source
+// and its data state said plainly. Nothing here computes, rounds or infers a number.
+
+export type ShownData = Record<string, string | number | boolean | null>;
+export type ShownSource = { name: string; state?: "live" | "simulated" | "stale" | "failed" | "unknown" | "setup-required"; updatedAt?: string };
+export type ShownFigure = { key: string; label: string; value: string | number };
+
+const NOT_FIGURES = /^(?:id|kind|packageId|package|scenario|clients|name|label|title|href|tier)$/i;
+const humanise = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[._-]+/g, " ").replace(/\s*\b(?:pct|percent|cents)\b/i, "").trim().toLowerCase();
+
+/** The figures on an item: numbers, and strings that carry a number. Values are kept exactly as sent. Pure. */
+export function shownFigures(data: ShownData | undefined): ShownFigure[] {
+  const out: ShownFigure[] = [];
+  for (const [key, value] of Object.entries(data ?? {})) {
+    if (NOT_FIGURES.test(key)) continue;
+    if (typeof value === "number" && Number.isFinite(value)) out.push({ key, label: humanise(key), value });
+    else if (typeof value === "string" && /\d/.test(value)) out.push({ key, label: humanise(key), value });
+  }
+  return out;
+}
+
+/** One figure as it is spoken: a Cents key as dollars, a pct/margin key with a percent sign; strings verbatim. */
+export function speakFigure(f: ShownFigure): string {
+  if (typeof f.value === "string") return `${f.label} ${f.value}`;
+  if (/cents$/i.test(f.key) && Number.isInteger(f.value)) return `${f.label} ${formatAud(f.value)}`;
+  if (/(?:pct|percent|margin)/i.test(f.key)) return `${f.label} ${f.value}%`;
+  return `${f.label} ${f.value}`;
+}
+
+/** The margin percentage the item shows for contribution, if any (for the cross-check against the model). */
+export function shownContributionPct(data: ShownData | undefined): number | null {
+  const hit = Object.entries(data ?? {}).find(([k]) => /contribution/i.test(k) && /margin|pct|percent|^contribution$/i.test(k));
+  const v = hit?.[1];
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number.parseFloat(v) : Number.NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Where the figures come from and whether that is live, said plainly. Never calls a non-live state live. */
+export function sourceWords(source: ShownSource | undefined): { line: string; live: boolean } {
+  if (!source) return { line: "The page didn't say where these come from, so I can't call them live.", live: false };
+  const when = source.updatedAt ? ` (updated ${source.updatedAt})` : "";
+  switch (source.state) {
+    case "live":
+      return { line: `Source: ${source.name}, live${when}.`, live: true };
+    case "simulated":
+      return { line: `Source: ${source.name}. This is simulated data, not real figures${when}.`, live: false };
+    case "stale":
+      return { line: `Source: ${source.name}. It is stale${source.updatedAt ? `, last updated ${source.updatedAt}` : ""}, so these may be out of date.`, live: false };
+    case "failed":
+      return { line: `Source: ${source.name}. It failed to load${when}, so these figures may be wrong or missing.`, live: false };
+    case "setup-required":
+      return { line: `Source: ${source.name}. It still needs setup, so these aren't real figures yet.`, live: false };
+    default:
+      return { line: `Source: ${source.name}. I can't tell whether it is live${when}, so treat it as unconfirmed.`, live: false };
+  }
+}
