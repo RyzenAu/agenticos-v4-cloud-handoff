@@ -20,7 +20,7 @@ import { sha256 } from "./derived";
 import { HindsightError, createHindsightClient, type HindsightRecallHit } from "./hindsight-client";
 import type { MemorySettings } from "./settings";
 import { createStore, type IndexEntry } from "./store";
-import { assignNoteIds, extractDocs, scanVault, type Skip } from "./vault";
+import { assignNoteIds, extractDocs, scanVault, withoutCopies, type Skip } from "./vault";
 import type { HindsightState, IndexDoc, IndexState, MemoryRecord, OutboxOp, ProcessedBy, SyncStatus } from "./types";
 
 export type ConnectorOptions = {
@@ -230,8 +230,11 @@ export function createConnector(options: ConnectorOptions) {
   // ── scan (vault → desired vault documents) ───────────────────────────────────────────
   let lastRenames: { from: string; to: string; id: string }[] = [];
   function scan() {
-    const { notes, skipped } = scanVault(settings.vaultRoot, settings.sync);
+    const scanned = scanVault(settings.vaultRoot, settings.sync);
     const previous = store.readNotes();
+    const deduped = withoutCopies(scanned.notes, previous);
+    const notes = deduped.notes;
+    const skipped = [...scanned.skipped, ...deduped.skipped];
     // A vault that looks empty (unmounted drive, branch switch, sync glitch) is not "every note was
     // deleted": keep what was known and change nothing until notes are back.
     if (!notes.length && Object.values(previous).some((e) => !e.missing_since)) {
