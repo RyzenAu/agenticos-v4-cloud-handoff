@@ -131,18 +131,19 @@
 .cs-object[data-state="failed"] {
   border-top-color: var(--danger);
 }
+/* The gold mark says the object's state; it never floats. Filled = live, hollow = anything not confirmed. */
 .cs-mark {
   width: 14px;
   height: 14px;
   margin-bottom: 6px;
-  background: var(--brand);
+  border: 1.5px solid var(--brand);
   transform: rotate(45deg);
-  animation: cs-drift 6s ease-in-out infinite alternate;
 }
-@keyframes cs-drift {
-  to {
-    transform: rotate(45deg) translateY(-3px);
-  }
+.cs-mark[data-state="live"] {
+  background: var(--brand);
+}
+.cs-mark[data-state="failed"] {
+  border-color: var(--danger);
 }
 .cs-label {
   display: flex;
@@ -188,6 +189,86 @@
   color: var(--muted-foreground);
   overflow-wrap: anywhere;
 }
+/* Handoffs: a gold edge on the receiving object, and one 2D sweep along it when the step is confirmed.
+   The sweep plays once (no loop) and only when data-travel="travel"; waiting, finished and failed handoffs,
+   reading, editing, speaking and reduced motion all leave it still. */
+.cs-object[data-handoff] {
+  border-top-color: var(--brand);
+  box-shadow: var(--elev-3), inset 0 2px 0 var(--brand);
+}
+.cs-object[data-handoff="needs-you"] {
+  border-color: var(--warn);
+}
+.cs-object[data-handoff="failed"] {
+  border-top-color: var(--danger);
+  box-shadow: var(--elev-3), inset 0 2px 0 var(--danger);
+}
+.cs-sweep {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand), transparent);
+  transform-origin: left;
+  opacity: 0;
+  pointer-events: none;
+}
+.cs-object[data-travel="travel"] .cs-sweep {
+  animation: cs-sweep 900ms var(--ease-out-quart) 1 both;
+}
+@keyframes cs-sweep {
+  from {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+.cs-handoffs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+}
+.cs-handoff,
+.cs-handoff-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--brand);
+  border-radius: var(--radius-xl);
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.cs-handoff-empty {
+  border-left-color: var(--border);
+}
+.cs-handoff[data-state="failed"] {
+  border-left-color: var(--danger);
+}
+.cs-handoff[data-state="needs-you"] {
+  border-left-color: var(--warn);
+}
+.cs-handoff-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.cs-handoff-what {
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+.cs-handoff-state {
+  color: var(--brand);
+}
 @media (max-width: 899px) {
   .cs-world {
     grid-template-columns: 1fr;
@@ -205,7 +286,7 @@
   .cs-object {
     transition: none;
   }
-  .cs-mark {
-    animation: none;
+  .cs-sweep {
+    display: none;
   }
 }
