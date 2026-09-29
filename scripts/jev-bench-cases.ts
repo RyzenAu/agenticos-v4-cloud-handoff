@@ -61,6 +61,10 @@ export const BENCH_CASES: BenchCase[] = [
   { group: "browser", text: "click the first video", expect: ["browser_act:click:first", "screen_act"] },
   { group: "browser", text: "play the second result", expect: ["browser_act:click:second", "screen_act"] },
   { group: "browser", text: "hit the subscribe button", expect: ["browser_act:click:subscribe", "screen_act"] },
+  // J6: several steps in the browser, chosen by rules first and by Jev here (never the screen hands).
+  { group: "browser", text: "look up the best dentist in Sydney on Google and open whatever comes top", expect: ["browser_act:task", "skill:browser"] },
+  { group: "browser", text: "get me a lo-fi beats video going on YouTube", expect: ["browser_act:task", "skill:browser"] },
+  { group: "browser", text: "pop over to the ABC and tell me the main headline", expect: ["browser_act:task", "skill:browser"] },
   // --- the OS's own pages and websites ---------------------------------------------------------
   { group: "page", text: "get me to my inbox", expect: ["navigate:/inbox"] },
   { group: "page", text: "show me the calendar page", expect: ["navigate:/calendar"] },

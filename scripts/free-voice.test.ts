@@ -922,7 +922,8 @@ describe("his real screen: screen_act routing (24 Sep: 'kept opening new tabs wh
     const front = { jarvis: true };
     const { voice } = offline({ jarvisChromeInFront: async () => front.jarvis });
     expect(first(await turn(voice, "scroll down"))).toEqual({ name: "skill", args: { skill: "browser", action: "scroll", dir: "down" } });
-    expect(first(await turn(voice, "click the first video")).name).toBe("browser_act");
+    // (J6: "click the first video" is a step for the browser task loop now: the first video is opened and played, on Jarvis Chrome.)
+    expect(first(await turn(voice, "click the first video"))).toEqual({ name: "skill", args: { skill: "browser", action: "task_here", goal: "click the first video" } });
     front.jarvis = false;
     expect(first(await turn(voice, "scroll down"))).toEqual({ name: "screen_act", args: { goal: "scroll down" } });
     expect(first(await turn(voice, "click sign in"))).toEqual({ name: "screen_act", args: { goal: "click sign in" } });
@@ -1011,7 +1012,7 @@ describe("his real screen: screen_act routing (24 Sep: 'kept opening new tabs wh
     expect(name(guardToolCall(call("open_url", { url: "https://github.com" }), "open github", { sharing: true }))).toBe("open_url");
     expect(name(guardToolCall(call("navigate", { path: "/inbox" }), "take me to my inbox", { sharing: true }))).toBe("navigate");
     expect(name(guardToolCall(call("browser_act", { action: "click", target: "that" }), "click that one there"))).toBe("screen_act");
-    expect(name(guardToolCall(call("browser_act", { action: "click", target: "first video" }), "click the first video"))).toBe("browser_act");
+    expect(name(guardToolCall(call("browser_act", { action: "click", target: "first video" }), "click the first video"))).toBe("skill"); // J6: the task loop
     expect(JSON.parse(guardToolCall(call("screen_act", { goal: "click submit", confirmed: true }), "click submit").function.arguments)).toEqual({ goal: "click submit" });
     expect(JSON.parse(guardToolCall(call("screen_act", { goal: "click submit", confirmed: true }), "yes").function.arguments).confirmed).toBe(true);
   });

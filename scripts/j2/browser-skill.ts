@@ -5,6 +5,7 @@ import type { BrowserSkillRequest } from "./intents";
 import { rememberReferent } from "../jarvis-skills/referent";
 import { openedWhereLine } from "../jarvis-skills/windows";
 import { HIDDEN_NOTE, INJECTED_NOTE, READ_KEPT, safePageText, safeTitle } from "./page-redact";
+import { runBrowserTask, whereFrom, type TaskDeps } from "./browser-task";
 
 export type BrowserSkillDeps = {
   hands: BrowserHands;
@@ -12,6 +13,9 @@ export type BrowserSkillDeps = {
   present: () => Promise<string | null>;
   /** Start Jarvis Chrome when it isn't running (the launcher); true when its DevTools port answers. */
   ensure?: () => Promise<boolean>;
+  /** J6, the multi-step task loop: the brain's next action for a goal the rules don't know, his saved form details, a one-shot
+   *  "Still working." for a slow step, and (tests, the synthetic check) local search pages and a quick clock. */
+  task?: Pick<TaskDeps, "decide" | "details" | "progress" | "urls" | "sleep" | "slowMs">;
 };
 
 const hostOf = (url: string) => {
@@ -113,7 +117,41 @@ async function runBrowserSkillPlain(req: BrowserSkillRequest, deps: BrowserSkill
       return (await readAloudNow(hands)).said;
     case "click":
       return (await hands.click(String(req.target ?? ""))).said;
+    case "task":
+    case "task_here":
+      return runTask(req, deps);
   }
+}
+
+/**
+ * J6: one goal sentence through the task loop (scripts/j2/browser-task.ts): up to 8 steps of snapshot, one action, snapshot,
+ * then one plain answer that says where it ended up. Nothing here loosens a gate: every input goes through the hands.
+ */
+async function runTask(req: BrowserSkillRequest, deps: BrowserSkillDeps): Promise<string> {
+  const { hands } = deps;
+  const goal = String(req.goal ?? "").trim();
+  if (!goal) return "What should I do in the browser?";
+  // task_here uses the tab already in front. A remembered tab may be stale after the user switches tabs.
+  const open: TaskDeps["open"] = async (url, label) => {
+    let r = await hands.open(url, "new-tab");
+    if (!r.ok && deps.ensure && /connect|refused|ECONN|not running|no browser|CDP/i.test(r.said) && (await deps.ensure())) r = await hands.open(url, "new-tab");
+    if (!r.ok) return { ok: false, said: r.said };
+    rememberReferent({ app: "chrome", jarvisChrome: true, title: label, ...(r.targetId ? { targetId: r.targetId } : {}) });
+    if (r.targetId) await hands.activate(r.targetId);
+    const where = whereFrom(await deps.present().catch(() => null));
+    return { ok: true, said: "Opened.", ...(where ? { where } : {}), ...(r.targetId ? { targetId: r.targetId } : {}) };
+  };
+  const outcome = await runBrowserTask(
+    { goal },
+    {
+      hands,
+      open,
+      ...(req.action === "task_here" ? { present: deps.present } : {}),
+      retarget: (targetId, title) => void rememberReferent({ app: "chrome", jarvisChrome: true, title: title.slice(0, 80), targetId }),
+      ...deps.task,
+    },
+  );
+  return outcome.said;
 }
 
 async function readAloudNow(hands: BrowserHands): Promise<BrowserSkillOutcome> {

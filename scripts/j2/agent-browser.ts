@@ -189,25 +189,176 @@ export function createAgentBrowserHands(options: { run: AbRun; port?: number; se
       const lower = want.toLowerCase();
       const hit = refs.find((r) => r.name.trim().toLowerCase() === lower) ?? refs.find((r) => r.name.toLowerCase().includes(lower));
       if (!hit) return { ok: false, said: `I can't see "${want}" on this page, so nothing was clicked.` };
-      // EVERY name the control carries (REVIEW-S2C fix 1, REVIEW-J2 F1): the snapshot has only its accessible name (an
-      // aria-label wins over the visible text), so the visible text, aria-label, title, value and alt are read as well.
-      // A visible "Delete" under aria-label="Next" is final; two names that disagree hide one, so it is not pressed.
-      const labels = await labelsOf(hit.ref);
-      if (!labels) return { ok: false, said: `I couldn't read everything "${hit.name.slice(0, 60)}" is labelled, so nothing was clicked.` };
-      const kind = /button/i.test(hit.role) ? "button" : "link";
-      const names = [hit.name, ...labels.all];
-      const final = finalClickRefusal({ kind, label: hit.name, names } as never, want);
-      if (final) return { ok: false, said: final };
-      const shown = candidateNames({ label: labels.text || labels.value, names: [] })[0];
-      const spoken = candidateNames({ label: labels.aria || hit.name, names: [] })[0];
-      if (shown && spoken && !agrees(shown, spoken)) return { ok: false, said: `That control is labelled two different ways, "${shown.slice(0, 40)}" and "${spoken.slice(0, 40)}", so I can't tell what it does. Nothing was clicked.` };
+      return pressHit(hit, want);
+    },
+    /**
+     * J6: press ONE control by its ref from a fresh snapshot (the task loop picks the ref, never the gate): the very same
+     * S2c final-button, hidden-name and S2e money checks as `click`, then the press. `want` is the words he used (checked as
+     * a final button too), or the control's own name.
+     */
+    async clickRef(ref: string, want?: string): Promise<{ ok: boolean; said: string; name?: string }> {
+      const refs = await this.snapshot();
+      const hit = refs.find((r) => r.ref === ref);
+      if (!hit) return { ok: false, said: "That control isn't on the page any more, so nothing was clicked." };
+      const r = await pressHit(hit, (want ?? hit.name).slice(0, 80));
+      return { ...r, name: hit.name };
+    },
+    /** J6: the page as an ordered tree with links' addresses (`snapshot -u`), for choosing what to do next. */
+    async tree(options: { interactive?: boolean } = {}): Promise<TreeNode[]> {
+      const r = await ab<{ snapshot?: string; refs?: Record<string, { name?: string; role?: string }> }>(["snapshot", ...(options.interactive === false ? [] : ["-i"]), "-u"], 25_000);
+      if (!r.ok) return [];
+      const parsed = parseSnapshot(String(r.data.snapshot ?? ""));
+      if (parsed.length) return parsed;
+      return Object.entries(r.data.refs ?? {}).map(([ref, v], index) => ({ ref, role: String(v.role ?? ""), name: String(v.name ?? ""), depth: 0, index }));
+    },
+    /** J6: where the tab is and what kind of page it is (the fields a stop check needs). Null when it can't be read. */
+    async view(): Promise<PageView | null> {
+      const r = await ab<{ result?: PageView }>(["eval", "-b", Buffer.from(VIEW_JS, "utf8").toString("base64")]);
+      const v = r.ok ? r.data.result : undefined;
+      return v && typeof v === "object" && typeof v.url === "string" ? { ...v, text: String(v.text ?? "") } : null;
+    },
+    /**
+     * J6: type into ONE non-secret field by its ref. Refused before anything is typed: a password, card, one-time-code or
+     * other secure field (by its type, autocomplete, name, id, placeholder and label), a card number in the words, and a
+     * money page (the S2e verdict for a `browser_type`). The field is cleared and filled.
+     */
+    async typeInto(ref: string, text: string): Promise<{ ok: boolean; said: string; name?: string }> {
+      const words = String(text ?? "").replace(/\s+/g, " ").trim().slice(0, 300);
+      if (!words) return { ok: false, said: "There was nothing to type." };
+      const at = `@${ref}`;
+      const attr = async (name: string) => {
+        const r = await ab<{ value?: string | null }>(["get", "attr", at, name]);
+        return r.ok ? String(r.data.value ?? "") : null;
+      };
+      const [type, autocomplete, name, id, placeholder, aria] = await Promise.all([attr("type"), attr("autocomplete"), attr("name"), attr("id"), attr("placeholder"), attr("aria-label")]);
+      if ([type, autocomplete, name, id, placeholder, aria].some((v) => v === null)) return { ok: false, said: "I couldn't read that field, so I typed nothing." };
+      const label = [aria, placeholder, name, id].filter(Boolean).join(" ").slice(0, 120);
+      if (secureFieldAttrs({ type: type!, autocomplete: autocomplete!, hint: `${name} ${id} ${placeholder} ${aria}` })) return { ok: false, said: "That's a password, card or code field, which I never type into. Nothing was typed." };
+      if (SECRET_BEARING.test(words)) return { ok: false, said: "That names a secret-bearing file or private data, which I never type. Nothing was typed." };
       const ctx = await page();
-      for (const name of new Set(names.map((n) => n.trim()).filter(Boolean))) {
-        const verdict = toolGuardVerdict({ tool: "browser_click", args: { ref: hit.ref }, label: name, pageUrl: ctx?.url ?? null }, { page: ctx });
-        if (!verdict.allow) return { ok: false, said: verdict.message };
-      }
-      const r = await ab(["click", `@${hit.ref}`]);
-      return r.ok ? { ok: true, said: `Clicked "${hit.name.slice(0, 60)}".` } : { ok: false, said: `The click didn't go through: ${r.error}.` };
+      const verdict = toolGuardVerdict({ tool: "browser_type", args: { ref, text: words }, label, pageUrl: ctx?.url ?? null }, { page: ctx });
+      if (!verdict.allow) return { ok: false, said: verdict.message };
+      const r = await ab(["fill", at, words]);
+      return r.ok ? { ok: true, said: "Typed.", name: label } : { ok: false, said: `The field didn't take it: ${r.error}.` };
+    },
+    /**
+     * J6: press Enter, ONLY in a search box on its own (a search form with no other fields): Enter in a contact or sign-up
+     * form submits it, which is a final press and never Jarvis's. The S2e verdict for a `browser_press` Enter applies too
+     * (never on a money page).
+     */
+    async pressEnterInSearch(): Promise<{ ok: boolean; said: string }> {
+      const f = await ab<{ result?: { ok?: boolean; inSearch?: boolean; others?: number } }>(["eval", "-b", Buffer.from(FOCUS_JS, "utf8").toString("base64")]);
+      const focus = f.ok ? f.data.result : undefined;
+      if (!focus?.ok || !focus.inSearch || (focus.others ?? 0) > 0) return { ok: false, said: "That isn't a lone search box, so I didn't press Enter: it could submit a form, and that's yours to press." };
+      const ctx = await page();
+      const verdict = toolGuardVerdict({ tool: "browser_press", args: { key: "Enter" }, pageUrl: ctx?.url ?? null }, { page: ctx });
+      if (!verdict.allow) return { ok: false, said: verdict.message };
+      const r = await ab(["press", "Enter"]);
+      return r.ok ? { ok: true, said: "Searched." } : { ok: false, said: `The key didn't go through: ${r.error}.` };
+    },
+    /** J6: bring one of the tabs to the front (1 = the first, in the order Chrome lists them). */
+    async selectTab(index: number): Promise<{ ok: boolean; said: string }> {
+      const all = await tabs();
+      const tab = all[index - 1];
+      if (!tab) return { ok: false, said: `There's no tab ${index}.` };
+      return (await ab(["tab", tab.targetId])).ok ? { ok: true, said: "Switched tab." } : { ok: false, said: "I couldn't switch tab." };
+    },
+    /** J6: scroll to the very bottom of the page. */
+    async scrollToBottom(): Promise<{ ok: boolean; said: string }> {
+      const r = await ab(["eval", "-b", Buffer.from("/*bottom*/(() => { window.scrollTo(0, document.documentElement.scrollHeight); return true; })()", "utf8").toString("base64")]);
+      return r.ok ? { ok: true, said: "Scrolled to the bottom." } : { ok: false, said: `I couldn't scroll: ${r.error}.` };
+    },
+    /** J6: the text of the page's footer (or its last lines when it has none). */
+    async footerText(): Promise<string> {
+      const r = await ab<{ result?: string }>(["eval", "-b", Buffer.from(FOOTER_JS, "utf8").toString("base64")]);
+      return r.ok && typeof r.data.result === "string" ? r.data.result : "";
     },
   };
+
+  /** The gated press shared by `click` and `clickRef`: every name, the final-button gate, the S2e verdict; then the click. */
+  async function pressHit(hit: Ref, want: string): Promise<{ ok: boolean; said: string }> {
+    // EVERY name the control carries (REVIEW-S2C fix 1, REVIEW-J2 F1): the snapshot has only its accessible name (an
+    // aria-label wins over the visible text), so the visible text, aria-label, title, value and alt are read as well.
+    // A visible "Delete" under aria-label="Next" is final; two names that disagree hide one, so it is not pressed.
+    const labels = await labelsOf(hit.ref);
+    if (!labels) return { ok: false, said: `I couldn't read everything "${hit.name.slice(0, 60)}" is labelled, so nothing was clicked.` };
+    const kind = /button/i.test(hit.role) ? "button" : "link";
+    const names = [hit.name, ...labels.all];
+    const final = finalClickRefusal({ kind, label: hit.name, names } as never, want);
+    if (final) return { ok: false, said: final };
+    const shown = candidateNames({ label: labels.text || labels.value, names: [] })[0];
+    const spoken = candidateNames({ label: labels.aria || hit.name, names: [] })[0];
+    if (shown && spoken && !agrees(shown, spoken)) return { ok: false, said: `That control is labelled two different ways, "${shown.slice(0, 40)}" and "${spoken.slice(0, 40)}", so I can't tell what it does. Nothing was clicked.` };
+    const ctx = await page();
+    for (const name of new Set(names.map((n) => n.trim()).filter(Boolean))) {
+      const verdict = toolGuardVerdict({ tool: "browser_click", args: { ref: hit.ref }, label: name, pageUrl: ctx?.url ?? null }, { page: ctx });
+      if (!verdict.allow) return { ok: false, said: verdict.message };
+    }
+    const r = await ab(["click", `@${hit.ref}`]);
+    return r.ok ? { ok: true, said: `Clicked "${hit.name.slice(0, 60)}".` } : { ok: false, said: `The click didn't go through: ${r.error}.` };
+  }
+}
+
+import { SENSITIVE_FIELD } from "../screen-hands/plan"; // (kept with the J6 helpers below)
+
+// --- J6: what the multi-step browser task needs to see and do (scripts/j2/browser-task.ts) ---------------------------------
+
+/** One line of `snapshot -u`: a control or heading with its ref, its accessible name and (for a link) its address. */
+export type TreeNode = { ref: string; role: string; name: string; url?: string; level?: number; depth: number; index: number };
+
+/**
+ * `snapshot` text → the nodes in DOCUMENT order (the `refs` map of the same answer is not in page order, so "the first
+ * result" has to come from the text). A line looks like `  - link "Title" [ref=e3, url=https://x.test/a]`. Pure.
+ */
+export function parseSnapshot(text: string): TreeNode[] {
+  const out: TreeNode[] = [];
+  for (const line of String(text ?? "").split(/\r?\n/)) {
+    const m = line.match(/^(\s*)- ([\w-]+)(?: "((?:[^"\\]|\\.)*)")?(?: \[([^\n]*)\])?/);
+    if (!m) continue;
+    const attrs = m[4] ?? "";
+    const ref = attrs.match(/\bref=(\w+)/)?.[1];
+    if (!ref) continue;
+    const url = attrs.match(/\burl=(.*?)(?:,\s*(?:ref|level|checked|expanded|selected|disabled|pressed|required|value|haspopup)=|$)/)?.[1]?.trim();
+    const level = Number(attrs.match(/\blevel=(\d+)/)?.[1]);
+    out.push({ ref, role: m[2], name: (m[3] ?? "").replace(/\\(.)/g, "$1"), ...(url ? { url } : {}), ...(Number.isFinite(level) && level > 0 ? { level } : {}), depth: Math.floor(m[1].length / 2), index: out.length });
+  }
+  return out;
+}
+
+/** The tab's page as a stop check needs it. */
+export type PageView = { url: string; title: string; ready: boolean; text: string; password: boolean; card: boolean; video: null | { paused: boolean; ended: boolean } };
+const VIEW_JS = String.raw`/*view*/(() => {
+  const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
+  const inputs = [...document.querySelectorAll("input, textarea")].filter((e) => e.type !== "hidden" && vis(e));
+  const hint = (e) => [e.getAttribute("autocomplete"), e.name, e.id, e.getAttribute("aria-label"), e.placeholder].filter(Boolean).join(" ").toLowerCase();
+  const v = document.querySelector("video");
+  return { url: location.href, title: document.title, ready: document.readyState === "complete",
+    text: String(document.body ? document.body.innerText : "").replace(/\s+/g, " ").slice(0, 2500),
+    password: inputs.some((e) => e.type === "password"),
+    card: inputs.some((e) => /cc-number|cc-csc|cc-exp|card.?(number|no)|cvv|cvc|security.?code/.test(hint(e))),
+    video: v ? { paused: !!v.paused, ended: !!v.ended } : null };
+})()`;
+/** The focused field: is it a lone search box (Enter would search, not submit a form)? */
+const FOCUS_JS = String.raw`/*focus*/(() => {
+  const e = document.activeElement;
+  if (!e || e === document.body || !/^(INPUT|TEXTAREA)$/.test(e.tagName)) return { ok: false };
+  const hint = [e.getAttribute("aria-label"), e.getAttribute("placeholder"), e.name, e.id].filter(Boolean).join(" ");
+  const form = e.closest("form");
+  const inSearch = e.type === "search" || e.getAttribute("role") === "searchbox" || !!e.closest("[role=search]") || (!!form && form.getAttribute("role") === "search") || /\bsearch\b|\bquery\b|^q$|\bfind\b/i.test(hint) || /^q$/i.test(e.name || "");
+  const vis = (x) => { const r = x.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const others = form ? [...form.querySelectorAll("input:not([type=hidden]):not([type=search]):not([type=submit]):not([type=button]), textarea, select")].filter((x) => x !== e && vis(x)).length : 0;
+  return { ok: true, inSearch, others };
+})()`;
+const FOOTER_JS = String.raw`/*footer*/(() => {
+  const f = document.querySelector("footer, [role=contentinfo]");
+  const t = String((f ? f.innerText : (document.body ? document.body.innerText : "").slice(-500)) || "").replace(/\s+/g, " ").trim();
+  return t.slice(0, 1500);
+})()`;
+
+/** A field that is a password, card, one-time code or other secure entry, by its type, autocomplete and names. Pure. */
+export function secureFieldAttrs(f: { type: string; autocomplete: string; hint: string }): boolean {
+  const type = f.type.toLowerCase();
+  if (type === "password") return true;
+  if (/(?:^|\s)(?:cc-|current-password|new-password|one-time-code|tel-national.*pin)/i.test(f.autocomplete)) return true;
+  return SENSITIVE_FIELD.test(f.hint) || /\b(?:cvv|cvc|otp|pin|passcode|card)\b/i.test(f.hint);
 }

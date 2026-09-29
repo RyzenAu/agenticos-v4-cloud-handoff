@@ -488,6 +488,12 @@ export function guardToolCall(call: ToolCall, lastUser: string, options: { shari
     const j2 = browserSkillIntent(lastUser, { sharing: options.sharing });
     if (j2) return asSkill(j2);
   }
+  // J6: a multi-step web goal Jev chose (browser_act "task") or the brain pushed at the screen hands: the browser task loop,
+  // the same hands and gates as the rules, never screen_act. (Not while he shares his screen: "this page" is his screen then.)
+  if (!options.sharing && ["screen_act", "browser_act", "control_pc"].includes(call.function.name)) {
+    const goal = call.function.name === "browser_act" ? (args.action === "task" ? String(args.target || lastUser) : null) : webGoalIn(lastUser);
+    if (goal && goal.trim()) return asSkill({ skill: "browser", action: "task", goal: goal.trim().slice(0, 200) });
+  }
   // Our own site is muventures.com.au, from the known list, never a guessed .com (J-fix).
   if (call.function.name === "open_url" && typeof args.url === "string") {
     const url = ownSiteIn(lastUser)?.url ?? ownSiteUrl(args.url);
@@ -569,6 +575,20 @@ export function guardToolCall(call: ToolCall, lastUser: string, options: { shari
     return { ...call, function: { ...call.function, arguments: JSON.stringify(args) } };
   }
   return call;
+}
+
+/**
+ * A web job in his words that the rules didn't recognise (J6): it names Google, YouTube, Gmail, a website or a result, asks for
+ * a browsing act, and neither points at his own screen nor needs him to confirm anything (a send, a post, a payment, a
+ * sign-in, an edit). The brain reaches for screen_act or control_pc for these; the browser task loop does them instead.
+ */
+export function webGoalIn(text: string): string | null {
+  const t = String(text ?? "").trim();
+  if (!t || t.length > 200 || DEICTIC.test(t) || needsConfirmation(t)) return null;
+  if (!/\b(?:google|youtube|gmail|web\s?site|site|search results?|(?:the\s+)?(?:first|second|third|top)\s+(?:result|link|video)|[a-z0-9-]+\.(?:com|com\.au|net|org|io|au))\b/i.test(t)) return null;
+  if (!/\b(?:open|click|find|search|look up|play|read|fill|go to|show me|visit|watch|check out|tell me)\b/i.test(t)) return null;
+  if (/\b(?:send|post|publish|delete|remove|buy|pay|order|book|sign in|log ?in|password|change|edit|update|upload|download|install|email|message|text|call)\b/i.test(t)) return null;
+  return t;
 }
 
 /** He's pointing at his screen: "this", "here", "that button", "on my screen". */

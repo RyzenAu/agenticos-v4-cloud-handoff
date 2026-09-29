@@ -14,6 +14,8 @@ import { loadCodingDetector } from "./coding";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { runLeadAction, type LeadsApiLike } from "./leads";
 import { skillIntent } from "../jarvis-skills";
+import { browserSkillIntent } from "../j2/intents";
+import { typedBrowserTarget } from "../j2/typed";
 import { receptionistAnswer, receptionistQuestion } from "./receptionist";
 import type { ReceptionistSnapshot } from "../receptionist/types";
 
@@ -36,6 +38,8 @@ export function createLiveCommandService(options: {
   leads?: () => LeadsApiLike | undefined;
   /** The Jarvis skills (timers, alarms, reminders): "remember to …" becomes a real reminder. */
   skills?: () => { run(body: unknown, options?: { remote?: boolean }): Promise<{ ok: boolean; said: string }> } | undefined;
+  /** The same frontmost Jarvis Chrome check used by voice for current-page actions. */
+  jarvisChromeInFront?: () => Promise<boolean>;
 }): CommandService {
   const { devices } = options;
   // Track 3's coding detector, when its branch is in this tree (coding words then open its draft page).
@@ -46,6 +50,21 @@ export function createLiveCommandService(options: {
       const api = options.leads?.();
       if (!api) return { ok: false, said: "The leads service isn't running here, so nothing in the CRM changed.", verified: null };
       return runLeadAction(api, action, principal);
+    },
+    // J6: his browser commands typed use the same hands as spoken ones (agent-browser in Jarvis Chrome, and the task loop).
+    browser: {
+      match: (utterance: string) => browserSkillIntent(utterance) !== null,
+      run: async (utterance: string, principal: Principal) => {
+        const target = await typedBrowserTarget(utterance, options.jarvisChromeInFront);
+        if (target?.kind === "screen") {
+          const r = await options.screen.act({ goal: target.goal, source: "command", requireSpokenYes: true }, AbortSignal.timeout(60_000));
+          return { ok: r.ok, said: r.said };
+        }
+        const skills = options.skills?.();
+        if (!skills || !target) return { ok: false, said: "Jarvis's browser hands aren't available here, so nothing was done." };
+        const r = await skills.run(target.request, { remote: principal.via !== "loopback-owner" });
+        return { ok: r.ok && !/^Couldn't finish/i.test(r.said), said: r.said };
+      },
     },
     skill: {
       match: (utterance: string) => {
