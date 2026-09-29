@@ -326,13 +326,14 @@ export function parseSnapshot(text: string): TreeNode[] {
 }
 
 /** The tab's page as a stop check needs it. */
-export type PageView = { url: string; title: string; ready: boolean; text: string; password: boolean; card: boolean; video: null | { paused: boolean; ended: boolean } };
+export type PageView = { url: string; title: string; ready: boolean; /** HTTP status of the page's own navigation (0 or absent when the browser doesn't say). */ status?: number; text: string; password: boolean; card: boolean; video: null | { paused: boolean; ended: boolean } };
 const VIEW_JS = String.raw`/*view*/(() => {
   const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
   const inputs = [...document.querySelectorAll("input, textarea")].filter((e) => e.type !== "hidden" && vis(e));
   const hint = (e) => [e.getAttribute("autocomplete"), e.name, e.id, e.getAttribute("aria-label"), e.placeholder].filter(Boolean).join(" ").toLowerCase();
   const v = document.querySelector("video");
-  return { url: location.href, title: document.title, ready: document.readyState === "complete",
+  const nav = (performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || null;
+  return { url: location.href, title: document.title, ready: document.readyState === "complete", status: Number(nav && nav.responseStatus) || 0,
     text: String(document.body ? document.body.innerText : "").replace(/\s+/g, " ").slice(0, 2500),
     password: inputs.some((e) => e.type === "password"),
     card: inputs.some((e) => /cc-number|cc-csc|cc-exp|card.?(number|no)|cvv|cvc|security.?code/.test(hint(e))),

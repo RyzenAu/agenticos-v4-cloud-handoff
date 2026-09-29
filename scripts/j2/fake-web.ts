@@ -26,6 +26,10 @@ export type FakeNode = {
 };
 export type FakePage = {
   title: string;
+  /** The HTTP status the page was served with (default 200): a real 404 says so, a "soft" 404 is served with 200. */
+  status?: number;
+  /** Opening this address lands on that one instead (a server redirect). */
+  redirect?: string;
   text?: string;
   nodes: FakeNode[];
   footer?: string;
@@ -54,7 +58,14 @@ export function createFakeWeb(pages: Record<string, FakePage> | ((url: string) =
   let refs: FakeNode[] = [];
   const tab = () => tabs[active];
   const pageNow = () => lookup(tab().url);
-  const goto = (t: Tab, url: string) => {
+  const goto = (t: Tab, from: string) => {
+    // A page can redirect (like a server would) before it is shown.
+    let url = from;
+    for (let hops = 0; hops < 5; hops++) {
+      const next = lookup(url).redirect;
+      if (!next) break;
+      url = next;
+    }
     t.url = url;
     t.history.push(url);
     t.values = new Map();
@@ -64,7 +75,7 @@ export function createFakeWeb(pages: Record<string, FakePage> | ((url: string) =
   const shown = (p: FakePage, interactive: boolean) => p.nodes.filter((x) => !interactive || INTERACTIVE.has(x.role) || (x.role === "heading" && x.nested));
   const view = (t: Tab) => {
     const p = lookup(t.url);
-    return { url: t.url, title: p.title, ready: true, text: `${p.title} ${p.text ?? ""}`.replace(/\s+/g, " ").slice(0, 2500), password: !!p.password, card: !!p.card, video: p.video ? { paused: p.video.paused, ended: false } : null };
+    return { url: t.url, title: p.title, ready: true, status: p.status ?? 200, text: `${p.title} ${p.text ?? ""}`.replace(/\s+/g, " ").slice(0, 2500), password: !!p.password, card: !!p.card, video: p.video ? { paused: p.video.paused, ended: false } : null };
   };
 
   const run: AbRun = async (argv) => {
@@ -150,10 +161,16 @@ export function createFakeWeb(pages: Record<string, FakePage> | ((url: string) =
       if (x.role === "button" && FINAL.test(x.name)) submitted.push(x.name);
       x.onClick?.(handle);
       if (x.url) {
+        // A browser resolves the href against the page it is on.
+        let href = x.url;
+        try {
+          href = new URL(x.url, t.url).href;
+        } catch { /* keep the raw address */ }
         if (x.newTab) {
-          const nt: Tab = { tabId: `t${++n}`, targetId: `T${n}`, url: x.url, history: [x.url], values: new Map(), focus: null };
+          const nt: Tab = { tabId: `t${++n}`, targetId: `T${n}`, url: "about:blank", history: ["about:blank"], values: new Map(), focus: null };
           tabs.push(nt);
-        } else goto(t, x.url);
+          goto(nt, href);
+        } else goto(t, href);
       }
       return ok({ clicked: sub });
     }

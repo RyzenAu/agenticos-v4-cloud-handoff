@@ -311,6 +311,11 @@ export async function runBrowserTask(input: { goal: string; shape?: TaskShape | 
     // Search-result goals intentionally leave the engine, so they do not set expectHost past the result click.
     if (state.scratch.expectHost && state.view && wrongSite(state.scratch.expectHost, state.view.url))
       return couldnt(`I landed on ${hostOf(state.view.url)} instead of ${state.scratch.expectHost}`);
+    // A goal on the page already in front is bound to that page's site, so its links are inspected too.
+    if (!state.history.length && !state.scratch.expectHost && state.view && ["find_page", "contact_read", "fill_form"].includes(shape.kind) && "site" in shape && shape.site === null) {
+      const current = hostnameOf(state.view.url);
+      if (registrableDomain(current)) state.scratch.expectHost = current;
+    }
     // 3. Choose ONE next action.
     if (placing) await placing;
     let action: TaskAction;
@@ -322,6 +327,11 @@ export async function runBrowserTask(input: { goal: string; shape?: TaskShape | 
     trace.push(describeAction(action));
     if (action.do === "finish") return await done(action.said);
     if (action.do === "stop") return couldnt(action.reason, action.yourTurn ? "yourTurn" : "plain");
+    // A site-bound task looks at where a link goes BEFORE clicking it.
+    if (action.do === "click") {
+      const refusal = offSiteClickRefusal(state, action.ref);
+      if (refusal) return couldnt(refusal);
+    }
     const prev = state.history[state.history.length - 1];
     if (prev && action.do !== "wait" && JSON.stringify(prev.action) === JSON.stringify(action) && prev.ok) return couldnt("I was going round in circles");
     // 4. Do it (one step), telling him once if it's slow.
@@ -463,6 +473,9 @@ const titleOf = (state: TaskState) => safeTitle(state.view?.title ?? "").replace
 function watchOrFinish(state: TaskState, engine: Engine, what: string): TaskAction {
   const v = state.view?.video ?? null;
   const title = titleOf(state);
+  // A result that opened an error page (HTTP 404/5xx, or a soft "not found" page) is a failure, not a success.
+  const broken = errorPageReason(state.view, state.tree);
+  if (broken) return { do: "stop", reason: `the result opened an error page (${broken}), not a working page` };
   if (engine !== "youtube") return { do: "finish", said: `${what}: ${title}${where(state)}.` };
   if (!v && state.scratch.waits < 3) return { do: "wait" };
   if (!v) return { do: "finish", said: `${what}: ${title}${where(state)}.` };
@@ -477,6 +490,43 @@ function watchOrFinish(state: TaskState, engine: Engine, what: string): TaskActi
 }
 const where = (state: TaskState) => (state.scratch.where ? ` on ${state.scratch.where}` : " in Chrome");
 
+/** Words an error page uses (HTTP error pages, "soft" 404s served with status 200, the browser's own error pages). */
+const ERROR_PAGE = /\b404\b|\bnot found\b|page (?:unavailable|(?:can(?:no|'|’)t|could not) be found|(?:doesn'?t|does not) exist)|access denied|\bforbidden\b|internal server error|bad gateway|service unavailable|can(?:no|'|’)t be reached|\berr_[a-z_]+\b|video unavailable|no longer available|\b(?:error|status) (?:403|410|500|502|503)\b/i;
+/** Why this page is an error page (an HTTP error status or clear error-page content), or null when it looks like a real page. Pure. */
+export function errorPageReason(view: PageView | null, tree: TreeNode[] = []): string | null {
+  if (!view) return null;
+  if (typeof view.status === "number" && view.status >= 400) return `HTTP ${view.status}`;
+  if (/^chrome-error:/i.test(view.url)) return "the browser's error page";
+  const headings = tree.filter((n) => n.role === "heading" && (n.level ?? 1) <= 2).map((n) => n.name).join(" ");
+  const hit = `${view.title} ${headings} ${view.text.slice(0, 250)}`.match(ERROR_PAGE);
+  return hit ? `it says "${clip(hit[0], 40)}"` : null;
+}
+
+/**
+ * A site-bound task never clicks a link before its destination is known to be on that site: the href is resolved against the
+ * page it is on (relative, protocol-relative and fragment links included) and compared, by registrable domain, with the
+ * site the task is bound to. A link that leaves it, is not a web address (javascript:, data:, mailto:...), or whose address
+ * can't be read is refused with a brief reason (null when the click may go ahead). Pure. A redirect the server makes after the
+ * click can't be seen here: the landing check after every navigation still catches that.
+ */
+export function offSiteClickRefusal(state: Pick<TaskState, "tree" | "view" | "scratch">, ref: string): string | null {
+  const bound = state.scratch.expectHost;
+  if (!bound) return null;
+  const node = state.tree.find((n) => n.ref === ref);
+  if (!node) return null;
+  const label = quote(node.name || node.role);
+  if (!node.url) return node.role === "link" ? `I didn't click ${label}: I can't tell where that link goes` : null;
+  let dest: URL;
+  try {
+    dest = new URL(node.url, state.view?.url || undefined);
+  } catch {
+    return `I didn't click ${label}: I can't tell where that link goes`;
+  }
+  if (dest.protocol !== "http:" && dest.protocol !== "https:") return `I didn't click ${label}: it isn't a web page on ${bound}`;
+  if (wrongSite(bound, dest.href)) return `I didn't click ${label}: it goes to ${hostOf(dest.href)}, outside ${bound}`;
+  return null;
+}
+
 /** A clicked link is only a candidate. Verify the resulting page, including same-URL tab changes. */
 function reachedPage(state: TaskState, label: RegExp): boolean {
   const now = state.view;
@@ -487,7 +537,7 @@ function reachedPage(state: TaskState, label: RegExp): boolean {
   let path = "";
   try { path = decodeURIComponent(new URL(now.url).pathname).replace(/[-_]+/g, " "); } catch { /* the title can still prove it */ }
   const heading = state.tree.filter((n) => n.role === "heading").map((n) => n.name).join(" ");
-  if (/\b(?:404|not found|page unavailable|access denied)\b/i.test(`${now.title} ${now.text.slice(0, 250)}`)) return false;
+  if (errorPageReason(now, state.tree)) return false;
   return label.test(`${now.title} ${heading}`) || (label.test(path) && label.test(now.text));
 }
 

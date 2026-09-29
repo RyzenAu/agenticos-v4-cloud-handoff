@@ -1,8 +1,8 @@
 // J6: `browser.task`, the multi-step browser loop. Every goal shape, the drift stops, the gates and the audit utterances, with a
 // fake web (the CDP stub over fake pages) in place of Chrome: no model, no network, no real window or browser.
 import { afterEach, describe, expect, test } from "bun:test";
-import { createAgentBrowserHands, parseSnapshot } from "./agent-browser";
-import { forgetSearch, pageProblem, pickResults, runBrowserTask, TASK_STEP_CAP, validateAction, wrongSite, type TaskDeps } from "./browser-task";
+import { createAgentBrowserHands, parseSnapshot, type PageView } from "./agent-browser";
+import { errorPageReason, forgetSearch, offSiteClickRefusal, pageProblem, pickResults, runBrowserTask, TASK_STEP_CAP, validateAction, wrongSite, type TaskDeps } from "./browser-task";
 import { fakeWeb, SMILE } from "./task-fixtures";
 import { parseTaskGoal, resolveSite } from "./task-intents";
 import { forgetReferent, rememberReferent } from "../jarvis-skills/referent";
@@ -339,14 +339,24 @@ describe("drift: stop and say 'your turn' in one line", () => {
     expect(out.ok).toBe(false);
     expect(out.said).toBe("Couldn't finish: I landed on elsewhere.example.net instead of smiledental.com.au. I got as far as \"Parked domain\" on elsewhere.example.net.");
   });
-  test("a named site's link that lands on another site stops before claiming completion", async () => {
+  test("a named site's link to another site is refused before the click (its address is read first)", async () => {
     const web = fakeWeb({ overrides: {
       [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Pricing", url: "https://elsewhere.example.net/" }] },
     } });
     const out = await rig(web).run("go to smiledental.com.au and click Pricing");
     expect(out.ok).toBe(false);
+    expect(out.said).toContain("I didn't click \"Pricing\": it goes to elsewhere.example.net, outside smiledental.com.au");
+    expect(web.clicked).toEqual([]);
+    expect(web.active().url).toBe(SMILE);
+  });
+  test("a named site's on-site link that redirects off-site after the click still stops before claiming completion", async () => {
+    const web = fakeWeb({ overrides: {
+      [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Pricing", url: "https://smiledental.com.au/pricing" }] },
+      "https://smiledental.com.au/pricing": { title: "Pricing", text: "Moved", redirect: "https://elsewhere.example.net/", nodes: [] },
+    } });
+    const out = await rig(web).run("go to smiledental.com.au and click Pricing");
+    expect(out.ok).toBe(false);
     expect(out.said).toContain("I landed on elsewhere.example.net instead of smiledental.com.au");
-    expect(web.clicked).toEqual(["Pricing"]);
   });
   test("username-first sign-in stops before the page is acted on", async () => {
     const login = "https://smiledental.com.au/login";
@@ -372,6 +382,202 @@ describe("drift: stop and say 'your turn' in one line", () => {
     expect(wrongSite("smiledental.com.au", "https://smiledental.evil/pricing")).toBe(true);
     expect(wrongSite("smiledental.com.au", "https://shop.smiledental.com.au/pricing")).toBe(false);
     expect(wrongSite("google.com", "https://www.google.com.au/search?q=x")).toBe(true);
+  });
+});
+
+describe("a site-bound task inspects a link's destination before clicking it", () => {
+  const goal = "go to smiledental.com.au and click Pricing";
+  const home = (url: string, extra: Partial<import("./fake-web").FakeNode> = {}) => ({ title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Pricing", url, ...extra }] });
+  const pricing = { title: "Pricing | Smile Dental", text: "Check-up from $99.", nodes: [] };
+  const refused = async (url: string) => {
+    const web = fakeWeb({ overrides: { [SMILE]: home(url) } });
+    const out = await rig(web).run(goal);
+    expect(out.ok).toBe(false);
+    expect(web.clicked).toEqual([]);
+    expect(web.active().url).toBe(SMILE);
+    return out;
+  };
+  const allowed = async (url: string, lands: string, overrides: Record<string, typeof pricing> = {}) => {
+    const web = fakeWeb({ overrides: { [SMILE]: home(url), [lands]: pricing, ...overrides } });
+    const out = await rig(web).run(goal);
+    expect(out).toMatchObject({ ok: true });
+    expect(web.clicked).toEqual(["Pricing"]);
+    expect(web.active().url).toBe(lands);
+  };
+
+  test("negative: an absolute off-site link is refused, with the reason and where it goes", async () => {
+    const out = await refused("https://elsewhere.example.net/pricing");
+    expect(out.said).toContain("it goes to elsewhere.example.net, outside smiledental.com.au");
+  });
+  test("negative: a lookalike host (the site's name as a prefix or a subdomain of another domain) is off-site", async () => {
+    for (const url of ["https://smiledental.com.au.evil.test/pricing", "https://www.smiledental.com.au.evil.test/", "https://smiledental.com.evil.test/", "https://smiledental.com.au-pricing.test/", "https://smiledental.evil/pricing", "https://notsmiledental.com.au/"]) await refused(url);
+  });
+  test("negative: userinfo and protocol-relative tricks resolve to the real host", async () => {
+    await refused("https://smiledental.com.au@evil.test/pricing");
+    await refused("//evil.test/pricing");
+    await refused("https://smiledental.com.au%2f@evil.test/");
+  });
+  test("negative: javascript:, data:, blob:, file: and mailto: links are not web pages on the site", async () => {
+    for (const url of ["javascript:location='https://evil.test'", "JaVaScRiPt:void(0)", "data:text/html,<h1>hi</h1>", "blob:https://smiledental.com.au/abc", "file:///etc/passwd", "mailto:hello@smiledental.com.au", "tel:0299991234"]) {
+      const out = await refused(url);
+      expect(out.said).toContain("isn't a web page on smiledental.com.au");
+    }
+  });
+  test("negative: a link with no readable destination is not clicked blind", async () => {
+    const web = fakeWeb({ overrides: { [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Pricing" }] } } });
+    const out = await rig(web).run(goal);
+    expect(out.ok).toBe(false);
+    expect(out.said).toContain("can't tell where that link goes");
+    expect(web.clicked).toEqual([]);
+  });
+  test("negative: find-the-page and contact goals are gated the same way", async () => {
+    const web = fakeWeb({ overrides: { [SMILE]: home("https://evil.test/pricing") } });
+    const out = await rig(web).run("find the pricing page on smiledental.com.au");
+    expect(out.ok).toBe(false);
+    expect(out.said).toContain("outside smiledental.com.au");
+    const web2 = fakeWeb({ overrides: { [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Contact", url: "https://evil.test/contact" }] } } });
+    const out2 = await rig(web2).run("open smiledental.com.au and read me the phone number on the contact page");
+    expect(out2.ok).toBe(false);
+    expect(web2.clicked).toEqual([]);
+  });
+  test("negative: a goal on the page in front is bound to that page's site", async () => {
+    const web = fakeWeb({ overrides: { [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Contact", url: "https://smiledental.com.au.evil.test/contact" }] } } });
+    const r = rig(web);
+    await r.hands.open(SMILE, "new-tab");
+    const out = await r.run("open the contact page and read me the phone number");
+    expect(out.ok).toBe(false);
+    expect(web.clicked).toEqual([]);
+  });
+  test("positive: a goal on the page in front still follows its own Contact link", async () => {
+    const r = rig();
+    await r.hands.open(SMILE, "new-tab");
+    const out = await r.run("open the contact page and read me the phone number");
+    expect(out.ok).toBe(true);
+    expect(r.web.clicked).toEqual(["Contact"]);
+  });
+  test("negative: the brain's click on an off-site link is refused too", async () => {
+    const web = fakeWeb({ overrides: { [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Partner offers", url: "https://evil.test/" }] } } });
+    const r = rig(web, { decide: async () => ({ do: "click", ref: "e1" }) });
+    await r.hands.open(SMILE, "new-tab");
+    const out = await r.run("show me the partner offers on smiledental.com.au");
+    expect(out.ok).toBe(false);
+    expect(out.said).toContain("outside smiledental.com.au");
+    expect(web.clicked).toEqual([]);
+  });
+  test("positive: absolute, relative, root-relative, protocol-relative and fragment links on the site are clicked", async () => {
+    await allowed("https://smiledental.com.au/pricing", "https://smiledental.com.au/pricing");
+    await allowed("/pricing", "https://smiledental.com.au/pricing");
+    await allowed("pricing", "https://smiledental.com.au/pricing");
+    await allowed("//smiledental.com.au/pricing", "https://smiledental.com.au/pricing");
+    await allowed("HTTPS://SMILEDENTAL.COM.AU/pricing", "https://smiledental.com.au/pricing");
+  });
+  test("positive: www and a subdomain of the same site are on the site", async () => {
+    await allowed("https://www.smiledental.com.au/pricing", "https://www.smiledental.com.au/pricing");
+    await allowed("https://shop.smiledental.com.au/pricing", "https://shop.smiledental.com.au/pricing");
+  });
+  test("positive: a search result may still leave the engine (only site-bound clicks are gated)", async () => {
+    const r = rig();
+    const out = await r.run("search Google for dentists and open the first result");
+    expect(out.ok).toBe(true);
+    expect(r.web.active().url).toBe(SMILE);
+  });
+  test("offSiteClickRefusal on its own: resolves against the page the link is on", () => {
+    const at = (url: string, node: { url?: string; role?: string }, bound = "smiledental.com.au") =>
+      offSiteClickRefusal({ scratch: { expectHost: bound } as never, view: { url } as never, tree: [{ ref: "e1", role: node.role ?? "link", name: "L", depth: 0, index: 0, ...(node.url ? { url: node.url } : {}) }] }, "e1");
+    expect(at("https://smiledental.com.au/a/b", { url: "../pricing" })).toBeNull();
+    expect(at("https://smiledental.com.au/a/b", { url: "#top" })).toBeNull();
+    expect(at("https://evil.test/", { url: "/pricing" })).toContain("outside smiledental.com.au");
+    expect(at("about:blank", { url: "pricing" })).toContain("can't tell");
+    expect(at("https://smiledental.com.au/", { role: "button" })).toBeNull();
+    expect(offSiteClickRefusal({ scratch: {} as never, view: null, tree: [] }, "e1")).toBeNull();
+  });
+});
+
+describe("a search result that lands on an error page is not a success", () => {
+  const googleOnly = (result: Partial<import("./fake-web").FakePage>, url = "https://broken.example.com.au/x") =>
+    fakeWeb({ overrides: {
+      "https://www.google.com/search?q=dentists": { title: "dentists - Google Search", text: "Results", nodes: [
+        { role: "searchbox", name: "Search", attrs: { type: "search", name: "q" }, search: true },
+        { role: "link", name: "Broken Dental - Clinic details", url, depth: 1 }, { role: "heading", name: "Broken Dental - Clinic details", level: 3, depth: 2, nested: true },
+        { role: "link", name: "Smile Dental - Best Dentist in Sydney", url: SMILE, depth: 1 }, { role: "heading", name: "Smile Dental - Best Dentist in Sydney", level: 3, depth: 2, nested: true },
+      ] },
+      [url]: { title: "Broken Dental", text: "Welcome", nodes: [], ...result },
+    } });
+  const ask = (web: ReturnType<typeof fakeWeb>, goal = "search Google for dentists and open the first result") => rig(web).run(goal);
+  const failed = (out: Awaited<ReturnType<typeof ask>>) => {
+    expect(out.ok).toBe(false);
+    expect(out.said).toMatch(/^Couldn't finish: the result opened an error page \(/);
+    expect(out.said).not.toContain("Searched Google");
+  };
+
+  test("negative: an HTTP 404 (or any 4xx/5xx) is a failure even when the page body looks normal", async () => {
+    for (const status of [404, 410, 403, 500, 503]) {
+      const out = await ask(googleOnly({ status }));
+      failed(out);
+      expect(out.said).toContain(`HTTP ${status}`);
+    }
+  });
+  test("negative: a soft 404 served with status 200 (error words in the title, heading or opening text)", async () => {
+    failed(await ask(googleOnly({ title: "Oops", text: "Sorry, page not found. Try the home page." })));
+    failed(await ask(googleOnly({ title: "Broken Dental", text: "404 - This page doesn't exist", nodes: [] })));
+    failed(await ask(googleOnly({ title: "Error 404 | Broken Dental", text: "x" })));
+    failed(await ask(googleOnly({ title: "Broken Dental", text: "Access denied. You don't have permission." })));
+    failed(await ask(googleOnly({ title: "Broken Dental", text: "This page can't be found" })));
+  });
+  test("negative: a result that redirects to an error page is judged on where it lands", async () => {
+    const w2 = fakeWeb({ overrides: {
+      "https://www.google.com/search?q=dentists": { title: "dentists - Google Search", text: "Results", nodes: [
+        { role: "searchbox", name: "Search", attrs: { type: "search", name: "q" }, search: true },
+        { role: "link", name: "Old Dental - Clinic details", url: "https://old.example.com.au/", depth: 1 }, { role: "heading", name: "Old Dental - Clinic details", level: 3, depth: 2, nested: true },
+      ] },
+      "https://old.example.com.au/": { title: "Moved", text: "Moved", redirect: "https://old.example.com.au/gone", nodes: [] },
+      "https://old.example.com.au/gone": { title: "Gone", status: 404, text: "Gone", nodes: [] },
+    } });
+    failed(await ask(w2));
+  });
+  test("negative: 'click the second result' on a results page in front, and a YouTube video that is gone", async () => {
+    const web = googleOnly({ status: 404 }, "https://broken.example.com.au/x");
+    const r = rig(web);
+    await r.hands.open("https://www.google.com/search?q=dentists", "new-tab");
+    const ok = await r.run("open the first result");
+    failed(ok);
+    const yt = fakeWeb({ overrides: { "https://www.youtube.com/watch?v=lofi0001": { title: "Video unavailable - YouTube", status: 200, text: "This video isn't available any more", video: { paused: true }, nodes: [] } } });
+    failed(await ask(yt, "search YouTube for lo-fi beats and play the first video"));
+    const yt404 = fakeWeb({ overrides: { "https://www.youtube.com/watch?v=lofi0001": { title: "lofi - YouTube", status: 404, text: "Watch", video: { paused: false }, nodes: [] } } });
+    failed(await ask(yt404, "search YouTube for lo-fi beats and play the first video"));
+  });
+  test("positive: a normal 200 page is still a success, including one that merely has a status and prose", async () => {
+    const out = await ask(googleOnly({ status: 200, title: "Broken Dental - Clinic details", text: "Family dentistry. Book a check-up today." }));
+    expect(out).toMatchObject({ ok: true });
+    expect(out.said).toBe('Searched Google for "dentists" and opened the first result: Broken Dental - Clinic details on your main screen.');
+    expect(out.said).not.toContain("error");
+  });
+  test("positive: a 3xx-free plain page with no status information (older browser) is a success", async () => {
+    const web = fakeWeb();
+    const out = await ask(web);
+    expect(out.ok).toBe(true);
+  });
+  test("a site task's 404 (status only) is not a completed page either", async () => {
+    const web = fakeWeb({ overrides: {
+      [SMILE]: { title: "Smile Dental", text: "Home", nodes: [{ role: "link", name: "Pricing", url: "https://smiledental.com.au/pricing" }] },
+      "https://smiledental.com.au/pricing": { title: "Pricing | Smile Dental", status: 404, text: "Pricing", nodes: [] },
+    } });
+    const out = await rig(web).run("go to smiledental.com.au and click Pricing");
+    expect(out.ok).toBe(false);
+  });
+  test("errorPageReason on its own", () => {
+    const v = (o: Partial<PageView> = {}): PageView => ({ url: "https://x.test/", title: "Smile Dental", ready: true, text: "Family dentistry in Sydney.", password: false, card: false, video: null, ...o });
+    expect(errorPageReason(null)).toBeNull();
+    expect(errorPageReason(v())).toBeNull();
+    expect(errorPageReason(v({ status: 200 }))).toBeNull();
+    expect(errorPageReason(v({ status: 0 }))).toBeNull();
+    expect(errorPageReason(v({ status: 301 }))).toBeNull();
+    expect(errorPageReason(v({ status: 404 }))).toBe("HTTP 404");
+    expect(errorPageReason(v({ title: "404 Not Found" }))).toContain("404");
+    expect(errorPageReason(v({ url: "chrome-error://chromewebdata/" }))).toBe("the browser's error page");
+    expect(errorPageReason(v(), [{ ref: "e1", role: "heading", name: "Page not found", level: 1, depth: 0, index: 0 }])).toContain("not found");
+    expect(errorPageReason(v({ text: "Room 1404 is available." }))).toBeNull();
+    expect(errorPageReason(v({ text: `${"Long welcome. ".repeat(40)} not found` }))).toBeNull();
   });
 });
 
