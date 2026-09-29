@@ -153,6 +153,20 @@
   border-radius: 2px;
   background: var(--brand);
 }
+.cp-target-line {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cp-target-line[data-target="device"] {
+  color: var(--brand);
+}
+.cp-target-line[data-ok="false"] {
+  color: var(--danger);
+}
 .cp-kind {
   flex-shrink: 0;
   font-size: var(--text-2xs);

@@ -16,6 +16,7 @@ import { hasCommandClient, runTypedEntry, APPS_LOADING, cachedApps, focusAnchor,
 import { readPageContext } from "@/lib/page-context";
 import { ruleAnswerFirst } from "@/lib/commands/rule-guard";
 import { useSignedIn } from "./signed-in";
+import { entryTarget } from "./palette-target";
 import { useOperator } from "@/lib/operator";
 import { HONEST_LABEL } from "@/lib/honest-state";
 
@@ -164,6 +165,7 @@ export default function CommandPaletteBody({ open, onOpenChange, initialQuery = 
   useEffect(() => {
     if (shownPreview) setWaitNote("");
   }, [shownPreview]);
+  const previewing = !!previewKey && !shownPreview;
   const unavailable = index.sources.filter((s) => s.state !== "live" && s.state !== "simulated" && !(s.state === "unknown" && (s.id === "files" || s.id === "leads") && object.length < 2));
 
   async function choose(entry: CommandEntry) {
@@ -251,12 +253,16 @@ export default function CommandPaletteBody({ open, onOpenChange, initialQuery = 
                 {!q.trim() && <div className="cp-group-label">Pages</div>}
                 {results.map(({ entry }) => {
                   const k = entry.id === "rule:ask-jarvis" ? { label: "Jarvis", icon: AudioLines } : KIND[entry.kind];
+                  // The active device row names its device; the others say where they act without a lookup.
+                  const isActive = entry.id === activeEntry?.id;
+                  const target = entryTarget(entry, isActive ? shownPreview : null, isActive && previewing);
                   return (
                     <Command.Item key={entry.id} value={entry.id} onSelect={() => void choose(entry)} className="cp-item">
                       <k.icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm text-foreground">{entry.title}</span>
                         {entry.detail && <span className="block truncate text-xs text-muted-foreground">{entry.detail}</span>}
+                        <span className="cp-target-line" data-target={target.kind} data-ok={String(target.ok)}>{target.text}</span>
                       </span>
                       <span className="cp-kind">{k.label}</span>
                     </Command.Item>

@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, X } from "lucide-react";
 import { useWorkspacePanel } from "@/components/workspace/api";
 import { readJobs, startJobEventBridge, subscribeJobs } from "@/lib/job-events";
 import { HONEST_LABEL, HONEST_MEANING } from "@/lib/honest-state";
+import { readMotion, subscribeMotion, type MotionState } from "@/lib/motion";
 import { Freshness } from "../page-parts";
 import { DESTINATIONS } from "../destinations";
+import { HANDOFF_EVENT, HANDOFF_STATE_LABEL, PLACE_LABEL, codingHandoff, handoffMotion, parseHandoff, visibleHandoffs, type Handoff } from "../handoff";
 import { codingObject, codingPage, financeObject, leadsObject, memoryObject, receptionistObject, type FinanceStatusLike, type MemoryStatusLike, type SceneObject } from "./scene-status";
 import "./command-scene.css";
 
@@ -23,12 +25,12 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 function useCoding() {
-  const [state, setState] = useState<{ read: boolean; job: { title: string; state: string; updatedAt: string } | null }>({ read: false, job: null });
+  const [state, setState] = useState<{ read: boolean; job: { title: string; state: string; updatedAt: string } | null; handoff: Handoff | null }>({ read: false, job: null, handoff: null });
   useEffect(() => {
     const stop = startJobEventBridge();
     const pick = (jobs: Parameters<Parameters<typeof subscribeJobs>[0]>[0]) => {
       const j = jobs.find((x) => x.kind === "coding");
-      setState({ read: true, job: j ? { title: j.title, state: j.state, updatedAt: j.updatedAt } : null });
+      setState({ read: true, job: j ? { title: j.title, state: j.state, updatedAt: j.updatedAt } : null, handoff: codingHandoff(jobs, Date.now()) });
     };
     pick(readJobs());
     const unsub = subscribeJobs(pick);
@@ -55,6 +57,20 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
   const memory = useQuery({ queryKey: ["scene", "memory-status"], queryFn: () => getJson<MemoryStatusLike>("/__memory/status"), staleTime: 30_000, retry: false, enabled: open });
   const finance = useQuery({ queryKey: ["finance-manual-status"], queryFn: () => getJson<FinanceStatusLike>("/__finance_manual/status"), staleTime: 30_000, retry: 1, enabled: open });
   const coding = useCoding();
+  // Handoffs: the coding one is derived from the job history above; others arrive as `os:handoff` events
+  // from the track that owns them (receptionist calls). Nothing is drawn that no source announced.
+  const [announced, setAnnounced] = useState<Handoff[]>([]);
+  useEffect(() => {
+    const on = (e: Event) => {
+      const h = parseHandoff((e as CustomEvent).detail);
+      if (h) setAnnounced((l) => [...l.filter((x) => x.id !== h.id), h]);
+    };
+    window.addEventListener(HANDOFF_EVENT, on);
+    return () => window.removeEventListener(HANDOFF_EVENT, on);
+  }, []);
+  const [motion, setMotion] = useState<MotionState>(() => readMotion());
+  useEffect(() => subscribeMotion(setMotion), []);
+  const handoffs = visibleHandoffs([...announced, ...(coding.handoff ? [coding.handoff] : [])], now);
   const objects: SceneObject[] = [
     receptionistObject(rx as never, now),
     leadsObject(calls as never, now),
@@ -118,7 +134,9 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
               }
             }}
           >
-            {objects.map((o, i) => (
+            {objects.map((o, i) => {
+              const incoming = handoffs.find((h) => h.to === o.id);
+              return (
               <button
                 key={o.id}
                 ref={(el) => void (refs.current[i] = el)}
@@ -126,12 +144,14 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
                 className="cs-object"
                 data-slot={i}
                 data-state={o.state}
+                data-handoff={incoming?.state}
+                data-travel={incoming ? handoffMotion(incoming, motion.holds, motion.reduced) : undefined}
                 tabIndex={i === focus ? 0 : -1}
                 onFocus={() => setFocus(i)}
                 onClick={() => openObject(o)}
                 aria-label={`${o.label}: ${o.value ?? HONEST_LABEL[o.state]}. ${HONEST_LABEL[o.state]}. Source ${o.source}. Opens the ${o.label} page.`}
               >
-                <span className="cs-mark" aria-hidden="true" data-ambient />
+                <span className="cs-mark" aria-hidden="true" data-state={o.state} />
                 <span className="cs-label">
                   {o.label}
                   <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -147,9 +167,28 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
                   <span className="cs-source">{o.source}</span>
                   {o.lastUpdate !== null ? <Freshness at={o.lastUpdate} now={now} staleAfterMs={Infinity} className="cs-when" /> : <span className="cs-when">No successful read yet</span>}
                 </span>
+                {incoming ? <span key={`${incoming.id}:${incoming.state}`} className="cs-sweep" aria-hidden="true" /> : null}
               </button>
-            ))}
+              );
+            })}
           </div>
+          <section className="cs-handoffs" aria-label="Work in motion" aria-live="polite">
+            {handoffs.length === 0 ? (
+              <p className="cs-handoff-empty">No handoffs in flight. Coding and call handoffs show here when they are real.</p>
+            ) : (
+              handoffs.map((h) => (
+                <p key={h.id} className="cs-handoff" data-state={h.state}>
+                  <span className="cs-handoff-route">
+                    {PLACE_LABEL[h.from]} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /> {PLACE_LABEL[h.to]}
+                  </span>
+                  <span className="cs-handoff-what">{h.label}</span>
+                  <span className="cs-handoff-state">{HANDOFF_STATE_LABEL[h.state]}</span>
+                  <span className="cs-source">{h.source === "job-history" ? "Job history (/__jobs)" : "Announced by the owning page"}{h.deviceId ? ` · device ${h.deviceId}` : ""}</span>
+                  <Freshness at={h.at} now={now} staleAfterMs={Infinity} className="cs-when" />
+                </p>
+              ))
+            )}
+          </section>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
