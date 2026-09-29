@@ -133,7 +133,7 @@ const snapshotOf = (fx: FixtureRepo) => JSON.stringify({
   dirty: readFileSync(join(fx.canonical, "docs", "readme.md"), "utf8") + readFileSync(join(fx.canonical, "scratch.txt"), "utf8"),
 });
 const shaperFor = (registry: RepoRegistry, planner: ((input: never) => Promise<PlannerDraft | { question: string }>) | null = null) =>
-  createShaper({ registry: () => registry, accounts: () => DEFAULT_ACCOUNTS, cliVersions: versions, jev: null, planner: planner as never });
+  createShaper({ registry: () => registry, accounts: () => DEFAULT_ACCOUNTS, cliVersions: versions, jev: null, planner: planner as never, choice: () => ({ codexAvailable: false }) });
 
 describe("F1 flow 1: 'make a top-tier dental site for <lead>' drafts against the right repo, from the skills' brief", () => {
   test("the words become the site request; 8 skills are on by default; the brief carries each skill's directive", () => {
@@ -182,7 +182,8 @@ describe("F1 flow 1: 'make a top-tier dental site for <lead>' drafts against the
     // The deterministic validator accepts it (no consequential words in the role's instructions).
     expect(validateSpec(spec, registry)).toMatchObject({ ok: true, errors: [] });
     expect(r.spokenSummary).toContain(`Source snapshot: ${spec.repo.baseRef} at ${spec.repo.baseSha.slice(0, 12)}; uncommitted checkout changes are excluded.`);
-    expect(r.spokenSummary).toContain("Selected routes: builder-1: claude-opus-5-5; reviewer: claude-opus-5-5. Say start");
+    // Nothing was named, so role-choice picks an independent reviewer (a different model) and says why.
+    expect(r.spokenSummary).toContain("Selected routes: builder-1: claude-opus-5-5; reviewer: claude-sonnet-5. Builder: Opus,");
     // Drafting read the repo and wrote nothing: not a branch, not a worktree, not the dirty work another agent left.
     expect(snapshotOf(fx)).toBe(before);
     expect(snapshotOf(other)).toBe(beforeOther);
@@ -359,7 +360,7 @@ describe("F1 flow 2: 'start a coding job to fix X in <repo>' by voice or typing"
   test("'have Codex fix X in <repo>' names Codex as the builder and drafts", async () => {
     const h = harness([receptionist()], fakePlanner([]));
     const drafted = await h.say("have Codex fix the calls table in the receptionist app so yesterday's calls stop showing as today");
-    expect(drafted?.say).toMatch(/^Draft ready: Fix the calls table in the receptionist app so yesterday's calls stop showing as today\. Source snapshot: .* Selected routes: builder-1: gpt-6-astra; reviewer: claude-opus-5-5\. Say start when you want it built\.$/);
+    expect(drafted?.say).toMatch(/^Draft ready: Fix the calls table in the receptionist app so yesterday's calls stop showing as today\. Source snapshot: .* Selected routes: builder-1: gpt-6-astra; reviewer: claude-opus-5-5\. Reviewer: Opus, a different provider than the builder.* Say start when you want it built\.$/);
     const job = h.store.listJobs({ limit: 1 })[0];
     expect(job.spec.roles.find((r) => r.role === "builder")!.agent!.model).toBe("gpt-6-astra");
     h.close();

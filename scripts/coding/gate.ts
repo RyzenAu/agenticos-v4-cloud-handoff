@@ -236,6 +236,11 @@ export type GateInput = {
   ownerAcceptances?: readonly OwnerAcceptance[];
   /** Who may accept a finding. Defaults to the owner; Stage B's authorise() supplies it in C4. */
   acceptors?: readonly PersonId[];
+  /**
+   * Finished agent runs that have NO usage receipt (receipts.ts unreceiptedRuns). When supplied (even empty),
+   * the gate adds "receipts-recorded": a run with no receipt can't be claimed as having run a model.
+   */
+  unreceipted?: readonly string[];
   now?: () => Date;
 };
 
@@ -325,6 +330,10 @@ function reviewApproved(input: GateInput): Check {
   return { check: "review-approved-for-sha", passed: !problems.length, detail: problems.join("; ") || `approved for ${input.headSha.slice(0, 7)}` };
 }
 
+function receiptsRecorded(missing: readonly string[]): Check {
+  return { check: "receipts-recorded", passed: !missing.length, detail: missing.length ? `no usage receipt for: ${missing.join(", ")}` : "every agent run has its receipt (model, account, tokens)" };
+}
+
 /** `accepted` = checks the gate accepted at this sha (exit 0, or only pre-existing baseline failures). */
 function doneWhen(input: GateInput, accepted: ReadonlySet<CommandId>): Check {
   const unmapped: string[] = [];
@@ -368,6 +377,7 @@ export function runDoneGate(input: GateInput): DoneGateResult {
     checksPass(input, baselineFailures, accepted),
     reviewApproved(input),
     doneWhen(input, accepted),
+    ...(input.unreceipted ? [receiptsRecorded(input.unreceipted)] : []),
   ];
   return { sha, passed: checks.every((c) => c.passed), checks, baselineFailures, at: (input.now?.() ?? new Date()).toISOString() as IsoTime };
 }

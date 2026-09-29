@@ -175,3 +175,61 @@ export async function writeFleetReceipt(sink: ReceiptSink | null, receipt: Usage
   if (!row || !sink) return false;
   try { await sink.write(row); return true; } catch { return false; }
 }
+
+// ─────────────────────────── models used (selected vs actual) ───────────────────────────
+
+/** One role turn: the model the draft SELECTED and the one the receipt says RAN. */
+export type ModelUsedRow = {
+  roleId: RoleId;
+  role: RoleKind;
+  attempt: number;
+  runState: string;
+  selected: string;
+  /** The receipt's model (what ran); null when this turn has no receipt (never claimed as ran). */
+  actual: string | null;
+  provider: string | null;
+  account: string | null;
+  fallbackFrom: string | null;
+  /** actual differs from selected: a fallback or reroute ran instead. */
+  fellBack: boolean;
+  /** Why it fell back, from the router's or runner's own step; null when the run didn't say. */
+  reason: string | null;
+  tokens: { input: number | null; output: number | null } | null;
+  costUsd: number | null;
+  costBasis: string | null;
+  hasReceipt: boolean;
+};
+
+type EventLike = { type: string; roleId: string | null; payload: unknown };
+
+/**
+ * The job-level "models used" view: for every agent run, the model selected, the model that ran (from that
+ * turn's receipt, matched by role and attempt) and, when they differ, why. A finished run with no receipt is
+ * shown with `hasReceipt: false` and `actual: null`: nothing here says a model ran without a receipt.
+ */
+export function modelsUsed(runs: readonly Pick<import("./contracts").AgentRun, "roleId" | "role" | "attempt" | "state" | "binding">[], events: readonly EventLike[]): ModelUsedRow[] {
+  const receipts = events.filter((e) => e.type === "usage").map((e) => e.payload as UsageReceipt);
+  return runs.flatMap((run) => Array.from({ length: Math.max(1, run.attempt) }, (_, i) => i + 1).map((attempt) => {
+    const r = receipts.find((x) => x.coding?.roleId === run.roleId && x.coding.turn === attempt) ?? null;
+    const selected = run.binding.model;
+    const actual = r ? r.model : null;
+    const fellBack = !!r && (r.model !== selected || !!r.fallbackFrom);
+    const step = fellBack
+      ? [...events].reverse().find((e) => e.type === "step" && e.roleId === run.roleId && /unavailable; the router ran|Model that ran/.test(String((e.payload as { label?: string }).label ?? "")))
+      : null;
+    const detail = step ? (step.payload as { detail?: string }).detail ?? null : null;
+    return {
+      roleId: run.roleId, role: run.role, attempt, runState: attempt === run.attempt ? run.state : "resumed", selected, actual,
+      provider: r?.provider ?? null, account: r?.account ?? null, fallbackFrom: r?.fallbackFrom ?? null, fellBack,
+      reason: fellBack ? detail ?? (r?.fallbackFrom ? `${r.fallbackFrom} was unavailable` : "the provider reported a different model") : null,
+      tokens: r ? { input: r.usage.inputTokens, output: r.usage.outputTokens } : null,
+      costUsd: r ? r.cost.usd : null, costBasis: r ? r.cost.basis : null, hasReceipt: !!r,
+    };
+  }));
+}
+
+/** Finished agent runs (succeeded) with no usage receipt for that role and attempt: the gate refuses to claim these. */
+export function unreceiptedRuns(runs: readonly Pick<import("./contracts").AgentRun, "roleId" | "attempt" | "state">[], events: readonly EventLike[]): string[] {
+  const seen = new Set(events.filter((e) => e.type === "usage").map((e) => { const c = (e.payload as UsageReceipt).coding; return c ? `${c.roleId}#${c.turn}` : ""; }));
+  return runs.filter((r) => r.state === "succeeded" && !seen.has(`${r.roleId}#${r.attempt}`)).map((r) => `${r.roleId} (attempt ${r.attempt})`);
+}

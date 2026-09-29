@@ -14,6 +14,8 @@ import { defaultReceiptSink } from "../model-router/defaults";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { providerKey } from "../provider-config";
 import { loadAccounts, type AccountsConfig } from "./accounts";
+import { readApproval } from "./codex-isolation";
+import { loadCodingPrefs } from "./role-choice";
 import type { CodingJob, RepoRegistry, RepoRegistryEntry, UsageReceipt } from "./contracts";
 import { createOrchestrator } from "./orchestrator";
 import { agentPlanner } from "./planner";
@@ -198,6 +200,14 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     throw new Error("The coding workspace was closed while it was starting.");
   }
   const accounts = (): AccountsConfig => loadAccounts(join(dataDir, "accounts.json"));
+  // The owner's paid/free preferences (.operator-data/coding-prefs.json). Missing or invalid = the safe default.
+  const prefsFile = join(root, ".operator-data", "coding-prefs.json");
+  let prefsWarned = "";
+  const codingPrefs = () => {
+    const r = loadCodingPrefs(prefsFile);
+    if (r.problem && r.problem !== prefsWarned) { prefsWarned = r.problem; console.warn(`[coding] ${r.problem}`); }
+    return r;
+  };
   // Read async, once per process, and primed at server start (codingPlugin); codingRoute awaits
   // ready() so a route doesn't answer with "not read yet" nulls while the first read runs.
   const cliVersionsReady = () => codingCliVersions().ready();
@@ -222,7 +232,7 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     runners: {
       claude: claudeRunner(),
       codex: codexRunner(),
-      router: routerRunner({ root, owns: (jobId, roleId) => store.getJob(jobId)?.spec.roles.find((r) => r.roleId === roleId)?.owns ?? null, deps: { cline: clineInvoke(root) } }),
+      router: routerRunner({ root, prefs: () => codingPrefs().prefs, owns: (jobId, roleId) => store.getJob(jobId)?.spec.roles.find((r) => r.roleId === roleId)?.owns ?? null, deps: { cline: clineInvoke(root) } }),
     },
     approvals,
     liveRoot,
@@ -235,6 +245,13 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     registry: safeRegistry,
     accounts,
     cliVersions: () => ({ claude: cliVersions().claude ?? "unknown", codex: cliVersions().codex ?? "unknown" }),
+    prefs: () => codingPrefs().prefs,
+    // Nothing read yet (both null) = unknown, assumed available as before; a read that found one CLI absent says so.
+    choice: () => {
+      const v = cliVersions();
+      const known = v.claude !== null || v.codex !== null;
+      return { ...(known ? { claudeAvailable: v.claude !== null, codexAvailable: v.codex !== null } : {}), codexReady: readApproval() !== null };
+    },
     jev: async (call) => jevDecide({ surface: "voice.router", key: jevKey(), state: call.state, questions: call.questions, caller: "scripts/coding/shaper", root, timeoutMs: 2500 }),
     planner: env.CODING_PLANNER === "off" ? null : agentPlanner({ runner: claudeRunner(), cliVersion: () => cliVersions().claude ?? "unknown", person: () => "usman" as never, fleetSink, receipts: plannerReceipts, liveRoot }),
   });

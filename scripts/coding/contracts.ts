@@ -218,6 +218,22 @@ export type JevShapingRecord = {
   clarifications: readonly { question: string; answer: string; at: IsoTime }[];
 };
 
+/**
+ * Who was chosen for a role and why (role-choice.ts), in words the draft summary can say. `basis`: "named" =
+ * the owner's own words; "jev" = Jev's typed pick was allowed; "preferred" = coding-prefs.json; "auto" = the
+ * deterministic default order. Recorded on the draft; the RECEIPT still says what actually ran.
+ */
+export type RoleChoice = {
+  role: "builder" | "reviewer" | "test-author";
+  /** The selected model (binding.model). */
+  model: string;
+  accountSlot: string;
+  /** Provider family used for independence: "anthropic" | "openai" | "router:<provider prefix>". */
+  family: string;
+  basis: "named" | "jev" | "preferred" | "auto";
+  why: string;
+};
+
 export type JevDecision = {
   question: "lane" | "repo" | "roleTemplate" | "modelFor" | "consequential" | "complete" | "target";
   /** For modelFor: which role. */
@@ -264,6 +280,8 @@ export type TaskSpec = {
   dataClass: "synthetic" | "business-internal";
   jobLimits: { maxWallMinutes: number; maxConcurrentAgents: number };
   jev: JevShapingRecord | null;
+  /** Optional: absent on specs drafted before role-choice.ts (their digests are unchanged). */
+  roleChoices?: readonly RoleChoice[];
   planner: { binding: AgentBinding; sessionId: string } | null;
   confirmation:
     | { state: "unconfirmed" }
@@ -749,7 +767,9 @@ export type GateCheck =
   | "secret-scan"
   | "checks-pass"
   | "review-approved-for-sha"
-  | "done-when-evidenced";
+  | "done-when-evidenced"
+  /** Present only when the orchestrator supplied the run list: every finished agent run has its usage receipt. */
+  | "receipts-recorded";
 
 export type DoneGateResult = {
   sha: GitSha;

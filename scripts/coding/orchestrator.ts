@@ -38,7 +38,7 @@ import { ensureCodexIsolation, workspaceUnderProtected } from "./codex-isolation
 /** The Codex isolation preflight's answer (T3e): ok, why not, and what it re-applied. */
 export type IsolationVerdict = { ok: boolean; message: string; reapplied?: { path: string; ok: boolean; rewritten: boolean }[] };
 import { diffSummary, runDoneGate, runRegistryCommand } from "./gate";
-import { buildReceipt, writeFleetReceipt } from "./receipts";
+import { buildReceipt, unreceiptedRuns, writeFleetReceipt } from "./receipts";
 import { redactText } from "./redact";
 import { AGENT_CONFIG_PATHSPECS, commandById, isAgentConfig, isProtectedBranch, ownsPath, repoById } from "./registry";
 import { createPolicy } from "./runners/policy";
@@ -724,6 +724,7 @@ export function createOrchestrator(deps: OrchestratorDeps) {
     const gate = runDoneGate({
       entry, spec: j.spec, headSha: head, integrationPath: worktreePathFor(entry, id6(j), "job"), roleWorktrees,
       tests: j.tests, review: j.review, testOutputs, ownerAcceptances: [], acceptors: [OWNER], now,
+      unreceipted: unreceiptedRuns(j.runs, store.events(jobId, 0, 5000)),
     });
     store.updateJob(jobId, { gate });
     store.appendEvent(jobId, "gate", null, gate);
@@ -887,6 +888,9 @@ export function createOrchestrator(deps: OrchestratorDeps) {
   /** "Start it": bind the confirmation to the digest the person saw, then run. */
   function confirmAndStart(jobId: string, by: VerifiedPrincipal, via: "ui" | "spoken-yes" | "typed", digest: Digest) {
     const j = job(jobId);
+    // Idempotent: "start it" said twice, or said and then pressed on the Coding page, is ONE run set. A second
+    // confirmation of the SAME plan (same digest) for a job that already started changes nothing and starts nothing.
+    if (j.state !== "awaiting_confirmation" && j.state !== "draft" && j.spec.confirmation.state === "confirmed" && j.spec.confirmation.specDigest === digest) return j;
     if (j.state !== "awaiting_confirmation") throw new OrchestratorError(j.state === "draft" ? "The draft has validation errors; fix them first." : `The job is ${j.state}.`);
     const validation = validateSpec(j.spec, deps.registry());
     if (!validation.ok) throw new OrchestratorError(`The spec no longer validates: ${validation.errors.map((e) => e.detail).join("; ")}`);

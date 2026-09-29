@@ -1,10 +1,12 @@
 import type { Principal as ApprovalPrincipal } from "../approvals/principal";
 import type { ApprovalService } from "../approvals/service";
 import type { SpokenConfirmationLedger } from "../jarvis-execution/voice-confirmation";
-import type { AgentBinding, CodingJob, JobState, PersonId, RoleKind, VerifiedPrincipal } from "./contracts";
+import type { AgentBinding, CodingJob, JobState, PersonId, RoleChoice, RoleKind, VerifiedPrincipal } from "./contracts";
 import type { Orchestrator } from "./orchestrator";
 import { redactText } from "./redact";
-import { codexBinding, claudeBinding, routerBinding, reviseSpec, shortSha, specDigest } from "./spec";
+import { reviseSpec, shortSha, specDigest } from "./spec";
+import { modelsUsed } from "./receipts";
+import { freeOnlyRefusal, modelLabel } from "./role-choice";
 import { spokenSummary, STARTS_WITH_PROMPT, type createShaper } from "./shaper";
 import { siteRequestFromWords } from "../../src/lib/commands/site-maker";
 import { isCodingRequest } from "../../src/lib/commands/coding";
@@ -27,7 +29,8 @@ import type { CodingStore } from "./store";
  *   approve-asked  "Yes, approve" right after that question → B2 decide with the STT spoken-yes event
  */
 
-export type CodingVoiceReply = { say: string; navigate?: string };
+/** `jobId`: the job this reply is about (a drafted, started, stopped, asked-about job), so a caller can attach progress. */
+export type CodingVoiceReply = { say: string; navigate?: string; jobId?: string };
 export type VoiceCaller = { id: string; name?: string; via?: string; actor?: string };
 
 export type CodingVoiceDeps = {
@@ -129,27 +132,41 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       parts.push(`Tests at ${shortSha(j.headSha)}: ${p} passed, ${f ? `${f} failed` : "none failed"}.`);
     }
     if (j.review) parts.push(`Review: ${j.review.verdict.replace("-", " ")}.`);
+    parts.push(...modelSentences(j, focus));
     if (j.state === "completed") parts.push("Nothing is merged.");
     if (!who && lastSpoken && !/is (?:done|building)/.test(parts[0])) parts.push(String((lastSpoken.payload as { line: string }).line).slice(0, 200));
     return parts.join(" ");
   }
 
-  function modelFrom(text: string): AgentBinding | null {
-    const v = deps.cliVersions();
-    if (/\bopus\b/i.test(text)) return claudeBinding("claude-opus-5-5", v.claude);
-    if (/\bsonnet\b/i.test(text)) return claudeBinding("claude-sonnet-5", v.claude);
-    if (/\bcodex\b/i.test(text)) return codexBinding("gpt-6-astra", "codex:openai-2", v.codex);
-    if (/\bdeep ?seek\b/i.test(text)) return routerBinding("cline/deepseek-v4.1-flash");
-    if (/\bhermes\b/i.test(text)) return routerBinding("codex/gpt-6-sol");
-    if (/\bmimo\b/i.test(text)) return routerBinding("cline/mimo-v2.6-flash");
-    if (/\bmuse\b/i.test(text)) return routerBinding("cline/muse-spark-1.3");
-    return null;
+  /**
+   * "The builder ran on Codex (selected Opus, fell back because …)." Built from the receipts only: a turn with no
+   * receipt is never said to have run, and a role that hasn't started says only what it is set to run on.
+   */
+  function modelSentences(j: CodingJob, focus?: RoleKind | null): string[] {
+    const rows = modelsUsed(j.runs, deps.store.events(j.id, 0, 5000));
+    const out: string[] = [];
+    for (const role of ["builder", "test-author", "reviewer"] as const) {
+      if (focus && focus !== role) continue;
+      const mine = rows.filter((r) => r.role === role);
+      const last = mine.at(-1);
+      if (!last) continue;
+      const name = role === "test-author" ? "test author" : role;
+      const ran = [...mine].reverse().find((r) => r.hasReceipt);
+      if (!ran) { out.push(last.runState === "queued" || last.runState === "starting" || last.runState === "running" ? `The ${name} is set to run on ${modelLabel(last.selected)}.` : `The ${name} has no usage receipt yet, so I can't say what it ran on.`); continue; }
+      out.push(ran.fellBack
+        ? `The ${name} ran on ${modelLabel(ran.actual!)} (selected ${modelLabel(ran.selected)}, fell back because ${String(ran.reason ?? "it was unavailable").replace(/[.\s]+$/, "").slice(0, 140)}).`
+        : `The ${name} ran on ${modelLabel(ran.actual!)}.`);
+    }
+    return out;
   }
+
+  /** The binding a phrase names, by the shaper's own model words (least-used Codex account, catalogue routes). */
+  const modelFrom = (text: string): AgentBinding | null => deps.shaper.bindingFromWords(text);
 
   async function askToStart(person: string, j: CodingJob, summary: string, validationErrors: string[]): Promise<CodingVoiceReply> {
     if (validationErrors.length) {
       touch(person, { jobId: j.id, startQuestion: undefined });
-      return { say: `I drafted it, but it can't start yet: ${validationErrors.slice(0, 2).join("; ")}. It's on screen.`, navigate: "/coding" };
+      return { say: `I drafted it, but it can't start yet: ${validationErrors.slice(0, 2).join("; ")}. It's on screen.`, navigate: "/coding", jobId: j.id };
     }
     const digest = specDigest(j.spec);
     // A program's draft is shown on the Coding page for a person to start; it never opens a spoken
@@ -157,12 +174,12 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     if (person.endsWith(PROGRAM_KEY)) {
       touch(person, { jobId: j.id, draftId: undefined, startQuestion: { id: `program-${j.id}`, at: now(), digest } });
       deps.setFocus(j.id, "plan");
-      return { say: summary.replace(/\s*(?:Start it\?|Say start when you want it built\.)$/, " It's on the Coding page; a signed-in person starts it there."), navigate: "/coding" };
+      return { say: summary.replace(/\s*(?:Start it\?|Say start when you want it built\.)$/, " It's on the Coding page; a signed-in person starts it there."), navigate: "/coding", jobId: j.id };
     }
     const q = (deps.spoken.ask as (s: string) => { id: string; at: number }).call(deps.spoken, "coding");
     touch(person, { jobId: j.id, draftId: undefined, startQuestion: { ...q, digest } });
     deps.setFocus(j.id, "plan");
-    return { say: summary, navigate: "/coding" };
+    return { say: summary, navigate: "/coding", jobId: j.id };
   }
 
   async function handle(utterance: string, turn: { caller: VoiceCaller | null; spokenYes: string | null; previousAssistant: string | null }): Promise<CodingVoiceReply | null> {
@@ -214,10 +231,11 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     // another rule's answer) means the question is no longer the one being answered.
     if (s.startQuestion && s.jobId && WHOLE_YES.test(text) && !STARTS_WITH_PROMPT.test(prev.trim())) {
       touch(person, { startQuestion: undefined });
-      return { say: "I'm not sure what that yes is for, so nothing started. The draft is still on the Coding page; say start it right after I ask, or press Start there.", navigate: "/coding" };
+      return { say: "I'm not sure what that yes is for, so nothing started. The draft is still on the Coding page; say start it right after I ask, or press Start there.", navigate: "/coding", jobId: s.jobId };
     }
     if (s.startQuestion && s.jobId && WHOLE_YES.test(text)) {
       const j = deps.store.getJob(s.jobId);
+      if (j && j.state !== "awaiting_confirmation" && j.state !== "draft" && j.spec.confirmation.state === "confirmed") { touch(person, { startQuestion: undefined }); return { say: "That one has already started; it isn't started twice. Ask me how it's going.", navigate: "/coding", jobId: j.id }; }
       if (!j || j.state !== "awaiting_confirmation") { touch(person, { startQuestion: undefined }); return { say: "That draft isn't waiting to start any more." }; }
       // R4-1: the yes starts the plan that was read out, or nothing. Changed since (an edit, the page)?
       // Read the new plan out and ask again.
@@ -233,7 +251,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       } catch (e) { return { say: `It didn't start: ${redactText((e as Error).message, 200)}` }; }
       touch(person, { startQuestion: undefined });
       deps.setFocus(j.id, "progress");
-      return { say: "Started. I'll keep the progress on screen; ask me how it's going any time.", navigate: "/coding" };
+      return { say: "Started. I'll keep the progress on screen; ask me how it's going any time.", navigate: "/coding", jobId: j.id };
     }
 
     // ── edit the draft before starting ──
@@ -244,12 +262,21 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       const j = deps.store.getJob(s.jobId);
       if (!j || j.state === "preparing") return null;
       let roles = [...j.spec.roles];
+      let roleChoices = j.spec.roleChoices;
       const model = modelFrom(text);
-      if (/review/i.test(text) && model) roles = roles.map((r) => (r.role === "reviewer" ? { ...r, agent: model } : r));
-      else if (/build/i.test(text) && model) roles = roles.map((r) => (r.role === "builder" ? { ...r, agent: model } : r));
-      else if (/no review/i.test(text)) roles = roles.filter((r) => r.role !== "reviewer");
+      const edited = /review/i.test(text) && model ? "reviewer" : /build/i.test(text) && model ? "builder" : null;
+      if (model && edited) {
+        const refused = freeOnlyRefusal(model, deps.shaper.prefs());
+        if (refused) return { say: `${refused} Nothing changed.` };
+        // The named role is the owner's word; the other role is picked again if it now clashes (so the check stays independent).
+        const kept = (role: "builder" | "reviewer") => (j.spec.roleChoices ?? []).some((c) => c.role === role && c.basis === "named") ? roles.find((r) => r.role === role)?.agent ?? null : null;
+        const re = deps.shaper.pickRoles(j.spec.objective, j.spec.roleTemplate, { builder: edited === "builder" ? model : kept("builder"), reviewer: edited === "reviewer" ? model : kept("reviewer") });
+        if (!re.ok) return { say: `${re.reason} Nothing changed.` };
+        roles = roles.map((r) => (r.role === "builder" ? { ...r, agent: re.builder.binding } : r.role === "reviewer" && re.reviewer ? { ...r, agent: re.reviewer.binding } : r));
+        roleChoices = [re.builder.choice, ...(re.reviewer ? [re.reviewer.choice] : [])] as readonly RoleChoice[];
+      } else if (/no review/i.test(text)) { roles = roles.filter((r) => r.role !== "reviewer"); roleChoices = roleChoices?.filter((c) => c.role !== "reviewer"); }
       else if (/add a tester/i.test(text)) return { say: "A tester needs its own test files to own. Say which test file it should write, then I'll add it." };
-      const next = reviseSpec(j.spec, { roles });
+      const next = reviseSpec(j.spec, { roles, ...(roleChoices ? { roleChoices } : {}) });
       const { job, validation } = deps.orch.revise(j.id, next);
       return askToStart(person, job, `Changed. ${spokenSummary(job.spec)}`, validation.ok ? [] : validation.errors.map((e) => e.detail));
     }
@@ -281,7 +308,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     if (/^(?:how'?s|how is)\b.*\b(?:coding|job|build|builder|review|reviewer)\b|\bwhat'?s the (builder|reviewer|tester) doing\b/i.test(text)) {
       if (!j) return { say: "There's no coding job yet." };
       const role = /\bbuilder\b/i.test(text) ? "builder" : /\breviewer\b/i.test(text) ? "reviewer" : /\btester\b/i.test(text) ? "test-author" : null;
-      return { say: statusLine(j, role as RoleKind | null) };
+      return { say: statusLine(j, role as RoleKind | null), jobId: j.id };
     }
     // ── show ──
     const show = /^(?:show me|open|let me see)\b.*\b(what changed|changes|the diff|tests?|review|usage|plan)\b/i.exec(text);
@@ -289,7 +316,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       if (!j) return { say: "There's no coding job yet." };
       const tab = /test/i.test(show[1]) ? "tests" : /review/i.test(show[1]) ? "review" : /usage/i.test(show[1]) ? "usage" : /plan/i.test(show[1]) ? "plan" : "changes";
       deps.setFocus(j.id, tab);
-      return { say: `Opening the coding job's ${tab}.`, navigate: "/coding" };
+      return { say: `Opening the coding job's ${tab}.`, navigate: "/coding", jobId: j.id };
     }
     if (!j) return null;
     // ── stop / pause / resume ──
@@ -299,17 +326,17 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       const roleWord = stop[1]?.toLowerCase();
       const role = roleWord ? j.runs.filter((r) => (roleWord === "tester" ? r.role === "test-author" : r.role === roleWord)).at(-1) : null;
       try { deps.orch.cancel(j.id, role?.roleId); } catch (e) { return { say: redactText((e as Error).message, 200) }; }
-      return { say: role ? `Stopped the ${roleWord}. The job waits for you.` : "Stopped the coding job. Its worktrees are kept." };
+      return { say: role ? `Stopped the ${roleWord}. The job waits for you.` : "Stopped the coding job. Its worktrees are kept.", jobId: j.id };
     }
     if (/^pause\b.*\bcoding job\b|^pause it\b/i.test(text) && (/\bcoding job\b/i.test(text) || aboutCoding)) {
       if (!person_) return PERSON_ONLY;
       try { deps.orch.interrupt(j.id); } catch (e) { return { say: redactText((e as Error).message, 200) }; }
-      return { say: "Paused. Nothing is lost; say 'resume the coding job' to continue." };
+      return { say: "Paused. Nothing is lost; say 'resume the coding job' to continue.", jobId: j.id };
     }
     if (/^resume\b.*\bcoding job\b|^(?:continue|carry on with) the coding job\b/i.test(text)) {
       if (!person_) return PERSON_ONLY;
-      try { deps.orch.resume(j.id, { by: verified(caller) }); } catch (e) { return { say: redactText((e as Error).message, 200) }; }
-      return { say: "Resumed. It continues on the same agent sessions; nothing that already ran is repeated." };
+      try { deps.orch.resume(j.id, { by: verified(caller) }); } catch (e) { return { say: redactText((e as Error).message, 200), jobId: j.id }; }
+      return { say: "Resumed. It continues on the same agent sessions; nothing that already ran is repeated.", jobId: j.id };
     }
     // ── merge / deploy ──
     const apply = /^(?:merge|push|deploy|ship)\b(?: it| the coding job| that)?(?: (?:into|to) ([\w./-]+))?/i.exec(text);
@@ -317,7 +344,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
       const verb = apply[0].split(/\s+/)[0].toLowerCase();
       if (!person_) return PERSON_ONLY;
       if (verb === "deploy" || verb === "ship" || verb === "push") return { say: "I don't deploy from the coding harness. I can merge it into a protected branch; the project's own pipeline deploys from there." };
-      if (j.state !== "completed") return { say: `It can't be merged: the job is ${human(j.state)}. Only a job whose gate passed can be.` };
+      if (j.state !== "completed") return { say: `It can't be merged: the job is ${human(j.state)}. Only a job whose gate passed can be.`, jobId: j.id };
       const entryBranch = apply[1] ?? "main";
       try {
         const r = await deps.orch.requestApply(j.id, { action: verb === "push" ? "git.push.production" : "git.merge.protected", toRef: entryBranch, by: verified(caller) });
@@ -328,12 +355,12 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
         // Telegram code, or on the Coding page's approval card by his own spoken yes.
         if (person !== "usman") {
           deps.setFocus(j.id, "progress");
-          return { say: "Asked. Usman needs to approve the merge, with the code on his Telegram. Nothing is merged until he does.", navigate: "/coding" };
+          return { say: "Asked. Usman needs to approve the merge, with the code on his Telegram. Nothing is merged until he does.", navigate: "/coding", jobId: j.id };
         }
         const q = approvals.ask(r.approval.id, approvalPrincipal({ ...caller, id: "usman" }));
         touch(person, { approval: { id: r.approval.id, questionId: q.questionId, at: q.askedAt }, jobId: j.id });
-        return { say: `${r.approval.summary}. Should I? Say "yes, approve", or send the code from your Telegram.` };
-      } catch (e) { return { say: `Not merged: ${redactText((e as Error).message, 220)}` }; }
+        return { say: `${r.approval.summary}. Should I? Say "yes, approve", or send the code from your Telegram.`, jobId: j.id };
+      } catch (e) { return { say: `Not merged: ${redactText((e as Error).message, 220)}`, jobId: j.id }; }
     }
     return null;
   }
@@ -346,7 +373,12 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     return askToStart(person, job, r.spokenSummary, validation.ok ? [] : validation.errors.map((e) => e.detail));
   }
 
-  return { handle, statusLine, isCodingStart, reset: (person: string) => states.delete(person) };
+  /** The job and draft this caller's conversation is on (read-only; the command entry returns them so a service can attach progress). */
+  const peek = (caller: VoiceCaller): { jobId: string | null; draftId: string | null } => {
+    const s = states.get(voiceStateKey(caller));
+    return s && now() - s.at < STATE_TTL ? { jobId: s.jobId ?? null, draftId: s.draftId ?? null } : { jobId: null, draftId: null };
+  };
+  return { handle, statusLine, isCodingStart, peek, reset: (person: string) => states.delete(person) };
 }
 
 export type CodingVoice = ReturnType<typeof createCodingVoice>;

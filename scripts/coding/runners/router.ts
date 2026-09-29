@@ -1,5 +1,6 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { catalogueModel, catalogueTask } from "../../model-router/catalogue";
 import { routedChat, type RoutedChatDeps, type RoutedChatOptions } from "../../model-router/chat";
 import type { RunResult } from "../../model-router/router";
 import type { OwnershipSpec } from "../contracts";
@@ -36,7 +37,19 @@ export type RouterRunnerOptions = {
   contextBytes?: number;
   /** The ownership of the role (builder) — the orchestrator passes the TaskSpec's. */
   owns?: (jobId: string, roleId: string) => OwnershipSpec | null;
+  /**
+   * The owner's paid/free prefs (role-choice.ts CodingModelPrefs), read per call. `freeOnly` routes free models only;
+   * `allowPaidFallback: false` keeps a fallback off metered models (the selected model itself is never excluded).
+   */
+  prefs?: () => { freeOnly: boolean; allowPaidFallback: boolean };
 };
+
+/** Catalogue ids of the task's metered models other than the selected one: excluded when paid fallback is off. */
+function meteredExcept(task: string, selected: string): string[] {
+  const t = catalogueTask(task);
+  if (!t) return [];
+  return [...new Set([...t.candidates, ...(t.selectable ?? [])])].filter((id) => id !== selected && (() => { try { return catalogueModel(id).route === "metered"; } catch { return false; } })());
+}
 
 const ROUTED_IDENTITY = ["-c", "user.name=AgenticOS routed role", "-c", "user.email=routed-role@agentic-os.invalid", "-c", "commit.gpgSign=false", "-c", "core.autocrlf=false"];
 
@@ -102,7 +115,8 @@ export function routerRunner(options: RouterRunnerOptions = {}): RoleRunner {
           if (!owns) return finish({ status: "failed", error: { code: "spawn_failed", message: "A routed builder needs its ownership." } });
           prompt += `\n\nYOUR OWNED FILES (current text):\n${ownedContext(input.cwd, owns, options.contextBytes ?? 120_000)}\n\nAnswer with ONLY one JSON object, no prose: {"files":[{"path":"<repo-relative path you own>","content":"<the complete new file text>"}],"summary":"<one paragraph: what you changed and why>"}. Include only files you change. Never include a file you don't own.`;
         }
-        const freeOnly = b.model.startsWith("cline/");
+        const prefs = options.prefs?.() ?? null;
+        const freeOnly = b.model.startsWith("cline/") || !!prefs?.freeOnly;
         emit({ type: "step", label: `Routing to ${b.model} (${freeOnly ? "free routes only" : `automatic fallback along ${b.task}`})` });
         let run: RunResult<string>;
         try {
@@ -112,7 +126,7 @@ export function routerRunner(options: RouterRunnerOptions = {}): RoleRunner {
             messages: [{ role: "system", content: input.system }, { role: "user", content: prompt }],
             root: options.root,
             timeoutMs: options.timeoutMs ?? Math.min(input.limits.wallMs, 10 * 60_000),
-            constraints: { selected: b.model, selectedBy: "owner", freeOnly },
+            constraints: { selected: b.model, selectedBy: "owner", freeOnly, ...(prefs && !prefs.allowPaidFallback ? { exclude: meteredExcept(b.task, b.model) } : {}) },
             parentRequestId: input.jobId,
             signal: controller.signal,
             deps: options.deps,
