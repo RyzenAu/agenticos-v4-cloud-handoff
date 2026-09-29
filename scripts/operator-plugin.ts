@@ -12,6 +12,7 @@ import { privacyPaneAction, setupDiscovery } from "./setup-discovery";
 import { openAIVoice } from "./openai-voice";
 import { freeVoice as freeVoiceEngine } from "./free-voice";
 import { codingVoiceFor, codingRuntime } from "./coding/plugin";
+import { createCodingCommandEntry } from "./coding/command-entry";
 import { createFlows } from "./flows/service";
 import { inboxContacts, liveCalendarPort } from "./flows/live";
 import { claudeBridge } from "./claude-bridge";
@@ -1160,6 +1161,7 @@ export function operatorPlugin({
         skills: () => jarvisSkills,
         jarvisChromeInFront,
         deskPay: () => deskPayments,
+        coding: async () => createCodingCommandEntry({ voice: await codingVoiceFor(root), store: (await codingRuntime(root)).store }),
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());

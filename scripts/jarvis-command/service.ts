@@ -59,6 +59,12 @@ export type Delegates = {
   memory?: (utterance: string, caller: unknown, spokenYes: string | null) => Promise<{ said: string; outcome: string } | null>;
   /** The receptionist's state from its own feed (never invented). */
   receptionist?: (utterance: string) => Promise<{ ok: boolean; said: string; verified?: boolean | null }>;
+  /**
+   * Coding by words, typed or spoken (scripts/coding/command-entry.ts): the SAME shaper and per-person voice state, so
+   * "assign a builder to fix X and a reviewer to check it" drafts one job (models chosen, reasons said) and only a
+   * person's whole "start it" starts it. Null = not a coding turn. The verified caller comes from the principal, never the words.
+   */
+  coding?: (utterance: string, turn: { personId: string; actor: "human" | "process"; via: string; spokenYes: string | null }) => Promise<{ say: string; navigate?: string; jobId?: string; jobState?: string; draft?: unknown } | null>;
   /** A CRM action on a named lead (log a call, set a status, who's next), read back after any write. */
   leads?: (action: LeadAction, principal: Principal, eventId?: string) => Promise<{ ok: boolean; said: string; verified: boolean | null }>;
   /** A real reminder through the reminder skill ("remind me to …" words). */
@@ -349,12 +355,24 @@ export function createCommandService(deps: CommandServiceDeps) {
         return contextual(ctx, out, utterance, res.item, res.tier, pageContext!, decisionOf);
       });
 
-    // 3. Coding work is Track 3's (REVIEW-T2 #3): its detector, its draft page (draft → plan → confirm).
-    //    Nothing starts here; the Coding page shows the plan and waits for his confirmation.
-    const coding = moneyRead || codingMoneyRefusal(raw) ? null : codingDraftFor(utterance);
+    // 3. Coding work (Track 3's harness): drafted, then started only by a person's own "start it". The entry shares the
+    //    voice's per-person state, so typed and spoken turns are one conversation. A draft page stays the fallback when the
+    //    harness isn't running here. Nothing starts from this line.
+    const moneyBlocked = moneyRead || codingMoneyRefusal(raw);
+    if (deps.delegates?.coding && !moneyBlocked && source !== "away" && source !== "acceptance") {
+      const r = await deps.delegates.coding(utterance, { personId: principal.personId, actor: principal.actor === "human" ? "human" : "process", via: principal.via === "loopback-owner" ? "local" : principal.via === "telegram-owner" ? "telegram" : "tailnet", spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null }).catch(() => null);
+      if (r)
+        return start("none", async (ctx, out) => {
+          const d = decisionOf({ op: "coding.turn", ...(r.jobId ? { target: r.jobId.slice(0, 8) } : {}), confidence: 1, policy: "delegate", delegateTo: "coding", source: "rules", why: "coding words: the coding harness's own draft, start and status rules" });
+          out({ type: "decision", decision: d, seq: 0 });
+          note(ctx, { intent: `coding: ${r.say.slice(0, 160)}`, executor: "coding", jev: d, outcome: "ok" });
+          return { type: "done", ok: true, said: r.say, kind: r.navigate ? "navigate" : "answer", ...(r.navigate ? { navigate: { path: r.navigate } } : {}), numbers: { ...(r.jobId ? { codingJobId: r.jobId } : {}), ...(r.jobState ? { codingJobState: r.jobState } : {}), ...(r.draft ? { draft: r.draft } : {}) }, jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: null };
+        });
+    }
+    const coding = moneyBlocked || deps.delegates?.coding ? null : codingDraftFor(utterance);
     if (coding)
       return start("none", async (ctx, out) => {
-        const d = decisionOf({ op: "coding.draft", target: coding.path.split("?")[0], confidence: 1, policy: "delegate", delegateTo: "coding", source: "rules", why: "coding work: Track 3's coding workspace drafts it and waits for a confirm" });
+        const d = decisionOf({ op: "coding.draft", target: coding.path.split("?")[0], confidence: 1, policy: "delegate", delegateTo: "coding", source: "rules", why: "coding work: the coding workspace drafts it and waits for a confirm" });
         out({ type: "decision", decision: d, seq: 0 });
         note(ctx, { intent: "coding: opened the Coding draft (nothing starts until he confirms the plan)", executor: "none", jev: d, outcome: "ok" });
         return { type: "done", ok: true, said: "Opening a coding draft with that request. It shows the plan, repo and agents, then asks \"Start it?\"; nothing starts until you confirm.", kind: "navigate", navigate: { path: coding.path }, jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: null };
