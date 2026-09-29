@@ -131,9 +131,11 @@ export function CodingList({ request }: { request?: string }) {
       <WidgetGrid aria-label="Coding">
         <NewJob text={composer} setText={setComposer} textareaRef={composerRef} autoDraft={request ?? ""} onDrafted={load} />
         <Widget icon={ListChecks} span={4} title="Jobs" badge={jobs?.length || undefined} id="coding-jobs">
-          <p className="mt-3 text-sm text-muted-foreground" role="status">
-            {loading ? "Reading jobs…" : !jobs ? "Job status unavailable" : `${waiting.length} need you · ${running.length} running${error ? " · last successful read" : ""}`}
-          </p>
+          {(loading || !jobs || jobs.length > 0) && (
+            <p className="mt-3 text-sm text-muted-foreground" role="status">
+              {loading ? "Reading jobs…" : !jobs ? "Job status unavailable" : `${waiting.length} need you · ${running.length} running${error ? " · last successful read" : ""}`}
+            </p>
+          )}
           <Segmented value={filter} options={FILTERS} onChange={setFilter} ariaLabel="Filter coding jobs" className="my-4 max-w-full overflow-x-auto" />
           {loading ? (
             <div role="status" aria-busy="true" className="rounded-2xl bg-inset p-6 text-sm text-muted-foreground">Loading coding jobs…</div>

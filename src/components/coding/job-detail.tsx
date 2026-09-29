@@ -159,6 +159,7 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
         </ul>
         <div className="hidden flex-wrap gap-2 lg:flex">{actions}</div>
         {notice && <Notice tone="info">{notice}</Notice>}
+        {error && <Notice tone="warn" title="Couldn't refresh this job">{error} Showing the last successful read; it retries when you act or the job changes.</Notice>}
         {job.state === "interrupted" && <Notice tone="warn" title="Interrupted: nothing was replayed">The OS restarted or the job was paused. Resume continues on the same agent sessions after they re-read the worktree.</Notice>}
         {job.state === "blocked_allowance" && (
           <Notice tone="warn" title="Paused at an account limit">
@@ -214,7 +215,7 @@ function Progress({ events }: { events: CodingEvent[] }) {
   const shown = showAll ? history : history.slice(0, 20);
   return (
     <section aria-label="Progress timeline">
-      <p className="mb-3 text-sm text-muted-foreground">Latest updates first · {history.length} shown in this history</p>
+      <p className="mb-3 text-sm text-muted-foreground">Newest first · showing {shown.length} of {history.length}</p>
       <ol className="flex flex-col gap-1.5">
         {shown.map((e) => (
           <li key={e.seq} className="flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm odd:bg-inset/60 sm:flex-row sm:gap-3">
@@ -236,7 +237,7 @@ function Progress({ events }: { events: CodingEvent[] }) {
 function describe(e: CodingEvent): string {
   const p = e.payload as any;
   switch (e.type) {
-    case "state": return p.scope === "job" ? `Job moved to ${String(p.to).replace(/_/g, " ")}` : `Agent is ${runStateLabel(String(p.to)).label.toLowerCase()} (${String(p.reason).replace(/_/g, " ")})`;
+    case "state": return p.scope === "job" ? `Job moved to ${String(p.to).replace(/_/g, " ")}` : `Agent is ${runStateLabel(String(p.to)).label.toLowerCase()}${p.reason ? ` (${String(p.reason).replace(/_/g, " ")})` : ""}`;
     case "step": return p.detail ? `${p.label} — ${p.detail}` : p.label;
     case "spoken": return `Jarvis: “${p.line}”`;
     case "policy": return `Policy ${p.decision === "auto-allow" ? "allowed" : p.decision === "auto-deny" ? "refused" : "asked you about"} ${p.nativeKind} (${String(p.rule).replace(/-/g, " ")}): ${p.target}`;

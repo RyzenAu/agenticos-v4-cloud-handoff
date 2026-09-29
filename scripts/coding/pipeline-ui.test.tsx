@@ -198,6 +198,14 @@ describe("the Coding page", () => {
     expect(ordered.map((j) => j.id)).toEqual(["decision", "working", "done"]);
     expect([done, working, decision].map((j) => j.id)).toEqual(["done", "working", "decision"]);
   });
+  test("a failed refresh says the data is the last successful read (list and detail), never silently stale", () => {
+    const list = readFileSync(join(ROOT, "src/components/coding/coding-list.tsx"), "utf8");
+    const detail = readFileSync(join(ROOT, "src/components/coding/job-detail.tsx"), "utf8");
+    expect(list).toContain("The list below is the last successful read.");
+    expect(list).toContain("Job status unavailable");
+    expect(detail).toContain("Showing the last successful read");
+    expect(detail).toContain("showing {shown.length} of {history.length}");
+  });
   test("starting stays a person's clear Start bound to the digest (T3 rules unchanged)", () => {
     const src = readFileSync(join(ROOT, "src/components/coding/coding-list.tsx"), "utf8");
     expect(src).toContain("codingClient.start(result.jobId, result.specDigest)");
