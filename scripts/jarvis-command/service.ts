@@ -49,7 +49,7 @@ import { createContextMemory, resolveCommandContext } from "./context";
 import { leadActionIn, osPageIn, planRules, rememberToReminder, splitSpokenTarget, type LeadAction, type RulePlan } from "./plan";
 import { thresholdsFor } from "./thresholds";
 import { codingDraftFor } from "./coding";
-import { codingMoneyRefusal, readOnlyMoneyQuestion } from "../jarvis-execution/spoken-money";
+import { codeChangeNotPayment, codingMoneyRefusal, readOnlyMoneyQuestion } from "../jarvis-execution/spoken-money";
 
 export type Delegates = {
   /**
@@ -358,7 +358,10 @@ export function createCommandService(deps: CommandServiceDeps) {
     // 3. Coding work (Track 3's harness): drafted, then started only by a person's own "start it". The entry shares the
     //    voice's per-person state, so typed and spoken turns are one conversation. A draft page stays the fallback when the
     //    harness isn't running here. Nothing starts from this line.
-    const moneyBlocked = moneyRead || codingMoneyRefusal(raw);
+    // A money move named in the words never reaches the harness, unless it is plainly a code change. A delegated order ("have Codex
+    // buy 10 Tesla shares and Opus review it") is the same order: the wrapper is stripped and the words judged again.
+    const undelegated = raw.replace(/\b(?:have|get|tell|ask|let|make)\s+[\w-]+\s+(?:to\s+)?(?=(?:buy|sell|pay|transfer|trade|bet|purchase|invest|wire|refund)\b)/gi, "");
+    const moneyBlocked = moneyRead || !!codingMoneyRefusal(raw) || !!codingMoneyRefusal(undelegated) || ((!!goalRefusal || !!screenGoalRefusal(undelegated)) && !codeChangeNotPayment(raw));
     if (deps.delegates?.coding && !moneyBlocked && source !== "away" && source !== "acceptance") {
       const r = await deps.delegates.coding(utterance, { personId: principal.personId, actor: principal.actor === "human" ? "human" : "process", via: principal.via === "loopback-owner" ? "local" : principal.via === "telegram-owner" ? "telegram" : "tailnet", spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null }).catch(() => null);
       if (r)

@@ -62,3 +62,20 @@ describe("coding words through the command service", () => {
     expect(calls.length).toBe(0);
   });
 });
+
+describe("money words stay out of the coding entry", () => {
+  test("'have Codex buy 10 Tesla shares and Opus review it' is refused before the harness sees it", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    const done = await say(usman, "have Codex buy 10 Tesla shares and Opus review it");
+    expect(calls.length).toBe(0);
+    expect(done.ok).toBe(false);
+  });
+});
+
+describe("plain code work that only names a money feature still reaches the entry", () => {
+  test("'fix the checkout bug in the dental site, Opus builds and Codex reviews' is coding, not a payment", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    await say(usman, "fix the checkout bug in the dental site, Opus builds and Codex reviews");
+    expect(calls.length).toBe(1);
+  });
+});

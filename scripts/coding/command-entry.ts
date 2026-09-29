@@ -22,8 +22,9 @@ import type { CodingVoice } from "./voice";
  *     otherwise { say, navigate?, jobId?, jobState?, draft? }:
  *       say       the exact line to speak or show; never "done" before the gate passed, never "merged" before git says so
  *       navigate  "/coding" when the Coding page should open on the job
- *       jobId     the job this conversation is on (a drafted, started, or asked-about job), so the service can
- *                 attach progress (poll /coding/jobs/:id or subscribe to its events)
+ *       jobId     the job THIS reply is about (drafted, started, stopped, resumed, asked about, merge asked),
+ *                 so the service can attach progress (poll /coding/jobs/:id or subscribe to its events).
+ *                 A refusal or a clarifying question carries none: it never inherits the last job.
  *       jobState  its state at the moment of the reply (needs `store`)
  *       draft     present while the job awaits "start": { jobId, specDigest, roles: [{ role, roleId, model,
  *                 accountSlot, basis, why }] } (needs `store`)
