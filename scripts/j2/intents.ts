@@ -9,8 +9,9 @@ import { OUR_SITES } from "../websites/catalogue";
 import { ownSiteIn } from "../../src/lib/own-sites";
 import { finalButtonText } from "../browser-hands";
 import { currentReferent } from "../jarvis-skills/referent";
+import { browserTaskIntent } from "./task-intents";
 
-export type BrowserAction = "open" | "open_chrome" | "new_tab" | "search" | "back" | "forward" | "reload" | "close_tab" | "scroll" | "read" | "click";
+export type BrowserAction = "open" | "open_chrome" | "new_tab" | "search" | "back" | "forward" | "reload" | "close_tab" | "scroll" | "read" | "click" | "task" | "task_here";
 export type BrowserSkillRequest = {
   skill: "browser";
   action: BrowserAction;
@@ -23,10 +24,12 @@ export type BrowserSkillRequest = {
   target?: string;
   /** "Search Google for X and open the first result": the search is done, the click is not (said plainly, J4). */
   firstResult?: boolean;
+  /** J6, `task` / `task_here`: the goal sentence (a multi-step job in the browser: search then open a result, fill a form…). */
+  goal?: string;
 };
 /** Actions on the page in front (Jarvis Chrome must be what he's looking at; otherwise it's his own window). */
-export const PAGE_ACTIONS = new Set<BrowserAction>(["back", "forward", "reload", "close_tab", "scroll", "read", "click"]);
-export const BROWSER_ACTIONS: BrowserAction[] = ["open", "open_chrome", "new_tab", "search", "back", "forward", "reload", "close_tab", "scroll", "read", "click"];
+export const PAGE_ACTIONS = new Set<BrowserAction>(["back", "forward", "reload", "close_tab", "scroll", "read", "click", "task_here"]);
+export const BROWSER_ACTIONS: BrowserAction[] = ["open", "open_chrome", "new_tab", "search", "back", "forward", "reload", "close_tab", "scroll", "read", "click", "task", "task_here"];
 
 const WEB_APPS: Array<[RegExp, string, string]> = [
   [/^(?:my\s+)?g ?mail(?:\s+inbox)?$/, "https://mail.google.com/", "Gmail"],
@@ -36,6 +39,9 @@ const WEB_APPS: Array<[RegExp, string, string]> = [
 /** Spoken fillers and a correction lead-in ("uh", "no,") in front of the actual command. */
 const FILLER_LEAD = /^(?:(?:uh+|um+|er+m?|hmm+|ah+|so|well|okay|ok|right|hey|yeah|like|actually|no|nope|nah)[,\s]+)+/i;
 
+export function cleanUtterance(utterance: string) {
+  return clean(utterance);
+}
 function clean(utterance: string) {
   return String(utterance ?? "")
     .replace(/[’`]/g, "'")
@@ -93,7 +99,7 @@ const youtubeQuery = (q: string | undefined) => {
 
 const SCROLL_WORDS = new Set(["the", "page", "it", "this", "a", "bit", "little", "lot", "more", "some", "down", "up", "just"]);
 
-export function browserSkillIntent(utterance: string, options: { sharing?: boolean } = {}): BrowserSkillRequest | null {
+export function browserSkillIntent(utterance: string, options: { sharing?: boolean; noTask?: boolean } = {}): BrowserSkillRequest | null {
   const u = clean(utterance);
   if (!u || u.length > 200) return null;
   const l = u.toLowerCase();
@@ -101,6 +107,12 @@ export function browserSkillIntent(utterance: string, options: { sharing?: boole
   // "Open Chrome": Jarvis Chrome, on his main screen (a bare app open; "open Chrome and go to X" is a compound, not this).
   // ("bring up Chrome" is the window skill's: focus and his main screen.)
   if (/^(?:open|launch|start|fire up|run)\s+(?:up\s+)?(?:(?:google\s+)?chrome|(?:the|a|my)\s+(?:web\s+)?browser)(?:\s+browser)?(?:\s+up)?$|^i\s+(?:need|want)\s+(?:google\s+)?chrome(?:\s+(?:up|open))?$/.test(l)) return q("open_chrome");
+  // J6: a multi-step goal ("search Google for X and open the first result", "go to <site> and click <link>", "open my Gmail and
+  // search for X", "fill the contact form…"): the task loop. A goal on the page in front waits for the sharing check below.
+  if (!options.noTask) {
+    const task = browserTaskIntent(u);
+    if (task && (task.action === "task" || !options.sharing)) return task;
+  }
   // Our own site (muventures.com.au, never a guessed .com).
   const own = ownSiteIn(u);
   if (own) return q("open", { url: own.url, name: own.host });

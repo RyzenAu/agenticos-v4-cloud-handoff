@@ -71,7 +71,7 @@ export const JEV_TIMEOUT_MS = 1200;
 // --- the catalogue ---------------------------------------------------------------------------------
 export const CATEGORIES: Record<string, string> = {
   pc: "Control this Windows PC directly: open or launch an app or a folder, music/media keys (next, previous, play/pause), volume up/down/mute, lock the PC.",
-  browser: "Act on the web page or video already on screen: click something on it, pause/play the video, go back or forward a page, reload, scroll, open or close a tab, search within the site.",
+  browser: "Act on the web page or video already on screen: click something on it, pause/play the video, go back or forward a page, reload, scroll, open or close a tab, search within the site. Also a job of several steps in the browser (search then open a result, go to a site and click a link, find a page, read something off a page, fill in a form).",
   screen_teach: "Teach him how to do something in the app on his screen, step by step, pointing with Jarvis's own cursor while he clicks (show me how to, teach me, where do I click to, walk me through), or take over and do it for him.",
   screen_act: "Work the app or form he is looking at right now, hands on: click a named button or field, type into a field (\"in there\", \"here\"), fill in or finish a form, select all, press a key, or help him get through what's on screen.",
   os_page: "Open one of the OS's own pages: inbox, calendar, memory, business dashboard, leads, chat, design, websites, code graph, Hermes, settings.",
@@ -112,6 +112,7 @@ export const BROWSER_ACTIONS: Record<string, string> = {
   new_tab: "Open a new blank tab.",
   close_tab: "Close the current tab.",
   search: "Type words into this site's search box.",
+  task: "A goal that takes several steps in the browser: search Google or YouTube and open or play a result, open the second result, go to a site and click a link, find a page on a site, read a headline or a phone number off a page, fill in a form (without sending it).",
 };
 
 export const ROUTER_PAGES: Record<string, string> = { ...PAGES, "/leads": "leads, CRM, call list" };
@@ -528,6 +529,8 @@ export function buildCall(
         const words = extractSearch(text);
         return words ? { name: "browser_act", arguments: { action: "search", target: words } } : { miss: "no search words" };
       }
+      // J6: a multi-step goal goes to the browser task loop (the same hands as voice and typing), never the screen hands.
+      if (action === "task") return { name: "browser_act", arguments: { action: "task", target: utterance.slice(0, 200) } };
       if (action && action in BROWSER_ACTIONS) return { name: "browser_act", arguments: { action } };
       return { miss: "no browser action" };
     }
@@ -603,7 +606,7 @@ export function decide(
   if (confidence < (intent === "hermes" ? HERMES_MIN : THRESHOLDS[tier])) return brain(`below ${intent === "hermes" ? "hermes" : tier} threshold`);
   // A single instant action can't satisfy "open X and type Y"; that is Hermes' or the brain's.
   // (A routine, the status report and a screen question are one request however they're worded.)
-  const single = !["hermes", "status", "screen", "screen_act", "screen_teach"].includes(intent) && !intent.startsWith("routine.");
+  const single = !["hermes", "status", "screen", "screen_act", "screen_teach", "browser.task"].includes(intent) && !intent.startsWith("routine.");
   if (single && (multi > MULTI_MAX || COMPOUND.test(text.toLowerCase()))) return brain("multi-step");
   const call = buildCall(intent, text, answers, context);
   if ("miss" in call) return brain(call.miss);

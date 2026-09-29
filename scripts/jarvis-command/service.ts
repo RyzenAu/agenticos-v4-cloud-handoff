@@ -64,6 +64,11 @@ export type Delegates = {
   /** A real reminder through the reminder skill ("remind me to …" words). */
   reminder?: (words: string, principal: Principal) => Promise<{ ok: boolean; said: string }>;
   /**
+   * His browser commands typed (J6), through the SAME hands as spoken ones: agent-browser in Jarvis Chrome, its window on his main
+   * screen, and a multi-step goal through the task loop; the line says where it ended up. `match` is pure. Only the owner at this PC.
+   */
+  browser?: { match(utterance: string): boolean; run(utterance: string, principal: Principal): Promise<{ ok: boolean; said: string }> };
+  /**
    * The read-only Jarvis skills the voice rules already answer (finance, time, maths, units, currency, system,
    * weather, AI usage, inbox, deploys, capabilities, timers): typed words get the same answer (AUDIT-F2/F4
    * typed = spoken). `match` is pure; nothing that types or moves windows is matched.
@@ -287,6 +292,17 @@ export function createCommandService(deps: CommandServiceDeps) {
         out({ type: "decision", decision: d, seq: 0 });
         note(ctx, { intent: "coding: opened the Coding draft (nothing starts until he confirms the plan)", executor: "none", jev: d, outcome: "ok" });
         return { type: "done", ok: true, said: "Opening a coding draft with that request. It shows the plan, repo and agents, then asks \"Start it?\"; nothing starts until you confirm.", kind: "navigate", navigate: { path: coding.path }, jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: null };
+      });
+
+    // 3'-. J6: his browser commands typed use the same hands as spoken (Jarvis Chrome, the where-line, the task loop): never the
+    //      old app-owned browser. Only for the owner at this PC (it drives the hub's Jarvis Chrome); anyone else goes on as before.
+    if (deps.delegates?.browser && principal.via === "loopback-owner" && source !== "away" && source !== "acceptance" && deps.delegates.browser.match(utterance))
+      return start("none", async (ctx, out) => {
+        const d = decisionOf({ op: "browser.hands", confidence: 1, policy: "act", delegateTo: "voice-tools", source: "rules", why: "a browser command: the same agent-browser hands as spoken, in Jarvis Chrome" });
+        out({ type: "decision", decision: d, seq: 0 });
+        const r = await deps.delegates!.browser!.run(utterance, principal).catch(() => ({ ok: false, said: "The browser hands didn't answer, so nothing was done." }));
+        note(ctx, { intent: `browser: ${r.said.slice(0, 160)}`, executor: "browser-hands", jev: d, outcome: r.ok ? "ok" : "failed", verification: { method: "browser-hands", ok: r.ok } });
+        return { type: "done", ok: r.ok, said: r.said, kind: "browser", jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: null };
       });
 
     // 3'. Deterministic delegates: memory, leads, reminders, receptionist (their own services; recorded here).

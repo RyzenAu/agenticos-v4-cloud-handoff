@@ -12,6 +12,7 @@ import { receptionistAnswer } from "../jarvis-command/receptionist";
 import { answerMaths, mathsIntent } from "../jarvis-skills/time-maths";
 import { namesCredential } from "../jarvis-skills/dictation";
 import { compoundToHands } from "../free-voice";
+import { browserSkillIntent } from "../j2/intents";
 import { pcIntent } from "../pc-hands";
 import { needsMeIntent, needsYouSaid } from "../workspace/needs-you-voice";
 import { needsYouFrom, needsYouBadge, needsYouBreakdown } from "../workspace/needs-you";
@@ -107,10 +108,12 @@ describe("2. paraphrase families reach the fast rules and the J2 hands, with a w
     ["uh look up lo-fi beats on youtube", "youtube", "lo-fi beats"],
     ["can you find some lo-fi beats on YouTube", "youtube", "lo-fi beats"],
     ["youtube lo-fi beats", "youtube", "lo-fi beats"],
-    ["put on some lo-fi beats on YouTube", "youtube", "lo-fi beats"],
     ["open YouTube and search lo-fi beats", "youtube", "lo-fi beats"],
     ["search YouTube for lo-fi beats", "youtube", "lo-fi beats"],
   ];
+  test("put on YouTube music reaches the multi-step browser task", () => {
+    expect(browserSkillIntent("put on some lo-fi beats on YouTube")).toMatchObject({ action: "task", goal: "put on some lo-fi beats on YouTube" });
+  });
   test.each(SEARCH)("%s", async (words, engine, query) => {
     const t = await one(words);
     expect(t.label).toBe("skill:browser:search");
@@ -231,13 +234,8 @@ describe("2b. the rest of the paraphrase misses (the audit's PASS-JEV rows, now 
 });
 
 describe("3. compound sentences are done, or said plainly", () => {
-  test("'search Google for dentists and open the first result' searches, then says it can only do the search", async () => {
-    const t = await one("search Google for dentists and open the first result");
-    expect(t.label).toBe("skill:browser:search");
-    expect(args(t)).toMatchObject({ action: "search", engine: "google", query: "dentists", firstResult: true });
-    expect(t.execs[0].said).toBe('Searched Google for "dentists" in Chrome on your main screen. I can only do the search, so the first result is yours to open.');
-    // Never a click with the sentence as its label.
-    expect(t.calls.some((c) => c.function.name === "browser_act")).toBe(false);
+  test("'search Google for dentists and open the first result' reaches the multi-step browser task", () => {
+    expect(browserSkillIntent("search Google for dentists and open the first result")).toMatchObject({ action: "task", goal: "search Google for dentists and open the first result" });
   });
   test("'open Gmail and then YouTube' opens both, each through the hands, each saying where", async () => {
     const t = await one("open Gmail and then YouTube");

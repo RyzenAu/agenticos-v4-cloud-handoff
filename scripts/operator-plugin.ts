@@ -632,11 +632,12 @@ export function operatorPlugin({
   const narrate = narrateFullService(root, join(root, ".operator-data"));
   // The port this server actually got (set once it listens), for the voice rule that reads the workspace panels over loopback.
   let ownOrigin = "http://127.0.0.1:8081";
+  const jarvisChromeInFront = async () => {
+    const [front, chrome] = await Promise.all([screenHands.frontPid(), jarvisChromePid()]);
+    return !!front && !!chrome && front === chrome;
+  };
   const freeVoice = freeVoiceEngine(root, {
-    jarvisChromeInFront: async () => {
-      const [front, chrome] = await Promise.all([screenHands.frontPid(), jarvisChromePid()]);
-      return !!front && !!chrome && front === chrome;
-    },
+    jarvisChromeInFront,
     elevenVoice: () => companionVoice.status().voiceId,
     capabilities: () => capabilityVoiceLine,
     shorthand: () => readShorthand(root),
@@ -1133,6 +1134,7 @@ export function operatorPlugin({
         receptionist: () => receptionistSnapshot(),
         leads: () => leadsApi,
         skills: () => jarvisSkills,
+        jarvisChromeInFront,
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());

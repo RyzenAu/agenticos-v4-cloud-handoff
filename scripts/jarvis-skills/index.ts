@@ -36,6 +36,7 @@ import { sir } from "./text";
 import { UNITS, CURRENCIES } from "./time-maths";
 import { BROWSER_ACTIONS, browserSkillIntent, PAGE_ACTIONS, type BrowserSkillRequest } from "../j2/intents";
 import type { BrowserHands } from "../j2/agent-browser";
+import type { BrowserSkillDeps } from "../j2/browser-skill";
 import type { WeatherCity } from "../business-today";
 
 export type SkillRequest =
@@ -142,9 +143,13 @@ export function parseSkillRequest(body: unknown): SkillRequest {
       const target = str(b.target, 80);
       if (action === "search" && !query) fail();
       if (action === "click" && !target) fail();
+      // J6: a multi-step goal is a sentence (the shape is worked out again on the server, never taken from the client).
+      const goal = str(b.goal, 200);
+      if ((action === "task" || action === "task_here") && !goal) fail();
       return {
         skill: "browser",
         action: action as BrowserSkillRequest["action"],
+        ...(goal && (action === "task" || action === "task_here") ? { goal } : {}),
         ...(url && action === "open" ? { url } : {}),
         ...(str(b.name, 60) ? { name: str(b.name, 60) } : {}),
         ...(action === "search" ? { engine: engine ?? "google", query, ...(b.firstResult === true ? { firstResult: true } : {}) } : {}),
@@ -354,7 +359,7 @@ export type SkillDeps = {
   /** Window skill overrides (tests: a fake Jarvis Chrome), same pattern as `ps`. */
   windows?: WindowDeps;
   /** J2 browser hands (tests: a CDP stub runner; default: agent-browser against Jarvis Chrome). */
-  browser?: { hands?: BrowserHands; ensure?: () => Promise<boolean> };
+  browser?: { hands?: BrowserHands; ensure?: () => Promise<boolean>; task?: BrowserSkillDeps["task"] };
 };
 
 export function createJarvisSkills(root: string, deps: SkillDeps) {
@@ -384,6 +389,26 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
     const exe = agentBrowserExe();
     hands = exe ? createAgentBrowserHands({ run: spawnRunner(exe) }) : null;
     return hands;
+  };
+  /**
+   * J6: what the browser task loop needs beyond the hands: the free brain for goals the rules don't know (only built when a
+   * task actually runs), and one short "Still working." through the event gate when a step is slow.
+   */
+  let taskDeps: BrowserSkillDeps["task"] | undefined;
+  const defaultTask = async (): Promise<BrowserSkillDeps["task"]> => {
+    if (taskDeps) return taskDeps;
+    const { createTaskDecider } = await import("../j2/task-brain");
+    taskDeps = {
+      decide: createTaskDecider({ root }),
+      progress: (line) => {
+        try {
+          deps.events.submit({ source: "jarvis-browser", text: line, priority: "normal", dedupeKey: `browser-task:${now()}`, expiresAt: new Date(now() + 20_000).toISOString() });
+        } catch {
+          /* the event gate refused it: the answer still comes */
+        }
+      },
+    };
+    return taskDeps;
   };
   const reminderTasks = deps.reminderTasks ?? createReminderTasks(root);
   const scheduler = createScheduler(root, { now, submit: (body) => deps.events.submit(body), tasks: reminderTasks });
@@ -426,6 +451,7 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
         const { runBrowserSkillDetailed } = await import("../j2/browser-skill");
         return runBrowserSkillDetailed(req, {
           hands,
+          task: deps.browser?.task ?? (await defaultTask()),
           present: () => answerWindow({ skill: "window", action: "bring", target: "front", screen: "main" }, ps, windowDeps()),
           ensure:
             deps.browser?.ensure ??
