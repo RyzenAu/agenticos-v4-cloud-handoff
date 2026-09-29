@@ -74,8 +74,8 @@ describe("the voice turn (spoken, and typed in a session: the same /voice/free/t
     const { voice } = voiceOffline(true);
     const call = firstCall(await voice.handle("/voice/free/turn", { messages: [{ role: "user", content: utterance }] }));
     // (J2: a named, non-final control is the agent-browser hands' click, through the same S2c/S2e gates; a pointer like
-    // "the first video" stays browser_act's.)
-    expect(call).toMatchObject(/first|second|third|last/.test(utterance) ? { name: "browser_act", args: { action: "click" } } : { name: "skill", args: { skill: "browser", action: "click" } });
+    // "the first video" is a step for the J6 browser task loop, on Jarvis Chrome: still a direct browser act, never screen_act.)
+    expect(call).toMatchObject(/first|second|third|last/.test(utterance) ? { name: "skill", args: { skill: "browser", action: "task_here" } } : { name: "skill", args: { skill: "browser", action: "click" } });
   });
 });
 
