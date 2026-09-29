@@ -1,0 +1,734 @@
+/* One conversation, one canvas. Secondary controls are revealed on demand. */
+.vc-focus-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  background: color-mix(in oklab, var(--background) 65%, transparent);
+  backdrop-filter: blur(7px);
+  animation: vc-focus-fade 0.2s ease-out;
+}
+.voice-companion.vc-focus-mode {
+  --vc-ink: var(--foreground);
+  position: fixed;
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(740px, calc(100vw - 48px));
+  height: min(720px, calc(100dvh - 64px));
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+  border-radius: 24px;
+  box-shadow: 0 30px 120px oklch(0 0 0 / 0.60);
+  animation: vc-focus-fade 0.22s ease-out;
+  color-scheme: dark;
+}
+.vc-focus-header {
+  height: 66px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  color: var(--muted-foreground);
+}
+.vc-focus-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  color: var(--foreground);
+}
+.vc-focus-brand > svg {
+  color: var(--foreground);
+}
+.vc-focus-brand > i {
+  height: 5px;
+  width: 5px;
+  background: var(--success-soft);
+  border-radius: 50%;
+  margin-left: 3px;
+}
+.vc-focus-header > div {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.vc-focus-header button,
+.vc-focus-icon {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  width: 34px;
+  border-radius: 50%;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+.vc-focus-header button:hover,
+.vc-focus-icon:hover {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  color: var(--foreground);
+}
+.vc-focus-menu {
+  z-index: 100 !important;
+  min-width: 190px;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent) !important;
+  border-radius: 14px !important;
+  padding: 6px !important;
+  box-shadow: 0 15px 50px oklch(0 0 0 / 0.40);
+}
+.vc-focus-menu [role="menuitem"] {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  color: var(--foreground) !important;
+}
+.vc-focus-menu [role="menuitem"]:focus {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent) !important;
+}
+.vc-focus-menu [role="separator"] {
+  background: color-mix(in oklab, var(--foreground) 6%, transparent) !important;
+  margin: 5px 6px;
+}
+.vc-focus-menu svg {
+  color: var(--muted-foreground);
+}
+.vc-focus-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.vc-focus-voice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 35px;
+  padding: 18px 24px 0;
+}
+.vc-focus-orb {
+  width: 184px;
+  height: 184px;
+  flex-shrink: 0;
+  position: relative;
+  isolation: isolate;
+  border-radius: 50%;
+  background: var(--background);
+  box-shadow:
+    0 0 100px color-mix(in oklab, var(--brand) 30%, transparent),
+    0 0 30px color-mix(in oklab, var(--brand) 40%, transparent);
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+}
+.vc-focus-orb > div {
+  width: 100%;
+  height: 100%;
+}
+.vc-focus-voice h1 {
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 450;
+  letter-spacing: -0.8px;
+  margin: 0;
+  text-align: center;
+  color: var(--foreground);
+}
+.vc-focus-caption {
+  margin: 16px auto 20px;
+  width: calc(100% - 88px);
+  max-width: 520px;
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 1.75;
+  text-align: center;
+  color: var(--muted-foreground);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.vc-focus-caption.with-visual {
+  min-height: 24px;
+  margin-block: 10px 13px;
+  font-size: 13px;
+  -webkit-line-clamp: 2;
+}
+.vc-focus-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-shrink: 0;
+  padding: 0 24px 24px;
+}
+.vc-focus-call {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 21px;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  border: 1px solid color-mix(in oklab, var(--success) 30%, transparent);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.vc-focus-call:hover {
+  background: var(--brand-strong);
+}
+.vc-focus-call.is-active {
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+  color: var(--success);
+}
+.vc-focus-call.is-active > svg {
+  color: var(--success);
+}
+.vc-focus-call.is-active:hover {
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+}
+.vc-focus-icon {
+  height: 40px;
+  width: 40px;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+}
+.vc-focus-footer {
+  padding: 0 24px 24px;
+  flex-shrink: 0;
+}
+.vc-focus-footer form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: var(--background);
+  border-radius: 15px;
+  padding: 6px 9px;
+  min-height: 51px;
+}
+.vc-focus-footer input:not([hidden]) {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  color: var(--foreground);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.vc-focus-footer input::placeholder {
+  color: var(--muted-foreground);
+}
+.vc-focus-footer input[hidden] {
+  display: none;
+}
+.vc-focus-footer button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  background: none;
+  border-radius: 8px;
+}
+.vc-focus-footer button:hover {
+  color: var(--success);
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+.vc-focus-footer button:disabled {
+  opacity: 0.25;
+}
+.vc-focus-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 24px 15px;
+  padding: 12px 15px;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+  border-radius: 10px;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.vc-focus-error > span {
+  flex: 1;
+}
+.vc-focus-error > button {
+  flex-shrink: 0;
+}
+.vc-focus-settings,
+.vc-focus-transcript {
+  overflow: auto;
+  flex: 1;
+  padding: 10px 34px 24px;
+  scrollbar-width: thin;
+}
+.vc-focus-back {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  margin-bottom: 21px;
+  padding: 4px 0;
+}
+.vc-focus-settings h2,
+.vc-focus-transcript h2 {
+  font-size: 24px;
+  font-weight: 450;
+  letter-spacing: -0.5px;
+  margin: 0 0 24px;
+}
+.vc-focus-settings label {
+  font-size: 12px;
+  color: var(--foreground);
+  display: block;
+}
+.vc-focus-settings input,
+.vc-focus-settings select {
+  display: block;
+  width: 100%;
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: var(--background);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 13px;
+  color: var(--foreground);
+  margin: 9px 0 14px;
+}
+.vc-focus-settings p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.8;
+  margin-bottom: 15px;
+}
+.vc-focus-save {
+  border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: color-mix(in oklab, var(--foreground) 7%, transparent);
+  padding: 10px 16px;
+  font-size: 12px;
+  border-radius: 9px;
+  color: var(--foreground);
+}
+.vc-focus-settings small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  margin-top: 20px;
+  max-width: 430px;
+}
+.vc-focus-settings .vc-wake-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--foreground);
+  font-size: 13px;
+  cursor: pointer;
+  margin: 4px 0 0;
+}
+.vc-focus-settings .vc-wake-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex: none;
+  accent-color: var(--border-strong);
+  cursor: pointer;
+}
+.vc-focus-settings small.vc-wake-status {
+  margin: 6px 0 18px 26px;
+}
+.vc-focus-transcript p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--foreground);
+  margin: 0 0 22px;
+  white-space: pre-wrap;
+}
+.vc-focus-transcript strong {
+  display: block;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+/* Context replaces the orb instead of competing with a second column. */
+.vc-focus-mode .vv-workspace {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.vc-focus-mode .vv-heading {
+  padding: 8px 26px 16px;
+  min-height: 44px;
+  gap: 15px;
+}
+.vc-focus-mode .vv-heading h2 {
+  font-size: 14px;
+  font-weight: 450;
+  letter-spacing: 0;
+  margin: 0;
+  color: var(--foreground);
+  text-align: center;
+  flex: 1;
+}
+.vc-focus-mode .vv-heading > button {
+  margin: 0;
+  padding: 5px;
+  border: 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.vc-focus-mode .vv-heading .vv-back {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.vc-focus-mode .vv-graph {
+  flex: 1;
+  min-height: 0;
+  isolation: isolate;
+  background: transparent;
+}
+.vc-focus-mode .vv-graph > [data-rendered-nodes] {
+  position: absolute;
+  inset: 0;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+.vc-focus-mode .vv-graph .ar-graph-controls {
+  display: none;
+}
+.vc-focus-mode .vv-graph > [data-rendered-nodes] > div[aria-hidden] {
+  display: none;
+}
+.vc-focus-mode .vv-empty {
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  font-size: 12px;
+}
+.vc-focus-mode .vv-empty h3 {
+  font-size: 20px;
+}
+.vc-focus-mode .vv-graph .vv-empty {
+  padding: 20px;
+}
+.vv-display {
+  position: absolute;
+  bottom: 13px;
+  right: 25px;
+  z-index: 5;
+  background: color-mix(in oklab, var(--background) 87%, transparent);
+  border: 1px solid color-mix(in oklab, var(--success) 30%, transparent);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.vv-display summary {
+  list-style: none;
+  padding: 8px 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vv-display summary::-webkit-details-marker,
+.vv-memory-sources summary::-webkit-details-marker {
+  display: none;
+}
+.vv-display > div {
+  padding: 2px 8px 8px;
+  display: flex;
+  gap: 5px;
+}
+.vv-display button {
+  padding: 6px 9px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+}
+.vv-display button[aria-pressed="true"] {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+}
+.vv-memory-sources {
+  flex-shrink: 0;
+  max-height: 140px;
+  overflow: auto;
+  padding: 0 26px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  scrollbar-width: thin;
+}
+.vv-memory-sources summary {
+  cursor: pointer;
+  padding: 11px 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vv-memory-sources[open] summary svg {
+  transform: rotate(180deg);
+}
+.vc-focus-mode .vv-sources {
+  border: 0;
+  padding: 0 0 8px;
+}
+.vc-focus-mode .vv-sources > div {
+  grid-template-columns: 1fr;
+  margin: 0;
+  gap: 5px;
+}
+.vc-focus-mode .vv-sources button {
+  min-height: 36px;
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--foreground);
+}
+.vc-focus-mode .vv-memory-detail {
+  margin: 0 24px 10px;
+  padding: 14px 17px;
+  background: var(--background);
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+  max-height: 180px;
+  flex-shrink: 0;
+  overflow: auto;
+}
+.vc-focus-mode .vv-memory-detail h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.vc-focus-mode .vv-memory-detail > p {
+  font-size: 12px;
+  max-height: 55px;
+}
+.vc-focus-mode .vv-memory-detail > .vc-eyebrow {
+  display: none;
+}
+.vc-focus-mode .vv-text-action {
+  font-size: 11px;
+  margin-top: 9px;
+}
+.vc-focus-mode .vv-today,
+.vc-focus-mode .vv-business {
+  padding: 4px 28px 20px;
+}
+.vc-focus-mode .vv-date {
+  margin-bottom: 18px;
+}
+.vc-focus-mode .vv-date > strong {
+  font-size: 42px;
+}
+.vc-focus-mode .vv-date > span {
+  font-size: 13px;
+}
+.vc-focus-mode .vv-schedule time b {
+  font-size: 14px;
+}
+.vc-focus-mode .vv-business > h3 {
+  font-size: 23px;
+}
+.vc-focus-mode .vv-business-cards {
+  gap: 9px;
+  margin: 16px 0;
+}
+.vc-focus-mode .vv-business-cards article {
+  padding: 16px;
+  border-color: color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: color-mix(in oklab, var(--foreground) 6%, transparent);
+}
+.vc-focus-mode .vv-business-cards strong {
+  font-size: 23px;
+}
+.vc-focus-mode .vv-images {
+  padding: 4px 25px 10px;
+}
+.vc-focus-mode .vv-dropzone {
+  min-height: 260px;
+  height: 100%;
+  border-color: color-mix(in oklab, var(--border-strong) 40%, transparent);
+  background: transparent;
+  padding: 20px;
+}
+.vc-focus-mode .vv-dropzone > span {
+  height: 45px;
+  width: 45px;
+  margin-bottom: 17px;
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  border-color: color-mix(in oklab, var(--border-strong) 40%, transparent);
+  border-radius: 12px;
+}
+.vc-focus-mode .vv-dropzone h3 {
+  font-size: 20px;
+  color: var(--success);
+}
+.vc-focus-mode .vv-dropzone p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin: 10px 0 16px;
+}
+.vc-focus-mode .vv-dropzone > b {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+}
+.vc-focus-mode .vv-dropzone > small {
+  color: var(--muted-foreground);
+}
+.vc-focus-mode .vv-image-preview > img {
+  max-height: 240px;
+  min-height: 120px;
+}
+.vc-focus-mode .vv-discuss-image {
+  background: color-mix(in oklab, var(--success) 12%, transparent);
+  color: var(--success);
+  border-color: color-mix(in oklab, var(--success) 30%, transparent);
+}
+@keyframes vc-focus-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  .voice-companion.vc-focus-mode {
+    width: calc(100vw - 24px);
+    height: min(720px, calc(100dvh - 24px));
+    border-radius: 21px;
+  }
+  .vc-focus-header {
+    height: 58px;
+    padding: 0 17px;
+  }
+  .vc-focus-voice {
+    gap: 27px;
+  }
+  .vc-focus-orb {
+    width: 155px;
+    height: 155px;
+  }
+  .vc-focus-voice h1 {
+    font-size: 23px;
+  }
+  .vc-focus-caption {
+    width: calc(100% - 46px);
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .vc-focus-footer {
+    padding: 0 16px 16px;
+  }
+  .vc-focus-controls {
+    padding-bottom: 19px;
+  }
+  .vc-focus-mode .vv-graph {
+    height: auto;
+    min-height: 0 !important;
+    flex: 1;
+  }
+  .vc-focus-mode .vv-workspace {
+    flex-shrink: 1;
+    border: 0;
+  }
+  .vc-focus-mode .vv-heading {
+    padding: 5px 20px 12px;
+  }
+  .vc-focus-mode .vv-heading h2 {
+    font-size: 13px;
+  }
+  .vc-focus-mode .vv-sources > div {
+    grid-template-columns: 1fr;
+  }
+  .vc-focus-mode .vv-images {
+    padding-inline: 17px;
+  }
+  .vc-focus-mode .vv-dropzone {
+    min-height: 220px;
+  }
+  .vc-focus-mode .vv-dropzone h3 {
+    font-size: 18px;
+  }
+  .vc-focus-settings,
+  .vc-focus-transcript {
+    padding: 6px 24px 20px;
+  }
+  .vc-focus-mode .vv-memory-detail {
+    max-height: 150px;
+    margin-inline: 17px;
+  }
+  .vc-focus-error {
+    margin-inline: 17px;
+  }
+  .vc-focus-brand {
+    font-size: 14px;
+  }
+}
+@media (max-height: 660px) {
+  .vc-focus-orb {
+    width: 125px;
+    height: 125px;
+  }
+  .vc-focus-voice {
+    gap: 20px;
+    padding-top: 5px;
+  }
+  .vc-focus-voice h1 {
+    font-size: 22px;
+  }
+  .vc-focus-caption {
+    margin: 10px auto;
+    min-height: 22px;
+    -webkit-line-clamp: 2;
+  }
+  .vc-focus-controls {
+    padding-bottom: 13px;
+  }
+  .vc-focus-footer {
+    padding-bottom: 16px;
+  }
+  .vc-focus-header {
+    height: 54px;
+  }
+  .vc-focus-mode .vv-dropzone {
+    min-height: 180px;
+  }
+  .vc-focus-mode .vv-dropzone > span {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vc-focus-backdrop,
+  .voice-companion.vc-focus-mode {
+    animation: none;
+  }
+}

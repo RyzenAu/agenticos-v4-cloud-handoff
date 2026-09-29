@@ -1,0 +1,21 @@
+Real restart (PC restart ~14:59, 28 Sep). Snapshot before: live OS on 8081 at ~14:14 (PID 140620). After: PID 34992, started 14:59:30 by the supervisor.
+Compared read-only with scripts/memory/t6-restart-check.ts --compare:
+
+PASS  every item that existed is still there (same id, status, version and hash)
+      {"before":25,"after":25,"lost":[]}
+PASS  everything that was indexed in Hindsight is still recorded as indexed
+      {"unindexed":[]}
+PASS  tombstones and exclusions survived (forgotten stays forgotten)
+      {"before":{"notes":25,"docs":25,"memories":0,"indexed":25,"excluded":0,"tombstones":7},"after":{"notes":25,"docs":25,"memories":0,"indexed":25,"excluded":0,"tombstones":7}}
+PASS  no queued write was dropped (each is still queued or has since landed)
+      {"before":0,"after":0,"dropped":[]}
+PASS  the per-model save tally survived
+      {"before":{"openrouter/deepseek/deepseek-v4.1-flash":35},"after":{"openrouter/deepseek/deepseek-v4.1-flash":35}}
+PASS  the switch and the writer are as before
+      {"before":["on",null],"after":["on",null]}
+PASS  Hindsight state after the restart
+      {"before":"ok","after":"unknown"}
+
+Everything that was there before the restart is still there.
+
+Also (read-only, 15:1x): proxy 8878 /health 200; pilot state running, health 200, postgres running, writes through the proxy ON; /__memory status mode on, writes true, no writer refusal, pending 0, errors 0; one agent-route recall through the OS: HTTP 200, hindsight ok, answered via Hindsight; Hermes gateway running (venv python 35592 -> runtime python 35644, one parent/child pair, started 14:59:29); backup task file present (C:\Windows\System32\Tasks\MU\Hindsight nightly backup, written 02:51); last backup 03:34 ok (178 entries).

@@ -1,0 +1,194 @@
+{
+  "_comment": "Hindsight supervisor profiles. NO SECRETS in this file: keys and the DB password live in user-only files under D:\\hindsight\\service\\secrets (or env vars NAMED here). Deployed to D:\\hindsight\\service\\hindsight.profiles.json by hindsightctl.ps1 deploy.",
+  "defaults": {
+    "host": "127.0.0.1",
+    "python_exe": "D:\\hindsight\\venv\\Scripts\\python.exe",
+    "home_dir": "D:\\hindsight\\home",
+    "hf_home": "D:\\hindsight\\onnx-cache",
+    "hf_offline": true,
+    "api_key_env": "HINDSIGHT_SUPERVISOR_API_KEY",
+    "llm": {
+      "_comment": "Retain/extraction chain chosen by the 28 Sep synthetic route evaluation (docs/HINDSIGHT-OPS.md section 12). Failover in order; a member whose key reference is unset is skipped by name.",
+      "strategy": {
+        "mode": "failover"
+      },
+      "chain": [
+        {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "api_key_ref": {
+            "env": "OPENROUTER_API_KEY",
+            "file": "%USERPROFILE%\\.config\\agentic-os.env"
+          },
+          "extra_body": {
+            "provider": {
+              "zdr": true,
+              "data_collection": "deny"
+            }
+          },
+          "timeout": 60,
+          "max_retries": 1
+        },
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "api_key_ref": {
+            "env": "GROQ_API_KEY",
+            "file": "%USERPROFILE%\\.config\\agentic-os.env"
+          },
+          "timeout": 60,
+          "max_retries": 1
+        },
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-astra",
+          "codex_home": "C:\\Users\\Nebula PC\\.codex",
+          "timeout": 120
+        }
+      ],
+      "claude_oauth_token_env": "MU_HINDSIGHT_CLAUDE_OAUTH_TOKEN"
+    },
+    "api_env": {
+      "HINDSIGHT_API_EMBEDDINGS_PROVIDER": "onnx",
+      "HINDSIGHT_API_RERANKER_PROVIDER": "flashrank",
+      "HINDSIGHT_API_ENABLE_AUTO_CONSOLIDATION": "false",
+      "HINDSIGHT_API_LLM_TRACE_ENABLED": "true",
+      "HINDSIGHT_API_LLM_TRACE_MAX_CHARS": "1",
+      "HINDSIGHT_API_LLM_TRACE_RETENTION_DAYS": "30",
+      "HINDSIGHT_API_AUDIT_LOG_ENABLED": "false",
+      "HINDSIGHT_API_OPERATION_RETENTION_DAYS": "1",
+      "HINDSIGHT_API_LLM_GROQ_SERVICE_TIER": "on_demand",
+      "HINDSIGHT_API_MCP_ENABLED_TOOLS": "recall,reflect,list_banks,get_bank,get_bank_stats,list_tags,list_memories,get_memory,list_documents,get_document,list_operations,get_operation,list_mental_models,get_mental_model,list_directives,get_knowledge_base_tree,search_knowledge_base,get_knowledge_page"
+    },
+    "restart": {
+      "max_restarts": 5,
+      "window_s": 600,
+      "backoff_s": [
+        5,
+        10,
+        20,
+        40,
+        80
+      ],
+      "max_attempts": 8,
+      "attempts_window_s": 3600,
+      "max_consecutive": 5,
+      "stable_uptime_s": 900,
+      "max_per_day": 12
+    },
+    "health": {
+      "interval_s": 10,
+      "startup_grace_s": 240,
+      "fail_threshold": 6
+    },
+    "stop_timeout_s": 30,
+    "keep_launch_logs": 10,
+    "log_max_age_days": 14,
+    "db": {
+      "_comment": "Postgres run by the supervisor with pg_ctl (not pg0): data under D:\\hindsight\\db, no junction in the user profile, fsync ON. Passwords by reference: app role in password_file, `postgres` superuser in admin_password_file (operator only).",
+      "bin_dir": "D:\\hindsight\\pgsql\\18.1.0\\bin",
+      "name": "hindsight",
+      "user": "hindsight",
+      "options": [
+        "logging_collector=on",
+        "log_directory=log",
+        "log_rotation_age=1d",
+        "log_rotation_size=100MB",
+        "timezone=UTC",
+        "log_timezone=UTC",
+        "shared_buffers=256MB",
+        "work_mem=64MB",
+        "maintenance_work_mem=512MB",
+        "effective_cache_size=1GB",
+        "max_parallel_maintenance_workers=4"
+      ]
+    }
+  },
+  "profiles": {
+    "pilot": {
+      "port": 8888,
+      "run_dir": "D:\\hindsight\\service\\run\\pilot",
+      "log_dir": "D:\\hindsight\\logs\\pilot",
+      "key_file": "D:\\hindsight\\service\\secrets\\pilot.key",
+      "proxy": {
+        "port": 8878,
+        "read_banks": [
+          "mu-shared",
+          "mu-pilot"
+        ],
+        "write_banks": [
+          "mu-shared"
+        ],
+        "docdelete_secret_file": "D:\\hindsight\\service\\secrets\\pilot-docdelete.key",
+        "doc_deletes_per_hour": 20,
+        "write_images": [
+          "bun.exe"
+        ],
+        "writer_capability": "on",
+        "writer_port": 8081
+      },
+      "db": {
+        "data_dir": "D:\\hindsight\\db\\hindsight-mu",
+        "port": 5432,
+        "password_file": "D:\\hindsight\\service\\secrets\\pilot.db",
+        "admin_password_file": "D:\\hindsight\\service\\secrets\\pilot-pgadmin.db"
+      }
+    },
+    "synth": {
+      "_comment": "Synthetic test instance: own pg0 instance/data dir, own ports, own keys. Never points at mu-pilot.",
+      "port": 8889,
+      "run_dir": "D:\\hindsight\\service\\run\\synth",
+      "log_dir": "D:\\hindsight\\logs\\synth",
+      "key_file": "D:\\hindsight\\service\\secrets\\synth.key",
+      "api_key_env": "HINDSIGHT_SYNTH_API_KEY",
+      "proxy": {
+        "port": 8879,
+        "read_banks": [
+          "mu-shared",
+          "syn-*"
+        ],
+        "write_banks": [
+          "mu-shared",
+          "syn-*"
+        ],
+        "docdelete_secret_file": "D:\\hindsight\\service\\secrets\\synth-docdelete.key",
+        "doc_deletes_per_hour": 20
+      },
+      "db": {
+        "data_dir": "D:\\hindsight\\db\\hindsight-synth",
+        "port": 5433,
+        "password_file": "D:\\hindsight\\service\\secrets\\synth.db",
+        "admin_password_file": "D:\\hindsight\\service\\secrets\\synth-pgadmin.db"
+      }
+    },
+    "synth-crash": {
+      "_comment": "Crash-loop test only: its OWN port and pg0 instance (never shares with synth), and an LLM provider name that does not exist so the API exits at startup every time.",
+      "port": 8890,
+      "run_dir": "D:\\hindsight\\service\\run\\synth-crash",
+      "log_dir": "D:\\hindsight\\logs\\synth-crash",
+      "key_file": "D:\\hindsight\\service\\secrets\\synth.key",
+      "api_key_env": "HINDSIGHT_SYNTH_API_KEY",
+      "llm": {
+        "chain": [
+          {
+            "provider": "no-such-provider-crash-test",
+            "model": "none"
+          }
+        ]
+      },
+      "db": null,
+      "database_url": "postgresql://127.0.0.1:1/unused"
+    },
+    "synth-hang": {
+      "_comment": "Startup-hang test only: runs tests/hang_sim.py, which never becomes healthy. Own port, no database.",
+      "port": 8891,
+      "run_dir": "D:\\hindsight\\service\\run\\synth-hang",
+      "log_dir": "D:\\hindsight\\logs\\synth-hang",
+      "key_file": "D:\\hindsight\\service\\secrets\\synth.key",
+      "api_key_env": "HINDSIGHT_SYNTH_API_KEY",
+      "api_script": "D:\\hindsight\\service\\tests\\hang_sim.py",
+      "db": null,
+      "database_url": "postgresql://127.0.0.1:1/unused"
+    }
+  }
+}

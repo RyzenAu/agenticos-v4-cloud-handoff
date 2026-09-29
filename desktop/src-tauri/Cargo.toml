@@ -1,0 +1,42 @@
+[package]
+name = "app"
+version = "0.2.1"
+description = "Jarvis desktop tray shell for the Agentic OS"
+authors = ["M&U Ventures"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.6", features = ["tray-icon"] }
+tauri-plugin-log = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-global-shortcut = "2"
+ureq = { version = "2", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+# Pinned to match the versions tauri 2.11's own Cargo.toml depends on, so the
+# `ICoreWebView2*` types returned by `PlatformWebview::controller()` are the
+# exact same types (not a second, incompatible copy of the same COM bindings).
+webview2-com = "0.38"
+windows = { version = "0.61", features = [
+  "Win32_Foundation",
+  "Win32_System_Com",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Shell",
+  "Win32_System_Threading",
+  "Win32_Security",
+] }

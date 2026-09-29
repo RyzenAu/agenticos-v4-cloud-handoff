@@ -1,0 +1,136 @@
+/* Generated readable-size overrides (L4, 29 Sep 2026): every font-size under 13px on this page is lifted to 13px.
+   Scoped under .l4-calendar so it wins on specificity and the source files stay untouched. */
+.l4-calendar .op-button {
+  font-size: 13px;
+}
+.l4-calendar .op-panel-title small {
+  font-size: 13px;
+}
+.l4-calendar .op-panel-title > a {
+  font-size: 13px;
+}
+.l4-calendar .op-empty p {
+  font-size: 13px;
+}
+.l4-calendar .op-form-help {
+  font-size: 13px;
+}
+.l4-calendar .op-detail-text {
+  font-size: 13px;
+}
+.l4-calendar .op-detail-meta {
+  font-size: 13px;
+}
+.l4-calendar .op-detail-actions .op-button {
+  font-size: 13px;
+}
+.l4-calendar .op-pill {
+  font-size: 13px;
+}
+.l4-calendar .op-weekdays span {
+  font-size: 13px;
+}
+.l4-calendar .op-calendar-day > span {
+  font-size: 13px;
+}
+.l4-calendar .op-calendar-event {
+  font-size: 13px;
+}
+.l4-calendar .op-calendar-event.more {
+  font-size: 13px;
+}
+.l4-calendar .op-agenda-time {
+  font-size: 13px;
+}
+.l4-calendar .op-agenda-item h3 {
+  font-size: 13px;
+}
+.l4-calendar .op-agenda-item p {
+  font-size: 13px;
+}
+.l4-calendar .ar-mail-folders>.op-button {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-layout .op-calendar-day {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-layout .op-empty p {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-account-line small {
+  font-size: 13px;
+}
+.l4-calendar .ar-upcoming-agenda time {
+  font-size: 13px;
+}
+.l4-calendar .ar-upcoming-agenda p {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-sync-copy strong {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-sync-copy small {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-sync > button {
+  font-size: 13px;
+}
+.l4-calendar .ar-agenda-heading .op-select {
+  font-size: 13px;
+}
+.l4-calendar .ar-calendar-coverage {
+  font-size: 13px;
+}
+.l4-calendar .ar-native-calendar-copy p {
+  font-size: 13px;
+}
+.l4-calendar .ar-native-calendar-copy small {
+  font-size: 13px;
+}
+.l4-calendar .ar-page-chat-label p {
+  font-size: 13px;
+}
+.l4-calendar .ar-page-chat-suggestions button {
+  font-size: 13px;
+}
+@media (max-width: 767px) {
+.l4-calendar .op-calendar-event {
+  font-size: 13px;
+}
+}
+@media(max-width:1150px) {
+.l4-calendar .ar-mail-folders>.op-button {
+  font-size: 13px;
+}
+}
+@media(max-width:600px) {
+.l4-calendar .ar-accounts-list .op-button {
+  font-size: 13px;
+}
+.l4-calendar .ar-page-title .op-button {
+  font-size: 13px;
+}
+}
+@media (max-width: 600px) {
+.l4-calendar .ar-calendar-layout .op-calendar-toolbar .op-button {
+  font-size: 13px;
+}
+}
+
+.l4-calendar .op-button,
+.l4-calendar .op-button span,
+.l4-calendar .ar-page-chat-label small,
+.l4-calendar .ar-native-calendar-copy small {
+  font-size: 13px;
+}
+@media (min-width: 1151px) {
+  .l4-calendar .ar-calendar-layout {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* The shared model picker in the composer: its label is 10 px at phone width. */
+.l4-calendar .agentic-model-trigger-copy,
+.l4-calendar .agentic-model-trigger-copy span {
+  font-size: 13px;
+}

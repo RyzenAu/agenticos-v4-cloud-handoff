@@ -1,0 +1,248 @@
+{
+ "dental-home-1440": {
+  "status": 200,
+  "loadMs": 902,
+  "errors": [],
+  "title": "Lantern Dental · Gentle, unhurried dentistry in Rozelle",
+  "h1": [
+   "Dentistry.\nAt your pace."
+  ],
+  "overflowX": 0,
+  "height": 10013,
+  "videos": 0,
+  "imgs": 7,
+  "transferKB": 2881,
+  "risks": [
+   "rated",
+   "confirmed"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Treatments New patients Our team FAQs Contact (02) 5550 0142 Book Dentistry. At your pace. You’ll know the plan, the fee and the time before we start. General dentistry in Rozelle. Level 1, 214 Darling Street. Book an appointment See example times Scroll, and the lantern comes up. 01 Longer appointments, so nothing is rushed. 02 An agreed signal to pause, at any point. 03 The plan and the fee in writing, before anyt",
+  "focus": [
+   {
+    "tag": "A",
+    "text": "Skip to content",
+    "outline": "solid 2px rgb(20, 58, 98)",
+    "shadow": "none"
+   },
+   {
+    "tag": "A",
+    "text": "About M&U Ventures",
+    "outline": "solid 2px rgb(238, 246, 255)",
+    "shadow": "none"
+   },
+   {
+    "tag": "A",
+    "text": "Lantern Dental\nRozelle",
+    "outline": "solid 2px rgb(255, 255, 255)",
+    "shadow": "none"
+   },
+   {
+    "tag": "BUTTON",
+    "text": "Treatments",
+    "outline": "solid 2px rgb(255, 255, 255)",
+    "shadow": "none"
+   }
+  ]
+ },
+ "dental-home-390": {
+  "status": 200,
+  "loadMs": 381,
+  "errors": [],
+  "title": "Lantern Dental · Gentle, unhurried dentistry in Rozelle",
+  "h1": [
+   "Dentistry.\nAt your pace."
+  ],
+  "overflowX": 0,
+  "height": 10088,
+  "videos": 0,
+  "imgs": 7,
+  "transferKB": 2579,
+  "risks": [
+   "rated",
+   "confirmed"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Open menu Book an appointment Dentistry. At your pace. You’ll know the plan, the fee and the time before we start. General dentistry in Rozelle. Level 1, 214 Darling Street. See example times Scroll, and the lantern comes up. Illustrative film, AI-generated for this concept. Not Lantern Dental’s premises, staff or patients. A little more time. A clearer plan. Nothing happens in your mouth until you have said what ",
+  "focus": null
+ },
+ "dental-home-360": {
+  "status": 200,
+  "loadMs": 291,
+  "errors": [],
+  "title": "Lantern Dental · Gentle, unhurried dentistry in Rozelle",
+  "h1": [
+   "Dentistry.\nAt your pace."
+  ],
+  "overflowX": 0,
+  "height": 10010,
+  "videos": 0,
+  "imgs": 7,
+  "transferKB": 2553,
+  "risks": [
+   "rated",
+   "confirmed"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Open menu Book an appointment Dentistry. At your pace. You’ll know the plan, the fee and the time before we start. General dentistry in Rozelle. Level 1, 214 Darling Street. See example times Scroll, and the lantern comes up. Illustrative film, AI-generated for this concept. Not Lantern Dental’s premises, staff or patients. A little more time. A clearer plan. Nothing happens in your mouth until you have said what ",
+  "focus": null
+ },
+ "dental-book-1440": {
+  "status": 500,
+  "loadMs": 449,
+  "errors": [
+   "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+   "PAGEERROR error: password authentication failed for user 'ops_owner'",
+   "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "title": "",
+  "h1": [
+   "This page couldn’t load"
+  ],
+  "overflowX": 0,
+  "height": 900,
+  "videos": 0,
+  "imgs": 0,
+  "transferKB": 877,
+  "risks": [],
+  "first": "This page couldn’t load A server error occurred. Reload to try again. Reload ERROR 1469581849",
+  "focus": null
+ },
+ "dental-book-390": {
+  "status": 500,
+  "loadMs": 465,
+  "errors": [
+   "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+   "PAGEERROR error: password authentication failed for user 'ops_owner'"
+  ],
+  "title": "",
+  "h1": [
+   "This page couldn’t load"
+  ],
+  "overflowX": 0,
+  "height": 844,
+  "videos": 0,
+  "imgs": 0,
+  "transferKB": 877,
+  "risks": [],
+  "first": "This page couldn’t load A server error occurred. Reload to try again. Reload ERROR 1469581849",
+  "focus": null
+ },
+ "dental-new-patients-1440": {
+  "status": 200,
+  "loadMs": 404,
+  "errors": [],
+  "title": "New patients · Lantern Dental",
+  "h1": [
+   "Starting here, without the guesswork."
+  ],
+  "overflowX": 0,
+  "height": 3644,
+  "videos": 0,
+  "imgs": 1,
+  "transferKB": 848,
+  "risks": [
+   "rated"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Treatments New patients Our team FAQs Contact (02) 5550 0142 Book Starting here, without the guesswork. Whether it has been six months or six years since your last visit, here is exactly what to expect. Before you come, during the appointment, and what you leave with. Before you come Nothing here is compulsory. If you cannot find something, come anyway — we can usually work around it. BRING, IF YOU HAVE THEM Photo I",
+  "focus": null
+ },
+ "dental-new-patients-390": {
+  "status": 200,
+  "loadMs": 239,
+  "errors": [],
+  "title": "New patients · Lantern Dental",
+  "h1": [
+   "Starting here, without the guesswork."
+  ],
+  "overflowX": 0,
+  "height": 5812,
+  "videos": 0,
+  "imgs": 1,
+  "transferKB": 848,
+  "risks": [
+   "rated"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Open menu Book an appointment Starting here, without the guesswork. Whether it has been six months or six years since your last visit, here is exactly what to expect. Before you come, during the appointment, and what you leave with. Before you come Nothing here is compulsory. If you cannot find something, come anyway — we can usually work around it. BRING, IF YOU HAVE THEM Photo ID, your Medicare card, and your heal",
+  "focus": null
+ },
+ "dental-fees-1440": {
+  "status": 200,
+  "loadMs": 303,
+  "errors": [],
+  "title": "Lantern Dental · Gentle, unhurried dentistry in Rozelle",
+  "h1": [
+   "Dentistry.\nAt your pace."
+  ],
+  "overflowX": 0,
+  "height": 10013,
+  "videos": 0,
+  "imgs": 7,
+  "transferKB": 2953,
+  "risks": [
+   "rated",
+   "confirmed"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Treatments New patients Our team FAQs Contact (02) 5550 0142 Book Dentistry. At your pace. You’ll know the plan, the fee and the time before we start. General dentistry in Rozelle. Level 1, 214 Darling Street. Book an appointment See example times Scroll, and the lantern comes up. 01 Longer appointments, so nothing is rushed. 02 An agreed signal to pause, at any point. 03 The plan and the fee in writing, before anyt",
+  "focus": null
+ },
+ "dental-fees-390": {
+  "status": 200,
+  "loadMs": 344,
+  "errors": [],
+  "title": "Lantern Dental · Gentle, unhurried dentistry in Rozelle",
+  "h1": [
+   "Dentistry.\nAt your pace."
+  ],
+  "overflowX": 0,
+  "height": 10088,
+  "videos": 0,
+  "imgs": 7,
+  "transferKB": 2579,
+  "risks": [
+   "rated",
+   "confirmed"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Open menu Book an appointment Dentistry. At your pace. You’ll know the plan, the fee and the time before we start. General dentistry in Rozelle. Level 1, 214 Darling Street. See example times Scroll, and the lantern comes up. Illustrative film, AI-generated for this concept. Not Lantern Dental’s premises, staff or patients. A little more time. A clearer plan. Nothing happens in your mouth until you have said what ",
+  "focus": null
+ },
+ "dental-team-1440": {
+  "status": 200,
+  "loadMs": 264,
+  "errors": [],
+  "title": "Our team · Lantern Dental",
+  "h1": [
+   "Three people you’ll actually see."
+  ],
+  "overflowX": 0,
+  "height": 2517,
+  "videos": 0,
+  "imgs": 0,
+  "transferKB": 817,
+  "risks": [
+   "dr amara",
+   "dr tom",
+   "rated"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Treatments New patients Our team FAQs Contact (02) 5550 0142 Book Three people you’ll actually see. A small, steady team rather than a rotating roster. Each profile below is a fictional demonstration, standing in for the kind of practitioner a real clinic would introduce. AO Dr Amara Osei Principal dentist · Registered dentist Amara opened Lantern in 2019 after a decade in general practice. She takes the longer appo",
+  "focus": null
+ },
+ "dental-team-390": {
+  "status": 200,
+  "loadMs": 186,
+  "errors": [],
+  "title": "Our team · Lantern Dental",
+  "h1": [
+   "Three people you’ll actually see."
+  ],
+  "overflowX": 0,
+  "height": 4016,
+  "videos": 0,
+  "imgs": 0,
+  "transferKB": 817,
+  "risks": [
+   "dr amara",
+   "dr tom",
+   "rated"
+  ],
+  "first": "Skip to content Concept demonstration by M&U Ventures. Lantern Dental is a fictional clinic; people, fees and bookings are synthetic. About M&U Ventures Lantern Dental Rozelle Open menu Book an appointment Three people you’ll actually see. A small, steady team rather than a rotating roster. Each profile below is a fictional demonstration, standing in for the kind of practitioner a real clinic would introduce. AO Dr Amara Osei Principal dentist · Registered dentist Amara opened Lantern in 2019 after a decade in general practice. She takes the longer appointments herself and is the dentist ",
+  "focus": null
+ }
+}

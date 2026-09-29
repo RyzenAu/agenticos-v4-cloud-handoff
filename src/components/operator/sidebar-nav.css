@@ -1,0 +1,85 @@
+/* Sidebar buckets (UX audit 27 Sep 2026): "Today" is pinned, each bucket folds. Tokens only. */
+
+.op-nav-group + .op-nav-group {
+  margin-top: 4px;
+}
+
+/* The pinned daily group sits apart from the buckets with a hairline, not a caption. */
+.op-nav-group:first-child {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.op-nav-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-standard);
+}
+.op-nav-toggle > span {
+  flex: 1;
+}
+.op-nav-toggle em {
+  font-style: normal;
+  letter-spacing: 0;
+  color: var(--muted-foreground);
+}
+.op-nav-toggle > svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: transform var(--dur-base) var(--ease-standard);
+}
+.op-nav-toggle > svg[data-open] {
+  transform: rotate(90deg);
+}
+.op-nav-toggle:hover {
+  color: var(--foreground);
+}
+.op-nav-toggle[aria-disabled="true"] {
+  cursor: default;
+}
+.op-nav-toggle[aria-disabled="true"] > svg {
+  opacity: 0.3;
+}
+.op-nav-toggle:focus-visible,
+.op-nav-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* One badge style for the inbox count: calm, readable, never wider than the label column. */
+.op-nav-link b {
+  min-width: 22px;
+  text-align: center;
+  background: var(--brand-soft);
+  color: var(--foreground);
+}
+.op-nav-link.active b {
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+
+/* Sentence-case profile caption at the type floor (was 9px caps). */
+.op-identity.ar-sidebar-profile small {
+  font-size: var(--text-xs);
+  letter-spacing: 0;
+  margin-top: 1px;
+  font-weight: 400;
+}
+.op-identity.ar-sidebar-profile {
+  font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .op-nav-toggle,
+  .op-nav-toggle > svg {
+    transition: none;
+  }
+}

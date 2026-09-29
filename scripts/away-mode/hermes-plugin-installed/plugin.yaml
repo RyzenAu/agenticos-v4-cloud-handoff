@@ -1,0 +1,6 @@
+name: away-mode
+version: "1.0.0"
+description: "Relays Usman's away-mode Telegram commands (/away, /task, /stop, /status, /log, yes|no CODE) to the Agentic OS on this PC before Hermes' agent sees them. Loopback only, bearer token from the OS; the OS checks the chat ID."
+author: "M&U Ventures (AgenticOS-v4 scripts/away-mode)"
+hooks:
+  - pre_gateway_dispatch

@@ -1,0 +1,52 @@
+/**
+ * Shared types for people, devices and command targets (Wave 2 devices track).
+ *
+ * Two people use Agentic OS: Usman (owner, runs the hub on his PC) and Mehroz (co-founder).
+ * A "target" is a machine that can execute desktop/browser actions: the hub itself, or a
+ * paired companion worker on someone's own PC. Browsers are never targets; they are sessions.
+ */
+
+export const PERSON_IDS = ["usman", "mehroz"] as const;
+export type PersonId = (typeof PERSON_IDS)[number];
+
+export function isPersonId(value: unknown): value is PersonId {
+  return typeof value === "string" && (PERSON_IDS as readonly string[]).includes(value);
+}
+
+/** "Usman" / " MEHROZ " → "usman" / "mehroz"; anything else → null. */
+export function normalisePersonId(value: unknown): PersonId | null {
+  const id = String(value ?? "").trim().toLowerCase();
+  return isPersonId(id) ? id : null;
+}
+
+export type TargetKind = "hub" | "companion";
+
+export type TargetDevice = {
+  id: string;
+  owner: PersonId;
+  kind: TargetKind;
+  /** Human label, e.g. "Usman's PC" or "Mehroz's laptop". */
+  label: string;
+  /** Words a person may say to name it ("pc", "laptop", "study"). */
+  aliases: string[];
+  /** The owner's default device when a command names none. */
+  primary?: boolean;
+  pairedAt?: number;
+  /** Hard expiry of the companion's pairing (ms epoch). Hubs never expire. */
+  expiresAt?: number;
+  revokedAt?: number;
+};
+
+export type Presence = { lastSeen: number; micOwned?: boolean; busy?: boolean; version?: string };
+
+/** The contract other tracks code against (WAVE2-CONTRACT.md). */
+export type ResolveContext = {
+  personId: string;
+  spokenTarget?: string;
+  /** Optional: the device the request came from (a companion relaying its own voice command). */
+  originDeviceId?: string;
+};
+
+export type ResolveResult =
+  | { ok: true; deviceId: string; owner: PersonId; online: boolean }
+  | { ok: false; reason: string; deviceId?: string };

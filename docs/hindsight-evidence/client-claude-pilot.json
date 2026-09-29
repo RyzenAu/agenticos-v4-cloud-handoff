@@ -1,0 +1,10 @@
+﻿{
+  "client": "claude",
+  "target": "pilot",
+  "bank": "mu-pilot",
+  "canary": null,
+  "rc": 0,
+  "found_canary": null,
+  "reply_excerpt": "31",
+  "stderr_tail": ""
+}

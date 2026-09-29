@@ -1,0 +1,31 @@
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,6 +1,7 @@
+ import { createHiggsfieldMcp } from "./scripts/higgsfield-mcp";
+ import { spliceTopLevelBlock } from "./scripts/config-splice";
+-import { tailnetPerson } from "./scripts/remote-access";
++import { readPeople, tailnetPerson } from "./scripts/remote-access";
++import { memoryPlugin } from "./scripts/memory/plugin";
+ import { installHiggsfieldAccountRoutes } from "./scripts/higgsfield-account-routes";
+ import { createHiggsfieldApi, higgsfieldEnvironmentKey, higgsfieldParams, normalizeHiggsfieldKey, readHiggsfieldRequests } from "./scripts/higgsfield-api";
+ import { chatRuntimeArgs } from "./scripts/chat-runtime";
+@@ -1166,6 +1167,19 @@
+       aiUsagePlugin({ root: __dirname, token: REFRESH_TOKEN, providerKey: (name) => providerKey(__dirname, name) }),
+       receptionistPlugin({ root: __dirname, token: REFRESH_TOKEN, providerKey: (n) => providerKey(__dirname, n) }),
+       workspacePlugin({ root: __dirname }),
++      // Memory connector (Obsidian <-> Hindsight). Identity comes from the verified request context:
++      // the same isLoopback + tailnetPerson contract as every privileged /__* route; never Host alone.
++      // MEMORY_WRITES and HINDSIGHT_ENABLED both default OFF (scripts/memory/settings.ts).
++      memoryPlugin({
++        root: __dirname,
++        principalFor: (req) => {
++          if (!isLoopback(req)) return null;
++          const person = tailnetPerson(req);
++          if (person) return { id: person.name.trim().toLowerCase(), name: person.name, via: "tailnet" };
++          const owner = readPeople(__dirname).find((p) => (p.role ?? "").toLowerCase() === "owner");
++          return { id: "local-owner", name: owner?.name ?? "Owner", via: "local" };
++        },
++      }),
+       // Motion Library (/motion, Jack's 25 Sep release): prompt writer, brand from a link,
+       // Claude Code / Codex launch, mp4 export. Enhance runs the pinned real claude.exe
+       // (never a .cmd shim) and only on a click; see src/motion/server/plugin.ts.

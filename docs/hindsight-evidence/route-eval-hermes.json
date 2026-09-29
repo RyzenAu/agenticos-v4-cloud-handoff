@@ -1,0 +1,51 @@
+{
+  "run": "29071b",
+  "results": [
+    {
+      "route": "hermes",
+      "provider": "openai",
+      "model": "hermes-agent",
+      "cost_basis": "Hermes' own model (Codex subscription) via an agent run",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 1,
+      "errors": 0,
+      "error_detail": [],
+      "quality_pct": 80.0,
+      "hallucinations": 0,
+      "facts_per_doc": 1.0,
+      "latency_s": {
+        "median": 8.2,
+        "max": 8.2
+      },
+      "receipts": [
+        {
+          "provider": "openai",
+          "model": "hermes-agent",
+          "status": "success",
+          "calls": 1,
+          "input_tokens": 16627,
+          "output_tokens": 145,
+          "avg_ms": 7938
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 16627,
+        "output": 145
+      },
+      "usd": null,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 1,
+          "found": 4,
+          "total": 5,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    }
+  ]
+}

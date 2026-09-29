@@ -1,0 +1,61 @@
+PASS  [setup] the owner's browser session and page token at this PC
+      {"session":true,"token":true}
+PASS  [setup] memory is on, this is the one writer, Hindsight through the proxy, no key in the OS
+      {"mode":"on","writes":true,"writer":null,"url":"http://127.0.0.1:8878","bank":"mu-shared","api_key":"missing","pending":0}
+PASS  [setup] the proxy's document-delete budget has room (this run uses about 7 of 20 an hour)
+      {"deletes_last_hour":1}
+PASS  [setup] the vault is where the OS reads it
+      {"vault":"C:\\Users\\Nebula PC\\source\\repos\\mu-ventures-obsidian-wiki"}
+PASS  [A save] "remember" through the live OS
+      Remembered in Hindsight memory as mem-1763c44acc ("T6 live check 4421bb: the synthetic Verifier4421bb clinic opens"): indexed in Hindsight. Not written to the vault.
+PASS  [A receipt] confirmed in Hindsight with the model that processed it (Hindsight's own receipt)
+      {"id":"mem-1763c44acc","processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3469 tokens)"}
+PASS  [A save] the document is in the pilot's shared pool
+      {"id":"mem-1763c44acc"}
+PASS  [A recall] recall answers through Hindsight with its source
+      {"id":"mem-1763c44acc","via":["hindsight","local"],"source":{"kind":"memory","id":"mem-1763c44acc"}}
+PASS  [A correction] correction saved as a new version
+      Corrected: mem-7479c31d94 replaces mem-1763c44acc, which is kept here marked superseded and retracted from Hindsight. The new version is indexed in Hindsight.
+PASS  [A correction] the new version is recalled; the old one left Hindsight and is never recalled
+      {"new_id":"mem-7479c31d94","processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3469 tokens)","old_document":404}
+PASS  [A forget b] forget kind b asks for approval first
+      Delete Hindsight memory "T6 live check 4421bb: the synthetic Verifier4421bb clinic opens" (2 version(s)). This needs approval first.
+PASS  [A forget b] approved in the owner's own session (his own request, the page's button)
+      {"ok":true,"approval":{"id":"apr-30e96f0e9356a7ef","summary":"Delete Hindsight memory \"T6 live check 4421bb: the synthetic Verifier4421bb clinic opens\" (2 version(s)).","expires_at":"2026-09-28T02:47:21.656Z"}}
+PASS  [A forget b] deleted from the app and from Hindsight (both versions)
+      {"message":"Deleted Hindsight memory \"T6 live check 4421bb: the synthetic Verifier4421bb clinic opens\" (2 version(s)): removed from this app's store and the local index, and deleted from Hindsight. A tombstone stops it coming back.","document":404}
+PASS  [B create] a new vault note is picked up by the sync
+      {"id":"n-ae0a8d8770","path":"wiki/topics/general/zz-t6-sync-check-4421bb.md"}
+PASS  [B create] indexed in Hindsight with its model receipt
+      {"id":"n-ae0a8d8770","processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3581 tokens)"}
+PASS  [B create] the note's document is in the pilot's shared pool
+      {"status":200}
+PASS  [B recall] recall cites the vault note as the source
+      {"via":["hindsight","local"],"source":{"kind":"vault","path":"wiki/topics/general/zz-t6-sync-check-4421bb.md","note_id":"n-ae0a8d8770","link":"[[zz-t6-sync-check-4421bb]]","uri":"obsidian://open?vault=mu-ventures-obsidian-wiki&file=wiki%2Ftopics%2Fgeneral%2Fzz-t6-sync-check-4421bb"}}
+PASS  [B edit] the Obsidian edit is re-indexed: Hindsight holds the new wording and not the old; recall shows the new
+      {"same_id":true,"processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3583 tokens)"}
+PASS  [B rename] a rename keeps the note id and its Hindsight document (new path, no duplicate)
+      {"id":"n-ae0a8d8770","path":"wiki/topics/general/zz-t6-sync-check-4421bb-renamed.md"}
+PASS  [B forget a] forget kind a needs no approval: out of Hindsight, the file stays in the vault
+      {"message":"Removed \"T6 live check 4421bb sync\" from the index. The note stays in the vault at wiki/topics/general/zz-t6-sync-check-4421bb-renamed.md; it won't be re-indexed until you re-include it.","document":404}
+PASS  [B re-include] re-included: back in Hindsight, with a fresh model receipt
+      {"message":"Re-included in the index.","processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3768 tokens)"}
+PASS  [B delete] deleting the note in the vault retracts it from Hindsight and the index
+      {"document":404}
+PASS  [C create] the second test note is indexed
+      {"id":"n-3e266b79f8"}
+PASS  [C create] confirmed in Hindsight with its model receipt
+      {"processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3578 tokens)"}
+PASS  [C forget c (section)] forget kind c of one section asks for approval, and the owner's own session approves it
+      {"ask":"Forget \"T6 live check 4421bb forget › Drop\" in wiki/topics/general/zz-t6-forget-check-4421bb.md everywhere: the vault section, 1 Hindsight document(s) and 0 derived memory copy(ies). This needs approval first.","grant":true}
+PASS  [C forget c (section)] the section is removed from the vault note; Hindsight re-indexed the note without it; recall never shows it
+      {"message":"Forgot \"T6 live check 4421bb forget › Drop\": the section was removed from wiki/topics/general/zz-t6-forget-check-4421bb.md, 0 derived memory copy(ies) deleted, the local index updated, and 1 Hindsight document(s) queued for deletion (Hindsight isn't reachable right now). Tombstones stop a sync or a restored file bringing it back.","processed_by":"openrouter/deepseek/deepseek-v4.1-flash (metered, 3561 tokens)"}
+PASS  [C forget c (note)] forget kind c of the whole note: approved, the file is deleted from the vault and the document from Hindsight
+      {"message":"Forgot \"T6 live check 4421bb forget\": the note was deleted from wiki/topics/general/zz-t6-forget-check-4421bb.md, 0 derived memory copy(ies) deleted, the local index updated, and 1 Hindsight document(s) deleted. Tombstones stop a sync or a restored file bringing it back.","document":404}
+PASS  [receipts] every save this run has a model receipt (saves per model, this run)
+      {"openrouter/deepseek/deepseek-v4.1-flash":7}
+PASS  [end state] nothing from this run is left in the index; nothing pending; no errors
+      {"leftovers":[],"pending":0,"errors":0,"tombstones":7,"deletes_last_hour":7}
+
+All 29 checks passed.
+exit=0

@@ -1,0 +1,57 @@
+{
+ "label": "before",
+ "at": "2026-09-24T03:12:58.677Z",
+ "summary": "questions: 5\nfirst audio today (turn + tts of the grouped reply): median 1928 ms\nfirst sentence alone: median 1608 ms\nstreamed turn, first audio: median 0 ms",
+ "rows": [
+  {
+   "question": "What's the capital of Portugal?",
+   "reply": "The capital of Portugal is Lisbon, sir. Quite a charming spot for a spot of tea.",
+   "turn": 828,
+   "ttsAll": 943,
+   "tts1": 780,
+   "firstAudioBefore": 1771,
+   "firstAudioSplit": 1608,
+   "stream": null
+  },
+  {
+   "question": "Tell me a quick joke about queuing.",
+   "reply": "Ah, the queue: where we all stand politely, hoping the line will move faster than the British weather. Sir, it's the only place where being “first in line” feels like a spot of bother.",
+   "turn": 810,
+   "ttsAll": 2450,
+   "tts1": 1899,
+   "firstAudioBefore": 3260,
+   "firstAudioSplit": 2709,
+   "stream": null
+  },
+  {
+   "question": "Explain what a directory junction is on Windows.",
+   "reply": "A directory junction is a type of NTFS reparse point that makes one folder appear as though it lives at another location, allowing programs to access the same files via two different paths. It’s essentially a lightweight shortcut for directories, created with the `mklink /J` command. \n\nA tidy way to keep things in order, sir—just don’t expect it to brew the tea.",
+   "turn": 869,
+   "ttsAll": 1059,
+   "tts1": 1047,
+   "firstAudioBefore": 1928,
+   "firstAudioSplit": 1916,
+   "stream": null
+  },
+  {
+   "question": "How do I say thank you in Urdu?",
+   "reply": "You would say “شکریہ” (shukriya), sir. A spot of gratitude never goes amiss.",
+   "turn": 525,
+   "ttsAll": 394,
+   "tts1": 453,
+   "firstAudioBefore": 919,
+   "firstAudioSplit": 978,
+   "stream": null
+  },
+  {
+   "question": "Give me one tip for opening a cold call with a dentist.",
+   "reply": "Begin by acknowledging their expertise: “Good morning, Dr. [Name]. I’ve heard great things about your practice’s commitment to patient comfort, and I’d love to discuss how we can help you enhance that even further.” \n\nA polite nod to their skill sets the tone, sir.",
+   "turn": 938,
+   "ttsAll": 1272,
+   "tts1": 627,
+   "firstAudioBefore": 2210,
+   "firstAudioSplit": 1565,
+   "stream": null
+  }
+ ]
+}

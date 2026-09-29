@@ -1,0 +1,66 @@
+﻿{
+  "port": 8878,
+  "results": [
+    {
+      "case": "rebinding Host evil.example",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "rebinding Host evil.example:<port>",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "Host 127.0.0.1 without port",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "Origin present",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "Origin null",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "Sec-Fetch-Site + Sec-Fetch-Mode: cors",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "case": "Sec-Fetch-Mode: cors alone (Node server-side fetch)",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "case": "Host localhost:<port>",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "case": "plain client",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "case": "HTTP/1.0 without Host",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    }
+  ],
+  "all_pass": true
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "route": "/workspace",
+    "width": 1440,
+    "h1Ms": 651,
+    "h1": "Workspace",
+    "docOverflow": false,
+    "inner": [],
+    "innerCount": 0,
+    "url": "/workspace",
+    "axe": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "n": 6,
+        "target": [
+          "div[aria-label=\"Loading Owner approvals\"]",
+          "div[aria-label=\"Loading Receptionist\"]",
+          "div[aria-label=\"Loading Call queue\"]"
+        ]
+      }
+    ],
+    "errors": [],
+    "errorCount": 0
+  },
+  {
+    "route": "/workspace",
+    "width": 390,
+    "h1Ms": 501,
+    "h1": "Workspace",
+    "docOverflow": false,
+    "inner": [],
+    "innerCount": 0,
+    "url": "/workspace",
+    "axe": [],
+    "errors": [],
+    "errorCount": 0
+  },
+  {
+    "route": "/business",
+    "width": 1440,
+    "h1Ms": 2324,
+    "h1": null,
+    "docOverflow": false,
+    "inner": [],
+    "innerCount": 0,
+    "url": "/business",
+    "axe": [],
+    "errors": [
+      "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the rend",
+      "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the rend",
+      "TypeError: Cannot read properties of null (reading 'useMemo')\n    at exports.useMemo (http://127.0.0.1:8081/node_modules/.vite/deps/chunk-IE4O3KVA.js:947:35)\n    at useScope (http://127.0.0.1:8081/nod",
+      "TypeError: Cannot read properties of null (reading 'useMemo')\n    at exports.useMemo (http://127.0.0.1:8081/node_modules/.vite/deps/chunk-IE4O3KVA.js:947:35)\n    at useScope (http://127.0.0.1:8081/nod",
+      "%o\n\n%s\n\n%s\n TypeError: Cannot read properties of null (reading 'useMemo')\n    at exports.useMemo (http://127.0.0.1:8081/node_modules/.vite/deps/chunk-IE4O3KVA.js:947:35)\n    at useScope (http://127.0."
+    ],
+    "errorCount": 5
+  },
+  {
+    "route": "/business",
+    "width": 390,
+    "h1Ms": 373,
+    "h1": null,
+    "docOverflow": false,
+    "inner": [],
+    "innerCount": 0,
+    "url": "/business",
+    "axe": [],
+    "errors": [
+      "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the rend",
+      "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the rend",
+      "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the rend",
+      "TypeError: Cannot read properties of null (reading 'useMemo')\n    at exports.useMemo (http://127.0.0.1:8081/node_modules/.vite/deps/chunk-IE4O3KVA.js:947:35)\n    at useScope (http://127.0.0.1:8081/nod",
+      "TypeError: Cannot read properties of null (reading 'useMemo')\n    at exports.useMemo (http://127.0.0.1:8081/node_modules/.vite/deps/chunk-IE4O3KVA.js:947:35)\n    at useScope (http://127.0.0.1:8081/nod"
+    ],
+    "errorCount": 6
+  }
+]

@@ -1,0 +1,827 @@
+{
+ "date": "2026-09-25",
+ "note": "Round 4: 32-task end-to-end suite, Do not disturb, Teach Mode drags, capability list. Own windows only, idle-gated.",
+ "suite": {
+  "before": {
+   "newTasksA": "stopped early (registry virtualisation found); see rows in part b",
+   "newTasksB": {
+    "summary": {
+     "label": "r4-before-b",
+     "at": "2026-09-24T23:46:05.381Z",
+     "tasks": 13,
+     "ran": 12,
+     "skipped": [
+      "chrome-bookmarks: Jarvis Chrome isn't running"
+     ],
+     "completed": 5,
+     "completionRate": 42,
+     "questions": 8,
+     "wrongActions": 5,
+     "totalSeconds": 326.9,
+     "p50Seconds": 24.344,
+     "p90Seconds": 47.533
+    },
+    "rows": [
+     {
+      "id": "focus-timer-mute",
+      "ok": true,
+      "q": 0,
+      "ms": 1562,
+      "tools": [
+       "skill:start",
+       "skill:notifications"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "chrome-bookmarks",
+      "ok": false,
+      "skipped": "Jarvis Chrome isn't running",
+      "q": 0,
+      "ms": 0,
+      "tools": [],
+      "wrong": []
+     },
+     {
+      "id": "zip-folder",
+      "ok": false,
+      "q": 2,
+      "ms": 35696,
+      "tools": [
+       "control_pc",
+       "control_pc"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "copy-file",
+      "ok": true,
+      "q": 1,
+      "ms": 47533,
+      "tools": [
+       "control_pc",
+       "control_pc",
+       "control_pc"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "move-file",
+      "ok": true,
+      "q": 1,
+      "ms": 31114,
+      "tools": [
+       "control_pc",
+       "control_pc"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "pdf-export",
+      "ok": false,
+      "q": 0,
+      "ms": 28415,
+      "tools": [
+       "control_pc"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "excel-sum",
+      "ok": false,
+      "q": 2,
+      "ms": 85923,
+      "tools": [
+       "control_pc",
+       "control_pc"
+      ],
+      "wrong": [
+       "used control_pc",
+       "used control_pc"
+      ]
+     },
+     {
+      "id": "word-bold",
+      "ok": false,
+      "q": 0,
+      "ms": 20358,
+      "tools": [
+       "control_pc"
+      ],
+      "wrong": [
+       "used control_pc"
+      ]
+     },
+     {
+      "id": "screenshot",
+      "ok": false,
+      "q": 1,
+      "ms": 24344,
+      "tools": [
+       "control_pc",
+       "control_pc"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "snipping-tool",
+      "ok": true,
+      "q": 0,
+      "ms": 372,
+      "tools": [
+       "pc_act:open_app"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "dark-mode",
+      "ok": true,
+      "q": 0,
+      "ms": 15020,
+      "tools": [
+       "skill:theme"
+      ],
+      "wrong": []
+     },
+     {
+      "id": "clipboard-copy",
+      "ok": false,
+      "q": 1,
+      "ms": 12542,
+      "tools": [
+       "control_pc"
+      ],
+      "wrong": [
+       "used control_pc"
+      ]
+     },
+     {
+      "id": "clipboard-history",
+      "ok": false,
+      "q": 0,
+      "ms": 24040,
+      "tools": [
+       "pc_act:open_app",
+       "control_pc"
+      ],
+      "wrong": [
+       "used control_pc"
+      ]
+     }
+    ]
+   }
+  },
+  "after": {
+   "summary": {
+    "label": "r4-after",
+    "at": "2026-09-25T00:00:02.546Z",
+    "tasks": 32,
+    "ran": 28,
+    "skipped": [
+     "vscode-tests: VS Code is already open (his), so it wasn't touched",
+     "notepad-list: Notepad is already running (someone's tabs), so it wasn't touched",
+     "switch-window: Notepad is already running (his, or another agent's)",
+     "chrome-bookmarks: Jarvis Chrome isn't running"
+    ],
+    "completed": 25,
+    "completionRate": 89,
+    "questions": 0,
+    "wrongActions": 0,
+    "totalSeconds": 173.2,
+    "p50Seconds": 0.431,
+    "p90Seconds": 3.287
+   },
+   "rows": [
+    {
+     "id": "vercel-status",
+     "ok": true,
+     "q": 0,
+     "ms": 5829,
+     "tools": [
+      "open_url",
+      "skill:latest"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "rename-screenshots",
+     "ok": true,
+     "q": 0,
+     "ms": 18,
+     "tools": [
+      "skill:rename_by_date"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "vscode-tests",
+     "ok": false,
+     "skipped": "VS Code is already open (his), so it wasn't touched",
+     "q": 0,
+     "ms": 0,
+     "tools": [],
+     "wrong": []
+    },
+    {
+     "id": "bluetooth-on",
+     "ok": true,
+     "q": 0,
+     "ms": 751,
+     "tools": [
+      "skill:radio"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "focus-timer-mute",
+     "ok": true,
+     "q": 0,
+     "ms": 1610,
+     "tools": [
+      "skill:start",
+      "skill:notifications"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "spotify-liked",
+     "ok": false,
+     "q": 0,
+     "ms": 147530,
+     "tools": [
+      "open_url",
+      "pc_act:open_app",
+      "control_pc",
+      "control_pc",
+      "control_pc",
+      "control_pc"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "form-fill",
+     "ok": true,
+     "q": 0,
+     "ms": 3287,
+     "tools": [
+      "screen_act"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "notepad-list",
+     "ok": false,
+     "skipped": "Notepad is already running (someone's tabs), so it wasn't touched",
+     "q": 0,
+     "ms": 0,
+     "tools": [],
+     "wrong": []
+    },
+    {
+     "id": "battery",
+     "ok": true,
+     "q": 0,
+     "ms": 78,
+     "tools": [
+      "skill:battery"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "disk-space",
+     "ok": true,
+     "q": 0,
+     "ms": 5,
+     "tools": [
+      "skill:disk"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "downloads-folder",
+     "ok": true,
+     "q": 0,
+     "ms": 292,
+     "tools": [
+      "pc_act:open_folder"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "maths",
+     "ok": true,
+     "q": 0,
+     "ms": 6,
+     "tools": [
+      "skill:calc"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "open-goal-screen",
+     "ok": true,
+     "q": 0,
+     "ms": 2877,
+     "tools": [
+      "screen_act"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "take-over-dark",
+     "ok": true,
+     "q": 0,
+     "ms": 1992,
+     "tools": [
+      "screen_teach"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "youtube-search",
+     "ok": true,
+     "q": 0,
+     "ms": 1309,
+     "tools": [
+      "open_url"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "timer-2min",
+     "ok": true,
+     "q": 0,
+     "ms": 11,
+     "tools": [
+      "skill:start"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "desktop-folder",
+     "ok": true,
+     "q": 0,
+     "ms": 6,
+     "tools": [
+      "skill:folder"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "switch-window",
+     "ok": false,
+     "skipped": "Notepad is already running (his, or another agent's)",
+     "q": 0,
+     "ms": 0,
+     "tools": [],
+     "wrong": []
+    },
+    {
+     "id": "time-london",
+     "ok": true,
+     "q": 0,
+     "ms": 7,
+     "tools": [
+      "skill:now"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "chrome-tabs",
+     "ok": true,
+     "q": 0,
+     "ms": 2771,
+     "tools": [
+      "open_url",
+      "open_url"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "chrome-bookmarks",
+     "ok": false,
+     "skipped": "Jarvis Chrome isn't running",
+     "q": 0,
+     "ms": 0,
+     "tools": [],
+     "wrong": []
+    },
+    {
+     "id": "zip-folder",
+     "ok": true,
+     "q": 0,
+     "ms": 430,
+     "tools": [
+      "skill:zip"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "copy-file",
+     "ok": true,
+     "q": 0,
+     "ms": 4,
+     "tools": [
+      "skill:copy"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "move-file",
+     "ok": true,
+     "q": 0,
+     "ms": 6,
+     "tools": [
+      "skill:move"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "pdf-export",
+     "ok": true,
+     "q": 0,
+     "ms": 752,
+     "tools": [
+      "skill:pdf"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "excel-sum",
+     "ok": false,
+     "q": 0,
+     "ms": 52,
+     "tools": [
+      "skill:excel_sum"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "word-bold",
+     "ok": true,
+     "q": 0,
+     "ms": 1369,
+     "tools": [
+      "skill:word_format"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "screenshot",
+     "ok": true,
+     "q": 0,
+     "ms": 940,
+     "tools": [
+      "skill:screenshot"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "snipping-tool",
+     "ok": true,
+     "q": 0,
+     "ms": 291,
+     "tools": [
+      "pc_act:open_app"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "dark-mode",
+     "ok": true,
+     "q": 0,
+     "ms": 431,
+     "tools": [
+      "skill:theme"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "clipboard-copy",
+     "ok": true,
+     "q": 0,
+     "ms": 482,
+     "tools": [
+      "skill:copy"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "clipboard-history",
+     "ok": false,
+     "q": 0,
+     "ms": 31,
+     "tools": [
+      "skill:clipboard_history"
+     ],
+     "wrong": []
+    }
+   ]
+  },
+  "excelRerun": [
+   {
+    "id": "excel-sum",
+    "ok": true,
+    "q": 0,
+    "ms": 3225,
+    "tools": [
+     "skill:excel_sum"
+    ],
+    "wrong": []
+   }
+  ]
+ },
+ "drags": {
+  "first": [
+   {
+    "style": "show",
+    "goal": "put the Region field in the Rows area",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Region is now in Rows area.",
+    "ms": 5216,
+    "noticedMs": null,
+    "title": "rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "style": "show",
+    "goal": "set the Zoom slider to about 80 percent",
+    "ok": true,
+    "lessonOk": false,
+    "said": "Pressing \"Zoom\" again isn't changing anything, so I've stopped there. Tell me what's next?",
+    "ms": 9585,
+    "noticedMs": null,
+    "title": "rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "style": "show",
+    "goal": "move Clip 1 to the middle of the Timeline",
+    "ok": false,
+    "lessonOk": false,
+    "said": "I've lost the thread from here. Tell me what you're after and I'll pick it up.",
+    "ms": 4379,
+    "noticedMs": null,
+    "title": "rows= values= filters= zoom=50 clip=0"
+   },
+   {
+    "style": "guide",
+    "goal": "put the Region field in the Rows area",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 16677,
+    "noticedMs": 1071,
+    "title": "rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "style": "guide",
+    "goal": "set the Zoom slider to about 80 percent",
+    "ok": true,
+    "lessonOk": false,
+    "said": "(timed out)",
+    "ms": 75267,
+    "noticedMs": 517,
+    "title": "rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "style": "guide",
+    "goal": "move Clip 1 to the middle of the Timeline",
+    "ok": true,
+    "lessonOk": false,
+    "said": "I've lost the thread from here. Tell me what you're after and I'll pick it up.",
+    "ms": 17992,
+    "noticedMs": 970,
+    "title": "rows= values= filters= zoom=50 clip=313"
+   }
+  ],
+  "final": [
+   {
+    "style": "show",
+    "goal": "put the Region field in the Rows area",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Region field is now in the Rows area.",
+    "ms": 5444,
+    "noticedMs": null,
+    "title": "rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "style": "show",
+    "goal": "set the Zoom slider to about 80 percent",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 3401,
+    "noticedMs": null,
+    "title": "rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "style": "show",
+    "goal": "move Clip 1 to the middle of the Timeline",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 3721,
+    "noticedMs": null,
+    "title": "rows= values= filters= zoom=50 clip=313"
+   },
+   {
+    "style": "guide",
+    "goal": "put the Region field in the Rows area",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 16681,
+    "noticedMs": 1062,
+    "title": "rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "style": "guide",
+    "goal": "set the Zoom slider to about 80 percent",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 16226,
+    "noticedMs": 563,
+    "title": "rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "style": "guide",
+    "goal": "move Clip 1 to the middle of the Timeline",
+    "ok": true,
+    "lessonOk": true,
+    "said": "Done.",
+    "ms": 16375,
+    "noticedMs": 856,
+    "title": "rows= values= filters= zoom=50 clip=313"
+   }
+  ],
+  "finalTranscript": [
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "show me how to put the Region field in the Rows area"
+   },
+   {
+    "t": 2.1,
+    "kind": "jarvis",
+    "text": "Dragging Region to Rows area."
+   },
+   {
+    "t": 4.4,
+    "kind": "step",
+    "text": "I dragged \"Region\" to \"Rows area\" (verified)"
+   },
+   {
+    "t": 4.8,
+    "kind": "jarvis",
+    "text": "Region field is now in the Rows area."
+   },
+   {
+    "t": 5.4,
+    "kind": "note",
+    "text": "result: done | rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "show me how to set the Zoom slider to about 80 percent"
+   },
+   {
+    "t": 0.8,
+    "kind": "jarvis",
+    "text": "Dragging Zoom to 80%."
+   },
+   {
+    "t": 2.5,
+    "kind": "step",
+    "text": "I dragged \"Zoom\" to 80% (verified)"
+   },
+   {
+    "t": 2.8,
+    "kind": "jarvis",
+    "text": "Done."
+   },
+   {
+    "t": 3.4,
+    "kind": "note",
+    "text": "result: done | rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "show me how to move Clip 1 to the middle of the Timeline"
+   },
+   {
+    "t": 0.8,
+    "kind": "jarvis",
+    "text": "Dragging Clip 1 to 50% along Timeline."
+   },
+   {
+    "t": 2.8,
+    "kind": "step",
+    "text": "I dragged \"Clip 1\" to 50% (verified)"
+   },
+   {
+    "t": 3.1,
+    "kind": "jarvis",
+    "text": "Done."
+   },
+   {
+    "t": 3.7,
+    "kind": "note",
+    "text": "result: done | rows= values= filters= zoom=50 clip=313"
+   },
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "teach me to put the Region field in the Rows area"
+   },
+   {
+    "t": 1.6,
+    "kind": "jarvis",
+    "text": "Drag Region, top left, to Rows area. Hold the mouse button down all the way."
+   },
+   {
+    "t": 14.7,
+    "kind": "him",
+    "text": "(drags Region to Rows area)"
+   },
+   {
+    "t": 15.8,
+    "kind": "step",
+    "text": "he dragged \"Region\" to \"Rows area\" (verified)"
+   },
+   {
+    "t": 16.1,
+    "kind": "jarvis",
+    "text": "Done."
+   },
+   {
+    "t": 16.7,
+    "kind": "note",
+    "text": "result: done | rows=Region values= filters= zoom=50 clip=0"
+   },
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "teach me to set the Zoom slider to about 80 percent"
+   },
+   {
+    "t": 1.6,
+    "kind": "jarvis",
+    "text": "Drag Zoom, on the left, to 80%. Hold the mouse button down all the way."
+   },
+   {
+    "t": 14.7,
+    "kind": "him",
+    "text": "(drags Zoom to 80%)"
+   },
+   {
+    "t": 15.3,
+    "kind": "step",
+    "text": "he dragged \"Zoom\" to 80% (verified)"
+   },
+   {
+    "t": 15.6,
+    "kind": "jarvis",
+    "text": "Done."
+   },
+   {
+    "t": 16.2,
+    "kind": "note",
+    "text": "result: done | rows= values= filters= zoom=85 clip=0"
+   },
+   {
+    "t": 0,
+    "kind": "him",
+    "text": "teach me to move Clip 1 to the middle of the Timeline"
+   },
+   {
+    "t": 1.5,
+    "kind": "jarvis",
+    "text": "Drag Clip 1, on the left, to 50%. Hold the mouse button down all the way."
+   },
+   {
+    "t": 14.6,
+    "kind": "him",
+    "text": "(drags Clip 1 to 50%)"
+   },
+   {
+    "t": 15.5,
+    "kind": "step",
+    "text": "he dragged \"Clip 1\" to 50% (verified)"
+   },
+   {
+    "t": 15.8,
+    "kind": "jarvis",
+    "text": "Done."
+   },
+   {
+    "t": 16.4,
+    "kind": "note",
+    "text": "result: done | rows= values= filters= zoom=50 clip=313"
+   }
+  ]
+ }
+}

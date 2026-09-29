@@ -1,0 +1,50 @@
+{
+ "pages": [],
+ "flows": [
+  {
+   "typedJarvis": [
+    {
+     "text": "explain this margin",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis Professional package. Monthly price (ex GST, as entered): A$1,099.00; Clients: 5; Revenue / month (ex GST): A$5,495.00; Contribution: A$4,441.25; Contribution margin: 80.8%; Operating margin: 69.4%; Cost rates complete: no, some are unknown. Source: src/lib/receptionist-packages.ts + src/lib/"
+    },
+    {
+     "text": "which models are free",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis 19 free models verified at no charge, plus 8 on a free tier whose billing isn't verified. For example: cline/deepseek-v4.1-flash, cline/gemini-3.8-flash, cline/mimo-v2.6-flash, cline/muse-spark-1.3, cline/space-bunny-alpha. The full list is on Models."
+    },
+    {
+     "text": "what needs setup",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis The tool check hasn't run yet, so I can't say what needs setup. System shows it once it has."
+    },
+    {
+     "text": "open finance",
+     "url": "/finance",
+     "reply": ""
+    },
+    {
+     "text": "show the Professional margin",
+     "url": "/operations?package=receptionist-professional",
+     "reply": ""
+    },
+    {
+     "text": "go to setup",
+     "url": "/setup",
+     "reply": ""
+    }
+   ],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "reducedMotion": {
+    "motion": "still",
+    "reduced": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+PASS  [setup] the owner's browser session and page token at this PC
+      {"session":true,"token":true}
+PASS  [setup] memory is on, this is the one writer, Hindsight through the proxy, no key in the OS
+      {"mode":"on","writes":true,"writer":null,"url":"http://127.0.0.1:8878","bank":"mu-shared","api_key":"missing","pending":0}
+PASS  [setup] the proxy's document-delete budget has room (this run uses about 7 of 20 an hour)
+      {"deletes_last_hour":0}
+PASS  [setup] the vault is where the OS reads it
+      {"vault":"C:\\Users\\Nebula PC\\source\\repos\\mu-ventures-obsidian-wiki"}
+PASS  [A save] "remember" through the live OS
+      Remembered in Hindsight memory as mem-df04f7a520 ("T6 live check 574271: the synthetic Verifier574271 clinic opens"): still being processed by Hindsight (it's saved here; indexing finishes in the background). Not written to the vault.
+verification aborted: read ECONNRESET
+      cleanup: forget mem-df04f7a520: 200
+
+1 check(s) FAILED
+exit=1

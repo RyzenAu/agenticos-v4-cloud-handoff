@@ -1,0 +1,59 @@
+[
+  {
+    "topic": "synthetic economics",
+    "model": "deepseek-v4.1-flash",
+    "providerId": "cline-free/deepseek-v4.1-flash",
+    "checkedAt": "2026-09-27T05:20:47.141Z",
+    "elapsedMs": 13957,
+    "httpStatus": 200,
+    "returnedModel": "deepseek-v4.1-flash",
+    "usage": {
+      "prompt_tokens": 9865,
+      "completion_tokens": 1331,
+      "total_tokens": 11196
+    },
+    "receipt": null,
+    "freeListingVerified": true,
+    "remainingQuota": null,
+    "review": "**Findings (synthetic — no runtime claims):**\n\n1. **Margin base is wrong (GST leak).** `margin` divides by `monthlyIncludingGst`, mixing a GST-inclusive denominator with the ex-GST numerator in `profit`. It should use ex-GST revenue `550/1.1 = 500`. Corrected: `margin = 455/500 = 0.91`, not `(550−45)/550 ≈ 0.918`.\n\n2. **`supportHours`/`hourlyCost` are dead parameters → support cost silently dropped.** `2 × 40 = 80 AUD` never enters any result, so \"profit after support\" is actually just contribution. Corrected: `contribution = 500 − 45 = 455`; `profitAfterSupport = 455 − 80 = 375`.\n\n3. **Contribution and profit are not separated**, violating the stated requirement. The function must emit two distinct fields, not one ambiguous `profit`. Corrected fields: `contribution=455`, `profitAfterSupport=375`.\n\n4. **`profit` and `margin` are internally inconsistent** — they use two different revenue definitions (ex-GST vs GST-inclusive), so they can't both be right. Pick ex-GST for both.\n\n5. **Double-count guardrail is absent.** Subtract only LLM fees *not* already bundled in the subscription (metered overage), kept as its own line from support. With no bundled allowance given, assume full metered 45 and state that assumption.\n\n**Corrected assertions:**\n```\nrevenueExGst === 500\ncontribution === 455\nsupportCost === 80\nprofitAfterSupport === 375\nmarginRatio === 0.91   // 455/500\nnetMarginRatio === 0.75 // 375/500\n```",
+    "error": null
+  },
+  {
+    "topic": "synthetic finance adapter",
+    "model": "mimo-v2.6-flash",
+    "providerId": "cline-free/mimo-v2.6-flash",
+    "checkedAt": "2026-09-27T05:20:47.142Z",
+    "elapsedMs": 18910,
+    "httpStatus": 200,
+    "returnedModel": "mimo-v2.6-flash",
+    "usage": {
+      "prompt_tokens": 9269,
+      "completion_tokens": 519,
+      "total_tokens": 9788
+    },
+    "receipt": null,
+    "freeListingVerified": true,
+    "remainingQuota": null,
+    "review": "**Findings (5):**\n\n1. **No authorization/scoping check.** `owner` is never verified against `row.owner`, and consent is never checked for revocation, expiry, or scope. Correct: `if (!consent.revokedAt && consent.scope.includes('transactions') && row.owner === owner)` — assert `sync()` rejects when consent is revoked or scope lacks `transactions`.\n\n2. **Not idempotent.** Plain `db.insert` duplicates rows on re-run. Correct: `db.upsert({id: row.id, ...})` — assert: running `sync` twice with the same provider payload yields exactly `rows.length` records, not `2 × rows.length`.\n\n3. **No pending→booked reconciliation.** The insert blindly overwrites; an existing `pending` row should only transition to `booked` (and never booked→pending regression). Assert: inserting `{id:'t1', status:'booked'}` over an existing `{id:'t1', status:'pending'}` results in `booked`; a later `pending` payload leaves it `booked`.\n\n4. **Inexact currency arithmetic.** `parseFloat` rounds binary-inexact (e.g. `'0.1'` → `0.1` but sums drift). Correct: parse to integer minor units (`Math.round(parseFloat(x) * 100)`) or a Decimal type. Assert: `sum([0.1, 0.2])` in stored minor units equals `30`, i.e. `30` cents, never `30.000000000000004`.\n\n5. **Sync timestamp is untruthful.** `syncedAt: Date.now()` and `state:'connected'` are returned unconditionally, even if some inserts failed or consent was revoked. Correct: only write `syncedAt`/`state` after all rows commit successfully; assert: on a mid-loop provider/db failure, the stored `lastSyncedAt` is unchanged from its prior value.",
+    "error": null
+  },
+  {
+    "topic": "synthetic routing QA",
+    "model": "muse-spark-1.3",
+    "providerId": "cline-free/muse-spark-1.3-contributor",
+    "checkedAt": "2026-09-27T05:21:06.365Z",
+    "elapsedMs": 16432,
+    "httpStatus": 200,
+    "returnedModel": "muse-spark-1.3",
+    "usage": {
+      "prompt_tokens": 5368,
+      "completion_tokens": 812,
+      "total_tokens": 6180
+    },
+    "receipt": null,
+    "freeListingVerified": true,
+    "remainingQuota": null,
+    "review": "Findings vs requirements - synthetic only, no runtime evidence:\n\n1. Paid fallback violation: `catch{return paidModel}`. Fix: rethrow fail, never call paid. Test: `freeModel=reject`; expect `complete` rejects; assert `paidModel.calls==0`.\n\n2. No child abort: `onDisconnect` only sets status. Fix: `job.child.kill()/abort()`. Test: `onDisconnect(job)`; expect `job.abortSignal.aborted==true` and `child.killCalled==true`.\n\n3. No bound/timeout: unbounded `await freeModel`. Fix: `queue(maxN)+withTimeout(ms)`. Test: queue full -> expect `reject QueueFull`; delay>timeout -> expect `reject Timeout`; assert no hang.\n\n4. False success + zero-usage: `parseResult` always `ok:true` and `||0`. Fix: `ok = raw.status=='completed' && !truncated`; `tokens=raw.usage?.tokens ?? null`. Test: `raw={text:'part',truncated:true}` -> expect `ok==false`; `raw={usage:missing}` -> expect `tokens==null`, assert `!=0`.\n\n5. Raw prompt logging unguarded. Fix: log only hash/len. Test: run `complete`; assert logs contain `promptHash/len` and `!contains(rawPrompt)`.\n\nThese are transport/unit checks with mocks, not live proof of quota/timeout.",
+    "error": null
+  }
+]

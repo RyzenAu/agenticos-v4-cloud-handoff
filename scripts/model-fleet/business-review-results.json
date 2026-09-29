@@ -1,0 +1,18 @@
+[
+  {
+    "error": "Request failed; no automatic fallback",
+    "model": "deepseek-v4.1-flash",
+    "topic": "economics actual source QA",
+    "errorType": "HttpRequestException",
+    "sourceSha256": "f4016dfbc8fc5cdf949d3c58afe579f6a6b74f6bde81a289faadb828cd5b779d",
+    "elapsedMs": 91974
+  },
+  {
+    "error": "Request failed; no automatic fallback",
+    "model": "mimo-v2.6-flash",
+    "topic": "NAB synthetic adapter actual source QA",
+    "errorType": "HttpRequestException",
+    "sourceSha256": "7b9e8472ae932f62bea94253b92fffa3fec58b360a756c1badf69a1b0aedc32b",
+    "elapsedMs": 160338
+  }
+]

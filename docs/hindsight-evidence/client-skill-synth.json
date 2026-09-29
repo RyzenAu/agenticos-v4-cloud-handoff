@@ -1,0 +1,9 @@
+﻿{
+  "client": "skill",
+  "target": "synth",
+  "bank": "mu-shared",
+  "canary": "Kestrel7edac2",
+  "save_http": "200",
+  "recall_results": 1,
+  "found_canary": true
+}

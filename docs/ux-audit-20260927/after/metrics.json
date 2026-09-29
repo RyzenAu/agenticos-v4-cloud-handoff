@@ -1,0 +1,1401 @@
+{
+  "business-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Business"
+    ],
+    "h2": [
+      "Quick actions",
+      "Your last brief",
+      "Ask your business advisor"
+    ],
+    "buttons": 31,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 1,
+    "smallSizes": [
+      9.5
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1917,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11253
+  },
+  "business-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Business"
+    ],
+    "h2": [
+      "Quick actions",
+      "Your last brief",
+      "Ask your business advisor"
+    ],
+    "buttons": 31,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 1,
+    "smallSizes": [
+      9.5
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 4093,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10461
+  },
+  "operations-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "M&U operations"
+    ],
+    "h2": [
+      "Package economics"
+    ],
+    "buttons": 10,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 2668,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10341
+  },
+  "operations-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "M&U operations"
+    ],
+    "h2": [
+      "Package economics"
+    ],
+    "buttons": 10,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 4413,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10243
+  },
+  "inbox-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Inbox"
+    ],
+    "h2": [
+      "Your conversations, at a glance."
+    ],
+    "buttons": 14,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1203,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10632
+  },
+  "inbox-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Inbox"
+    ],
+    "h2": [
+      "Your conversations, at a glance."
+    ],
+    "buttons": 14,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1609,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10267
+  },
+  "chat-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [],
+    "h2": [
+      "Your chats"
+    ],
+    "buttons": 151,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 919,
+    "pageHeader": false,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10743
+  },
+  "chat-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [],
+    "h2": [],
+    "buttons": 20,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 3,
+    "smallSizes": [
+      10
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 844,
+    "pageHeader": false,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10263
+  },
+  "calendar-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Calendar"
+    ],
+    "h2": [
+      "September 2026",
+      "Sunday 27 Sept",
+      "Ask about your calendar"
+    ],
+    "buttons": 55,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1252,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10433
+  },
+  "calendar-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Calendar"
+    ],
+    "h2": [
+      "September 2026",
+      "Sunday 27 Sept",
+      "Ask about your calendar"
+    ],
+    "buttons": 55,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 2,
+    "smallSizes": [
+      10
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1842,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10301
+  },
+  "memory-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Memory"
+    ],
+    "h2": [
+      "Visual cortex",
+      "Add tomemory",
+      "Photos & documents",
+      "Ask your memory",
+      "Recently added 1903 sources"
+    ],
+    "buttons": 61,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 4,
+    "smallSizes": [
+      10,
+      8.8
+    ],
+    "fonts": [
+      "Inter",
+      "sans-serif"
+    ],
+    "height": 2219,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 12574
+  },
+  "memory-390": {
+    "docOverflow": 0,
+    "mainOverflow": 11,
+    "overflowEls": [
+      "A",
+      "A",
+      "A",
+      "A"
+    ],
+    "overflowCount": 4,
+    "h1": [
+      "Memory"
+    ],
+    "h2": [
+      "Visual cortex",
+      "Add tomemory",
+      "Photos & documents",
+      "Ask your memory",
+      "Recently added 1903 sources"
+    ],
+    "buttons": 61,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 3,
+    "smallSizes": [
+      10,
+      8.8
+    ],
+    "fonts": [
+      "Inter",
+      "sans-serif"
+    ],
+    "height": 2839,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11417
+  },
+  "leads-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Leads"
+    ],
+    "h2": [
+      "Call queue",
+      "Calling hours are closed: 20 calls queued for the ",
+      "Pipeline"
+    ],
+    "buttons": 68,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 7737,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 14142
+  },
+  "leads-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Leads"
+    ],
+    "h2": [
+      "Call queue",
+      "Calling hours are closed: 20 calls queued for the ",
+      "Pipeline"
+    ],
+    "buttons": 68,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 10713,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 13288
+  },
+  "receptionist-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Receptionist"
+    ],
+    "h2": [
+      "Not safe to sell",
+      "Go-live gates",
+      "Calls",
+      "Quality",
+      "Recent calls",
+      "Follow-ups",
+      "Commercial"
+    ],
+    "buttons": 10,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 2749,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10675
+  },
+  "receptionist-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Receptionist"
+    ],
+    "h2": [
+      "Not safe to sell",
+      "Go-live gates",
+      "Calls",
+      "Quality",
+      "Recent calls",
+      "Follow-ups",
+      "Commercial"
+    ],
+    "buttons": 10,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 4935,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10320
+  },
+  "websites-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Websites"
+    ],
+    "h2": [
+      "Client sites",
+      "Flagships",
+      "Lead previews",
+      "Templates and drafts"
+    ],
+    "buttons": 10,
+    "spinners": 1,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 3029,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10930
+  },
+  "websites-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Websites"
+    ],
+    "h2": [
+      "Client sites",
+      "Flagships",
+      "Lead previews",
+      "Templates and drafts"
+    ],
+    "buttons": 10,
+    "spinners": 1,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 5004,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10324
+  },
+  "hermes-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Hermes"
+    ],
+    "h2": [
+      "Mission Control",
+      "Pantheon",
+      "Take Hermes anywhere",
+      "Memory",
+      "Skill Library",
+      "Documents"
+    ],
+    "buttons": 80,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 34,
+    "smallSizes": [
+      9.6,
+      8,
+      9
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 6061,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11924
+  },
+  "hermes-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Hermes"
+    ],
+    "h2": [
+      "Mission Control",
+      "Pantheon",
+      "Take Hermes anywhere",
+      "Memory",
+      "Skill Library",
+      "Documents"
+    ],
+    "buttons": 80,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 34,
+    "smallSizes": [
+      9.6,
+      8,
+      9
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 11652,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10503
+  },
+  "claude-code-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Claude Code"
+    ],
+    "h2": [
+      "Mission Control"
+    ],
+    "buttons": 2,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 900,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10734
+  },
+  "claude-code-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Claude Code"
+    ],
+    "h2": [
+      "Mission Control"
+    ],
+    "buttons": 2,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 899,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10205
+  },
+  "openclaw-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "OpenClaw"
+    ],
+    "h2": [
+      "Device status",
+      "Deploy OpenClaw as…",
+      "What OpenClaw does here",
+      "Skills bound to OpenClaw"
+    ],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1622,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 41937
+  },
+  "openclaw-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "OpenClaw"
+    ],
+    "h2": [
+      "Device status",
+      "Deploy OpenClaw as…",
+      "What OpenClaw does here",
+      "Skills bound to OpenClaw"
+    ],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 2683,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11042
+  },
+  "automations-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Automations"
+    ],
+    "h2": [],
+    "buttons": 29,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1678,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 13283
+  },
+  "automations-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Automations"
+    ],
+    "h2": [],
+    "buttons": 29,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 2812,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 13194
+  },
+  "skills-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Skills"
+    ],
+    "h2": [
+      "Where the work happens",
+      "Research",
+      "Coding",
+      "Review",
+      "Memory",
+      "Video",
+      "Design",
+      "Automation"
+    ],
+    "buttons": 17,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 5,
+    "smallSizes": [
+      10
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 4341,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10588
+  },
+  "skills-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Skills"
+    ],
+    "h2": [
+      "Where the work happens",
+      "Research",
+      "Coding",
+      "Review",
+      "Memory",
+      "Video",
+      "Design",
+      "Automation"
+    ],
+    "buttons": 17,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 5,
+    "smallSizes": [
+      10
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 7313,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10290
+  },
+  "skill-drafts-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Skill drafts"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 900,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10673
+  },
+  "skill-drafts-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Skill drafts"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 844,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10126
+  },
+  "dashboard-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Good afternoon."
+    ],
+    "h2": [
+      "Leads to call today",
+      "Away mode",
+      "Plan limits & spend",
+      "Trends over time",
+      "Dream review: 0 improvements from 2 days ago",
+      "Mission Control",
+      "Your skills",
+      "Your memory",
+      "Project knowledge graph",
+      "What's plugged into your stack",
+      "Scheduled tasks",
+      "Model intelligence"
+    ],
+    "buttons": 114,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 15,
+    "smallSizes": [
+      10,
+      7
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\"",
+      "sans-serif"
+    ],
+    "height": 10253,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 15498
+  },
+  "dashboard-390": {
+    "docOverflow": 0,
+    "mainOverflow": 421,
+    "overflowEls": [
+      "ds-num text-[11px] text-muted-foreground",
+      "flex shrink-0 items-center gap-2",
+      "ds-num text-xs text-muted-foreground",
+      "text-[11px] text-muted-foreground"
+    ],
+    "overflowCount": 4,
+    "h1": [
+      "Good afternoon."
+    ],
+    "h2": [
+      "Leads to call today",
+      "Away mode",
+      "Plan limits & spend",
+      "Trends over time",
+      "Dream review: 0 improvements from 2 days ago",
+      "Mission Control",
+      "Your skills",
+      "Your memory",
+      "Project knowledge graph",
+      "What's plugged into your stack",
+      "Scheduled tasks",
+      "Model intelligence"
+    ],
+    "buttons": 114,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 15,
+    "smallSizes": [
+      10,
+      7
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\"",
+      "sans-serif"
+    ],
+    "height": 17062,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 12620
+  },
+  "usage-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "AI usage & spend"
+    ],
+    "h2": [
+      "Subscriptions",
+      "API keys",
+      "Claude tokens by model",
+      "Data freshness",
+      "Prices"
+    ],
+    "buttons": 9,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 3945,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10408
+  },
+  "usage-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "AI usage & spend"
+    ],
+    "h2": [
+      "Subscriptions",
+      "API keys",
+      "Claude tokens by model",
+      "Data freshness",
+      "Prices"
+    ],
+    "buttons": 9,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 7768,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10230
+  },
+  "activity-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Activity"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 900,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10436
+  },
+  "activity-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Activity"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 844,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10203
+  },
+  "workspaces-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Workspaces"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 1553,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10984
+  },
+  "workspaces-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Workspaces"
+    ],
+    "h2": [],
+    "buttons": 0,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 6294,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10206
+  },
+  "codegraph-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Knowledge graph"
+    ],
+    "h2": [],
+    "buttons": 51,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 37,
+    "smallSizes": [
+      10,
+      8
+    ],
+    "fonts": [
+      "Inter",
+      "sans-serif",
+      "\"JetBrains Mono\""
+    ],
+    "height": 1917,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 14621
+  },
+  "codegraph-390": {
+    "docOverflow": 0,
+    "mainOverflow": 5,
+    "overflowEls": [
+      "flex items-center gap-2 shrink-0",
+      "font-mono text-[11px] inline-flex items-center gap-1.5 px-2."
+    ],
+    "overflowCount": 2,
+    "h1": [
+      "Knowledge graph"
+    ],
+    "h2": [],
+    "buttons": 51,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 37,
+    "smallSizes": [
+      10,
+      8
+    ],
+    "fonts": [
+      "Inter",
+      "sans-serif",
+      "\"JetBrains Mono\""
+    ],
+    "height": 2693,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 12152
+  },
+  "design-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Design"
+    ],
+    "h2": [
+      "Your library",
+      "Design insights"
+    ],
+    "buttons": 1179,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 30,
+    "smallSizes": [
+      6.6,
+      10.5,
+      9,
+      8
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 3380,
+    "pageHeader": false,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11799
+  },
+  "design-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Design"
+    ],
+    "h2": [
+      "Your library",
+      "Design insights"
+    ],
+    "buttons": 1183,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 30,
+    "smallSizes": [
+      6.6,
+      10.5,
+      9,
+      8
+    ],
+    "fonts": [
+      "Inter",
+      "\"JetBrains Mono\""
+    ],
+    "height": 14061,
+    "pageHeader": false,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 12235
+  },
+  "motion-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Motion Library"
+    ],
+    "h2": [],
+    "buttons": 625,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 6,
+    "smallSizes": [
+      10.5
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 22141,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 14219
+  },
+  "motion-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Motion Library"
+    ],
+    "h2": [],
+    "buttons": 625,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 6,
+    "smallSizes": [
+      10.5
+    ],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 30435,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10735
+  },
+  "transitions-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Transition lab"
+    ],
+    "h2": [],
+    "buttons": 1,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 900,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10391
+  },
+  "transitions-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Transition lab"
+    ],
+    "h2": [],
+    "buttons": 1,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 844,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 11032
+  },
+  "share-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Share card"
+    ],
+    "h2": [],
+    "buttons": 2,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "ui-sans-serif"
+    ],
+    "height": 986,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10337
+  },
+  "share-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Share card"
+    ],
+    "h2": [],
+    "buttons": 2,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter",
+      "ui-sans-serif"
+    ],
+    "height": 844,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10151
+  },
+  "settings-1440": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Settings"
+    ],
+    "h2": [
+      "Your personal context"
+    ],
+    "buttons": 8,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1122,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10465
+  },
+  "settings-390": {
+    "docOverflow": 0,
+    "mainOverflow": 0,
+    "overflowEls": [],
+    "overflowCount": 0,
+    "h1": [
+      "Settings"
+    ],
+    "h2": [
+      "Your personal context"
+    ],
+    "buttons": 8,
+    "spinners": 0,
+    "skeletons": 0,
+    "smallText": 0,
+    "smallSizes": [],
+    "fonts": [
+      "Inter"
+    ],
+    "height": 1350,
+    "pageHeader": true,
+    "errors": [],
+    "errorCount": 0,
+    "ms": 10297
+  }
+}

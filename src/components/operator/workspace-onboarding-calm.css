@@ -1,0 +1,640 @@
+/* One view per section. Detail panels retain the full existing setup controls.
+   Dead selectors from earlier "scan" and "memory welcome" variants (superseded
+   by setup-scan-connections.tsx and the current goals/connections steps) have
+   been removed — every remaining class is confirmed to render via
+   workspace-onboarding.tsx and the step components it imports. Colour comes
+   from design-system tokens, so the old html:not(.dark) overrides collapse
+   into the base rules automatically; the one exception (the artwork scrim,
+   which is intentionally lighter in light mode) keeps its explicit override. */
+.ws-calm {
+  min-height: 100svh;
+  padding: 18px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: var(--background);
+}
+.ws-calm-top {
+  width: min(1100px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+}
+.ws-calm-brand {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 17px;
+  letter-spacing: -0.04em;
+}
+.ws-calm-brand .ws-brand-orbit {
+  width: 28px;
+  height: 28px;
+}
+.ws-calm-brand strong {
+  font-weight: 550;
+}
+.ws-calm-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ws-calm-shell {
+  width: min(780px, 100%);
+  height: min(716px, calc(100svh - 96px));
+  min-height: 540px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: var(--elev-3);
+  overflow: hidden;
+  margin: auto 0;
+}
+.ws-calm-art {
+  flex: 1 1 210px;
+  min-height: 120px;
+  max-height: 235px;
+  position: relative;
+  overflow: hidden;
+  background: var(--inset);
+}
+.ws-calm-film {
+  height: 100%;
+  width: 100%;
+}
+.ws-calm-film > :is(img, video) {
+  object-position: 50% 42%;
+}
+.ws-calm-art::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 65%, color-mix(in oklab, var(--background) 50%, transparent));
+}
+html:not(.dark) .ws-calm-art::after {
+  /* The hero photo needs a lighter scrim against a light shell so it doesn't
+     read as muddy — kept as the one deliberate light/dark asymmetry. */
+  background: linear-gradient(180deg, transparent 85%, color-mix(in oklab, var(--background) 12%, transparent));
+}
+.ws-calm-film .biz-ambient-control {
+  width: 32px;
+  height: 32px;
+  right: 12px;
+  bottom: 12px;
+  opacity: 0.6;
+}
+.ws-calm-film .biz-ambient-control:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+.ws-calm-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 15px 22px 0;
+  flex-shrink: 0;
+}
+.ws-calm-tabs button {
+  padding: 9px 24px;
+  border-radius: 100px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.ws-calm-tabs button[aria-current="step"] {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.ws-calm-tabs button:hover {
+  color: var(--foreground);
+}
+.ws-calm-body {
+  padding: 22px 58px 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.ws-calm-question {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.ws-calm-question h1 {
+  font-size: clamp(29px, 3.4vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 1.12;
+  margin: 0;
+  outline: none;
+}
+.ws-calm-question p {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 10px 0 0;
+}
+.ws-calm-fields {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.ws-calm-name-row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+}
+.ws-calm-field {
+  display: grid;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.ws-calm-field > span {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.ws-calm-field :is(input, textarea),
+.ws-calm-goals input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--inset);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  padding: 12px 14px;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.ws-calm-field input {
+  height: 44px;
+}
+.ws-calm-field textarea {
+  height: 80px;
+  min-height: 80px;
+  resize: none;
+  line-height: 1.55;
+}
+.ws-calm-field :is(input, textarea):focus,
+.ws-calm-goals input:focus {
+  border-color: var(--brand);
+  background: var(--card);
+}
+.ws-calm-field ::placeholder,
+.ws-calm-goals ::placeholder {
+  color: var(--muted-foreground);
+}
+.ws-calm-goals {
+  display: grid;
+  gap: 12px;
+  padding-top: 4px;
+}
+.ws-calm-goals label {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.ws-calm-goals label > span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.ws-calm-goals input {
+  height: 49px;
+}
+.ws-calm-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 58px 23px;
+  flex-shrink: 0;
+}
+.ws-calm-back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.ws-calm :is(button, a):focus-visible,
+.ws-calm-modal button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+.ws-calm :is(button, input, textarea):disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.ws-calm .ws-flow-next {
+  min-width: 132px;
+}
+.ws-calm .ws-error {
+  margin: 12px 0 0;
+  font-size: 11px;
+  max-height: 50px;
+  overflow: auto;
+}
+.ws-calm-modal {
+  width: min(660px, calc(100vw - 24px));
+  max-width: 660px;
+  max-height: calc(100svh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px;
+  border-radius: 22px;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.ws-calm-modal .ws-profile-fields {
+  margin-top: 12px;
+}
+.ws-calm-modal .ws-profile-fields small,
+.ws-calm-modal .ws-hourly-heading > span {
+  display: none;
+}
+.ws-calm-modal .ws-calm-field {
+  flex: none;
+}
+.ws-calm-modal-done {
+  justify-self: end;
+  padding: 10px 22px;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 12px;
+}
+.ws-setup-agent-list {
+  display: grid;
+  gap: 14px;
+}
+.ws-setup-agent {
+  padding: 18px;
+  border: 1px solid var(--op-border);
+  border-radius: 14px;
+}
+.ws-setup-agent header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 13px;
+}
+.ws-setup-agent header strong {
+  flex: 1;
+  font-weight: 500;
+}
+.ws-setup-agent header small {
+  color: var(--op-muted);
+  font-size: 11px;
+}
+.ws-setup-agent dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px 15px;
+  margin: 0;
+  font-size: 12px;
+}
+.ws-setup-agent dt {
+  color: var(--op-muted);
+}
+.ws-setup-agent dd {
+  margin: 0;
+  text-align: right;
+}
+.ws-setup-agent p,
+.ws-setup-agents p {
+  color: var(--op-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.ws-setup-agents > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--op-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  color: var(--op-ink);
+  cursor: pointer;
+}
+.ws-setup-agent code {
+  user-select: all;
+  color: var(--brand);
+}
+@media (max-height: 780px) and (min-width: 561px) {
+  .ws-calm {
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .ws-calm-shell {
+    height: calc(100svh - 72px);
+  }
+  .ws-calm-art {
+    max-height: 175px;
+  }
+  .ws-calm-tabs {
+    padding-top: 10px;
+  }
+  .ws-calm-body {
+    padding-top: 17px;
+  }
+  .ws-calm-question {
+    margin-bottom: 15px;
+  }
+  .ws-calm-question h1 {
+    font-size: 31px;
+  }
+  .ws-calm-question p {
+    margin-top: 7px;
+  }
+  .ws-calm-footer {
+    padding-top: 10px;
+    padding-bottom: 17px;
+  }
+}
+@media (max-width: 560px) {
+  .ws-calm {
+    padding: 10px 12px 16px;
+    gap: 12px;
+  }
+  .ws-calm-top {
+    padding: 0 3px;
+  }
+  .ws-calm-brand {
+    font-size: 15px;
+  }
+  .ws-calm-exit {
+    font-size: 11px;
+  }
+  .ws-calm-shell {
+    height: min(690px, calc(100svh - 74px));
+    min-height: 550px;
+    border-radius: 21px;
+  }
+  .ws-calm-art {
+    min-height: 130px;
+    max-height: 200px;
+  }
+  .ws-calm-film > :is(img, video) {
+    object-position: 50% 42%;
+  }
+  .ws-calm-tabs {
+    padding: 12px 10px 0;
+    gap: 2px;
+  }
+  .ws-calm-tabs button {
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+  .ws-calm-body {
+    padding: 23px 23px 6px;
+  }
+  .ws-calm-question {
+    margin-bottom: 20px;
+  }
+  .ws-calm-question h1 {
+    font-size: 30px;
+  }
+  .ws-calm-question p {
+    font-size: 12px;
+  }
+  .ws-calm-name-row {
+    gap: 10px;
+  }
+  .ws-calm-field textarea {
+    height: 88px;
+  }
+  .ws-calm-fields {
+    min-height: 212px;
+    gap: 13px;
+  }
+  .ws-calm-goals label {
+    grid-template-columns: 73px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .ws-calm-goals label > span {
+    font-size: 11px;
+  }
+  .ws-calm-goals input {
+    font-size: 12px;
+    padding: 10px;
+  }
+  .ws-calm-footer {
+    padding: 13px 23px 20px;
+  }
+  .ws-calm-modal {
+    padding: 24px 19px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-calm *,
+  .ws-calm-modal * {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
+
+/* Direct profile entry and one scan/selection surface. */
+.ws-calm-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ws-calm-preferences {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.ws-direct-photo {
+  width: 95px;
+  flex-shrink: 0;
+}
+.ws-direct-photo label {
+  display: flex;
+  gap: 5px;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+.ws-direct-photo img {
+  height: 45px;
+  width: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+.ws-direct-photo span {
+  font-size: 11px;
+  color: var(--brand);
+}
+.ws-direct-photo input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.ws-direct-photo label:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 5px;
+  border-radius: 10px;
+}
+.ws-direct-photo [role="alert"] {
+  display: block;
+  color: var(--danger);
+}
+.ws-calm-name-row {
+  align-items: center;
+}
+.ws-about-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.ws-about-pair .ws-calm-field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+.ws-about-pair a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--brand);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ws-about-pair textarea {
+  height: 105px;
+  min-height: 105px;
+}
+.ws-calm-fields > [hidden] {
+  display: none;
+}
+.ws-calm[data-setup-step="1"] .ws-calm-shell {
+  width: min(850px, 100%);
+}
+.ws-calm[data-setup-step="1"] .ws-calm-art {
+  min-height: 90px;
+  max-height: 210px;
+}
+.ws-calm[data-setup-step="1"] .ws-calm-body {
+  padding-left: 36px;
+  padding-right: 36px;
+}
+.ws-calm[data-setup-step="1"] .ws-calm-question {
+  margin-bottom: 16px;
+}
+
+@media (max-height: 780px) and (min-width: 561px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-body {
+    padding-top: 12px;
+  }
+  .ws-calm[data-setup-step="1"] .ws-calm-question {
+    margin-bottom: 12px;
+  }
+}
+@media (max-width: 560px) {
+  .ws-calm-top-actions {
+    gap: 12px;
+  }
+  .ws-calm-preferences {
+    display: none;
+  }
+  .ws-calm-top-actions .sky-toggle {
+    transform: scale(0.8);
+  }
+  .ws-about-pair {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ws-about-pair textarea {
+    height: 65px;
+    min-height: 65px;
+  }
+  .ws-calm[data-setup-step="0"] .ws-calm-art {
+    min-height: 110px;
+  }
+  .ws-calm[data-setup-step="1"] .ws-calm-shell {
+    height: auto;
+    min-height: calc(100svh - 92px);
+  }
+  .ws-calm[data-setup-step="1"] .ws-calm-art {
+    flex: 0 0 130px;
+    min-height: 130px;
+  }
+  .ws-calm[data-setup-step="1"] .ws-calm-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .ws-direct-photo {
+    width: 77px;
+  }
+}
+@media(max-height:780px) and (min-width:561px) { .ws-calm-shell { height:calc(100svh - 88px); } }
+@media(max-width:560px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-art { flex-basis:100px; min-height:100px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-body { padding-top:9px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question { margin-bottom:10px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question h1 { font-size:27px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question p { font-size:11px; margin-top:6px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-tabs { padding-top:10px; }
+}
+
+/* Connected world: one full scene, compact account choices, no repeated instructions. */
+.ws-social-profiles.is-compact { padding:0; border:0; background:none; margin:12px 0; }
+.ws-social-profiles.is-compact header { display:flex; align-items:center; margin:0 0 4px; }
+.ws-social-profiles.is-compact h2 { font-size:11px; margin:0; font-weight:500; }
+.ws-social-profiles.is-compact > p { font-size: 11px; margin:0 0 9px; color: var(--muted-foreground); }
+.ws-social-profiles.is-compact .ws-field-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.ws-social-profiles.is-compact label > span { font-size: 11px; }
+.ws-social-profiles.is-compact input { font-size: 11px; padding:9px; min-height:34px; margin-top:4px; width:100%; }
+.ws-calm[data-setup-step="1"] .ws-calm-shell { width:min(900px,100%); }
+.ws-calm[data-setup-step="1"] .ws-calm-art { flex-basis:170px; min-height:110px; max-height:235px; }
+.ws-calm[data-setup-step="1"] .ws-calm-body { padding-top:18px; }
+.ws-calm[data-setup-step="1"] .ws-calm-question { margin-bottom:17px; }
+@media(max-height:780px) and (min-width:701px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-art { min-height:90px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-body { padding-top:9px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question h1 { font-size:28px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question { margin-bottom:10px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-footer { padding-top:12px; padding-bottom:16px; }
+  .ws-social-profiles.is-compact { margin:8px 0; }
+}
+@media(max-width:700px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-shell { height:auto; }
+  .ws-social-profiles.is-compact .ws-field-grid { grid-template-columns:1fr; }
+}
+@media(min-width:701px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-shell { height:min(820px,calc(100svh - 108px)); }
+  .ws-calm[data-setup-step="1"] .ws-calm-art { min-height:150px; }
+}
+@media(max-height:780px) and (min-width:701px) {
+  .ws-calm[data-setup-step="1"] .ws-calm-art { min-height:65px; }
+}
+html:not(.dark) .ws-social-profiles.is-compact :is(h2,label>span) { color: var(--foreground); }
+.ws-calm[data-setup-step="1"] .ws-calm-footer { padding-top:12px; padding-bottom:12px; }

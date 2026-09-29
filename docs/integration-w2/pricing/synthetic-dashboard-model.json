@@ -1,0 +1,384 @@
+{
+  "generatedAt": "2026-09-27T14:50:08.286Z",
+  "clients": {
+    "ok": true,
+    "rows": [
+      {
+        "organizationId": "org_synthetic_1",
+        "slug": "synthetic-dental",
+        "name": "Synthetic Dental (fictional)",
+        "niche": "DENTAL",
+        "isDemoTenant": false,
+        "packageId": "receptionist-professional",
+        "packageName": "Professional",
+        "onboardingStatus": "live",
+        "calendar": {
+          "connected": true,
+          "provider": "GOOGLE",
+          "reason": "configured"
+        },
+        "minutes": {
+          "includedPerMonth": 1000,
+          "usedThisMonth": 1200,
+          "remaining": 0,
+          "overageMinutes": 200,
+          "billableCurrentPeriod": 1200
+        },
+        "bookings": {
+          "total": 200,
+          "confirmed": 200,
+          "cancelled": 0,
+          "failed": 0,
+          "madeOnCalls": 200,
+          "sandbox": 0,
+          "upcoming": 20
+        },
+        "transfers": {
+          "attempted": 0,
+          "confirmed": 0,
+          "failed": 0
+        },
+        "handoffs": {
+          "pendingAlerts": 0,
+          "failedAlerts": 0,
+          "callbackRequests": 0
+        },
+        "sms": {
+          "enabled": false
+        },
+        "costs": {
+          "estimatedMonthlyCents": 26635,
+          "measuredMonthlyCents": null,
+          "reconciledMonthlyCents": null,
+          "reason": "Estimate only: one or more provider rates are unknown (see business-economics.ts warnings)."
+        },
+        "commercial": {
+          "setupFeeCents": 149000,
+          "mrrCents": 109900,
+          "marginCents": 98265,
+          "marginPct": 78.67,
+          "caveat": "Estimated contribution margin from this month's aggregate minutes, not per-call durations or a reconciled invoice."
+        }
+      }
+    ],
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "agentReadiness": {
+    "ok": true,
+    "agentMapped": true,
+    "published": true,
+    "version": 3,
+    "llmVersion": 5,
+    "numberAttached": true,
+    "agentLastEditedAt": "2026-09-24T14:50:08.286Z",
+    "agentEditNote": "Agent last edited 3 d ago",
+    "lineSource": null,
+    "source": "Retell API (get-agent, get-retell-llm, list-phone-numbers)",
+    "asOf": "2026-09-27T14:50:08.286Z",
+    "stale": false,
+    "staleAfterMs": 900000
+  },
+  "channelHealth": {
+    "ok": true,
+    "retell": "ok",
+    "twilio": "ok",
+    "webhook": "ok",
+    "smsAnyClientEnabled": false,
+    "source": "Retell + Twilio provider reads",
+    "asOf": "2026-09-27T14:50:08.286Z",
+    "stale": false,
+    "staleAfterMs": 900000
+  },
+  "callsOutcomes": {
+    "ok": true,
+    "calls": 480,
+    "completed": 470,
+    "failed": 10,
+    "byOutcome": [
+      {
+        "name": "booked",
+        "count": 200
+      }
+    ],
+    "bySentiment": [],
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "bookings": {
+    "ok": true,
+    "total": 200,
+    "confirmed": 200,
+    "cancelled": 0,
+    "failed": 0,
+    "upcoming": 20,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "transfers": {
+    "ok": true,
+    "attempted": 0,
+    "confirmed": 0,
+    "failed": 0,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "callbacks": {
+    "ok": true,
+    "pending": 0,
+    "done": 0,
+    "oldestPendingAt": null,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "sms": {
+    "ok": true,
+    "anyEnabled": false,
+    "reason": "Feed exposes readiness.smsEnabled per client only; delivery/consent/STOP counts are not yet part of the agency feed contract.",
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "handoffs": {
+    "ok": true,
+    "pending": 0,
+    "failed": 0,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "usage": {
+    "ok": true,
+    "includedTotal": 1000,
+    "usedTotal": 1200,
+    "overageMinutesTotal": 200,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "economics": {
+    "ok": true,
+    "estimatedMonthlyCents": 26635,
+    "measuredMonthlyCents": null,
+    "reconciledMonthlyCents": null,
+    "caveat": "Estimated from receptionist-packages.ts + business-economics.ts and this month's aggregate minutes. No measured provider invoice or reconciled cost yet (unknowns explicit, never zero).",
+    "source": "receptionist-packages.ts + business-economics.ts",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "commercial": {
+    "ok": true,
+    "mrrCents": 109900,
+    "setupFeesCents": 149000,
+    "unassignedClients": 0,
+    "source": "receptionist-packages.ts (monthly price approved, ex GST; setup fee proposed, not approved) x locally-assigned clients",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "supportWorkload": {
+    "ok": true,
+    "assumedMinutesTotal": 240,
+    "caveat": "Assumption from the package usage model's nearest scenario (low/base/high), not measured support tickets.",
+    "source": "receptionist-packages.ts usage scenarios",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "exceptions": [
+    {
+      "id": "client:org_synthetic_1:minutes-overage",
+      "severity": "warn",
+      "title": "Synthetic Dental (fictional): 200 minute(s) over the included allowance",
+      "detail": "Used 1200 of 1000 included minutes this month.",
+      "clientSlug": "synthetic-dental"
+    }
+  ],
+  "exceptionSummary": {
+    "ok": true,
+    "count": 1,
+    "critical": 0,
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "goLive": {
+    "steps": [
+      {
+        "id": "preflight",
+        "step": 0,
+        "title": "Pre-flight: full local test suite, tsc, evals, booking-demo generator",
+        "ownerYesNeeded": false,
+        "rollback": "None — nothing changes.",
+        "status": "unknown",
+        "evidence": [
+          "Runs in D:/MU-Receptionist-wt-prompt; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "snapshots",
+        "step": 1,
+        "title": "Take snapshots: Retell agent/LLM export, Twilio messaging screenshot, Neon branch, Vercel deployment id",
+        "ownerYesNeeded": false,
+        "rollback": "None — these ARE the rollback points for later steps.",
+        "status": "unknown",
+        "evidence": [
+          "Read-only console/export step; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "vercel-env",
+        "step": 2,
+        "title": "Vercel Pro plan + production environment variables (CRON_SECRET, TRUST_PROXY_HEADERS, alert email, AGENCY_FEED_TOKEN, …)",
+        "ownerYesNeeded": true,
+        "rollback": "Disable the alert email channel; revert values and redeploy.",
+        "status": "in-progress",
+        "evidence": [
+          "TRUST_PROXY_HEADERS: set",
+          "CRON_SECRET: valid (32+ chars)",
+          "Alert email channel live: yes",
+          "AGENCY_FEED_TOKEN: set (this dashboard read the feed with it)"
+        ]
+      },
+      {
+        "id": "migrations",
+        "step": 3,
+        "title": "Run pending Prisma migrations (booking, SMS, retention) against production",
+        "ownerYesNeeded": true,
+        "rollback": "Restore the Neon branch/point-in-time from step 1.",
+        "status": "unknown",
+        "evidence": [
+          "Not observable from the agency feed; check `prisma migrate status` in the receptionist repo."
+        ]
+      },
+      {
+        "id": "deploy",
+        "step": 4,
+        "title": "Deploy the merged branch to production",
+        "ownerYesNeeded": true,
+        "rollback": "Vercel Instant Rollback to the step-1 deployment id.",
+        "status": "unknown",
+        "evidence": [
+          "Which commit is live is a Vercel console fact, not exposed by the feed."
+        ]
+      },
+      {
+        "id": "retention",
+        "step": 5,
+        "title": "Retention sweep dry run, owner confirms, then apply; Retell provider-side retention",
+        "ownerYesNeeded": true,
+        "rollback": "Sweep is irreversible by design (dry run first); Retell PATCH back to snapshot.",
+        "status": "unknown",
+        "evidence": [
+          "Retention sweep is a one-off script run; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "seed-demo-org",
+        "step": 6,
+        "title": "Seed the demo organisation (mu-demo-line) — dry run then --apply --confirm-production",
+        "ownerYesNeeded": true,
+        "rollback": "Point the Retell agent id back at the previous org; unmap it from mu-demo-line.",
+        "status": "not-started",
+        "evidence": [
+          "No demo-tenant client (isDemoTenant / slug mu-demo-line) in the feed."
+        ]
+      },
+      {
+        "id": "retell-config",
+        "step": 7,
+        "title": "Retell configuration: phone number webhook, booking LLM prompt (no texts yet), publish",
+        "ownerYesNeeded": true,
+        "rollback": "Re-apply the message-taking v3 prompt and null webhook; republish.",
+        "status": "not-started",
+        "evidence": []
+      },
+      {
+        "id": "five-test-calls",
+        "step": 8,
+        "title": "Owner's 5 physical test calls (book; change of mind; full day; urgent then booking; ask for a person)",
+        "ownerYesNeeded": true,
+        "rollback": "Step 7's rollback, then report the call id.",
+        "status": "unknown",
+        "evidence": [
+          "Owner's physical phone test; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "twilio-console",
+        "step": 9,
+        "title": "Sending number + Twilio console: regulatory bundle, \"A message comes in\" webhook",
+        "ownerYesNeeded": true,
+        "rollback": "Remove the webhook URL; Twilio still honours STOP at number level.",
+        "status": "unknown",
+        "evidence": [
+          "Twilio console configuration; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "sms-env",
+        "step": 10,
+        "title": "SMS environment, live switch (SMS_PROVIDER, SMS_LIVE_SEND, Twilio credentials); redeploy",
+        "ownerYesNeeded": true,
+        "rollback": "SMS_LIVE_SEND=false and redeploy — every text becomes DRY_RUN.",
+        "status": "unknown",
+        "evidence": [
+          "SMS_LIVE_SEND is not carried by the feed contract; check the Vercel env directly."
+        ]
+      },
+      {
+        "id": "sms-on-demo",
+        "step": 11,
+        "title": "Texts on for the demo line; apply the SMS-wording LLM prompt; publish",
+        "ownerYesNeeded": true,
+        "rollback": "Re-apply step 7's prompt and republish; disable SMS for mu-demo-line.",
+        "status": "not-started",
+        "evidence": []
+      },
+      {
+        "id": "five-test-texts",
+        "step": 12,
+        "title": "Owner's 5 test texts (confirmation, reminder, callback, STOP, START/HELP) to the owner's own mobile",
+        "ownerYesNeeded": true,
+        "rollback": "Step 11's rollback (and step 10's if a text went where it should not).",
+        "status": "unknown",
+        "evidence": [
+          "Owner's physical phone test; not observable from the agency feed."
+        ]
+      },
+      {
+        "id": "say-it-out-loud",
+        "step": 13,
+        "title": "Update marketing/call pack to say the line books (after step 8) and texts (after step 12)",
+        "ownerYesNeeded": false,
+        "rollback": "Revert the wording change.",
+        "status": "not-started",
+        "evidence": [
+          "Booking confirmed on the demo line: no",
+          "SMS on for the demo line: no"
+        ]
+      }
+    ],
+    "liveLineMismatch": {
+      "visible": true,
+      "message": "The live receptionist line currently takes a message; it does not book appointments.",
+      "resolved": false,
+      "reason": "No demo-tenant client found in the feed — capability cannot be verified, so the mismatch stays shown."
+    }
+  }
+}

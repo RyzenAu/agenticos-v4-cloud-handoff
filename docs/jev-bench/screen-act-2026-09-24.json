@@ -1,0 +1,419 @@
+{
+ "label": "screen-act-2026-09-24",
+ "mode": "rescore",
+ "at": "2026-09-24T04:56:18.629Z",
+ "summary": "Route accuracy: 23/23 (100%); outbound cases that became an instant action: 0\nAll turns: p50 57 ms, p95 475 ms\n| path | turns | p50 ms | p95 ms |\n|---|---|---|---|\n| rules | 11 | 1 | 57 |\n| cache | 1 | 1 | 1 |\n| router | 11 | 376 | 489 |\n| group | correct | p50 ms |\n|---|---|---|\n| browser | 12/12 | 297 |\n| site | 4/4 | 376 |\n| screen_act | 7/7 | 0 |",
+ "rows": [
+  {
+   "group": "browser",
+   "text": "pause that",
+   "expect": [
+    "browser_act:pause"
+   ],
+   "spec": "browser_act:pause",
+   "path": "rules",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 1,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "browser",
+   "text": "hold the video there",
+   "expect": [
+    "browser_act:pause"
+   ],
+   "spec": "browser_act:pause",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 351,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.pause",
+    "confidence": 0.94,
+    "ms": 349,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "resume the video",
+   "expect": [
+    "browser_act:play"
+   ],
+   "spec": "browser_act:play",
+   "path": "rules",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 1,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "browser",
+   "text": "jump back a page",
+   "expect": [
+    "browser_act:back",
+    "screen_act"
+   ],
+   "spec": "browser_act:back",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 297,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.back",
+    "confidence": 0.98,
+    "ms": 295,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "take me back to the previous page",
+   "expect": [
+    "browser_act:back",
+    "screen_act"
+   ],
+   "spec": "browser_act:back",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 489,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.back",
+    "confidence": 1,
+    "ms": 482,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "refresh this",
+   "expect": [
+    "browser_act:reload",
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "router",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 343,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.reload",
+    "confidence": 0.98,
+    "ms": 326,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "scroll down a bit",
+   "expect": [
+    "browser_act:scroll_down",
+    "screen_act"
+   ],
+   "spec": "browser_act:scroll_down",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 415,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.scroll_down",
+    "confidence": 0.99,
+    "ms": 414,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "scroll back up",
+   "expect": [
+    "browser_act:scroll_up",
+    "screen_act"
+   ],
+   "spec": "browser_act:scroll_up",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 366,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.scroll_up",
+    "confidence": 0.96,
+    "ms": 365,
+    "cached": false
+   }
+  },
+  {
+   "group": "browser",
+   "text": "close this tab",
+   "expect": [
+    "browser_act:close_tab",
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 57,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "browser",
+   "text": "click the first video",
+   "expect": [
+    "browser_act:click:first",
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 26,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "browser",
+   "text": "play the second result",
+   "expect": [
+    "browser_act:click:second",
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 29,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "browser",
+   "text": "hit the subscribe button",
+   "expect": [
+    "browser_act:click:subscribe",
+    "screen_act"
+   ],
+   "spec": "browser_act:click:the subscribe button",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 383,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.click",
+    "confidence": 0.64,
+    "ms": 380,
+    "cached": false
+   }
+  },
+  {
+   "group": "site",
+   "text": "put YouTube on",
+   "expect": [
+    "open_url:youtube.com"
+   ],
+   "spec": "open_url:https://www.youtube.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 393,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.79,
+    "ms": 389,
+    "cached": false
+   }
+  },
+  {
+   "group": "site",
+   "text": "open github",
+   "expect": [
+    "open_url:github.com"
+   ],
+   "spec": "open_url:https://github.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 376,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.95,
+    "ms": 375,
+    "cached": false
+   }
+  },
+  {
+   "group": "site",
+   "text": "bring up gmail",
+   "expect": [
+    "open_url:mail.google.com",
+    "navigate:/inbox"
+   ],
+   "spec": "open_url:https://mail.google.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 335,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.86,
+    "ms": 331,
+    "cached": false
+   }
+  },
+  {
+   "group": "site",
+   "text": "go to muventures dot com dot au",
+   "expect": [
+    "open_url:muventures.com.au"
+   ],
+   "spec": "open_url:https://muventures.com.au",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 475,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 1,
+    "ms": 473,
+    "cached": false
+   }
+  },
+  {
+   "group": "screen_act",
+   "text": "click the blue button",
+   "expect": [
+    "screen_act"
+   ],
+   "sharing": true,
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 7,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "scroll down a bit",
+   "expect": [
+    "browser_act:scroll_down",
+    "screen_act"
+   ],
+   "sharing": true,
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 1,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "type my business name in there",
+   "expect": [
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "what should I click next",
+   "expect": [
+    "screen",
+    "screen_act"
+   ],
+   "sharing": true,
+   "spec": "screen",
+   "path": "rules",
+   "tool": "screen",
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "help me finish this form",
+   "expect": [
+    "screen_act"
+   ],
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "help me finish this form",
+   "expect": [
+    "screen_act"
+   ],
+   "sharing": true,
+   "spec": "screen_act",
+   "path": "rules",
+   "tool": "screen_act",
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "rules"
+  },
+  {
+   "group": "screen_act",
+   "text": "open github",
+   "expect": [
+    "open_url:github.com"
+   ],
+   "sharing": true,
+   "spec": "open_url:https://github.com",
+   "path": "cache",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 1,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.95,
+    "ms": 0,
+    "cached": true
+   }
+  }
+ ]
+}

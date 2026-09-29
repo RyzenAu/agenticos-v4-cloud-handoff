@@ -1,0 +1,4 @@
+' Hidden-window launcher for laya.ps1, which sets the D:\laya venv/HF-cache env vars itself
+' (see docs/LAYA.md) -- nothing D:-specific lives in this file.
+Set shell = CreateObject("WScript.Shell")
+shell.Run "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File " & Chr(34) & "C:\Users\Nebula PC\source\repos\AgenticOS-v4\scripts\windows\laya.ps1" & Chr(34) & " start", 0, False

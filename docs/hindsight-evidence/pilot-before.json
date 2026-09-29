@@ -1,0 +1,29 @@
+{
+  "_note": "mu-pilot baseline, captured 27 Sep 2026 23:44 AEST before any change, while the pilot ran under the OLD launcher (no auth). Counts only. API stats via GET /v1/default/banks/mu-pilot/stats; SQL via pg0 psql on instance hindsight-mu.",
+  "banks_listed": ["mu-pilot"],
+  "api_stats": {
+    "total_documents": 1,
+    "total_links": 1017,
+    "total_nodes": 31,
+    "total_observations": 0,
+    "pending_operations": 0,
+    "failed_operations": 0
+  },
+  "sql_counts": {
+    "banks": 1,
+    "documents": 1,
+    "chunks": 17,
+    "memory_units": 31,
+    "memory_units_with_embedding": 31,
+    "memory_links": 979,
+    "entities": 85,
+    "unit_entities": 123,
+    "mental_models": 0,
+    "knowledge_pages": 0,
+    "async_operations": 0,
+    "llm_requests": 0,
+    "audit_log": 0,
+    "llm_requests_all_banks": 0,
+    "audit_log_all_banks": 0
+  }
+}

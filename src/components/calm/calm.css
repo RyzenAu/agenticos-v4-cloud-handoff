@@ -1,0 +1,265 @@
+/* Calm primitives (calm.tsx): big readable type, rounded-2xl cards, rings and disclosures.
+   Tokens only (src/styles.css); no hex values. */
+
+.calm-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  box-shadow: var(--elev-1);
+}
+@media (min-width: 640px) {
+  .calm-card {
+    padding: 24px;
+  }
+}
+.calm-card[data-tone="brand"] {
+  border-color: color-mix(in oklab, var(--brand) 38%, var(--border));
+}
+.calm-card[data-tone="warn"] {
+  border-color: color-mix(in oklab, var(--warn) 45%, var(--border));
+}
+.calm-card[data-tone="danger"] {
+  border-color: color-mix(in oklab, var(--danger) 50%, var(--border));
+}
+
+/* ── CalmSection: a section folded into one calm row (on the ds Disclosure) ── */
+.calm-section {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  box-shadow: var(--elev-1);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.calm-section + .calm-section {
+  margin-top: 12px;
+}
+.calm-section[data-open] {
+  border-color: var(--border-strong);
+}
+.calm-section .calm-section-trigger {
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius-2xl);
+}
+.calm-section-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--inset);
+  color: var(--muted-foreground);
+}
+.calm-section[data-tone="warn"] .calm-section-icon {
+  color: var(--warn);
+}
+.calm-section[data-tone="danger"] .calm-section-icon {
+  color: var(--danger);
+}
+.calm-section[data-tone="brand"] .calm-section-icon {
+  color: var(--brand);
+}
+.calm-section-title {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--foreground);
+}
+.calm-section[data-level="2"] .calm-section-title {
+  font-size: var(--text-lg);
+}
+.calm-section-summary {
+  display: block;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.calm-section-meta {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+@media (min-width: 640px) {
+  .calm-section-meta {
+    display: inline-flex;
+  }
+}
+.calm-section .calm-section-panel {
+  padding: 4px 20px 20px;
+}
+
+/* ── Pill ── */
+.calm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--inset);
+  color: var(--muted-foreground);
+}
+.calm-pill[data-tone="brand"] {
+  background: var(--brand-soft);
+  color: var(--foreground);
+}
+.calm-pill[data-tone="success"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.calm-pill[data-tone="warn"] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.calm-pill[data-tone="danger"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ── Figure ── */
+.calm-figure {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.calm-figure-label {
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.calm-figure-value {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+.calm-figure-value[data-empty] {
+  color: var(--muted-foreground);
+}
+.calm-figure[data-tone="warn"] .calm-figure-value {
+  color: var(--warn);
+}
+.calm-figure[data-tone="danger"] .calm-figure-value {
+  color: var(--danger);
+}
+.calm-figure[data-tone="success"] .calm-figure-value {
+  color: var(--success);
+}
+.calm-figure-hint {
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+/* ── Calm signal tiles (Today): the shared SignalTile, bigger and rounder, scoped to this wrapper ── */
+.calm-signals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 14px;
+}
+@media (max-width: 520px) {
+  .calm-signals {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  :is(.calm-signals, .calm-tile) .sh-signal {
+    padding: 16px;
+  }
+}
+:is(.calm-signals, .calm-tile) .sh-signal {
+  gap: 8px;
+  padding: 20px;
+  border-radius: var(--radius-2xl);
+}
+:is(.calm-signals, .calm-tile) .sh-signal-label {
+  font-size: var(--text-sm);
+}
+:is(.calm-signals, .calm-tile) .sh-signal-value {
+  font-size: var(--text-2xl);
+}
+:is(.calm-signals, .calm-tile) .sh-signal-value[data-state="unknown"],
+:is(.calm-signals, .calm-tile) .sh-signal-value[data-state="failed"] {
+  font-size: var(--text-lg);
+}
+:is(.calm-signals, .calm-tile) .sh-signal-hint {
+  font-size: var(--text-xs);
+}
+
+/* A calm list row: larger, rounder than .sh-row-link. */
+.calm-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.calm-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--inset);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+a.calm-row:hover {
+  background: var(--surface-raised);
+}
+a.calm-row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.calm-row-title {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--foreground);
+}
+.calm-row-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calm-section,
+  .calm-row {
+    transition: none;
+  }
+}
+
+/* A ds ProgressRing with a caption (CaptionedRing). */
+.calm-ring {
+  margin: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.calm-ring-caption {
+  max-width: 14ch;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* Sections folded into a CalmSection keep their content, not their outer page spacing. */
+.calm-section .calm-section-panel > .mb-12,
+.calm-section .calm-section-panel > .mb-10,
+.calm-section .calm-section-panel > section:last-child {
+  margin-bottom: 0;
+}

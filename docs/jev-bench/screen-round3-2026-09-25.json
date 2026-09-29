@@ -1,0 +1,1402 @@
+{
+ "date": "2026-09-25",
+ "note": "Round 3 of screen-hands and the Jarvis end-to-end suite. Own windows only, idle-gated. Raw rows are in the bench runs; summaries here.",
+ "focus": {
+  "bench": {
+   "focus-behind/alt": {
+    "runs": 10,
+    "ok": 0,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 12,
+    "p90RunMs": 19,
+    "p50StepMs": 12,
+    "p90StepMs": 19,
+    "visionImages": 0
+   },
+   "focus-behind/attach": {
+    "runs": 10,
+    "ok": 9,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 20,
+    "p90RunMs": 43,
+    "p50StepMs": 20,
+    "p90StepMs": 43,
+    "visionImages": 0
+   },
+   "focus-front/alt": {
+    "runs": 10,
+    "ok": 0,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 11,
+    "p90RunMs": 19,
+    "p50StepMs": 11,
+    "p90StepMs": 19,
+    "visionImages": 0
+   },
+   "focus-front/attach": {
+    "runs": 10,
+    "ok": 9,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 9,
+    "p90RunMs": 10,
+    "p50StepMs": 9,
+    "p90StepMs": 10,
+    "visionImages": 0
+   }
+  },
+  "notepadTyping": {
+   "oldFocus": {
+    "notepad/off": {
+     "runs": 5,
+     "ok": 2,
+     "wrongTarget": 0,
+     "refused": 0,
+     "p50RunMs": 616,
+     "p90RunMs": 721,
+     "p50StepMs": 583,
+     "p90StepMs": 651,
+     "visionImages": 0
+    },
+    "notepad/on": {
+     "runs": 5,
+     "ok": 5,
+     "wrongTarget": 0,
+     "refused": 0,
+     "p50RunMs": 557,
+     "p90RunMs": 664,
+     "p50StepMs": 530,
+     "p90StepMs": 623,
+     "visionImages": 0
+    }
+   },
+   "newFocus": {
+    "notepad/off": {
+     "runs": 5,
+     "ok": 5,
+     "wrongTarget": 0,
+     "refused": 0,
+     "p50RunMs": 475,
+     "p90RunMs": 608,
+     "p50StepMs": 456,
+     "p90StepMs": 588,
+     "visionImages": 0,
+     "claimedDone": 0,
+     "modelCalls": {}
+    },
+    "notepad/on": {
+     "runs": 5,
+     "ok": 4,
+     "wrongTarget": 0,
+     "refused": 0,
+     "p50RunMs": 483,
+     "p90RunMs": 1096,
+     "p50StepMs": 463,
+     "p90StepMs": 1017,
+     "visionImages": 0,
+     "claimedDone": 0,
+     "modelCalls": {}
+    }
+   }
+  }
+ },
+ "jevStep": {
+  "steps/groq": {
+   "runs": 12,
+   "ok": 12,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 3793,
+   "p90RunMs": 5229,
+   "p50StepMs": 834,
+   "p90StepMs": 1194,
+   "visionImages": 0,
+   "claimedDone": 12,
+   "modelCalls": {
+    "jev": 21,
+    "groq": 44
+   }
+  },
+  "steps/jev": {
+   "runs": 12,
+   "ok": 12,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 2862,
+   "p90RunMs": 4822,
+   "p50StepMs": 680,
+   "p90StepMs": 1085,
+   "visionImages": 0,
+   "claimedDone": 12,
+   "modelCalls": {
+    "jev": 48,
+    "groq": 15
+   }
+  }
+ },
+ "refs": {
+  "refs/refs-off": {
+   "runs": 16,
+   "ok": 14,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 1998,
+   "p90RunMs": 2554,
+   "p50StepMs": 869,
+   "p90StepMs": 1622,
+   "visionImages": 0,
+   "claimedDone": 0,
+   "modelCalls": {}
+  },
+  "refs/refs-on": {
+   "runs": 16,
+   "ok": 14,
+   "wrongTarget": 0,
+   "refused": 4,
+   "p50RunMs": 1550,
+   "p90RunMs": 2515,
+   "p50StepMs": 735,
+   "p90StepMs": 1676,
+   "visionImages": 0,
+   "claimedDone": 0,
+   "modelCalls": {}
+  }
+ },
+ "formFill": {
+  "formfill/planner": {
+   "runs": 2,
+   "ok": 0,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 2605,
+   "p90RunMs": 2605,
+   "p50StepMs": 642,
+   "p90StepMs": 1871,
+   "visionImages": 0,
+   "claimedDone": 2,
+   "modelCalls": {
+    "jev": 2,
+    "groq": 3
+   }
+  },
+  "formfill/batch": {
+   "runs": 2,
+   "ok": 1,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 2906,
+   "p90RunMs": 2906,
+   "p50StepMs": 471,
+   "p90StepMs": 611,
+   "visionImages": 0,
+   "claimedDone": 2,
+   "modelCalls": {
+    "jev": 4
+   }
+  }
+ },
+ "replay": {
+  "summary": {
+   "replay/replay-off": {
+    "runs": 3,
+    "ok": 3,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 3852,
+    "p90RunMs": 4560,
+    "p50StepMs": null,
+    "p90StepMs": null,
+    "visionImages": 0,
+    "claimedDone": 0,
+    "modelCalls": {
+     "groq": 21,
+     "gemini": 3
+    }
+   },
+   "replay/replay-on": {
+    "runs": 3,
+    "ok": 3,
+    "wrongTarget": 0,
+    "refused": 0,
+    "p50RunMs": 1584,
+    "p90RunMs": 3136,
+    "p50StepMs": null,
+    "p90StepMs": null,
+    "visionImages": 0,
+    "claimedDone": 0,
+    "modelCalls": {
+     "groq": 7,
+     "gemini": 1
+    }
+   }
+  },
+  "runs": [
+   {
+    "mode": "replay-off",
+    "trial": 1,
+    "ok": true,
+    "ms": 4560,
+    "calls": {
+     "groq": 7,
+     "gemini": 1
+    },
+    "replayed": false,
+    "verified": 2
+   },
+   {
+    "mode": "replay-off",
+    "trial": 2,
+    "ok": true,
+    "ms": 3852,
+    "calls": {
+     "groq": 7,
+     "gemini": 1
+    },
+    "replayed": false,
+    "verified": 2
+   },
+   {
+    "mode": "replay-off",
+    "trial": 3,
+    "ok": true,
+    "ms": 2891,
+    "calls": {
+     "groq": 7,
+     "gemini": 1
+    },
+    "replayed": false,
+    "verified": 2
+   },
+   {
+    "mode": "replay-on",
+    "trial": 1,
+    "ok": true,
+    "ms": 3136,
+    "calls": {
+     "groq": 7,
+     "gemini": 1
+    },
+    "replayed": false,
+    "verified": 2
+   },
+   {
+    "mode": "replay-on",
+    "trial": 2,
+    "ok": true,
+    "ms": 1577,
+    "calls": {},
+    "replayed": true,
+    "verified": 2
+   },
+   {
+    "mode": "replay-on",
+    "trial": 3,
+    "ok": true,
+    "ms": 1584,
+    "calls": {},
+    "replayed": true,
+    "verified": 2
+   }
+  ]
+ },
+ "nightlight": {
+  "nightlight/off": {
+   "runs": 2,
+   "ok": 2,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 2527,
+   "p90RunMs": 2527,
+   "p50StepMs": 810,
+   "p90StepMs": 945,
+   "visionImages": 0,
+   "claimedDone": 0,
+   "modelCalls": {}
+  },
+  "nightlight/on": {
+   "runs": 2,
+   "ok": 2,
+   "wrongTarget": 0,
+   "refused": 0,
+   "p50RunMs": 3698,
+   "p90RunMs": 3698,
+   "p50StepMs": 966,
+   "p90StepMs": 1516,
+   "visionImages": 0,
+   "claimedDone": 0,
+   "modelCalls": {}
+  }
+ },
+ "e2e": {
+  "before": {
+   "part1FromLog": "vercel FAIL 108.7s q2; rename DONE 56.1s q1; bluetooth (already on, excluded); focus-timer FAIL 123.9s q2; spotify DONE 35.4s; form-fill FAIL 1.3s q1; vscode skipped",
+   "part2": {
+    "label": "before-part2",
+    "at": "2026-09-24T22:45:34.156Z",
+    "tasks": 12,
+    "ran": 12,
+    "skipped": [],
+    "completed": 8,
+    "completionRate": 67,
+    "questions": 1,
+    "wrongActions": 1,
+    "totalSeconds": 51.5,
+    "p50Seconds": 1.345,
+    "p90Seconds": 12.729
+   },
+   "rows2": [
+    {
+     "id": "notepad-list",
+     "ok": false,
+     "q": 0,
+     "ms": 6509,
+     "tools": [
+      "pc_act:open_app",
+      "screen_act"
+     ],
+     "wrong": [
+      "3 Notepad windows"
+     ]
+    },
+    {
+     "id": "battery",
+     "ok": true,
+     "q": 0,
+     "ms": 93,
+     "tools": [
+      "skill:battery"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "disk-space",
+     "ok": true,
+     "q": 0,
+     "ms": 20082,
+     "tools": [
+      "control_pc"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "downloads-folder",
+     "ok": true,
+     "q": 0,
+     "ms": 395,
+     "tools": [
+      "pc_act:open_folder"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "maths",
+     "ok": true,
+     "q": 0,
+     "ms": 6,
+     "tools": [
+      "skill:calc"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "open-goal-screen",
+     "ok": false,
+     "q": 1,
+     "ms": 1345,
+     "tools": [
+      "screen_act"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "take-over-dark",
+     "ok": true,
+     "q": 0,
+     "ms": 5422,
+     "tools": [
+      "screen_teach"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "youtube-search",
+     "ok": true,
+     "q": 0,
+     "ms": 3548,
+     "tools": [
+      "open_url"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "timer-2min",
+     "ok": true,
+     "q": 0,
+     "ms": 10,
+     "tools": [
+      "skill:start"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "desktop-folder",
+     "ok": false,
+     "q": 0,
+     "ms": 12729,
+     "tools": [
+      "control_pc"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "switch-window",
+     "ok": true,
+     "q": 0,
+     "ms": 332,
+     "tools": [
+      "skill:switch"
+     ],
+     "wrong": []
+    },
+    {
+     "id": "time-london",
+     "ok": false,
+     "q": 0,
+     "ms": 1065,
+     "tools": [],
+     "wrong": []
+    }
+   ]
+  },
+  "after": {
+   "label": "after",
+   "at": "2026-09-24T23:02:40.389Z",
+   "tasks": 19,
+   "ran": 17,
+   "skipped": [
+    "vscode-tests: VS Code is already open (his), so it wasn't touched",
+    "bluetooth-on: Bluetooth is already on (switching it off to test could drop his devices)"
+   ],
+   "completed": 12,
+   "completionRate": 71,
+   "questions": 6,
+   "wrongActions": 2,
+   "totalSeconds": 377,
+   "p50Seconds": 2.458,
+   "p90Seconds": 108.201
+  },
+  "final": {
+   "label": "final",
+   "at": "2026-09-24T23:14:30.087Z",
+   "tasks": 19,
+   "ran": 15,
+   "skipped": [
+    "vscode-tests: VS Code is already open (his), so it wasn't touched",
+    "notepad-list: Notepad is already running (someone's tabs), so it wasn't touched",
+    "desktop-folder: the folder already exists",
+    "switch-window: a Notepad window of his is open"
+   ],
+   "completed": 13,
+   "completionRate": 87,
+   "questions": 1,
+   "wrongActions": 0,
+   "totalSeconds": 76.2,
+   "p50Seconds": 0.397,
+   "p90Seconds": 5.088
+  },
+  "finalRows": [
+   {
+    "id": "vercel-status",
+    "ok": true,
+    "q": 0,
+    "ms": 5088,
+    "tools": [
+     "open_url",
+     "skill:latest"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "rename-screenshots",
+    "ok": true,
+    "q": 0,
+    "ms": 11,
+    "tools": [
+     "skill:rename_by_date"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "vscode-tests",
+    "ok": false,
+    "skipped": "VS Code is already open (his), so it wasn't touched",
+    "q": 0,
+    "ms": 0,
+    "tools": [],
+    "wrong": []
+   },
+   {
+    "id": "bluetooth-on",
+    "ok": true,
+    "q": 0,
+    "ms": 728,
+    "tools": [
+     "skill:radio"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "focus-timer-mute",
+    "ok": false,
+    "q": 0,
+    "ms": 51,
+    "tools": [
+     "skill:start",
+     "skill:notifications"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "spotify-liked",
+    "ok": true,
+    "q": 1,
+    "ms": 59908,
+    "tools": [
+     "open_url",
+     "pc_act:open_app",
+     "control_pc",
+     "control_pc"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "form-fill",
+    "ok": true,
+    "q": 0,
+    "ms": 3284,
+    "tools": [
+     "screen_act"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "notepad-list",
+    "ok": false,
+    "skipped": "Notepad is already running (someone's tabs), so it wasn't touched",
+    "q": 0,
+    "ms": 0,
+    "tools": [],
+    "wrong": []
+   },
+   {
+    "id": "battery",
+    "ok": true,
+    "q": 0,
+    "ms": 75,
+    "tools": [
+     "skill:battery"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "disk-space",
+    "ok": true,
+    "q": 0,
+    "ms": 109,
+    "tools": [
+     "skill:disk"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "downloads-folder",
+    "ok": true,
+    "q": 0,
+    "ms": 397,
+    "tools": [
+     "pc_act:open_folder"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "maths",
+    "ok": true,
+    "q": 0,
+    "ms": 4,
+    "tools": [
+     "skill:calc"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "open-goal-screen",
+    "ok": false,
+    "q": 0,
+    "ms": 2529,
+    "tools": [
+     "screen_act"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "take-over-dark",
+    "ok": true,
+    "q": 0,
+    "ms": 1985,
+    "tools": [
+     "screen_teach"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "youtube-search",
+    "ok": true,
+    "q": 0,
+    "ms": 1996,
+    "tools": [
+     "open_url"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "timer-2min",
+    "ok": true,
+    "q": 0,
+    "ms": 6,
+    "tools": [
+     "skill:start"
+    ],
+    "wrong": []
+   },
+   {
+    "id": "desktop-folder",
+    "ok": false,
+    "skipped": "the folder already exists",
+    "q": 0,
+    "ms": 0,
+    "tools": [],
+    "wrong": []
+   },
+   {
+    "id": "switch-window",
+    "ok": false,
+    "skipped": "a Notepad window of his is open",
+    "q": 0,
+    "ms": 0,
+    "tools": [],
+    "wrong": []
+   },
+   {
+    "id": "time-london",
+    "ok": true,
+    "q": 0,
+    "ms": 6,
+    "tools": [
+     "skill:now"
+    ],
+    "wrong": []
+   }
+  ]
+ },
+ "teachDemo": {
+  "first": [
+   {
+    "app": "excel",
+    "course": {
+     "title": "Excel Pivot Table Basics",
+     "model": "openai/gpt-oss-120b, 9.4 s",
+     "lessons": [
+      "Insert a table from sample data",
+      "Insert a pivot table from the sample data",
+      "Drag a field to Rows area",
+      "Drag a field to Values area",
+      "Add a field to Filters area",
+      "Switch value field to Count",
+      "Click Refresh on the Analyze tab",
+      "Select a Quick Layout style"
+     ],
+     "sources": []
+    },
+    "timings": {
+     "lesson1FirstLineMs": 11443,
+     "courseBuildAndFirstLineMs": 11443,
+     "lesson1TotalMs": 11444,
+     "lesson2FirstLineMs": 4309,
+     "lesson2TotalMs": 40080,
+     "lesson3FirstLineMs": 3837,
+     "lesson3TotalMs": 78741
+    },
+    "transcript": [
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "teach me Excel pivot tables"
+     },
+     {
+      "t": 11.4,
+      "kind": "jarvis",
+      "text": "Your Excel Pivot Table Basics course has 8 lessons. Lesson 1 of 8: Insert Sample Data. That window isn't the one in front any more, so I left everything alone. We'll come back to Insert Sample Data. Next up: lesson 1, Insert Sample Data. Say \"next lesson\" when you're ready."
+     },
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "next lesson"
+     },
+     {
+      "t": 4.3,
+      "kind": "jarvis",
+      "text": "Let's try lesson 1 of 8: Insert Sample Data. That one — Insert, top left."
+     },
+     {
+      "t": 8.3,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 8.3,
+      "kind": "jarvis",
+      "text": "Hint: That one — Insert, top left."
+     },
+     {
+      "t": 12.3,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 12.3,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 13.4,
+      "kind": "state",
+      "text": "Clicking Insert."
+     },
+     {
+      "t": 14.2,
+      "kind": "step",
+      "text": "I clicked \"Insert\" (verified)"
+     },
+     {
+      "t": 15.9,
+      "kind": "jarvis",
+      "text": "That one — Table, top left."
+     },
+     {
+      "t": 19.3,
+      "kind": "state",
+      "text": "Plan from gpt-6-sol: 3 steps, 18244 ms"
+     },
+     {
+      "t": 19.3,
+      "kind": "jarvis",
+      "text": "Selects the sample data around the active cell."
+     },
+     {
+      "t": 23.4,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 23.4,
+      "kind": "jarvis",
+      "text": "Hint: That one — Table, top left."
+     },
+     {
+      "t": 27.4,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 27.9,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 28.8,
+      "kind": "state",
+      "text": "Clicking Table."
+     },
+     {
+      "t": 29.5,
+      "kind": "step",
+      "text": "I clicked \"Table\" (verified)"
+     },
+     {
+      "t": 29.9,
+      "kind": "jarvis",
+      "text": "That one — OK, bottom. Creates the table after you check its range and headers."
+     },
+     {
+      "t": 33.9,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 33.9,
+      "kind": "jarvis",
+      "text": "Hint: That one — OK, bottom. Creates the table after you check its range and headers."
+     },
+     {
+      "t": 37.9,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 37.9,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 38.1,
+      "kind": "state",
+      "text": "Clicking OK."
+     },
+     {
+      "t": 38.7,
+      "kind": "step",
+      "text": "I clicked \"OK\" (verified)"
+     },
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "next lesson"
+     },
+     {
+      "t": 3.8,
+      "kind": "jarvis",
+      "text": "Lesson 2 of 8: Create Pivot Table. Your turn: Insert a pivot table from the sample data. Say \"hint\" if you get stuck."
+     },
+     {
+      "t": 7.8,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 8.1,
+      "kind": "jarvis",
+      "text": "Hint: That one — Insert, top left."
+     },
+     {
+      "t": 9.1,
+      "kind": "state",
+      "text": "Plan from gpt-6-astra: 3 steps, 8087 ms"
+     },
+     {
+      "t": 12.1,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 12.1,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 13.1,
+      "kind": "state",
+      "text": "Clicking Insert."
+     },
+     {
+      "t": 14.8,
+      "kind": "step",
+      "text": "I clicked \"Insert\" (verified)"
+     },
+     {
+      "t": 14.9,
+      "kind": "jarvis",
+      "text": "Good."
+     },
+     {
+      "t": 18.9,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 19.4,
+      "kind": "jarvis",
+      "text": "Hint: That one — S, top. Create a PivotTable from the selected sample table."
+     },
+     {
+      "t": 23.4,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 23.4,
+      "kind": "state",
+      "text": "Doing this one for you"
+     }
+    ]
+   },
+   {
+    "app": "explorer",
+    "course": {
+     "title": "Explorer Basics",
+     "model": "openai/gpt-oss-20b, 4.7 s",
+     "lessons": [
+      "Open the Documents folder by double‑clicking its TreeItem",
+      "Switch to Large Icons view using the RadioButton",
+      "Type \"budget draft\" in the Search bar and press Enter",
+      "Click the SplitButton \"Date modified\" and select \"Descending\"",
+      "Double‑click the ListItem \"budget draft\" to open it",
+      "Click the \"Back by small amount\" button",
+      "Click the \"Close Tab\" button on the current tab"
+     ],
+     "sources": [
+      "https://support.microsoft.com/en-us/windows/experience/fileexplorer/file-explorer-in-windows",
+      "https://www.microsoft.com/en-us/windows/tips/file-explorer",
+      "https://techcommunity.microsoft.com/discussions/windows11/windows-11-file-explorer-tutorial-a-complete-beginner-to-advanced-guide/4536278",
+      "https://learn.microsoft.com/en-us/answers/questions/5629069/how-to-set-up-file-explorer",
+      "https://windowsreport.com/get-help-with-file-explorer-in-windows/",
+      "https://www.youtube.com/watch?v=n0naYri6JXE",
+      "https://www.geeksdigit.com/use-file-explorer-windows-11/",
+      "https://www.tutorialspoint.com/windows10/windows10_file_explorer.htm"
+     ]
+    },
+    "timings": {
+     "lesson1FirstLineMs": 35527,
+     "courseBuildAndFirstLineMs": 35527,
+     "lesson1TotalMs": 50557,
+     "lesson2FirstLineMs": 4011,
+     "lesson2TotalMs": 30343,
+     "lesson3FirstLineMs": 3688,
+     "lesson3TotalMs": 165176
+    },
+    "transcript": [
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "teach me File Explorer"
+     },
+     {
+      "t": 35.5,
+      "kind": "jarvis",
+      "text": "Your Explorer Basics course has 7 lessons. Lesson 1 of 7: Open Folder. Still on it."
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (verified)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Plan from gpt-6-astra: 2 steps, 5382 ms"
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.5,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 35.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 35.9,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 36.5,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 39.7,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 40.3,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 43.4,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 43.7,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 46.7,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 47,
+      "kind": "state",
+      "text": "Clicking Documents."
+     },
+     {
+      "t": 50.2,
+      "kind": "step",
+      "text": "I clicked \"Documents\" (unobserved)"
+     },
+     {
+      "t": 50.2,
+      "kind": "jarvis",
+      "text": "That's lesson 1, Open Folder. Learn navigation. Next up: lesson 2, View Icons. Say \"next lesson\" when you're ready."
+     },
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "next lesson"
+     },
+     {
+      "t": 4,
+      "kind": "jarvis",
+      "text": "Lesson 2 of 7: View Icons. That one — Large Icons, bottom right."
+     },
+     {
+      "t": 7.9,
+      "kind": "state",
+      "text": "Plan from gpt-6-astra: 2 steps, 7119 ms"
+     },
+     {
+      "t": 7.9,
+      "kind": "jarvis",
+      "text": "Switch Documents to large icons."
+     },
+     {
+      "t": 12,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 12,
+      "kind": "jarvis",
+      "text": "Hint: That one — Large Icons, bottom right."
+     },
+     {
+      "t": 16,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 16,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 16.7,
+      "kind": "state",
+      "text": "Clicking Large Icons."
+     },
+     {
+      "t": 17.4,
+      "kind": "step",
+      "text": "I clicked \"Large Icons\" (verified)"
+     },
+     {
+      "t": 18.1,
+      "kind": "jarvis",
+      "text": "Press Space. Ensure this view stays selected, sir."
+     },
+     {
+      "t": 22.1,
+      "kind": "him",
+      "text": "hint"
+     }
+    ]
+   }
+  ],
+  "rerunExcel": [
+   {
+    "app": "excel",
+    "course": {
+     "title": "Pivot Table Basics",
+     "model": "openai/gpt-oss-20b, 3.1 s",
+     "lessons": [
+      "Insert a PivotTable from the sample data",
+      "Drag the Product field to Rows area",
+      "Drag the Sales field to Values area",
+      "Drag the Region field to Filters area",
+      "Click Value field, choose Sum of Sales, then choose Average",
+      "Select PivotTable, click Design tab, choose a PivotTable style"
+     ]
+    },
+    "timings": {
+     "lesson1FirstLineMs": 8353,
+     "courseBuildAndFirstLineMs": 8353,
+     "lesson1TotalMs": 158712,
+     "lesson2FirstLineMs": 1229,
+     "lesson2TotalMs": 30586,
+     "lesson3FirstLineMs": 1033,
+     "lesson3TotalMs": 41880
+    },
+    "transcript": [
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "teach me Excel pivot tables"
+     },
+     {
+      "t": 8.4,
+      "kind": "jarvis",
+      "text": "Your Pivot Table Basics course has 6 lessons. Lesson 1 of 6: Create Pivot. Clicking Insert."
+     },
+     {
+      "t": 10.1,
+      "kind": "step",
+      "text": "I clicked \"Insert\" (verified)"
+     },
+     {
+      "t": 10.7,
+      "kind": "jarvis",
+      "text": "Which PivotTable option would you like to use?"
+     },
+     {
+      "t": 16.2,
+      "kind": "state",
+      "text": "Plan from gpt-6-astra: 7 steps, 10830 ms"
+     },
+     {
+      "t": 158.7,
+      "kind": "note",
+      "text": "(timed out; stopped)"
+     },
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "next lesson"
+     },
+     {
+      "t": 1.2,
+      "kind": "jarvis",
+      "text": "Lesson 1 of 6: Create Pivot. That one — Name Box, top left. Select a cell within the sample data."
+     },
+     {
+      "t": 5.2,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 5.3,
+      "kind": "jarvis",
+      "text": "Hint: That one — Name Box, top left. Select a cell within the sample data."
+     },
+     {
+      "t": 9.3,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 9.3,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 10.3,
+      "kind": "state",
+      "text": "Clicking Name Box."
+     },
+     {
+      "t": 12.6,
+      "kind": "step",
+      "text": "I clicked \"Name Box\" (verified)"
+     },
+     {
+      "t": 12.6,
+      "kind": "jarvis",
+      "text": "Press Enter. Confirm the cell selection."
+     },
+     {
+      "t": 16.6,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 16.6,
+      "kind": "jarvis",
+      "text": "Hint: Press Enter. Confirm the cell selection."
+     },
+     {
+      "t": 20.7,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 21.5,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 22.6,
+      "kind": "jarvis",
+      "text": "Pressing Enter there will probably submit the form. Shall I?"
+     },
+     {
+      "t": 26.6,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 26.6,
+      "kind": "jarvis",
+      "text": "Pressing Enter there will probably submit the form. Shall I?"
+     },
+     {
+      "t": 30.6,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 0,
+      "kind": "him",
+      "text": "next lesson"
+     },
+     {
+      "t": 1,
+      "kind": "jarvis",
+      "text": "Let's try lesson 1 of 6: Create Pivot. Your turn: Insert a PivotTable from the sample data. Say \"hint\" if you get stuck."
+     },
+     {
+      "t": 5,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 5.3,
+      "kind": "jarvis",
+      "text": "Hint: That one — Name Box, on the left. Select a cell within the sample data."
+     },
+     {
+      "t": 9.3,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 9.3,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 10.2,
+      "kind": "state",
+      "text": "Clicking Name Box."
+     },
+     {
+      "t": 11.7,
+      "kind": "step",
+      "text": "I clicked \"Name Box\" (verified)"
+     },
+     {
+      "t": 11.8,
+      "kind": "jarvis",
+      "text": "Your turn again."
+     },
+     {
+      "t": 15.8,
+      "kind": "him",
+      "text": "hint"
+     },
+     {
+      "t": 16,
+      "kind": "jarvis",
+      "text": "Hint: Type \"A1\" in Name Box. Start at the sample data’s first cell."
+     },
+     {
+      "t": 20,
+      "kind": "him",
+      "text": "I can't find it"
+     },
+     {
+      "t": 20,
+      "kind": "state",
+      "text": "Doing this one for you"
+     },
+     {
+      "t": 21,
+      "kind": "state",
+      "text": "Typing in Name Box."
+     },
+     {
+      "t": 22.5,
+      "kind": "step",
+      "text": "I typed \"A1\" in \"Name Box\" (verified)"
+     },
+     {
+      "t": 23.4,
+      "kind": "jarvis",
+      "text": "Your turn again."
+     },
+     {
+      "t": 27.4,
+      "kind": "him",
+      "text": "hint"
+     }
+    ]
+   }
+  ]
+ }
+}

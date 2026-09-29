@@ -1,0 +1,781 @@
+{
+ "label": "first-after-3",
+ "base": "http://127.0.0.1:8097",
+ "runs": 1,
+ "when": "2026-09-27T18:33:45.459Z",
+ "conditions": "FIRST VISIT after a fresh vite dev start (no warm-up), fresh headless Chrome context per page",
+ "medians": [
+  {
+   "path": "/",
+   "ttfb": 1892.699999999255,
+   "fcp": 2900,
+   "dcl": 2673.39999999851,
+   "load": 2759.699999999255,
+   "hydrated": 3367.099999997765,
+   "requests": 285,
+   "jsRequests": 268,
+   "jsBytes": 6379418,
+   "totalBytes": 6950283,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/workspace",
+   "ttfb": 26.899999998509884,
+   "fcp": 208,
+   "dcl": 109.09999999776483,
+   "load": 210,
+   "hydrated": 693.6999999992549,
+   "requests": 286,
+   "jsRequests": 268,
+   "jsBytes": 6379418,
+   "totalBytes": 6958196,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/finance",
+   "ttfb": 59.399999998509884,
+   "fcp": 212,
+   "dcl": 138.69999999925494,
+   "load": 207.89999999850988,
+   "hydrated": 745.1999999992549,
+   "requests": 291,
+   "jsRequests": 272,
+   "jsBytes": 6739650,
+   "totalBytes": 7316524,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/memory",
+   "ttfb": 479.70000000298023,
+   "fcp": 1012,
+   "dcl": 584.5,
+   "load": 754.4000000022352,
+   "hydrated": 1379.7000000029802,
+   "requests": 398,
+   "jsRequests": 370,
+   "jsBytes": 10700778,
+   "totalBytes": 11596595,
+   "imageBytes": 163756,
+   "fontBlock": 0
+  },
+  {
+   "path": "/receptionist",
+   "ttfb": 40.399999998509884,
+   "fcp": 160,
+   "dcl": 108.19999999925494,
+   "load": 156.19999999925494,
+   "hydrated": 631,
+   "requests": 308,
+   "jsRequests": 285,
+   "jsBytes": 6904707,
+   "totalBytes": 7492236,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/jarvis",
+   "ttfb": 3648.800000000745,
+   "fcp": 4152,
+   "dcl": 4003.89999999851,
+   "load": 4044,
+   "hydrated": 4544,
+   "requests": 405,
+   "jsRequests": 379,
+   "jsBytes": 9338293,
+   "totalBytes": 10381904,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/design",
+   "ttfb": 1255.8999999985099,
+   "fcp": 1500,
+   "dcl": 1323.0999999977648,
+   "load": 1416.199999999255,
+   "hydrated": 3199.7999999970198,
+   "requests": 494,
+   "jsRequests": 394,
+   "jsBytes": 11278338,
+   "totalBytes": 123195995,
+   "imageBytes": 96330551,
+   "fontBlock": 0
+  }
+ ],
+ "spot": [],
+ "raw": [
+  {
+   "run": 1,
+   "path": "/",
+   "ttfb": 1892.699999999255,
+   "dcl": 2673.39999999851,
+   "load": 2759.699999999255,
+   "fcp": 2900,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 693
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 68
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "ms": 51
+    }
+   ],
+   "finalPath": "/today",
+   "hydrated": 3367.099999997765,
+   "wallMs": 4899,
+   "requests": 285,
+   "jsRequests": 268,
+   "jsBytes": 6379418,
+   "totalBytes": 6950283,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/workspace",
+   "ttfb": 26.899999998509884,
+   "dcl": 109.09999999776483,
+   "load": 210,
+   "fcp": 208,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 11
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 11
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "ms": 64
+    }
+   ],
+   "finalPath": "/today",
+   "hydrated": 693.6999999992549,
+   "wallMs": 2242,
+   "requests": 286,
+   "jsRequests": 268,
+   "jsBytes": 6379418,
+   "totalBytes": 6958196,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/finance",
+   "ttfb": 59.399999998509884,
+   "dcl": 138.69999999925494,
+   "load": 207.89999999850988,
+   "fcp": 212,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 7
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ffinance",
+     "ms": 65
+    }
+   ],
+   "finalPath": "/finance",
+   "hydrated": 745.1999999992549,
+   "wallMs": 2266,
+   "requests": 291,
+   "jsRequests": 272,
+   "jsBytes": 6739650,
+   "totalBytes": 7316524,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/lib/business-economics.ts",
+     "kb": 208
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/memory",
+   "ttfb": 479.70000000298023,
+   "dcl": 584.5,
+   "load": 754.4000000022352,
+   "fcp": 1012,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 30
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fmemory",
+     "ms": 74
+    }
+   ],
+   "finalPath": "/memory",
+   "hydrated": 1379.7000000029802,
+   "wallMs": 3256,
+   "requests": 398,
+   "jsRequests": 370,
+   "jsBytes": 10700778,
+   "totalBytes": 11596595,
+   "imageBytes": 163756,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fmemory",
+     "kb": 181
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/operator/memory-workspace.tsx",
+     "kb": 152
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/memory-graph-3d.tsx",
+     "kb": 264
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/chunk-RPWPLDLG.js?v=c0ad12fb",
+     "kb": 1631
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/receptionist",
+   "ttfb": 40.399999998509884,
+   "dcl": 108.19999999925494,
+   "load": 156.19999999925494,
+   "fcp": 160,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Freceptionist",
+     "ms": 54
+    }
+   ],
+   "finalPath": "/receptionist",
+   "hydrated": 631,
+   "wallMs": 3175,
+   "requests": 308,
+   "jsRequests": 285,
+   "jsBytes": 6904707,
+   "totalBytes": 7492236,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/lib/business-economics.ts",
+     "kb": 208
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/jarvis",
+   "ttfb": 3648.800000000745,
+   "dcl": 4003.89999999851,
+   "load": 4044,
+   "fcp": 4152,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 214
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 214
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fjarvis",
+     "ms": 259
+    }
+   ],
+   "finalPath": "/jarvis",
+   "hydrated": 4544,
+   "wallMs": 6625,
+   "requests": 405,
+   "jsRequests": 379,
+   "jsBytes": 9338293,
+   "totalBytes": 10381904,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fjarvis",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/design",
+   "ttfb": 1255.8999999985099,
+   "dcl": 1323.0999999977648,
+   "load": 1416.199999999255,
+   "fcp": 1500,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fdesign",
+     "ms": 51
+    }
+   ],
+   "finalPath": "/design",
+   "hydrated": 3199.7999999970198,
+   "wallMs": 7632,
+   "requests": 494,
+   "jsRequests": 394,
+   "jsBytes": 11278338,
+   "totalBytes": 123195995,
+   "imageBytes": 96330551,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fdesign",
+     "kb": 281
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=dd837d06",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=c0ad12fb",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=c0ad12fb",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/routes/design.tsx?tsr-split=component",
+     "kb": 1340
+    },
+    {
+     "url": "/__design_media?limit=600",
+     "kb": 227
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDkxNTU3NTEtY2luZW1hdGljLXZlcnRpY2FsLXN0aWxsLXBob3",
+     "kb": 4969
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDkwNjg5NTAtY2luZW1hdGljLXN0aWxsLXBob3RvZ3JhcGgtYW",
+     "kb": 4043
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDg4MDY4MTctYWJzdHJhY3QtZGFyay1jaGFyY29hbC1iYWNrZ3",
+     "kb": 2409
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk4MjczOTktYXJjaGl0ZWN0dXJhbC1kb2N1bWVudGFyeS1waG",
+     "kb": 5342
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk2OTUzNTgtZWRpdC10aGlzLXBob3RvZ3JhcGgta2VlcGluZy",
+     "kb": 5150
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk2NDI3MjYtZWRpdC10aGlzLXBob3RvZ3JhcGgta2VlcGluZy",
+     "kb": 4874
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk1ODYxNDktZG9jdW1lbnRhcnktcGhvdG9ncmFwaC10aHJlZS",
+     "kb": 5362
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNTAwOTYxNjEtbWFjcm8tc3RpbGwtbGlmZS1waG90b2dyYXBoLW",
+     "kb": 5831
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNTAwMTMzNTMtd2lkZS1pbnRlcmlvci1waG90b2dyYXBoLW9mLW",
+     "kb": 6537
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNDk5MjQzNDctdmVydGljYWwtY2xvc2UtcGhvdG9ncmFwaC1pbi",
+     "kb": 5248
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNDk4NTIyODQtdmVydGljYWwtaW50ZXJpb3ItcGhvdG9ncmFwaC",
+     "kb": 5931
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNDk0MzA2MjItYWJzdHJhY3QtYXJjaGl0ZWN0dXJhbC1waG90b2",
+     "kb": 6544
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNDkzNTYxMjYtY2xvc2UtYXJjaGl0ZWN0dXJhbC1waG90b2dyYX",
+     "kb": 6953
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNDkyODM5MzUtd2lkZS1hcmNoaXRlY3R1cmFsLXBob3RvZ3JhcG",
+     "kb": 6804
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDg5MzIyODItc2luZ2xlLWNvbnRpbnVvdXMtc2hvdC1zdGF0aW",
+     "kb": 312
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDg2NTA0ODUtbG9ja2VkLW9mZi1zdGF0aWMtY2FtZXJhLW9uLW",
+     "kb": 1234
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTA0NDg1Njg2NzYtdmVydGljYWwtOS0xNi1sb2NrZWQtb2ZmLXNob3",
+     "kb": 1760
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk0MzQzMDEtb25lLWNvbnRpbnVvdXMtc2hvdC1uby1jdXRzLW",
+     "kb": 1830
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAzMjk0MjU2NTEtc2luZ2xlLWNvbnRpbnVvdXMtc2hvdC1vbmUtc2",
+     "kb": 5711
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNTE1NDI3MDYtc2xvdy1zdGVhZHktZG9sbHktaW4tdG93YXJkLX",
+     "kb": 807
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNTE0OTM5MzMtc2xvdy1zdGVhZHktZG9sbHktaW4tdG93YXJkLX",
+     "kb": 1572
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXC5jbGF1ZGUtb3NcZGVzaWduXGdlbmVyYXRpb25zXDE3OTAyNTE0Mjc3NTQtc2xvdy1zdGVhZHktZG9sbHktaW4tdG93YXJkLX",
+     "kb": 401
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xCMzM4QzUxMS0yREM4LTQxMzgtQUI5Qi0xODE1ODFEOUYyNEQgKDEpLlBORw",
+     "kb": 1966
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xJTUdfMzkzMS5qcGVn",
+     "kb": 2424
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xtb2JpbGUtMzkwLWRhcmstdmVydGljYWwucG5n",
+     "kb": 290
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xtb2JpbGUtMzkwLWxpZ2h0LWVjb25vbWljcy5wbm",
+     "kb": 215
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LW1lZGlhLnBuZw",
+     "kb": 1245
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWRhcmstcGxhbi5wbmc",
+     "kb": 219
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LWFyY2hpdGVjdHVyZS5wbm",
+     "kb": 164
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWRhcmstYXV0b25vbXkucG5n",
+     "kb": 239
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LXNhbGVzLnBuZw",
+     "kb": 767
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWRhcmstcmVhbGVzdGF0ZS5wbmc",
+     "kb": 497
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWRhcmstdmVydGljYWxzLWdhbGxlcn",
+     "kb": 853
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LWVjb25vbWljcy5wbmc",
+     "kb": 636
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LXN1bW1hcnkucG5n",
+     "kb": 398
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcbm90ZWJvb2tsbVxpbmZvZ3JhcGhpYy5qcGc",
+     "kb": 557
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xBSS1SRUNFUFRJT05JU1QtUExBWUJPT0tcYXNzZXRzXGluZm9ncmFwaGljLnBuZw",
+     "kb": 4516
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xtb2JpbGUtMzkwLWRhcmstaGVyby5wbmc",
+     "kb": 325
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xtb2JpbGUtMzkwLWxpZ2h0LWhlcm8ucG5n",
+     "kb": 325
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWRhcmstaGVyby5wbmc",
+     "kb": 1032
+    },
+    {
+     "url": "/__design_file?id=QzpcVXNlcnNcTmVidWxhIFBDXERvd25sb2Fkc1xXRUJTSVRFUy1QTEFZQk9PS1xhc3NldHNcc2NyZWVuc1xkZXNrdG9wLWxpZ2h0LWhlcm8ucG5n",
+     "kb": 1054
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  }
+ ]
+}

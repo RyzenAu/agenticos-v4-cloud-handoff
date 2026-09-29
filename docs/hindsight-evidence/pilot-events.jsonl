@@ -1,0 +1,10 @@
+{"event": "supervisor_started", "pid": 86328, "profile": "pilot", "ts": "2026-09-28T00:05:33+10:00"}
+{"event": "orphan_postgres_found", "profile": "pilot", "ts": "2026-09-28T00:05:33+10:00"}
+{"event": "postgres_stopped", "profile": "pilot", "rc": 0, "reason": "orphan", "state_after": "stopped", "ts": "2026-09-28T00:05:33+10:00"}
+{"event": "api_started", "launch_id": "20260928-000533", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 90980, "profile": "pilot", "ts": "2026-09-28T00:05:33+10:00"}
+{"event": "api_healthy", "pid": 90980, "profile": "pilot", "startup_s": 22.1, "ts": "2026-09-28T00:05:55+10:00"}
+{"event": "api_stopped", "exit_code": 3, "exit_hex": "0x00000003", "graceful": true, "pid": 90980, "profile": "pilot", "reason": "stop_requested", "ts": "2026-09-28T00:10:28+10:00"}
+{"event": "supervisor_stopped", "profile": "pilot", "ts": "2026-09-28T00:10:28+10:00"}
+{"event": "supervisor_started", "pid": 89048, "profile": "pilot", "ts": "2026-09-28T00:10:29+10:00"}
+{"event": "api_started", "launch_id": "20260928-001030", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 81540, "profile": "pilot", "ts": "2026-09-28T00:10:30+10:00"}
+{"event": "api_healthy", "pid": 81540, "profile": "pilot", "startup_s": 22.1, "ts": "2026-09-28T00:10:52+10:00"}

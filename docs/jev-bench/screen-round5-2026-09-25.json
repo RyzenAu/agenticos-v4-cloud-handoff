@@ -1,0 +1,641 @@
+{
+  "summary": {
+    "label": "round5-strict",
+    "at": "2026-09-25T02:55:54.008Z",
+    "tasks": 33,
+    "ran": 28,
+    "skipped": [
+      "vscode-tests: policy: opens his own VS Code (his profile; extensions and the app can update on start, which can't be put back)",
+      "bluetooth-on: policy: changes his Windows settings",
+      "focus-timer-mute: policy: changes his Windows settings",
+      "spotify-liked: policy: uses his personal account",
+      "dark-mode: policy: changes his Windows settings"
+    ],
+    "completed": 26,
+    "completionRate": 93,
+    "questions": 2,
+    "wrongActions": 2,
+    "totalSeconds": 73.2,
+    "p50Seconds": 0.489,
+    "p90Seconds": 3.527,
+    "clipboard": [
+      "end: verified"
+    ],
+    "clipboardFormats": 7,
+    "appState": [
+      "notepad-list: notepad-tabs restored (verified), notepad-settings unchanged",
+      "switch-window: notepad-tabs unchanged, notepad-settings unchanged",
+      "window-main: notepad-tabs restored (verified), notepad-settings unchanged",
+      "window-other: notepad-tabs restored (verified), notepad-settings unchanged"
+    ]
+  },
+  "rows": [
+    {
+      "id": "vercel-status",
+      "say": "open Chrome, go to my Vercel dashboard and tell me the last deploy status",
+      "ok": true,
+      "questions": 0,
+      "ms": 5214,
+      "firstMs": 950,
+      "turns": 2,
+      "tools": [
+        "open_url",
+        "skill:latest"
+      ],
+      "wrong": [],
+      "said": "Your last deploy to production was 10 hours ago and is marked ready.",
+      "route": [
+        "rules",
+        "openai/gpt-oss-120b"
+      ]
+    },
+    {
+      "id": "rename-screenshots",
+      "say": "rename the screenshots in D:\\tmp\\jarvis-suite\\shots by date",
+      "ok": true,
+      "questions": 0,
+      "ms": 13,
+      "firstMs": 13,
+      "turns": 2,
+      "tools": [
+        "skill:rename_by_date"
+      ],
+      "wrong": [],
+      "said": "Renamed 4 screenshots by date, sir. Say \"undo the rename\" to put them back.",
+      "note": "2026-09-18.png, 2026-09-20.png, 2026-09-22.png, 2026-09-24.png",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "vscode-tests",
+      "say": "open VS Code in the AgenticOS repo and run the tests in scripts/jarvis-skills",
+      "ok": false,
+      "skipped": "policy: opens his own VS Code (his profile; extensions and the app can update on start, which can't be put back)",
+      "questions": 0,
+      "ms": 0,
+      "firstMs": null,
+      "turns": 0,
+      "tools": [],
+      "wrong": [],
+      "said": "",
+      "route": []
+    },
+    {
+      "id": "bluetooth-on",
+      "say": "turn on Bluetooth",
+      "ok": false,
+      "skipped": "policy: changes his Windows settings",
+      "questions": 0,
+      "ms": 0,
+      "firstMs": null,
+      "turns": 0,
+      "tools": [],
+      "wrong": [],
+      "said": "",
+      "route": []
+    },
+    {
+      "id": "focus-timer-mute",
+      "say": "set a 25-minute focus timer and mute notifications",
+      "ok": false,
+      "skipped": "policy: changes his Windows settings",
+      "questions": 0,
+      "ms": 0,
+      "firstMs": null,
+      "turns": 0,
+      "tools": [],
+      "wrong": [],
+      "said": "",
+      "route": []
+    },
+    {
+      "id": "spotify-liked",
+      "say": "open Spotify and play my liked songs",
+      "ok": false,
+      "skipped": "policy: uses his personal account",
+      "questions": 0,
+      "ms": 0,
+      "firstMs": null,
+      "turns": 0,
+      "tools": [],
+      "wrong": [],
+      "said": "",
+      "route": []
+    },
+    {
+      "id": "form-fill",
+      "say": "fill this form with my details",
+      "ok": true,
+      "questions": 0,
+      "ms": 3295,
+      "firstMs": 3294,
+      "turns": 2,
+      "tools": [
+        "screen_act"
+      ],
+      "wrong": [],
+      "said": "Filled \"First name\", \"Business name\", \"Tell us about your business\" and \"Who else runs it with you?\". I left \"Last name\", \"Email\", \"Phone\" and \"Website\" blank: I don't have those saved. I haven't pressed \"Submit\".",
+      "note": "3/3 key fields",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "notepad-list",
+      "say": "open Notepad and type a shopping list: milk, eggs, bread",
+      "ok": false,
+      "questions": 1,
+      "ms": 45482,
+      "firstMs": 18,
+      "turns": 5,
+      "tools": [
+        "pc_act:open_app",
+        "skill:type",
+        "control_pc",
+        "screen_act"
+      ],
+      "wrong": [
+        "2 Notepad windows"
+      ],
+      "said": "The cursor isn't in a text box (it's on \"Session chapters Chat messages\"), so I didn't type. Click where it should go and ask again.",
+      "note": "Hello from away mode on Friday morning",
+      "route": [
+        "rules",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-20b",
+        "rules"
+      ],
+      "appState": "notepad-tabs restored (verified), notepad-settings unchanged"
+    },
+    {
+      "id": "battery",
+      "say": "how much battery have I got",
+      "ok": true,
+      "questions": 0,
+      "ms": 73,
+      "firstMs": 73,
+      "turns": 2,
+      "tools": [
+        "skill:battery"
+      ],
+      "wrong": [],
+      "said": "This PC hasn't got a battery, sir. It's on mains power.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "disk-space",
+      "say": "how much free space is on my C drive",
+      "ok": true,
+      "questions": 0,
+      "ms": 3,
+      "firstMs": 3,
+      "turns": 2,
+      "tools": [
+        "skill:disk"
+      ],
+      "wrong": [],
+      "said": "C drive has 62.4 gigabytes free of 466 gigabytes; D drive has 352 gigabytes free of 931 gigabytes, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "downloads-folder",
+      "say": "open my Downloads folder",
+      "ok": true,
+      "questions": 0,
+      "ms": 318,
+      "firstMs": 6,
+      "turns": 2,
+      "tools": [
+        "pc_act:open_folder"
+      ],
+      "wrong": [],
+      "said": "Downloads folder opened.",
+      "route": [
+        "rules",
+        "openai/gpt-oss-20b"
+      ]
+    },
+    {
+      "id": "maths",
+      "say": "what's 18% of 4,850",
+      "ok": true,
+      "questions": 0,
+      "ms": 29,
+      "firstMs": 28,
+      "turns": 2,
+      "tools": [
+        "skill:calc"
+      ],
+      "wrong": [],
+      "said": "18% of 4850 is 873, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "open-goal-screen",
+      "say": "turn off email alerts in this app",
+      "ok": true,
+      "questions": 0,
+      "ms": 3036,
+      "firstMs": 3035,
+      "turns": 2,
+      "tools": [
+        "screen_act"
+      ],
+      "wrong": [],
+      "said": "Clicked \"Notifications\" and clicked \"Email alerts\".",
+      "note": "Notifications>Email alerts",
+      "route": [
+        "qwen/qwen3.8-27b",
+        "rules"
+      ]
+    },
+    {
+      "id": "take-over-dark",
+      "say": "take over and switch this app to dark mode",
+      "ok": true,
+      "questions": 0,
+      "ms": 2455,
+      "firstMs": 2454,
+      "turns": 2,
+      "tools": [
+        "screen_teach"
+      ],
+      "wrong": [],
+      "said": "Done.",
+      "note": "Appearance>Dark",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "youtube-search",
+      "say": "search YouTube for lo-fi beats",
+      "ok": true,
+      "questions": 0,
+      "ms": 994,
+      "firstMs": 728,
+      "turns": 2,
+      "tools": [
+        "open_url"
+      ],
+      "wrong": [],
+      "said": "YouTube's up with lo-fi beats.",
+      "note": "",
+      "route": [
+        "rules",
+        "qwen/qwen3.8-27b"
+      ]
+    },
+    {
+      "id": "timer-2min",
+      "say": "set a timer for 2 minutes",
+      "ok": true,
+      "questions": 0,
+      "ms": 12,
+      "firstMs": 11,
+      "turns": 2,
+      "tools": [
+        "skill:start"
+      ],
+      "wrong": [],
+      "said": "Timer set for 2 minutes, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "make-folder",
+      "say": "make a new folder in D:\\tmp\\jarvis-suite called made-by-jarvis",
+      "ok": true,
+      "questions": 0,
+      "ms": 18,
+      "firstMs": 8,
+      "turns": 2,
+      "tools": [
+        "skill:folder"
+      ],
+      "wrong": [],
+      "said": "Made the made-by-jarvis folder in D:\\tmp\\jarvis-suite, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "switch-window",
+      "say": "switch to Notepad",
+      "ok": true,
+      "questions": 0,
+      "ms": 179,
+      "firstMs": 178,
+      "turns": 2,
+      "tools": [
+        "skill:switch"
+      ],
+      "wrong": [],
+      "said": "Switched to Notepad, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ],
+      "appState": "notepad-tabs unchanged, notepad-settings unchanged"
+    },
+    {
+      "id": "window-main",
+      "say": "bring Notepad up on my main screen",
+      "ok": true,
+      "questions": 0,
+      "ms": 192,
+      "firstMs": 191,
+      "turns": 2,
+      "tools": [
+        "skill:bring"
+      ],
+      "wrong": [],
+      "said": "Notepad is on your main screen now, sir.",
+      "note": "at 195,220 900x600; wanted \\\\.\\DISPLAY1; front=true",
+      "route": [
+        "rules",
+        "rules"
+      ],
+      "appState": "notepad-tabs restored (verified), notepad-settings unchanged"
+    },
+    {
+      "id": "window-other",
+      "say": "move it to my other screen",
+      "ok": true,
+      "questions": 1,
+      "ms": 321,
+      "firstMs": 172,
+      "turns": 4,
+      "tools": [
+        "skill:move",
+        "skill:move"
+      ],
+      "wrong": [],
+      "said": "Notepad is on the left screen now, sir.",
+      "note": "at -1797,82 900x600; wanted \\\\.\\DISPLAY2; front=true",
+      "route": [
+        "rules",
+        "rules",
+        "rules",
+        "rules"
+      ],
+      "appState": "notepad-tabs restored (verified), notepad-settings unchanged"
+    },
+    {
+      "id": "time-london",
+      "say": "what time is it in London",
+      "ok": true,
+      "questions": 0,
+      "ms": 87,
+      "firstMs": 87,
+      "turns": 2,
+      "tools": [
+        "skill:now"
+      ],
+      "wrong": [],
+      "said": "It's 3:54 am in London, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "chrome-tabs",
+      "say": "open GitHub and Vercel in new tabs",
+      "ok": true,
+      "questions": 0,
+      "ms": 2204,
+      "firstMs": 726,
+      "turns": 2,
+      "tools": [
+        "open_url",
+        "open_url"
+      ],
+      "wrong": [],
+      "said": "Both are open in new tabs.",
+      "note": "open_url open_url | github.com_/ | vercel.com_/dashboard",
+      "route": [
+        "rules",
+        "qwen/qwen3.8-27b"
+      ]
+    },
+    {
+      "id": "chrome-bookmarks",
+      "say": "show my bookmarks in Chrome",
+      "ok": false,
+      "questions": 0,
+      "ms": 3527,
+      "firstMs": 3522,
+      "turns": 2,
+      "tools": [
+        "screen_act"
+      ],
+      "wrong": [
+        "used screen_act"
+      ],
+      "said": "Clicked \"Browser\" (now on). Then I lost the thread; tell me what's next.",
+      "note": "",
+      "route": [
+        "qwen/qwen3.8-27b",
+        "rules"
+      ]
+    },
+    {
+      "id": "zip-folder",
+      "say": "zip the D:\\tmp\\jarvis-suite\\files folder",
+      "ok": true,
+      "questions": 0,
+      "ms": 489,
+      "firstMs": 488,
+      "turns": 2,
+      "tools": [
+        "skill:zip"
+      ],
+      "wrong": [],
+      "said": "Zipped it to files.zip in D:\\tmp\\jarvis-suite, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "copy-file",
+      "say": "copy report.txt from D:\\tmp\\jarvis-suite\\files to D:\\tmp\\jarvis-suite\\copies",
+      "ok": true,
+      "questions": 0,
+      "ms": 6,
+      "firstMs": 6,
+      "turns": 2,
+      "tools": [
+        "skill:copy"
+      ],
+      "wrong": [],
+      "said": "Copied report.txt to D:\\tmp\\jarvis-suite\\copies, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "move-file",
+      "say": "move notes.txt from D:\\tmp\\jarvis-suite\\files to D:\\tmp\\jarvis-suite\\moved",
+      "ok": true,
+      "questions": 0,
+      "ms": 5,
+      "firstMs": 5,
+      "turns": 2,
+      "tools": [
+        "skill:move"
+      ],
+      "wrong": [],
+      "said": "Moved notes.txt to D:\\tmp\\jarvis-suite\\moved, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "pdf-export",
+      "say": "save report.txt in D:\\tmp\\jarvis-suite\\files as a PDF",
+      "ok": true,
+      "questions": 0,
+      "ms": 1067,
+      "firstMs": 1054,
+      "turns": 2,
+      "tools": [
+        "skill:pdf"
+      ],
+      "wrong": [],
+      "said": "Saved it as report.pdf, next to the original, sir.",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "excel-sum",
+      "say": "put the total of the Sales column in the cell under it",
+      "ok": true,
+      "questions": 0,
+      "ms": 1081,
+      "firstMs": 1080,
+      "turns": 2,
+      "tools": [
+        "skill:excel_sum"
+      ],
+      "wrong": [],
+      "said": "Put the total in B6: 13,000, sir.",
+      "note": "13000|=SUM(B2:B5)",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "word-bold",
+      "say": "make the first line bold",
+      "ok": true,
+      "questions": 0,
+      "ms": 1437,
+      "firstMs": 1436,
+      "turns": 2,
+      "tools": [
+        "skill:word_format"
+      ],
+      "wrong": [],
+      "said": "Made the first line bold, sir. Ctrl+Z undoes it.",
+      "note": "-1|0",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "screenshot",
+      "say": "take a screenshot and save it in D:\\tmp\\jarvis-suite\\screens",
+      "ok": true,
+      "questions": 0,
+      "ms": 880,
+      "firstMs": 877,
+      "turns": 2,
+      "tools": [
+        "skill:screenshot"
+      ],
+      "wrong": [],
+      "said": "Screenshot saved in D:\\tmp\\jarvis-suite\\screens, sir.",
+      "note": "Screenshot 2026-09-25 125541.png",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    },
+    {
+      "id": "snipping-tool",
+      "say": "open the Snipping Tool",
+      "ok": true,
+      "questions": 0,
+      "ms": 306,
+      "firstMs": 11,
+      "turns": 2,
+      "tools": [
+        "pc_act:open_app"
+      ],
+      "wrong": [],
+      "said": "Snipping Tool's open, sir.",
+      "route": [
+        "rules",
+        "qwen/qwen3.8-27b"
+      ]
+    },
+    {
+      "id": "dark-mode",
+      "say": "switch Windows to dark mode",
+      "ok": false,
+      "skipped": "policy: changes his Windows settings",
+      "questions": 0,
+      "ms": 0,
+      "firstMs": null,
+      "turns": 0,
+      "tools": [],
+      "wrong": [],
+      "said": "",
+      "route": []
+    },
+    {
+      "id": "clipboard-copy",
+      "say": "copy M&U Ventures to my clipboard",
+      "ok": true,
+      "questions": 0,
+      "ms": 525,
+      "firstMs": 524,
+      "turns": 2,
+      "tools": [
+        "skill:copy"
+      ],
+      "wrong": [],
+      "said": "Copied to your clipboard, sir.",
+      "note": "M&U Ventures",
+      "route": [
+        "rules",
+        "rules"
+      ]
+    }
+  ]
+}

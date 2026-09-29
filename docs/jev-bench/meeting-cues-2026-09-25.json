@@ -1,0 +1,683 @@
+{
+  "label": "meeting-cues-2026-09-25",
+  "at": "2026-09-24T20:55:01.457Z",
+  "summary": "Tag-level: precision 100% (tp=9 fp=0), recall 82% (fn=2)\nNon-prospect abstention: 2/2 correctly abstained (founder's own words / unknown speaker)\nLatency: p50 245 ms, p95 692 ms (Ministry's cutover bar: p95 < 1000 ms)",
+  "rows": [
+    {
+      "fixture": {
+        "id": "price-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "So that's roughly what it'd run per month.",
+        "text": "Yeah look, that's a fair bit more than we were hoping to spend on something like this.",
+        "expectedTags": [
+          "price"
+        ],
+        "note": "Paraphrased price concern; cuesFor's regex wouldn't match this wording."
+      },
+      "result": {
+        "chunkId": "price-paraphrase",
+        "suggestedTags": [
+          "price"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.98
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.05
+          }
+        },
+        "ms": 691
+      },
+      "ms": 692,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "incumbent-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "How does the after-hours side work?",
+        "text": "Our front desk girl usually picks that up when she's back in the morning, so it's kind of already covered.",
+        "expectedTags": [
+          "incumbent"
+        ],
+        "note": "Paraphrase of 'we already have someone'."
+      },
+      "result": {
+        "chunkId": "incumbent-paraphrase",
+        "suggestedTags": [],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.4
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.13
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.07
+          }
+        },
+        "ms": 240
+      },
+      "ms": 240,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "send-info-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "Happy to run through it now if you like.",
+        "text": "Honestly, easier if you just shoot the details through and I'll have a proper look later.",
+        "expectedTags": [
+          "send_info"
+        ],
+        "note": "Paraphrase of 'send me some info'."
+      },
+      "result": {
+        "chunkId": "send-info-paraphrase",
+        "suggestedTags": [
+          "send_info"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.8
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.14
+          }
+        },
+        "ms": 240
+      },
+      "ms": 240,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "timing-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "Is now still an OK time?",
+        "text": "We're absolutely slammed with the new opening, so anything new is going to have to wait a bit.",
+        "expectedTags": [
+          "timing"
+        ],
+        "note": "Paraphrase of a bad time / too busy."
+      },
+      "result": {
+        "chunkId": "timing-paraphrase",
+        "suggestedTags": [
+          "timing"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.95
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.2
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.07
+          }
+        },
+        "ms": 241
+      },
+      "ms": 241,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "trust-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "It listens in and takes notes automatically.",
+        "text": "I guess I'm just not sure where all that patient information actually ends up going.",
+        "expectedTags": [
+          "trust_privacy"
+        ],
+        "note": "Paraphrase of a data/privacy concern."
+      },
+      "result": {
+        "chunkId": "trust-paraphrase",
+        "suggestedTags": [
+          "trust_privacy"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.05
+          }
+        },
+        "ms": 258
+      },
+      "ms": 258,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "relevance-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "It's mainly built for missed-call recovery.",
+        "text": "Yeah, I don't think that's really a problem we actually have here.",
+        "expectedTags": [
+          "relevance"
+        ],
+        "note": "Paraphrase of 'not interested / doesn't apply to us'."
+      },
+      "result": {
+        "chunkId": "relevance-paraphrase",
+        "suggestedTags": [
+          "relevance"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.9
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        },
+        "ms": 229
+      },
+      "ms": 229,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "think-about-it-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "So that's the whole offer.",
+        "text": "I'd want to run this past my business partner before we go any further.",
+        "expectedTags": [
+          "think_about_it"
+        ],
+        "note": "Paraphrase of needing to check with a partner."
+      },
+      "result": {
+        "chunkId": "think-about-it-paraphrase",
+        "suggestedTags": [
+          "think_about_it"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.32
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.98
+          }
+        },
+        "ms": 245
+      },
+      "ms": 245,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "two-objections-at-once",
+        "speaker": "prospect",
+        "previousChunkText": "So what did you think?",
+        "text": "Honestly it feels pricey for what it is, and we've already got a system that mostly does this.",
+        "expectedTags": [
+          "price",
+          "incumbent"
+        ],
+        "note": "Two independent objections in one chunk — neither should be lost."
+      },
+      "result": {
+        "chunkId": "two-objections-at-once",
+        "suggestedTags": [
+          "price"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.94
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.55
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.26
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        },
+        "ms": 279
+      },
+      "ms": 279,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "negated-price",
+        "speaker": "prospect",
+        "previousChunkText": "Was it the cost that put you off?",
+        "text": "No, it's not really the price, we just don't have the bandwidth to onboard something new right now.",
+        "expectedTags": [
+          "timing"
+        ],
+        "note": "Explicitly negates price; the real (only) objection here is timing."
+      },
+      "result": {
+        "chunkId": "negated-price",
+        "suggestedTags": [
+          "timing"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.46
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.07
+          }
+        },
+        "ms": 227
+      },
+      "ms": 227,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "hypothetical-not-real",
+        "speaker": "prospect",
+        "previousChunkText": "Feel free to ask me anything.",
+        "text": "Just out of curiosity, if someone said this was too expensive, what would you normally tell them?",
+        "expectedTags": [],
+        "note": "A hypothetical question, not the prospect's own objection."
+      },
+      "result": {
+        "chunkId": "hypothetical-not-real",
+        "suggestedTags": [],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.47
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        },
+        "ms": 265
+      },
+      "ms": 265,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "no-objection-smalltalk",
+        "speaker": "prospect",
+        "previousChunkText": "Nice office, by the way.",
+        "text": "Thanks, we just moved in a few months ago, still finding our feet with the new layout.",
+        "expectedTags": [],
+        "note": "Plain small talk; nothing should fire."
+      },
+      "result": {
+        "chunkId": "no-objection-smalltalk",
+        "suggestedTags": [],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        },
+        "ms": 442
+      },
+      "ms": 442,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "founders-own-example",
+        "speaker": "founder",
+        "previousChunkText": "What do people usually say?",
+        "text": "A lot of clients tell us it's too expensive at first, but then they see the missed-call numbers.",
+        "expectedTags": [],
+        "note": "The FOUNDER's own words — must abstain (no network call at all) before Jev ever sees it."
+      },
+      "result": null,
+      "ms": 0,
+      "correctAbstain": true
+    },
+    {
+      "fixture": {
+        "id": "unknown-speaker",
+        "speaker": "unknown",
+        "previousChunkText": "",
+        "text": "It's too expensive and we already have someone doing this.",
+        "expectedTags": [],
+        "note": "Unattributed chunk — must abstain rather than invent diarisation, even though the words are unambiguous."
+      },
+      "result": null,
+      "ms": 0,
+      "correctAbstain": true
+    },
+    {
+      "fixture": {
+        "id": "trust-scam-paraphrase",
+        "speaker": "prospect",
+        "previousChunkText": "It's an AI note-taker, similar to what you might have on Zoom.",
+        "text": "How do I even know this isn't just some kind of scam thing recording us?",
+        "expectedTags": [
+          "trust_privacy"
+        ],
+        "note": "Different phrasing of the trust/scam concern than the regex list uses."
+      },
+      "result": {
+        "chunkId": "trust-scam-paraphrase",
+        "suggestedTags": [
+          "trust_privacy"
+        ],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.98
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.04
+          }
+        },
+        "ms": 261
+      },
+      "ms": 261,
+      "correctAbstain": null
+    },
+    {
+      "fixture": {
+        "id": "context-only-previous-chunk",
+        "speaker": "prospect",
+        "previousChunkText": "It's too expensive for us right now.",
+        "text": "Anyway, what happens if a call comes in outside business hours?",
+        "expectedTags": [],
+        "note": "This NEW chunk is a plain question; the earlier price objection must not leak forward into it."
+      },
+      "result": {
+        "chunkId": "context-only-previous-chunk",
+        "suggestedTags": [],
+        "answers": {
+          "price": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "incumbent": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "send_info": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "timing": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "trust_privacy": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "relevance": {
+            "type": "noul",
+            "noul": 0.15
+          },
+          "think_about_it": {
+            "type": "noul",
+            "noul": 0.06
+          }
+        },
+        "ms": 265
+      },
+      "ms": 265,
+      "correctAbstain": null
+    }
+  ]
+}

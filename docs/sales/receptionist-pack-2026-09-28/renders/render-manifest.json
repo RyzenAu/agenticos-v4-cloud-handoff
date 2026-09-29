@@ -1,0 +1,90 @@
+{
+  "call-forwarding-guide": {
+    "source": "call-forwarding-guide.docx",
+    "sourceSha256": "5f7d56b12b8f19e5870762e3c82dec0b8c109bcdfef7fb50bc43714b6f33ef45",
+    "pngs": {
+      "call-forwarding-guide-01.png": "0684bd6c8b3642b46671f2e16e129e9f8b74827ea4ef1d6832c5abeca4bd15eb",
+      "call-forwarding-guide-02.png": "5622fc8254401f7f4da9ace7e3671936d1f531564a737ece89eb9b6260df846a",
+      "call-forwarding-guide-03.png": "ca44f60f204c688aa4751292aec5ab1eba2de8e10a6ea0dda00f71f6c6f86e0f"
+    }
+  },
+  "client-setup-checklist": {
+    "source": "client-setup-checklist.docx",
+    "sourceSha256": "da52557318fa63a4ea86980498a6ed0bc989ab78da0dc9d97fafc1009e4a2563",
+    "pngs": {
+      "client-setup-checklist-01.png": "a674738b2e53125425f861acc00a8e5a91498072ac3e91ade08930d43f187404",
+      "client-setup-checklist-02.png": "45cf7e7548fb1ebb11c171866cc1a7fa29b345ee94b402ae7c49bb845192fe04"
+    }
+  },
+  "demo-guide": {
+    "source": "demo-guide.docx",
+    "sourceSha256": "1aab9df4228506d5a3d0a3b32b0a5185dcf866d766d130ce803d6b172ed414cc",
+    "pngs": {
+      "demo-guide-01.png": "0013507c3874419c0b8bc646d194f66c00b59e790b4cc7a502ee769d3c1235d0",
+      "demo-guide-02.png": "99f48ceb0e64d534b853c3e89b09ae6ae6555b4102ff6694457cab67c98fbf0e"
+    }
+  },
+  "onboarding-deck": {
+    "source": "STALE-DO-NOT-SEND-onboarding-deck.pptx",
+    "sourceSha256": "9758a0d010d74f4f25e3660efefb25dddc65758ee0f62d29f54aeca492f7f993",
+    "pngs": {
+      "STALE-DO-NOT-SEND-onboarding-deck-01.png": "80f19a44cd02a39ad3c9793aa791c3f8f359c182bc34268da00adc0946b84877",
+      "STALE-DO-NOT-SEND-onboarding-deck-02.png": "c172c52503020c95f018bf40c392abb987899f7b6862a268b4e2bfa6890f3343",
+      "STALE-DO-NOT-SEND-onboarding-deck-03.png": "48da76ad253cf9135adbb204eeb84d9f05d01ab3627793441d72cffa6b0677fa",
+      "STALE-DO-NOT-SEND-onboarding-deck-04.png": "798fe8efd49b2700955e5c926b156fab370618761cb3d91533afd38b5d5e51eb",
+      "STALE-DO-NOT-SEND-onboarding-deck-05.png": "ed77051fef55457f374aac65493b69d91bd77f6a6452579c5fb401aff1caaea0",
+      "STALE-DO-NOT-SEND-onboarding-deck-06.png": "a5e7558e1d1de2da1535214ee73c2992bd5a6936eafca0bca7796314087340d2",
+      "STALE-DO-NOT-SEND-onboarding-deck-07.png": "574fc5317fd103d0d440e969821fbee8caa370d6e2a48cb7cb6e8cfcb2073b4b",
+      "STALE-DO-NOT-SEND-onboarding-deck-08.png": "9680c410f31df59dbf66a61e3887fe1274c779470d3e041e2ed48abd2064edfe",
+      "STALE-DO-NOT-SEND-onboarding-deck-09.png": "d15c2c2c4f1cd19cfe96a85ec22714c261a13692b11d62d6e8ab8e097b111030",
+      "STALE-DO-NOT-SEND-onboarding-deck-10.png": "991a00598025d396214bb08e1b98a3fbcc7d4bc56b55af9eec8543690090bb70",
+      "STALE-DO-NOT-SEND-onboarding-deck-11.png": "b7b2e4853f5198ba1d9a3ee2d1fa6617f87707d1b45a9bd3121ef44adb4e52e7"
+    },
+    "stale": true,
+    "staleReason": "Review T5 R5 (28 Sep 2026): built before the audit A3 fixes. Still carries A3 #5, 6, 7, 11, 22, 30, 31 and 41 (including a billing-timing line that decides owner decision (b)) and answers decision (a). PowerPoint can't rebuild it on this PC (unlicensed Office). Do not send; use the Word documents. A rebuild with build/build_all.py rewrites this entry and clears the flag. Files renamed with the STALE-DO-NOT-SEND- prefix until rebuilt."
+  },
+  "proposal-template": {
+    "source": "proposal-template.docx",
+    "sourceSha256": "03f2b9f0efa4bf9fecaebc632a226a70963174308ec968896945a044d1e7accd",
+    "pngs": {
+      "proposal-template-01.png": "442945821881e631ca1e106290be898b583e06366cee76b92e1cc7508b21599d",
+      "proposal-template-02.png": "ea9541df7ba52b6ff7fa1f3b68bee08ae257e85608208052883e75ef97b4f05e",
+      "proposal-template-03.png": "03cc6b78f25d05a4ccf4ad31bf19017329af6ce92799ff535006ce05ad06cd93",
+      "proposal-template-04.png": "72b9a1dd2fdf92abce86ffa0f194e69ac38e40c05547bdb88d8f24582209db05",
+      "proposal-template-05.png": "0cbb343215ada3d3accbcc80881bfdebdae9dea0fa315bc4e1b4e72eb5451e29"
+    }
+  },
+  "sales-presentation": {
+    "source": "STALE-DO-NOT-SEND-sales-presentation.pptx",
+    "sourceSha256": "74641a1eb34c5b09c6c1518112ffa940afd3131976383752ab9678c74ad9a502",
+    "pngs": {
+      "STALE-DO-NOT-SEND-sales-presentation-01.png": "6bb2df2f13dddf6504cf653e7a3761366fdce984e7eeaae5f3ea267eb1f160de",
+      "STALE-DO-NOT-SEND-sales-presentation-02.png": "5995074f58bbca1296d23b8b3c214c705567ef3e72d2608708074a608a40978a",
+      "STALE-DO-NOT-SEND-sales-presentation-03.png": "6e1c8167f2d625635f3c0de45e777c2cacb8e046835cbdaf1ab5fa05b2e21445",
+      "STALE-DO-NOT-SEND-sales-presentation-04.png": "992116a88fc5fa6ecd8854b6e95642af6ff98de3b31483fb0d7955901cf02999",
+      "STALE-DO-NOT-SEND-sales-presentation-05.png": "0b76cebc3fd2ccf33c97663753d01e44fc3d19df780bd9932d265f4bbdede8b2",
+      "STALE-DO-NOT-SEND-sales-presentation-06.png": "ec5fcd784989f15d954f714ea49ff8f4cfeeddaa3cc068704abcb2557572cbde",
+      "STALE-DO-NOT-SEND-sales-presentation-07.png": "8798ec3f043b34a3015e04486953ec2ae70b7577c224a4938527cfc45693e42b",
+      "STALE-DO-NOT-SEND-sales-presentation-08.png": "a199368e919a26e1342fff709383f7505d18c4b7b39e25ebb3098b33e08e9fc9",
+      "STALE-DO-NOT-SEND-sales-presentation-09.png": "de350feedc29bb794aee5335124837ed85906dc10c680ad08baa2b062ea6589a",
+      "STALE-DO-NOT-SEND-sales-presentation-10.png": "5b79f068c5c5fdbb9bd1c31ae9ec177691f714e58ac0fd3088a64e42bd9eff90",
+      "STALE-DO-NOT-SEND-sales-presentation-11.png": "fc7d5779fafb8616f2c5210380c5d9138fb3631ed3adfb00fb9f03dae6cabbd2",
+      "STALE-DO-NOT-SEND-sales-presentation-12.png": "e43077eb03f403d688460e11bb75266a6a3cb73c74ddc05f60b22cb06994a747",
+      "STALE-DO-NOT-SEND-sales-presentation-13.png": "bc789e4d00e08826356a50ec2b9a6fed2e8f7da226397f4bd367cf69e73a82e7"
+    },
+    "stale": true,
+    "staleReason": "Review T5 R5 (28 Sep 2026): built before the audit A3 fixes. Still carries A3 #5, 6, 7, 11, 22, 30, 31 and 41 (including a billing-timing line that decides owner decision (b)) and answers decision (a). PowerPoint can't rebuild it on this PC (unlicensed Office). Do not send; use the Word documents. A rebuild with build/build_all.py rewrites this entry and clears the flag. Files renamed with the STALE-DO-NOT-SEND- prefix until rebuilt."
+  },
+  "service-agreement-draft": {
+    "source": "service-agreement-draft.docx",
+    "sourceSha256": "11ef5a23d6d2a4a32454ffc4bd332e7ee7be3ccbae8bd9d604bdd3b0e931158d",
+    "pngs": {
+      "service-agreement-draft-01.png": "7379a60f09cf9479bfe2904f449fa73b96accac068c194f4ba62cd729f047e50",
+      "service-agreement-draft-02.png": "84a83aecdbea9e951f69fe22f3e76bfb4fd5536fee6105e2363fd2aee16b6281",
+      "service-agreement-draft-03.png": "a3610477a6c0d261830648eca8a4924ddd3e1ade97e5a1ade40af4e4f0424124",
+      "service-agreement-draft-04.png": "a29ee888f73f0203b8d03c03a5e7db779910d5516810fe23e361308116440bec",
+      "service-agreement-draft-05.png": "b2c8afbf059a24f5f4dd6e5a45a97589e7a541296a8b77893bbc43655adaf77e",
+      "service-agreement-draft-06.png": "00faee1c49d49185b49fc8604ffee9b60c4fb93d616e2bc682f7f4318e71b74d"
+    }
+  }
+}

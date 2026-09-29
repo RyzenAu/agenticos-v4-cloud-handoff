@@ -1,0 +1,301 @@
+{
+  "run": "b18c272e",
+  "profile": "synth",
+  "port": 8889,
+  "passed": 45,
+  "failed": 0,
+  "results": [
+    {
+      "check": "health endpoint reachable (liveness only, no data)",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "unauthenticated GET /v1/default/banks -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key GET /v1/default/banks -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated GET /v1/default/banks/<bank>/stats -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key GET /v1/default/banks/<bank>/stats -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated POST /v1/default/banks/<bank>/memories/recall -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key POST /v1/default/banks/<bank>/memories/recall -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated POST /v1/default/banks/<bank>/memories -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key POST /v1/default/banks/<bank>/memories -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated GET /v1/default/banks/<bank>/documents -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key GET /v1/default/banks/<bank>/documents -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated DELETE /v1/default/banks/<bank>/documents/mf-ab18c272e -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key DELETE /v1/default/banks/<bank>/documents/mf-ab18c272e -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated DELETE /v1/default/banks/<bank> -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key DELETE /v1/default/banks/<bank> -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "unauthenticated GET /v1/default/banks/<bank>/llm-requests -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "wrong key GET /v1/default/banks/<bank>/llm-requests -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "MCP without token -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "MCP with wrong token -> 401",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "MCP with the key is accepted",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "authenticated list banks -> 200",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "port 8889 listens on loopback only",
+      "pass": true,
+      "addresses": [
+        "127.0.0.1"
+      ]
+    },
+    {
+      "check": "port 5433 listens on loopback only",
+      "pass": true,
+      "addresses": [
+        "127.0.0.1",
+        "::1"
+      ]
+    },
+    {
+      "check": "synthetic retains accepted",
+      "pass": true,
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "seconds": 7.6
+    },
+    {
+      "check": "async retain completed",
+      "pass": true,
+      "status": "completed"
+    },
+    {
+      "check": "doc A produced facts, embeddings, links, entity links",
+      "pass": true,
+      "documents": 1,
+      "chunks": 1,
+      "memory_units": 2,
+      "embeddings": 2,
+      "links": 14,
+      "unit_entities": 4,
+      "invalidated_units": 0
+    },
+    {
+      "check": "per-save model receipts recorded WITHOUT prompt/response text (llm_requests input/output cut to 1 char)",
+      "pass": true,
+      "receipts": [
+        "openrouter/deepseek/deepseek-v4.1-flash:success:3"
+      ]
+    },
+    {
+      "check": "recall finds doc A before deletion",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "DELETE document -> 200",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "doc A's fact ids: units, links and entity links gone (by id)",
+      "pass": true,
+      "before": {
+        "links": 14,
+        "unit_entities": 4
+      },
+      "after": {
+        "units": 0,
+        "links": 0,
+        "unit_entities": 0
+      }
+    },
+    {
+      "check": "document delete removed doc, chunks, facts, embeddings, links, entity links",
+      "pass": true,
+      "documents": 0,
+      "chunks": 0,
+      "memory_units": 0,
+      "embeddings": 0,
+      "links": 0,
+      "unit_entities": 0,
+      "invalidated_units": 0
+    },
+    {
+      "check": "no row anywhere still holds doc A's canaries (incl. entities)",
+      "pass": true,
+      "remaining": {}
+    },
+    {
+      "check": "GET deleted document -> 404",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "check": "recall no longer returns doc A",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "no single-fact hard-delete route in 0.10.1 (DELETE /memories/{id} -> 405)",
+      "pass": true,
+      "status": 405
+    },
+    {
+      "check": "a captured memory (own document) is hard-deleted with its facts, embeddings, links and entities",
+      "pass": true,
+      "before": {
+        "documents": 1,
+        "chunks": 1,
+        "memory_units": 1,
+        "embeddings": 1,
+        "links": 5,
+        "unit_entities": 2,
+        "invalidated_units": 0
+      },
+      "after": {
+        "documents": 0,
+        "chunks": 0,
+        "memory_units": 0,
+        "embeddings": 0,
+        "links": 0,
+        "unit_entities": 0,
+        "invalidated_units": 0
+      },
+      "by_id_after": {
+        "units": 0,
+        "links": 0,
+        "unit_entities": 0
+      },
+      "canary_rows_left": {}
+    },
+    {
+      "check": "per-fact invalidate is soft: text kept in invalidated_memory_units until the document/bank is deleted",
+      "pass": true,
+      "status": 200,
+      "live_row": 0,
+      "invalidated_row": 1
+    },
+    {
+      "check": "deleting the source document also removes its invalidated (soft-deleted) facts",
+      "pass": true,
+      "status": 200,
+      "documents": 0,
+      "chunks": 0,
+      "memory_units": 0,
+      "embeddings": 0,
+      "links": 0,
+      "unit_entities": 0,
+      "invalidated_units": 0
+    },
+    {
+      "check": "FINDING async-operation payload rows still holding doc C text after its document delete",
+      "pass": true,
+      "rows": 1,
+      "doc_delete_status": 200
+    },
+    {
+      "check": "FINDING DELETE /operations/{id} on a completed operation",
+      "pass": true,
+      "status": 409,
+      "payload_rows_after": 1
+    },
+    {
+      "check": "DELETE bank -> 200",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "bank delete removed every bank-scoped content row (facts, entities, embeddings, operations, documents)",
+      "pass": true,
+      "remaining": {}
+    },
+    {
+      "check": "no row anywhere still holds any canary after bank delete",
+      "pass": true,
+      "remaining": {}
+    },
+    {
+      "check": "async-operation payload held the canary before the bank delete (retention finding)",
+      "pass": true,
+      "async_payload_rows_before_delete": 1
+    },
+    {
+      "check": "receipts outlive a bank delete (Hindsight does not purge llm_requests) but hold no text; swept after 30 days",
+      "pass": true,
+      "receipts_left": 4,
+      "receipts_with_text": 0
+    }
+  ]
+}

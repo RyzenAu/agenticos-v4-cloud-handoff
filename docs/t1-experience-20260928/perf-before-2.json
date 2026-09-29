@@ -1,0 +1,352 @@
+{
+ "label": "before-2",
+ "base": "http://127.0.0.1:4372",
+ "runs": 3,
+ "at": "2026-09-28T04:50:32.613Z",
+ "table": [
+  {
+   "path": "/today",
+   "ttfb": 150,
+   "fcp": 396,
+   "dcl": 279,
+   "load": 412,
+   "hydrated": 1082,
+   "requests": 443,
+   "jsKB": 10259
+  },
+  {
+   "path": "/jarvis",
+   "ttfb": 17,
+   "fcp": 200,
+   "dcl": 94,
+   "load": 185,
+   "hydrated": 647,
+   "requests": 433,
+   "jsKB": 10068
+  },
+  {
+   "path": "/receptionist",
+   "ttfb": 14,
+   "fcp": 124,
+   "dcl": 79,
+   "load": 121,
+   "hydrated": 655,
+   "requests": 455,
+   "jsKB": 10798
+  },
+  {
+   "path": "/work",
+   "ttfb": 15,
+   "fcp": 140,
+   "dcl": 89,
+   "load": 135,
+   "hydrated": 569,
+   "requests": 439,
+   "jsKB": 10207
+  },
+  {
+   "path": "/memory",
+   "ttfb": 21,
+   "fcp": 224,
+   "dcl": 117,
+   "load": 205,
+   "hydrated": 755,
+   "requests": 437,
+   "jsKB": 11134
+  },
+  {
+   "path": "/finance",
+   "ttfb": 1835,
+   "fcp": 1976,
+   "dcl": 1960,
+   "load": 2020,
+   "hydrated": 2464,
+   "requests": 451,
+   "jsKB": 10659
+  },
+  {
+   "path": "/studio",
+   "ttfb": 16,
+   "fcp": 140,
+   "dcl": 76,
+   "load": 134,
+   "hydrated": 836,
+   "requests": 431,
+   "jsKB": 10077
+  },
+  {
+   "path": "/system",
+   "ttfb": 74,
+   "fcp": 188,
+   "dcl": 136,
+   "load": 208,
+   "hydrated": 1569,
+   "requests": 313,
+   "jsKB": 6416
+  }
+ ],
+ "interactions": {
+  "paletteOpenMs": [
+   117,
+   51,
+   60
+  ],
+  "paletteSearchMs": [
+   20090,
+   20063,
+   20071
+  ],
+  "navMs": [
+   195,
+   95,
+   82
+  ]
+ },
+ "summary": {
+  "paletteOpenMs": 60,
+  "paletteSearchMs": 20071,
+  "sidebarNavToFinanceMs": 95
+ },
+ "raw": [
+  {
+   "path": "/today",
+   "ttfb": 4960.5,
+   "fcp": 5124,
+   "dcl": 5104.4000000059605,
+   "load": 5125.20000000298,
+   "hydrated": 5545.60000000149,
+   "requests": 443,
+   "jsKB": 10259
+  },
+  {
+   "path": "/jarvis",
+   "ttfb": 13.100000001490116,
+   "fcp": 136,
+   "dcl": 67.5,
+   "load": 122.5,
+   "hydrated": 549.8999999985099,
+   "requests": 433,
+   "jsKB": 10068
+  },
+  {
+   "path": "/receptionist",
+   "ttfb": 13.5,
+   "fcp": 120,
+   "dcl": 75.09999999403954,
+   "load": 120.69999999552965,
+   "hydrated": 511.5,
+   "requests": 455,
+   "jsKB": 10798
+  },
+  {
+   "path": "/work",
+   "ttfb": 15,
+   "fcp": 136,
+   "dcl": 89.29999999701977,
+   "load": 134.20000000298023,
+   "hydrated": 568.7000000029802,
+   "requests": 439,
+   "jsKB": 10207
+  },
+  {
+   "path": "/memory",
+   "ttfb": 20.700000002980232,
+   "fcp": 224,
+   "dcl": 92.60000000149012,
+   "load": 205.39999999850988,
+   "hydrated": 753.3999999985099,
+   "requests": 437,
+   "jsKB": 11134
+  },
+  {
+   "path": "/finance",
+   "ttfb": 2031.7000000029802,
+   "fcp": 2280,
+   "dcl": 2261.7000000029802,
+   "load": 2325,
+   "hydrated": 2957.89999999851,
+   "requests": 451,
+   "jsKB": 10659
+  },
+  {
+   "path": "/studio",
+   "ttfb": 19,
+   "fcp": 204,
+   "dcl": 105.79999999701977,
+   "load": 212.89999999850988,
+   "hydrated": 836.1999999955297,
+   "requests": 431,
+   "jsKB": 10077
+  },
+  {
+   "path": "/system",
+   "ttfb": 14.5,
+   "fcp": 188,
+   "dcl": 103.90000000596046,
+   "load": 183.40000000596046,
+   "hydrated": 1569.2000000029802,
+   "requests": 313,
+   "jsKB": 6416
+  },
+  {
+   "path": "/today",
+   "ttfb": 149.89999999850988,
+   "fcp": 396,
+   "dcl": 279.29999999701977,
+   "load": 412.1000000014901,
+   "hydrated": 1081.8999999985099,
+   "requests": 443,
+   "jsKB": 10259
+  },
+  {
+   "path": "/jarvis",
+   "ttfb": 23.600000001490116,
+   "fcp": 268,
+   "dcl": 191.19999999552965,
+   "load": 252.89999999850988,
+   "hydrated": 762.5,
+   "requests": 433,
+   "jsKB": 10068
+  },
+  {
+   "path": "/receptionist",
+   "ttfb": 15.799999997019768,
+   "fcp": 292,
+   "dcl": 89.70000000298023,
+   "load": 318.79999999701977,
+   "hydrated": 1844.2999999970198,
+   "requests": 455,
+   "jsKB": 10798
+  },
+  {
+   "path": "/work",
+   "ttfb": 15.199999995529652,
+   "fcp": 140,
+   "dcl": 89.19999999552965,
+   "load": 134.5,
+   "hydrated": 566.1000000014901,
+   "requests": 439,
+   "jsKB": 10207
+  },
+  {
+   "path": "/memory",
+   "ttfb": 23.200000002980232,
+   "fcp": 208,
+   "dcl": 176.10000000149012,
+   "load": 200.90000000596046,
+   "hydrated": 783.8000000044703,
+   "requests": 419,
+   "jsKB": 10575
+  },
+  {
+   "path": "/finance",
+   "ttfb": 1835.3000000044703,
+   "fcp": 1976,
+   "dcl": 1959.9000000059605,
+   "load": 2020.3000000044703,
+   "hydrated": 2464,
+   "requests": 451,
+   "jsKB": 10659
+  },
+  {
+   "path": "/studio",
+   "ttfb": 12.899999998509884,
+   "fcp": 136,
+   "dcl": 73.59999999403954,
+   "load": 127.59999999403954,
+   "hydrated": 573.1999999955297,
+   "requests": 321,
+   "jsKB": 6766
+  },
+  {
+   "path": "/system",
+   "ttfb": 73.79999999701977,
+   "fcp": 184,
+   "dcl": 136.19999999552965,
+   "load": 207.60000000149012,
+   "hydrated": 631.7999999970198,
+   "requests": 423,
+   "jsKB": 8773
+  },
+  {
+   "path": "/today",
+   "ttfb": 19.600000001490116,
+   "fcp": 136,
+   "dcl": 78.39999999850988,
+   "load": 129.60000000149012,
+   "hydrated": 612.7000000029802,
+   "requests": 443,
+   "jsKB": 10259
+  },
+  {
+   "path": "/jarvis",
+   "ttfb": 16.80000000447035,
+   "fcp": 200,
+   "dcl": 94.20000000298023,
+   "load": 184.80000000447035,
+   "hydrated": 647.3000000044703,
+   "requests": 433,
+   "jsKB": 10068
+  },
+  {
+   "path": "/receptionist",
+   "ttfb": 14,
+   "fcp": 124,
+   "dcl": 79,
+   "load": 121.30000000447035,
+   "hydrated": 654.5,
+   "requests": 455,
+   "jsKB": 10798
+  },
+  {
+   "path": "/work",
+   "ttfb": 47.19999999552965,
+   "fcp": 268,
+   "dcl": 180.39999999850988,
+   "load": 260,
+   "hydrated": 1454.5,
+   "requests": 439,
+   "jsKB": 10207
+  },
+  {
+   "path": "/memory",
+   "ttfb": 20.299999997019768,
+   "fcp": 260,
+   "dcl": 116.70000000298023,
+   "load": 242.89999999850988,
+   "hydrated": 754.7000000029802,
+   "requests": 464,
+   "jsKB": 12047
+  },
+  {
+   "path": "/finance",
+   "ttfb": 34.900000005960464,
+   "fcp": 276,
+   "dcl": 151.30000000447035,
+   "load": 272,
+   "hydrated": 704.2000000029802,
+   "requests": 451,
+   "jsKB": 10659
+  },
+  {
+   "path": "/studio",
+   "ttfb": 16.200000002980232,
+   "fcp": 140,
+   "dcl": 75.60000000149012,
+   "load": 133.90000000596046,
+   "hydrated": 1179.4000000059605,
+   "requests": 431,
+   "jsKB": 10077
+  },
+  {
+   "path": "/system",
+   "ttfb": 805,
+   "fcp": 1892,
+   "dcl": 1066.6999999955297,
+   "load": 1922.8999999985099,
+   "hydrated": 2659.89999999851,
+   "requests": 302,
+   "jsKB": 6416
+  }
+ ]
+}

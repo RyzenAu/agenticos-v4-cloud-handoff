@@ -1,0 +1,77 @@
+{
+ "label": "after-early-brain",
+ "at": "2026-09-24T03:22:12.071Z",
+ "summary": "questions: 5\nfirst audio today (turn + tts of the grouped reply): median 1504 ms\nfirst sentence alone: median 1113 ms\nturn + streamed first sentence: median 1004 ms",
+ "rows": [
+  {
+   "question": "What's the capital of Portugal?",
+   "reply": "Lisbon, sir. Quite the charming little city, if I may say.",
+   "turn": 529,
+   "ttsAll": 487,
+   "tts1": 391,
+   "firstAudioBefore": 1016,
+   "firstAudioSplit": 920,
+   "stream": {
+    "firstAudio": 475,
+    "done": 475,
+    "seconds": 3.436541666666667
+   }
+  },
+  {
+   "question": "Tell me a quick joke about queuing.",
+   "reply": "Ah, the queue—where the line stretches longer than a British summer, and everyone pretends patience is a virtue. Sir, it's the only place where standing still feels like a sport.",
+   "turn": 668,
+   "ttsAll": 1074,
+   "tts1": 445,
+   "firstAudioBefore": 1742,
+   "firstAudioSplit": 1113,
+   "stream": {
+    "firstAudio": 254,
+    "done": 389,
+    "seconds": 6.269375
+   }
+  },
+  {
+   "question": "Explain what a directory junction is on Windows.",
+   "reply": "A directory junction is a type of reparse point that lets one folder act as a shortcut to another folder on the same volume, making the contents appear in both places. It’s essentially a hard link for directories, useful for organising files without duplicating them.  \n\nA tidy little trick—much like keeping the tea set in the pantry yet serving it from the lounge.",
+   "turn": 820,
+   "ttsAll": 684,
+   "tts1": 918,
+   "firstAudioBefore": 1504,
+   "firstAudioSplit": 1738,
+   "stream": {
+    "firstAudio": 294,
+    "done": 638,
+    "seconds": 9.055791666666666
+   }
+  },
+  {
+   "question": "How do I say thank you in Urdu?",
+   "reply": "You would say “شکریہ” (pronounced shukriya), sir. A spot of gratitude never goes amiss.",
+   "turn": 541,
+   "ttsAll": 427,
+   "tts1": 428,
+   "firstAudioBefore": 968,
+   "firstAudioSplit": 969,
+   "stream": {
+    "firstAudio": 261,
+    "done": 470,
+    "seconds": 2.972166666666667
+   }
+  },
+  {
+   "question": "Give me one tip for opening a cold call with a dentist.",
+   "reply": "Begin with a courteous reference to their practice’s smile‑centric reputation, then ask a brief, open‑ended question about how they’re currently attracting new patients. A spot of charm never hurts, sir.",
+   "turn": 724,
+   "ttsAll": 1125,
+   "tts1": 581,
+   "firstAudioBefore": 1849,
+   "firstAudioSplit": 1305,
+   "stream": {
+    "firstAudio": 297,
+    "done": 880,
+    "seconds": 9.288
+   }
+  }
+ ]
+}

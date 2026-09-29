@@ -1,0 +1,35 @@
+/* Calm reading scale for the Skills, Skill drafts and Settings pages (W-E, 29 Sep 2026; Finance,
+ * AI usage, System and Models moved to the widget grid in L3).
+ * Scoped to .calm-page: the base tokens in styles.css are W-G's and stay untouched. The utilities
+ * read these variables (text-sm → var(--text-sm)), so every text-* step inside a calm page is one
+ * notch larger: body 15 px, meta 13 px, labels 12 px, stat values 26 px. Remove this block when
+ * W-G's global scale lands. */
+.calm-page {
+  --text-2xs: 0.75rem; /* 12px — caps labels, badges */
+  --text-xs: 0.8125rem; /* 13px — meta, captions */
+  --text-sm: 0.9375rem; /* 15px — body */
+  --text-base: 1.0625rem; /* 17px — card titles, lead */
+  --text-lg: 1.3125rem; /* 21px — section titles */
+  --text-xl: 1.625rem; /* 26px — stat values */
+  line-height: 1.55;
+}
+.calm-page section.mb-12 {
+  margin-bottom: 3.5rem;
+}
+
+/* One calm card: rounded-2xl, generous padding, no glow. */
+.calm-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  box-shadow: var(--elev-1);
+  padding: 20px;
+}
+@media (min-width: 640px) {
+  .calm-card {
+    padding: 24px;
+  }
+}
+.calm-card.p-0 {
+  padding: 0;
+}

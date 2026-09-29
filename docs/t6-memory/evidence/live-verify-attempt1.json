@@ -1,0 +1,55 @@
+{
+  "run": "574271",
+  "target": "live OS 127.0.0.1:8081 → proxy 8878 bank mu-shared",
+  "at": "2026-09-28T02:31:05.218Z",
+  "passed": 5,
+  "failed": 1,
+  "aborted": "read ECONNRESET",
+  "results": [
+    {
+      "step": "setup",
+      "ok": true,
+      "what": "the owner's browser session and page token at this PC",
+      "observed": {
+        "session": true,
+        "token": true
+      }
+    },
+    {
+      "step": "setup",
+      "ok": true,
+      "what": "memory is on, this is the one writer, Hindsight through the proxy, no key in the OS",
+      "observed": {
+        "mode": "on",
+        "writes": true,
+        "writer": null,
+        "url": "http://127.0.0.1:8878",
+        "bank": "mu-shared",
+        "api_key": "missing",
+        "pending": 0
+      }
+    },
+    {
+      "step": "setup",
+      "ok": true,
+      "what": "the proxy's document-delete budget has room (this run uses about 7 of 20 an hour)",
+      "observed": {
+        "deletes_last_hour": 0
+      }
+    },
+    {
+      "step": "setup",
+      "ok": true,
+      "what": "the vault is where the OS reads it",
+      "observed": {
+        "vault": "C:\\Users\\Nebula PC\\source\\repos\\mu-ventures-obsidian-wiki"
+      }
+    },
+    {
+      "step": "A save",
+      "ok": true,
+      "what": "\"remember\" through the live OS",
+      "observed": "Remembered in Hindsight memory as mem-df04f7a520 (\"T6 live check 574271: the synthetic Verifier574271 clinic opens\"): still being processed by Hindsight (it's saved here; indexing finishes in the background). Not written to the vault."
+    }
+  ]
+}

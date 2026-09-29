@@ -1,0 +1,10 @@
+﻿{
+  "client": "hermes",
+  "target": "synth",
+  "bank": "mu-shared",
+  "canary": "Kestrelb8f0d1",
+  "rc": 0,
+  "found_canary": true,
+  "reply_excerpt": "The Kestrelb8f0d1 test garage opens at 9am.",
+  "stderr_tail": "\nsession_id: 20260928_010957_9822e3\n"
+}

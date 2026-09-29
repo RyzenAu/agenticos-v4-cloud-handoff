@@ -1,0 +1,12 @@
+{"at":"2026-09-26T18:17:02.286Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=B6zVzWU95Sw","status":200,"secs":16.42,"prompt":12987,"out":2020,"total":15866}
+{"at":"2026-09-26T18:17:25.402Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=w4eTR7tci6A","status":200,"secs":19.518,"prompt":12707,"out":1671,"total":16121}
+{"at":"2026-09-26T18:17:41.347Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=jY0-gsNImlk","status":503,"secs":12.904,"err":"UNAVAILABLE"}
+{"at":"2026-09-26T18:18:04.648Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=jY0-gsNImlk","status":200,"secs":18.822,"prompt":7159,"out":2140,"total":10271}
+{"at":"2026-09-26T18:18:27.706Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=OcEGgDaq6JM","status":200,"secs":19.708,"prompt":47111,"out":2302,"total":49772}
+{"at":"2026-09-26T18:18:54.872Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=-j4XDojlGLc","status":200,"secs":23.854,"prompt":45916,"out":2232,"total":49460}
+{"at":"2026-09-26T18:19:13.369Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=YKk1p9oUedk","status":503,"secs":14.523,"err":"UNAVAILABLE"}
+{"at":"2026-09-26T18:19:32.438Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=YKk1p9oUedk","status":200,"secs":15.609,"prompt":10060,"out":1902,"total":13024}
+{"at":"2026-09-26T18:19:53.020Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=N9vXcHqtoj4","status":200,"secs":17.277,"prompt":27894,"out":1524,"total":29634}
+{"at":"2026-09-26T18:20:18.154Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=zQawxU8wv70","status":200,"secs":21.777,"prompt":30186,"out":1998,"total":32383}
+{"at":"2026-09-26T18:21:28.150Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=q5UFK4ziDuE","status":200,"secs":66.818,"prompt":53100,"out":2386,"total":56139}
+{"at":"2026-09-26T18:21:49.150Z","model":"gemini-3.8-flash","url":"https://www.youtube.com/watch?v=n6g9YNVkxNo","status":200,"secs":17.639,"prompt":29362,"out":1582,"total":31835}

@@ -1,0 +1,56 @@
+# Deploys or takes down ONE founder-triggered lead preview on Vercel (team nahda). Called by
+# scripts/lead-sites/deploy.ts through Windows PowerShell — never Git Bash, which rewrites
+# arguments that start with "/". Mirrors the Bianca deploy: link a staging copy, delete any
+# .env.local that linking creates (without reading it), deploy to production, attach the domain.
+# The wildcard *.muventures.com.au already points at Vercel, so no DNS record is touched.
+param(
+  [Parameter(Mandatory = $true)][ValidateSet('deploy', 'takedown')][string]$Action,
+  [Parameter(Mandatory = $true)][string]$Project,
+  [string]$Stage = '',
+  [string]$Domain = '',
+  [string]$Scope = 'nahda'
+)
+$ErrorActionPreference = 'Continue'
+if ($Project -notmatch '^mu-preview-[a-z0-9-]{1,80}$') { Write-Output 'MU_ERROR project name must be mu-preview-<slug>'; exit 2 }
+
+function Run([string[]]$VercelArgs) {
+  # Run the CLI and return plain text; PowerShell 5.1 wraps native stderr in ErrorRecords.
+  $text = & vercel @VercelArgs 2>&1 | ForEach-Object { "$_" } | Out-String
+  return $text
+}
+
+if ($Action -eq 'deploy') {
+  if ($Domain -notmatch '^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.muventures\.com\.au$') { Write-Output 'MU_ERROR domain must be <slug>.muventures.com.au'; exit 2 }
+  if (-not (Test-Path -LiteralPath (Join-Path $Stage 'index.html'))) { Write-Output 'MU_ERROR nothing staged to deploy'; exit 2 }
+  Set-Location -LiteralPath $Stage
+  if (-not (Test-Path -LiteralPath '.vercel\project.json')) {
+    $add = Run @('project', 'add', $Project, '--scope', $Scope)
+    Write-Output "MU_STEP project add: $($add.Trim() -replace '\s+', ' ')"
+    $link = Run @('link', '--yes', '--project', $Project, '--scope', $Scope)
+    Write-Output "MU_STEP link: $($link.Trim() -replace '\s+', ' ')"
+  }
+  # Linking can pull environment files. Delete, never read.
+  Get-ChildItem -LiteralPath $Stage -Force -Filter '.env*' -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+  $deploy = Run @('deploy', '--prod', '--yes', '--scope', $Scope)
+  Write-Output "MU_STEP deploy: $($deploy.Trim() -replace '\s+', ' ')"
+  if ($LASTEXITCODE -ne 0) { Write-Output 'MU_ERROR deploy failed'; exit 1 }
+  $dom = Run @('domains', 'add', $Domain, $Project, '--scope', $Scope)
+  Write-Output "MU_STEP domain: $($dom.Trim() -replace '\s+', ' ')"
+  Get-ChildItem -LiteralPath $Stage -Force -Filter '.env*' -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+  Write-Output 'MU_DONE'
+  exit 0
+}
+
+if ($Action -eq 'takedown') {
+  # Removing the project removes its deployments and detaches the preview's subdomain. Never
+  # `vercel domains remove` — that would act on the whole muventures.com.au domain.
+  # The CLI has no --yes here, so answer its prompt on stdin. PowerShell 5.1 prefixes piped text
+  # with a BOM, which the prompt reads as "no" — cmd's echo doesn't. $Project is validated above.
+  $rm = cmd.exe /d /c "echo y| vercel project remove $Project --scope $Scope" 2>&1 | ForEach-Object { "$_" } | Out-String
+  Write-Output "MU_STEP remove: $($rm.Trim() -replace '\s+', ' ')"
+  # Never trust the prompt: confirm the project is really gone.
+  $check = Run @('project', 'inspect', $Project, '--scope', $Scope)
+  if ($LASTEXITCODE -eq 0 -and $check -notmatch 'not found|could not be found|No such project') { Write-Output 'MU_ERROR the project still exists after remove'; exit 1 }
+  Write-Output 'MU_DONE'
+  exit 0
+}

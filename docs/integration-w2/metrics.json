@@ -1,0 +1,389 @@
+{
+  "pages": [
+    {
+      "name": "today",
+      "path": "/today",
+      "width": 1440,
+      "h1": "Today",
+      "h1Ms": 644,
+      "url": "/today",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "jarvis",
+      "path": "/jarvis",
+      "width": 1440,
+      "h1": "Jarvis",
+      "h1Ms": 435,
+      "url": "/jarvis",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "receptionist",
+      "path": "/receptionist",
+      "width": 1440,
+      "h1": "Receptionist dashboard",
+      "h1Ms": 548,
+      "url": "/receptionist",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "work",
+      "path": "/work",
+      "width": 1440,
+      "h1": "Work",
+      "h1Ms": 444,
+      "url": "/work",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "memory",
+      "path": "/memory",
+      "width": 1440,
+      "h1": "Memory",
+      "h1Ms": 1452,
+      "url": "/memory",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "memory-vault",
+      "path": "/memory/vault",
+      "width": 1440,
+      "h1": "Memory",
+      "h1Ms": 1287,
+      "url": "/memory/vault",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "finance",
+      "path": "/finance",
+      "width": 1440,
+      "h1": "Finance",
+      "h1Ms": 445,
+      "url": "/finance",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "studio",
+      "path": "/studio",
+      "width": 1440,
+      "h1": "Studio",
+      "h1Ms": 367,
+      "url": "/studio",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "system",
+      "path": "/system",
+      "width": 1440,
+      "h1": "System",
+      "h1Ms": 371,
+      "url": "/system",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "today",
+      "path": "/today",
+      "width": 390,
+      "h1": "Today",
+      "h1Ms": 376,
+      "url": "/today",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "jarvis",
+      "path": "/jarvis",
+      "width": 390,
+      "h1": "Jarvis",
+      "h1Ms": 373,
+      "url": "/jarvis",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "receptionist",
+      "path": "/receptionist",
+      "width": 390,
+      "h1": "Receptionist dashboard",
+      "h1Ms": 337,
+      "url": "/receptionist",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "work",
+      "path": "/work",
+      "width": 390,
+      "h1": "Work",
+      "h1Ms": 344,
+      "url": "/work",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "memory",
+      "path": "/memory",
+      "width": 390,
+      "h1": "Memory",
+      "h1Ms": 381,
+      "url": "/memory",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "memory-vault",
+      "path": "/memory/vault",
+      "width": 390,
+      "h1": "Memory",
+      "h1Ms": 1259,
+      "url": "/memory/vault",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "finance",
+      "path": "/finance",
+      "width": 390,
+      "h1": "Finance",
+      "h1Ms": 332,
+      "url": "/finance",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "studio",
+      "path": "/studio",
+      "width": 390,
+      "h1": "Studio",
+      "h1Ms": 298,
+      "url": "/studio",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    },
+    {
+      "name": "system",
+      "path": "/system",
+      "width": 390,
+      "h1": "System",
+      "h1Ms": 323,
+      "url": "/system",
+      "axe": [],
+      "overflow": {
+        "px": 0,
+        "culprits": []
+      },
+      "consoleErrors": [],
+      "err": null
+    }
+  ],
+  "interactions": [
+    {
+      "kind": "sidebar-nav",
+      "to": "/today",
+      "ok": true,
+      "h1": "Today",
+      "ms": 280,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/jarvis",
+      "ok": true,
+      "h1": "Jarvis",
+      "ms": 132,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/receptionist",
+      "ok": true,
+      "h1": "Receptionist dashboard",
+      "ms": 130,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/work",
+      "ok": true,
+      "h1": "Work",
+      "ms": 122,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/memory",
+      "ok": true,
+      "h1": "Memory",
+      "ms": 202,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/finance",
+      "ok": true,
+      "h1": "Finance",
+      "ms": 144,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/studio",
+      "ok": true,
+      "h1": "Studio",
+      "ms": 150,
+      "e": null
+    },
+    {
+      "kind": "sidebar-nav",
+      "to": "/system",
+      "ok": true,
+      "h1": "System",
+      "ms": 137,
+      "e": null
+    },
+    {
+      "kind": "inspector-state-before-click",
+      "open": false
+    },
+    {
+      "kind": "inspector-clicks-needed",
+      "clicks": 2,
+      "open": true
+    },
+    {
+      "kind": "inspector-open-close",
+      "ok": true
+    },
+    {
+      "kind": "desktop-session-console-errors",
+      "errors": []
+    },
+    {
+      "kind": "phone-drawer-nav",
+      "ok": true,
+      "h1": "Finance",
+      "errors": []
+    },
+    {
+      "kind": "memory-search",
+      "ok": true,
+      "errors": []
+    },
+    {
+      "kind": "unknown-url",
+      "ok": true,
+      "text": "Skip to content\nAgentic OS\nToday\nJarvis\nReceptionist\nWork\nMemory\nFinance\nStudio\nSystem\nUsman\nSigned in · profile\nAgentic OS\nJarvis\nChat\nShare screen\nMeeting\nHUD\nInspector\n404\nPage not found\n\nThe page ",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "kind": "today-forced-loading-and-failure",
+      "loadingElements": 4,
+      "mentionsFailure": true,
+      "errors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+      ]
+    }
+  ]
+}

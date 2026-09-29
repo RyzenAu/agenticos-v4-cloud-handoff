@@ -1,0 +1,358 @@
+{
+  "run": "0072daa1",
+  "results": [
+    {
+      "check": "proxy health (no key sent by the client)",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "API itself still refuses a key-less call",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "check": "caller identity: this process's SID equals the proxy user's SID",
+      "pass": true
+    },
+    {
+      "check": "caller identity: a process of another account (lsass, SYSTEM) does NOT match",
+      "pass": true
+    },
+    {
+      "check": "retain through the proxy",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "retain was forced synchronous (no async payload row holds the text)",
+      "pass": true,
+      "rows": 0
+    },
+    {
+      "check": "recall through the proxy returns the saved fact",
+      "pass": true,
+      "status": 200,
+      "recalled": "The Wren0072daa1 clinic opens at 8am on Tuesdays. | When: Tuesdays, 8am"
+    },
+    {
+      "check": "receipt: which model processed the save is readable through the proxy",
+      "pass": true,
+      "status": 200,
+      "models": [
+        "openrouter/deepseek/deepseek-v4.1-flash"
+      ]
+    },
+    {
+      "check": "correction by replace: recall says 9:30, never 8am",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "single-memory correction (PATCH) through the proxy suppresses the old fact",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "forget without an approval token -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "approval token for a different request -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "forged approval token -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "forget WITH a valid approval token deletes the memory (facts gone, recall empty)",
+      "pass": true,
+      "status": 200,
+      "facts_left": 0
+    },
+    {
+      "check": "approval token is single-use (replay -> 403)",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "DELETE /v1/default/banks/<bank> is not exposed at all, even with a signed token -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "DELETE /v1/default/banks/<bank>/memories is not exposed at all, even with a signed token -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /v1/default/banks/<bank>/export -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: POST /v1/default/banks/<bank>/import -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: POST /v1/default/banks/<bank>/clone -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: PATCH /v1/default/banks/<bank> -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /v1/default/banks/<bank>/config -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: DELETE /v1/default/banks/<bank>/operations/00000000-0000-0000-0000-000000000000 -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /docs -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /metrics -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /openapi.json -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: HEAD /health -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: OPTIONS /health -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: GET /mcp/<bank>/extra -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "not allowlisted: HEAD /mcp/<bank>/ -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "bank outside the proxy allowlist -> 403",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "allowed query string on a list route -> 200",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "query string on a route that takes none / encoded query -> refused",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "check": "traversal refused: DELETE /mcp/<bank>/../../v1/default/banks/syn-victim-<run>",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /mcp/<bank>/..%2F..%2Fv1/default/banks/syn-victim-<run>",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /mcp/<bank>/../../v1/default/banks/<bank>/memories",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: POST /mcp/<bank>/../../v1/default/banks/zz-hidden-<run>/memories",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: POST /mcp/<bank>/%2e%2e/%2E%2E/v1/default/banks/ro-b-<run>/memories",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /mcp/<bank>/../../docs",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /mcp/<bank>/../../v1/default/banks/<bank>/config",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /v1/default/banks/<bank>/documents/..",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /v1/default/banks/<bank>/documents/%2e%2e",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /v1/default/banks/<bank>/documents/.%2e",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks/<bank>/./stats",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks//<bank>/stats",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks/<bank>/stats/..",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks/<bank>\\..\\..\\docs",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks/<bank>%5c..%5cdocs",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /v1/default/banks/<bank>%2fstats",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: POST /mcp/<bank>/;/../../v1/default/banks/<bank>/memories",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: GET /mcp/<bank>/..;/..;/docs",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "traversal refused: DELETE /mcp/<bank>/...",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "check": "no traversal had any effect (victim bank intact, bank not cleared, no hidden bank, no payload)",
+      "pass": true,
+      "before": {
+        "victim_docs": 1,
+        "bank_docs": 2
+      },
+      "after": {
+        "victim_docs": 1,
+        "bank_docs": 2,
+        "hidden_bank": 0,
+        "traversal_payloads": 0
+      }
+    },
+    {
+      "check": "rejections are logged distinctly (decision=reject_noncanonical)",
+      "pass": true,
+      "logged": 19
+    },
+    {
+      "check": "reflect through the proxy",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "MCP initialize through the proxy with no client key",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "MCP tools exclude delete/clear/async retain",
+      "pass": true,
+      "tools": [
+        "get_bank",
+        "get_document",
+        "get_knowledge_base_tree",
+        "get_knowledge_page",
+        "get_memory",
+        "get_mental_model",
+        "get_operation",
+        "invalidate_memory",
+        "list_directives",
+        "list_documents",
+        "list_memories",
+        "list_mental_models",
+        "list_operations",
+        "list_tags",
+        "recall",
+        "reflect",
+        "search_knowledge_base",
+        "sync_retain",
+        "update_memory"
+      ]
+    },
+    {
+      "check": "MCP save (sync_retain) through the proxy",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "MCP recall through the proxy finds it",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "MCP delete_bank is not callable",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "check": "writes OFF: REST retain -> 403, MCP save refused, recall still works",
+      "pass": true,
+      "rest": 403,
+      "recall": 200
+    },
+    {
+      "check": "operator bank delete of a synthetic bank (console CLI)",
+      "pass": true,
+      "rc": 0
+    },
+    {
+      "check": "operator bank delete of a synthetic bank (console CLI)",
+      "pass": true,
+      "rc": 0
+    },
+    {
+      "check": "no key, DB password or canary text in API logs, proxy log or supervisor events",
+      "pass": true,
+      "hits": []
+    }
+  ]
+}

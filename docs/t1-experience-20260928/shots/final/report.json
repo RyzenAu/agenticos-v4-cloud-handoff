@@ -1,0 +1,700 @@
+{
+ "pages": [
+  {
+   "page": "today",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "jarvis",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "receptionist",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "work",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "memory",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "finance",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "studio",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "system",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "operations",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "models",
+   "width": 1440,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "today",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "jarvis",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "receptionist",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "work",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "memory",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "finance",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "studio",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "system",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "operations",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "models",
+   "width": 390,
+   "theme": "dark",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "today",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "jarvis",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "receptionist",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "work",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "memory",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "finance",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "studio",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "system",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "operations",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "models",
+   "width": 1440,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "page": "today",
+   "width": 390,
+   "theme": "light",
+   "overflow": 0,
+   "serious": 0,
+   "violations": [],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "scene": [
+    "RECEPTIONIST\nNot safe to sell\n0 of 5 go-live gates · 2 flagged\nLive\nReceptionist status (/__workspace/receptionist)\nUpdated just now",
+    "LEADS\nUnknown\nNo leads in the CRM yet\nUnknown\nCRM call queue\nUpdated just now",
+    "CODING\nUnknown\nNo coding job in the job history.\nUnknown\nJob history (/__jobs)\nNo successful read yet",
+    "MEMORY\nWrites off\nHindsight off · 0 pending\nSetup required\nMemory connector (/__memory/status)\nNo successful read yet",
+    "FINANCE\nSetup required\nNo NAB CSV imported yet.\nSetup required\nNAB CSV import (/__finance_manual)\nNo successful read yet"
+   ]
+  },
+  {
+   "width": 1440,
+   "steps": [
+    {
+     "name": "Ctrl+K opens the palette",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "focus is in the palette input",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "device action shows its target before running",
+     "ok": true,
+     "detail": "Runs on (“here”) Usman's PC · online · usman"
+    },
+    {
+     "name": "margin answer shows figures, state and source",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "Enter opens Operations on the Professional package",
+     "ok": true,
+     "detail": "/operations?package=receptionist-professional"
+    },
+    {
+     "name": "the package selector shows Professional",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "page context: active page and selected package with figures",
+     "ok": true,
+     "detail": "Packages & economics · Professional package"
+    },
+    {
+     "name": "flagged calls: opened and focused (or the section isn't there because sell status couldn't be read)",
+     "ok": true,
+     "detail": "{\"id\":\"\",\"exists\":false}"
+    },
+    {
+     "name": "Command scene opens",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "five objects",
+     "ok": true,
+     "detail": "5"
+    },
+    {
+     "name": "arrow keys move between objects",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "scene axe: 0 serious",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "Enter opens that object's 2D page",
+     "ok": true,
+     "detail": "/leads"
+    },
+    {
+     "name": "call pipeline is static before any event",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "mid-replay: only confirmed steps are done, the next is active, the rest wait",
+     "ok": true,
+     "detail": "[\"done\",\"done\",\"active\",\"pending\"]"
+    },
+    {
+     "name": "end of replay: all four confirmed",
+     "ok": true,
+     "detail": "[\"done\",\"done\",\"done\",\"done\"]"
+    },
+    {
+     "name": "ambient motion is still by default",
+     "ok": true,
+     "detail": "still"
+    },
+    {
+     "name": "motion control turns ambient on",
+     "ok": true,
+     "detail": "ambient"
+    },
+    {
+     "name": "ambient holds still while a dialog (the palette) is open and he types",
+     "ok": true,
+     "detail": "still"
+    },
+    {
+     "name": "no console errors in the flow",
+     "ok": false,
+     "detail": "HTTP 503 /__jobs | Failed to load resource: the server responded with a status of 503 (Service Unavailable) | HTTP 503 /__jobs/events"
+    }
+   ],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+   ]
+  },
+  {
+   "scene": [
+    "RECEPTIONIST\nNot safe to sell\n0 of 5 go-live gates · 2 flagged\nLive\nReceptionist status (/__workspace/receptionist)\nUpdated just now",
+    "LEADS\nUnknown\nNo leads in the CRM yet\nUnknown\nCRM call queue\nUpdated just now",
+    "CODING\nUnknown\nNo coding job in the job history.\nUnknown\nJob history (/__jobs)\nNo successful read yet",
+    "MEMORY\nWrites off\nHindsight off · 0 pending\nSetup required\nMemory connector (/__memory/status)\nNo successful read yet",
+    "FINANCE\nSetup required\nNo NAB CSV imported yet.\nSetup required\nNAB CSV import (/__finance_manual)\nNo successful read yet"
+   ]
+  },
+  {
+   "width": 390,
+   "steps": [
+    {
+     "name": "Ctrl+K opens the palette",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "focus is in the palette input",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "device action shows its target before running",
+     "ok": true,
+     "detail": "Runs on (“here”) Usman's PC · online · usman"
+    },
+    {
+     "name": "margin answer shows figures, state and source",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "Enter opens Operations on the Professional package",
+     "ok": true,
+     "detail": "/operations?package=receptionist-professional"
+    },
+    {
+     "name": "the package selector shows Professional",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "page context: active page and selected package with figures",
+     "ok": true,
+     "detail": "Packages & economics · Professional package"
+    },
+    {
+     "name": "flagged calls: opened and focused (or the section isn't there because sell status couldn't be read)",
+     "ok": true,
+     "detail": "{\"id\":\"rx-flagged-calls\",\"exists\":true}"
+    },
+    {
+     "name": "Command scene opens",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "five objects",
+     "ok": true,
+     "detail": "5"
+    },
+    {
+     "name": "arrow keys move between objects",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "scene axe: 0 serious",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "Enter opens that object's 2D page",
+     "ok": true,
+     "detail": "/leads"
+    },
+    {
+     "name": "call pipeline is static before any event",
+     "ok": true,
+     "detail": ""
+    },
+    {
+     "name": "mid-replay: only confirmed steps are done, the next is active, the rest wait",
+     "ok": true,
+     "detail": "[\"done\",\"done\",\"active\",\"pending\"]"
+    },
+    {
+     "name": "end of replay: all four confirmed",
+     "ok": true,
+     "detail": "[\"done\",\"done\",\"done\",\"done\"]"
+    },
+    {
+     "name": "ambient motion is still by default",
+     "ok": true,
+     "detail": "still"
+    },
+    {
+     "name": "no console errors in the flow",
+     "ok": false,
+     "detail": "HTTP 503 /__jobs | Failed to load resource: the server responded with a status of 503 (Service Unavailable) | HTTP 503 /__jobs/events"
+    }
+   ],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+   ]
+  },
+  {
+   "typedJarvis": [
+    {
+     "text": "explain this margin",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis Professional package. Monthly price (ex GST, as entered): A$1,099.00; Clients: 5; Revenue / month (ex GST): A$5,495.00; Contribution: A$4,441.25; Contribution margin: 80.8%; Operating margin: 69.4%; Cost rates complete: no, some are unknown. Source: src/lib/receptionist-packages.ts + src/lib/"
+    },
+    {
+     "text": "which models are free",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis 19 free models verified at no charge, plus 8 on a free tier whose billing isn't verified. For example: cline/deepseek-v4.1-flash, cline/gemini-3.8-flash, cline/mimo-v2.6-flash, cline/muse-spark-1.3, cline/space-bunny-alpha. The full list is on Models."
+    },
+    {
+     "text": "what needs setup",
+     "url": "/operations?package=receptionist-professional",
+     "reply": "Jarvis The tool check hasn't run yet, so I can't say what needs setup. System shows it once it has."
+    },
+    {
+     "text": "open finance",
+     "url": "/finance",
+     "reply": ""
+    },
+    {
+     "text": "show the Professional margin",
+     "url": "/operations?package=receptionist-professional",
+     "reply": ""
+    },
+    {
+     "text": "go to setup",
+     "url": "/setup",
+     "reply": ""
+    }
+   ],
+   "errors": [
+    "HTTP 503 /__jobs",
+    "Failed to load resource: the server responded with a status of 503 (Service Unavailable)",
+    "HTTP 503 /__jobs/events"
+   ]
+  },
+  {
+   "reducedMotion": {
+    "motion": "still",
+    "reduced": true
+   }
+  }
+ ]
+}

@@ -1,0 +1,166 @@
+{
+  "initial": {
+    "package": "Booking Receptionist · Essential",
+    "status": [
+      "Monthly price, included minutes, extra-minute rate: Approved 28 Sep 2026 (ex GST, +10% GST)",
+      "Setup fee: Proposed, not approved",
+      "Pilot terms: Not approved",
+      "Service readiness: internal testing. The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests."
+    ],
+    "fields": {
+      "monthly": "699",
+      "setup": "990",
+      "included": "400",
+      "overage": "0.8"
+    },
+    "fieldLabels": [
+      "Package catalogue",
+      "Monthly price (A$, ex GST) · approved",
+      "Setup fee (A$, ex GST) · proposed, not approved",
+      "Included minutes"
+    ],
+    "gst": {
+      "label": "M&U is GST registered: 10% GST is added to invoices and eligible input GST is claimed",
+      "checked": true
+    },
+    "revenueExGst": "$3,495.00",
+    "setupHeading": "Setup scenario · one client · uses a PROPOSED setup fee, not approved revenue",
+    "setupFirstRow": "Proposed setup fee, ex GST (scenario)",
+    "staleHits": [],
+    "broad549": []
+  },
+  "professional": {
+    "package": "Booking Receptionist · Professional",
+    "status": [
+      "Monthly price, included minutes, extra-minute rate: Approved 28 Sep 2026 (ex GST, +10% GST)",
+      "Setup fee: Proposed, not approved",
+      "Pilot terms: Not approved",
+      "Service readiness: internal testing. The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests."
+    ],
+    "fields": {
+      "monthly": "1099",
+      "setup": "1490",
+      "included": "1000",
+      "overage": "0.75"
+    },
+    "fieldLabels": [
+      "Package catalogue",
+      "Monthly price (A$, ex GST) · approved",
+      "Setup fee (A$, ex GST) · proposed, not approved",
+      "Included minutes"
+    ],
+    "gst": {
+      "label": "M&U is GST registered: 10% GST is added to invoices and eligible input GST is claimed",
+      "checked": true
+    },
+    "revenueExGst": "$5,495.00",
+    "setupHeading": "Setup scenario · one client · uses a PROPOSED setup fee, not approved revenue",
+    "setupFirstRow": "Proposed setup fee, ex GST (scenario)",
+    "staleHits": [],
+    "broad549": [
+      ",811.9069.4%Output / eligible input GST$549.50 / $13.30Estim"
+    ]
+  },
+  "premium": {
+    "package": "Booking Receptionist · Premium",
+    "status": [
+      "Monthly price, included minutes, extra-minute rate: Approved 28 Sep 2026 (ex GST, +10% GST)",
+      "Setup fee: Proposed, not approved",
+      "Pilot terms: Not approved",
+      "Service readiness: internal testing. The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests."
+    ],
+    "fields": {
+      "monthly": "1999",
+      "setup": "2490",
+      "included": "1800",
+      "overage": "0.7"
+    },
+    "fieldLabels": [
+      "Package catalogue",
+      "Monthly price (A$, ex GST) · approved",
+      "Setup fee (A$, ex GST) · proposed, not approved",
+      "Included minutes"
+    ],
+    "gst": {
+      "label": "M&U is GST registered: 10% GST is added to invoices and eligible input GST is claimed",
+      "checked": true
+    },
+    "revenueExGst": "$9,995.00",
+    "setupHeading": "Setup scenario · one client · uses a PROPOSED setup fee, not approved revenue",
+    "setupFirstRow": "Proposed setup fee, ex GST (scenario)",
+    "staleHits": [],
+    "broad549": []
+  },
+  "essential": {
+    "package": "Booking Receptionist · Essential",
+    "status": [
+      "Monthly price, included minutes, extra-minute rate: Approved 28 Sep 2026 (ex GST, +10% GST)",
+      "Setup fee: Proposed, not approved",
+      "Pilot terms: Not approved",
+      "Service readiness: internal testing. The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests."
+    ],
+    "fields": {
+      "monthly": "699",
+      "setup": "990",
+      "included": "400",
+      "overage": "0.8"
+    },
+    "fieldLabels": [
+      "Package catalogue",
+      "Monthly price (A$, ex GST) · approved",
+      "Setup fee (A$, ex GST) · proposed, not approved",
+      "Included minutes"
+    ],
+    "gst": {
+      "label": "M&U is GST registered: 10% GST is added to invoices and eligible input GST is claimed",
+      "checked": true
+    },
+    "revenueExGst": "$3,495.00",
+    "setupHeading": "Setup scenario · one client · uses a PROPOSED setup fee, not approved revenue",
+    "setupFirstRow": "Proposed setup fee, ex GST (scenario)",
+    "staleHits": [],
+    "broad549": []
+  },
+  "draftJson": {
+    "notice": "DRAFT — NOT A QUOTE. Prices ex GST; M&U is GST registered, so 10% GST is added on invoices. Monthly price, included minutes and extra-minute rate: approved 2026-09-28. Setup fee: proposed, not approved. Pilot terms: not approved. Unknown costs remain excluded; estimates only.",
+    "status": "approved",
+    "setupStatus": "proposed",
+    "monthlyCents": 69900,
+    "setupCents": 99000
+  },
+  "after-hard-refresh": {
+    "package": "Booking Receptionist · Essential",
+    "status": [
+      "Monthly price, included minutes, extra-minute rate: Approved 28 Sep 2026 (ex GST, +10% GST)",
+      "Setup fee: Proposed, not approved",
+      "Pilot terms: Not approved",
+      "Service readiness: internal testing. The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests."
+    ],
+    "fields": {
+      "monthly": "699",
+      "setup": "990",
+      "included": "400",
+      "overage": "0.8"
+    },
+    "fieldLabels": [
+      "Package catalogue",
+      "Monthly price (A$, ex GST) · approved",
+      "Setup fee (A$, ex GST) · proposed, not approved",
+      "Included minutes"
+    ],
+    "gst": {
+      "label": "M&U is GST registered: 10% GST is added to invoices and eligible input GST is claimed",
+      "checked": true
+    },
+    "revenueExGst": "$3,495.00",
+    "setupHeading": "Setup scenario · one client · uses a PROPOSED setup fee, not approved revenue",
+    "setupFirstRow": "Proposed setup fee, ex GST (scenario)",
+    "staleHits": [],
+    "broad549": []
+  },
+  "receptionist": {
+    "commercialBlock": "CommercialMRRA$1,099.00Catalogue price (approved), ex GSTUpdated 5 min agoSetup feesA$1,490.00Proposed setup fee, not approved; ex GST; not a billed recordUpdated 5 min agoUnassigned clients0Updated 5 min agoSource: receptionist-packages.ts (monthly price approved, ex GST; setup fee proposed, not approved) x locally-assigned clients · Updated 5 min ago",
+    "overviewMrr": "MRR (assigned clients)A$1,099.00Catalogue price (approved), ex GSTUpdated 5 min ago"
+  },
+  "pageErrors": []
+}

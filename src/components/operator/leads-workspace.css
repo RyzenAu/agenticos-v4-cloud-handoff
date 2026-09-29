@@ -1,0 +1,56 @@
+/* Leads page: panels share the standard inner padding and sit on one vertical rhythm, so no
+   text touches a card border (audit P2-11). Scoped to this page only. */
+.leads-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.leads-stack > .op-notice {
+  margin: 0;
+}
+.leads-stack > .op-panel {
+  padding: 0 24px 24px;
+}
+.leads-stack > .op-panel > .op-panel-title {
+  padding: 23px 0 15px;
+}
+.leads-stack > .op-panel.leads-strip {
+  padding: 20px 24px;
+}
+.leads-hunt {
+  display: grid;
+  gap: 6px;
+  padding: 16px 20px;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--op-border));
+  border-radius: 16px;
+  background: var(--op-panel);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.leads-hunt.is-partial,
+.leads-hunt.is-overdue {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--op-border));
+}
+.leads-hunt strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.leads-hunt p {
+  margin: 0;
+  color: var(--op-muted);
+}
+.leads-hunt p b {
+  color: var(--op-ink);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .leads-stack > .op-panel {
+    padding: 0 16px 16px;
+  }
+  .leads-stack > .op-panel.leads-strip {
+    padding: 16px;
+  }
+}

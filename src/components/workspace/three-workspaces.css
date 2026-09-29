@@ -1,0 +1,268 @@
+/* The three workspaces (/workspaces and /workspaces/<id>). Tokens only (src/styles.css): calm,
+   rounded, one gold accent for "where you are". */
+
+.ws3-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: var(--space-5);
+  margin: 0 0 var(--space-10);
+  padding: 0;
+  list-style: none;
+}
+.ws3-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-6);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card);
+  box-shadow: var(--card-shadow);
+  color: var(--foreground);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
+}
+.ws3-card:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
+}
+.ws3-card:focus-visible,
+.ws3-pill:focus-visible,
+.ws3-row:focus-visible,
+.ws3-rules summary:focus-visible,
+.ws3-more summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ws3-card-icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.ws3-card .ws3-card-icon {
+  margin-bottom: var(--space-2);
+}
+.ws3-card-name {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.ws3-card-purpose {
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+.ws3-card-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.ws3-card-facts b {
+  font-weight: 600;
+  color: var(--foreground);
+}
+.ws3-card-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: auto;
+  padding-top: var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.ws3-card:hover .ws3-card-open {
+  color: var(--foreground);
+}
+
+/* Switcher: three pills, the current one gold-washed. */
+.ws3-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ws3-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition:
+    border-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    background var(--dur-fast) var(--ease-standard);
+}
+.ws3-pill:hover {
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+.ws3-pill[data-current] {
+  border-color: color-mix(in oklch, var(--brand) 55%, var(--border));
+  background: var(--brand-soft);
+  color: var(--foreground);
+}
+.ws3-pill[data-current] svg {
+  color: var(--brand);
+}
+
+/* Folder list */
+.ws3-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ws3-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  transition: background var(--dur-fast) var(--ease-standard);
+}
+.ws3-row:hover {
+  background: var(--surface-raised);
+}
+.ws3-row-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--foreground);
+}
+.ws3-row-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+
+/* Disclosures */
+.ws3-more,
+.ws3-rules {
+  margin-top: var(--space-4);
+}
+.ws3-more summary,
+.ws3-rules summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted-foreground);
+  list-style: none;
+}
+.ws3-more summary::-webkit-details-marker,
+.ws3-rules summary::-webkit-details-marker {
+  display: none;
+}
+.ws3-more summary::before,
+.ws3-rules summary::before {
+  content: "+";
+  margin-right: var(--space-2);
+  color: var(--brand);
+  font-weight: 600;
+}
+.ws3-more[open] summary::before,
+.ws3-rules[open] summary::before {
+  content: "−";
+}
+.ws3-more summary:hover,
+.ws3-rules summary:hover {
+  color: var(--foreground);
+  background: var(--inset);
+}
+.ws3-more[open] > .ws3-list {
+  margin-top: var(--space-3);
+}
+.ws3-rules {
+  max-width: 70ch;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.ws3-rules ol {
+  margin: var(--space-3) 0 var(--space-3) var(--space-5);
+  list-style: decimal;
+}
+.ws3-rules li + li {
+  margin-top: var(--space-1);
+}
+.ws3-rules b {
+  color: var(--foreground);
+  font-weight: 600;
+}
+.ws3-rules code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws3-card,
+  .ws3-pill,
+  .ws3-row {
+    transition: none;
+  }
+}
+
+/* Project chips on a workspace card, and a project's folders (worktrees) disclosure. */
+.ws3-card-projects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.ws3-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  max-width: 100%;
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--inset);
+  font-size: var(--text-xs);
+  color: var(--foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws3-chip-more {
+  color: var(--muted-foreground);
+}
+.ws3-folders {
+  margin: var(--space-2) 0 var(--space-2) var(--space-4);
+}
+.ws3-row-sub {
+  min-height: 48px;
+  background: var(--inset);
+}

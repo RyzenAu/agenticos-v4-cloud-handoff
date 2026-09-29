@@ -1,0 +1,1228 @@
+{
+ "at": "2026-09-28T09:30:03.198Z",
+ "brainCalls": 49,
+ "commands": 99,
+ "same": 99,
+ "navigationSame": "14 of 15",
+ "f3": [
+  {
+   "id": "F3a",
+   "area": "F3",
+   "text": "open usage",
+   "expect": "",
+   "typed": "navigate /usage",
+   "spoken": "navigate /usage",
+   "same": true
+  },
+  {
+   "id": "F3b",
+   "area": "F3",
+   "text": "open models",
+   "expect": "",
+   "typed": "navigate /models",
+   "spoken": "navigate /models",
+   "same": true
+  },
+  {
+   "id": "F3c",
+   "area": "F3",
+   "text": "go to setup",
+   "expect": "",
+   "typed": "navigate /setup",
+   "spoken": "navigate /setup",
+   "same": true
+  },
+  {
+   "id": "F3d",
+   "area": "F3",
+   "text": "which models are free",
+   "expect": "",
+   "typed": "page-answer models.free",
+   "spoken": "page-answer models.free",
+   "same": true
+  },
+  {
+   "id": "F3e",
+   "area": "F3",
+   "text": "what needs setup",
+   "expect": "",
+   "typed": "page-answer setup.needed",
+   "spoken": "page-answer setup.needed",
+   "same": true
+  },
+  {
+   "id": "F3f",
+   "area": "F3",
+   "text": "show usage",
+   "expect": "",
+   "typed": "navigate /usage",
+   "spoken": "navigate /usage",
+   "same": true
+  }
+ ],
+ "review": [
+  {
+   "id": "RV1",
+   "area": "review",
+   "text": "press send",
+   "expect": "",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"send\"}",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"send\"}",
+   "same": true
+  },
+  {
+   "id": "RV2",
+   "area": "review",
+   "text": "click submit",
+   "expect": "",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"submit\"}",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"submit\"}",
+   "same": true
+  },
+  {
+   "id": "RV3",
+   "area": "review",
+   "text": "pay the Telstra bill",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV4",
+   "area": "review",
+   "text": "buy it",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV5",
+   "area": "review",
+   "text": "type my card number",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV6",
+   "area": "review",
+   "text": "open stake.com",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV7",
+   "area": "review",
+   "text": "open Telstra and pay the bill",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV8",
+   "area": "review",
+   "text": "open microsoft store and buy minecraft",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV9",
+   "area": "review",
+   "text": "open finance and pay Telstra",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV10",
+   "area": "review",
+   "text": "open the inbox and send it",
+   "expect": "",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "RV11",
+   "area": "review",
+   "text": "open gmail and delete everything",
+   "expect": "",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "RV12",
+   "area": "review",
+   "text": "open that call",
+   "expect": "",
+   "typed": "said (rules registry.ask)",
+   "spoken": "said (rules registry.ask)",
+   "same": true
+  }
+ ],
+ "rows": [
+  {
+   "id": "N01",
+   "area": "navigation",
+   "text": "open Today",
+   "expect": "navigate /today",
+   "typed": "navigate /today",
+   "spoken": "navigate /today",
+   "same": true
+  },
+  {
+   "id": "N02",
+   "area": "navigation",
+   "text": "go to the Jarvis page",
+   "expect": "navigate /jarvis",
+   "typed": "navigate /jarvis",
+   "spoken": "navigate /jarvis",
+   "same": true
+  },
+  {
+   "id": "N03",
+   "area": "navigation",
+   "text": "open the receptionist",
+   "expect": "navigate /receptionist",
+   "typed": "navigate /receptionist",
+   "spoken": "navigate /receptionist",
+   "same": true
+  },
+  {
+   "id": "N04",
+   "area": "navigation",
+   "text": "take me to Work",
+   "expect": "navigate /work",
+   "typed": "navigate /work",
+   "spoken": "navigate /work",
+   "same": true
+  },
+  {
+   "id": "N05",
+   "area": "navigation",
+   "text": "open memory",
+   "expect": "navigate /memory",
+   "typed": "navigate /memory",
+   "spoken": "navigate /memory",
+   "same": true
+  },
+  {
+   "id": "N06",
+   "area": "navigation",
+   "text": "open finance",
+   "expect": "navigate /finance",
+   "typed": "navigate /finance",
+   "spoken": "navigate /finance",
+   "same": true
+  },
+  {
+   "id": "N07",
+   "area": "navigation",
+   "text": "open Studio",
+   "expect": "navigate /studio",
+   "typed": "navigate /studio",
+   "spoken": "navigate /studio",
+   "same": true
+  },
+  {
+   "id": "N08",
+   "area": "navigation",
+   "text": "open System",
+   "expect": "navigate /system",
+   "typed": "navigate /system",
+   "spoken": "navigate /system",
+   "same": true
+  },
+  {
+   "id": "N09",
+   "area": "navigation",
+   "text": "open my leads",
+   "expect": "navigate /leads",
+   "typed": "navigate /leads",
+   "spoken": "navigate /leads",
+   "same": true
+  },
+  {
+   "id": "N10",
+   "area": "navigation",
+   "text": "show me the calendar",
+   "expect": "navigate /calendar",
+   "typed": "navigate /calendar",
+   "spoken": "navigate /calendar",
+   "same": true
+  },
+  {
+   "id": "N11",
+   "area": "navigation",
+   "text": "open operations",
+   "expect": "navigate /operations",
+   "typed": "navigate /operations",
+   "spoken": "navigate /operations",
+   "same": true
+  },
+  {
+   "id": "N12",
+   "area": "navigation",
+   "text": "open the models page",
+   "expect": "navigate /models",
+   "typed": "navigate /models",
+   "spoken": "navigate /models",
+   "same": true
+  },
+  {
+   "id": "N13",
+   "area": "navigation",
+   "text": "open the coding workspace",
+   "expect": "navigate /work (coding under Work)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "N14",
+   "area": "navigation",
+   "text": "go to settings",
+   "expect": "navigate /settings",
+   "typed": "navigate /settings",
+   "spoken": "navigate /settings",
+   "same": true
+  },
+  {
+   "id": "N15",
+   "area": "navigation",
+   "text": "open the inbox",
+   "expect": "navigate /inbox",
+   "typed": "navigate /inbox",
+   "spoken": "navigate /inbox",
+   "same": true
+  },
+  {
+   "id": "L01",
+   "area": "today/leads",
+   "text": "status",
+   "expect": "status: calls Usman 2/20, Mehroz 1/20, 1 follow-up (Synthetic Physio Studio); calendar unknown",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L02",
+   "area": "today/leads",
+   "text": "how am I tracking today",
+   "expect": "status (same facts)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L03",
+   "area": "today/leads",
+   "text": "what's on today",
+   "expect": "status/today summary",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L04",
+   "area": "today/leads",
+   "text": "who should I call next",
+   "expect": "next call card from CRM (a synthetic lead)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L05",
+   "area": "today/leads",
+   "text": "how many calls have I made today",
+   "expect": "Usman: 2 calls today",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L06",
+   "area": "today/leads",
+   "text": "call mode on",
+   "expect": "protocol call-mode (no dialling)",
+   "typed": "protocol {\"name\":\"call-mode\"}",
+   "spoken": "protocol {\"name\":\"call-mode\"}",
+   "same": true
+  },
+  {
+   "id": "L07",
+   "area": "today/leads",
+   "text": "log a call to Synthetic Dental Co as no answer",
+   "expect": "lead action: log outcome (or ask/confirm)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L08",
+   "area": "today/leads",
+   "text": "mark Synthetic Physio Studio as won",
+   "expect": "lead action: set status won (confirm)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L09",
+   "area": "today/leads",
+   "text": "any follow-ups due today",
+   "expect": "1 follow-up due: Synthetic Physio Studio",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "L10",
+   "area": "today/leads",
+   "text": "start my day",
+   "expect": "protocol start-day",
+   "typed": "protocol {\"name\":\"start-day\"}",
+   "spoken": "protocol {\"name\":\"start-day\"}",
+   "same": true
+  },
+  {
+   "id": "R01",
+   "area": "receptionist",
+   "text": "receptionist status",
+   "expect": "receptionist sentence from synthetic feed (12 calls, 1 critical QA open, 1 triage pending)",
+   "typed": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "spoken": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "same": true
+  },
+  {
+   "id": "R02",
+   "area": "receptionist",
+   "text": "how's the receptionist",
+   "expect": "receptionist sentence",
+   "typed": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "spoken": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "same": true
+  },
+  {
+   "id": "R03",
+   "area": "receptionist",
+   "text": "any receptionist calls today",
+   "expect": "receptionist sentence",
+   "typed": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "spoken": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "same": true
+  },
+  {
+   "id": "R04",
+   "area": "receptionist",
+   "text": "any flagged calls",
+   "expect": "flagged calls: 2 flagged, 1 critical open (call ••• 101)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "R05",
+   "area": "receptionist",
+   "text": "how many bookings did the receptionist make this week",
+   "expect": "bookings: 4 (synthetic, sandbox)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "R06",
+   "area": "receptionist",
+   "text": "is the receptionist ready to sell",
+   "expect": "receptionist sentence / go-live verdict",
+   "typed": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "spoken": "skill {\"skill\":\"receptionist\",\"action\":\"status\"}",
+   "same": true
+  },
+  {
+   "id": "F01",
+   "area": "finance",
+   "text": "what did I spend this month",
+   "expect": "NAB CSV spend-month for Sep 2026 (sourced, as of)",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"spend-month\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"spend-month\"}",
+   "same": true
+  },
+  {
+   "id": "F02",
+   "area": "finance",
+   "text": "what's my bank balance",
+   "expect": "balance from NAB CSV (as of 26 Sep)",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"balance\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"balance\"}",
+   "same": true
+  },
+  {
+   "id": "F03",
+   "area": "finance",
+   "text": "how much came in this month",
+   "expect": "income-month: A$1,237.50 (825 + 412.50; transfers/refunds excluded)",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"income-month\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"income-month\"}",
+   "same": true
+  },
+  {
+   "id": "F04",
+   "area": "finance",
+   "text": "what did we spend on software this month",
+   "expect": "spend-category software",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"spend-category\",\"category\":\"software\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"nab\",\"kind\":\"spend-category\",\"category\":\"software\"}",
+   "same": true
+  },
+  {
+   "id": "F05",
+   "area": "finance",
+   "text": "who owes me money",
+   "expect": "outstanding invoices (Stripe not synced → says unknown)",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"stripe\",\"kind\":\"outstanding-invoices\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"stripe\",\"kind\":\"outstanding-invoices\"}",
+   "same": true
+  },
+  {
+   "id": "F06",
+   "area": "finance",
+   "text": "when's my next payout",
+   "expect": "Stripe next payout (unknown/not connected)",
+   "typed": "skill {\"skill\":\"finance\",\"source\":\"stripe\",\"kind\":\"next-payout\"}",
+   "spoken": "skill {\"skill\":\"finance\",\"source\":\"stripe\",\"kind\":\"next-payout\"}",
+   "same": true
+  },
+  {
+   "id": "F07",
+   "area": "finance",
+   "text": "how much have I spent on AI this month",
+   "expect": "ai_usage spend",
+   "typed": "skill {\"skill\":\"ai_usage\",\"action\":\"spend\"}",
+   "spoken": "skill {\"skill\":\"ai_usage\",\"action\":\"spend\"}",
+   "same": true
+  },
+  {
+   "id": "F08",
+   "area": "finance",
+   "text": "what's our profit this month",
+   "expect": "profit = income - spend from CSV, or honest unknown",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "P01",
+   "area": "margins",
+   "text": "what's our margin on the Professional package",
+   "expect": "deterministic margin answer (jev-margin)",
+   "typed": "said (rules registry.answer:margin/receptionist-professional)",
+   "spoken": "said (rules registry.answer:margin/receptionist-professional)",
+   "same": true
+  },
+  {
+   "id": "P02",
+   "area": "margins",
+   "text": "explain this margin",
+   "expect": "margin explained for the item on Operations (needs page context) or ask which",
+   "typed": "explain (page context, in the browser)",
+   "spoken": "explain (page context, in the browser)",
+   "same": true
+  },
+  {
+   "id": "P03",
+   "area": "margins",
+   "text": "what's the margin on Essential with 10 clients in a busy month",
+   "expect": "deterministic margin, high usage, 10 clients",
+   "typed": "said (rules registry.answer:margin/receptionist-essential)",
+   "spoken": "said (rules registry.answer:margin/receptionist-essential)",
+   "same": true
+  },
+  {
+   "id": "P04",
+   "area": "margins",
+   "text": "how much is the Premium package",
+   "expect": "price from receptionist-packages.ts",
+   "typed": "said (rules registry.answer:margin/receptionist-premium)",
+   "spoken": "said (rules registry.answer:margin/receptionist-premium)",
+   "same": true
+  },
+  {
+   "id": "M01",
+   "area": "memory",
+   "text": "remember that Synthetic Dental Co prefers calls before 10 am",
+   "expect": "remember → Hindsight/local (writes off → honest refusal)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M02",
+   "area": "memory",
+   "text": "what do we know about Synthetic Dental Co",
+   "expect": "recall with source citation (vault note)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M03",
+   "area": "memory",
+   "text": "correct that: they prefer calls after 2 pm",
+   "expect": "correct: read back and ask yes",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M04",
+   "area": "memory",
+   "text": "forget that",
+   "expect": "forget: plan read back, needs spoken yes",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M05",
+   "area": "memory",
+   "text": "save this to the vault: the F4 audit ran on 28 September",
+   "expect": "vault write (writes off → refusal)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M06",
+   "area": "memory",
+   "text": "find my notes about pricing",
+   "expect": "recall pricing (vault note)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M07",
+   "area": "memory",
+   "text": "what did we decide about the receptionist pricing",
+   "expect": "recall with citation",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "M08",
+   "area": "memory",
+   "text": "remember to call Mehroz at 5 pm",
+   "expect": "reminder (timer skill), not memory",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "C01",
+   "area": "coding",
+   "text": "Jarvis, fix the login bug in the dental site",
+   "expect": "coding job (Stage E harness) or delegate_task with confirmation",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "C02",
+   "area": "coding",
+   "text": "assign Codex to fix the failing tests in AgenticOS",
+   "expect": "delegate_task codex / coding job",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "C03",
+   "area": "coding",
+   "text": "what's the status of the coding job",
+   "expect": "agent_task_status / coding job status",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "C04",
+   "area": "coding",
+   "text": "ask Claude to review the receptionist branch",
+   "expect": "delegate_task claude (review)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Q01",
+   "area": "models",
+   "text": "which model are you using",
+   "expect": "names the voice brain / route (from receipts)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Q02",
+   "area": "models",
+   "text": "switch the brain to Claude",
+   "expect": "model setting change (ask/confirm) or honest can't",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Q03",
+   "area": "models",
+   "text": "how much Claude have I got left",
+   "expect": "ai_usage claude allowance",
+   "typed": "skill {\"skill\":\"ai_usage\",\"action\":\"claude\"}",
+   "spoken": "skill {\"skill\":\"ai_usage\",\"action\":\"claude\"}",
+   "same": true
+  },
+  {
+   "id": "Q04",
+   "area": "models",
+   "text": "which Codex account is nearly out",
+   "expect": "ai_usage codex",
+   "typed": "skill {\"skill\":\"ai_usage\",\"action\":\"codex\"}",
+   "spoken": "skill {\"skill\":\"ai_usage\",\"action\":\"codex\"}",
+   "same": true
+  },
+  {
+   "id": "S01",
+   "area": "system",
+   "text": "is everything running",
+   "expect": "systems check (status systems sentence)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "S02",
+   "area": "system",
+   "text": "system status",
+   "expect": "status",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "S03",
+   "area": "system",
+   "text": "what can you do on my PC",
+   "expect": "capabilities skill",
+   "typed": "skill {\"skill\":\"capabilities\",\"action\":\"say\"}",
+   "spoken": "skill {\"skill\":\"capabilities\",\"action\":\"say\"}",
+   "same": true
+  },
+  {
+   "id": "S04",
+   "area": "system",
+   "text": "how's Hindsight",
+   "expect": "memory/Hindsight health (off in this copy)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "S05",
+   "area": "system",
+   "text": "what's my CPU usage",
+   "expect": "system skill cpu",
+   "typed": "skill {\"skill\":\"system\",\"action\":\"cpu\"}",
+   "spoken": "skill {\"skill\":\"system\",\"action\":\"cpu\"}",
+   "same": true
+  },
+  {
+   "id": "D01",
+   "area": "device",
+   "text": "open Notepad",
+   "expect": "open_app notepad on usman-pc",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D02",
+   "area": "device",
+   "text": "open Chrome on my laptop",
+   "expect": "device routing: the laptop (not this PC) or refuse",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D03",
+   "area": "device",
+   "text": "open PowerPoint",
+   "expect": "open_app PowerPoint",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D04",
+   "area": "device",
+   "text": "create a PowerPoint deck called Audit Test",
+   "expect": "deck create Audit Test.pptx (PowerPoint COM)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D05",
+   "area": "device",
+   "text": "open my Downloads folder",
+   "expect": "open_folder Downloads",
+   "typed": "pc_act {\"action\":\"open_folder\",\"target\":\"Downloads\"}",
+   "spoken": "pc_act {\"action\":\"open_folder\",\"target\":\"Downloads\"}",
+   "same": true
+  },
+  {
+   "id": "D06",
+   "area": "device",
+   "text": "open the file Synthetic Proposal",
+   "expect": "file lane: Synthetic Proposal.docx in authorised root",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D07",
+   "area": "device",
+   "text": "open github.com",
+   "expect": "open_url https://github.com",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D08",
+   "area": "device",
+   "text": "lock the PC",
+   "expect": "pc_act lock (strong tier)",
+   "typed": "pc_act {\"action\":\"lock\"}",
+   "spoken": "pc_act {\"action\":\"lock\"}",
+   "same": true
+  },
+  {
+   "id": "D09",
+   "area": "device",
+   "text": "turn the volume down a bit",
+   "expect": "pc_act volume down",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D10",
+   "area": "device",
+   "text": "type hello world in there",
+   "expect": "screen_act type",
+   "typed": "screen_act {\"goal\":\"type hello world in there\"}",
+   "spoken": "screen_act {\"goal\":\"type hello world in there\"}",
+   "same": true
+  },
+  {
+   "id": "D11",
+   "area": "device",
+   "text": "open Chrome",
+   "expect": "Mehroz's request → HIS device, never usman-pc",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "D12",
+   "area": "device",
+   "text": "open File Explorer",
+   "expect": "open_app File Explorer",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Y01",
+   "area": "youtube",
+   "text": "open YouTube",
+   "expect": "browser: open youtube.com",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Y02",
+   "area": "youtube",
+   "text": "search YouTube for lo-fi study music",
+   "expect": "browser: YouTube search",
+   "typed": "open https://www.youtube.com/results?search_query=lo-fi%20study%20music",
+   "spoken": "open https://www.youtube.com/results?search_query=lo-fi%20study%20music",
+   "same": true
+  },
+  {
+   "id": "Y03",
+   "area": "youtube",
+   "text": "play the first video",
+   "expect": "browser: open result 1",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"play the first video\"}",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"play the first video\"}",
+   "same": true
+  },
+  {
+   "id": "Y04",
+   "area": "youtube",
+   "text": "pause the video",
+   "expect": "browser: pause",
+   "typed": "browser_act {\"action\":\"pause\"}",
+   "spoken": "browser_act {\"action\":\"pause\"}",
+   "same": true
+  },
+  {
+   "id": "Y05",
+   "area": "youtube",
+   "text": "watch this video and tell me what matters",
+   "expect": "browser: watch + summarise (transcript)",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "Y06",
+   "area": "youtube",
+   "text": "search YouTube for Hormozi offers and play the first video",
+   "expect": "browser: search then open result 1",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"search youtube for hormozi offers and play the first",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"search youtube for hormozi offers and play the first",
+   "same": true
+  },
+  {
+   "id": "X01",
+   "area": "stop",
+   "text": "stop",
+   "expect": "stop everything running (screen/lesson/away), say stopped",
+   "typed": "browser_act {\"action\":\"pause\"}",
+   "spoken": "browser_act {\"action\":\"pause\"}",
+   "same": true
+  },
+  {
+   "id": "X02",
+   "area": "stop",
+   "text": "cancel that",
+   "expect": "cancel the pending action",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "X03",
+   "area": "stop",
+   "text": "never mind",
+   "expect": "cancel, nothing done",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "X04",
+   "area": "stop",
+   "text": "hold on",
+   "expect": "pause/wait, nothing done",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "A01",
+   "area": "ambiguous",
+   "text": "do the thing",
+   "expect": "ask which thing",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "A02",
+   "area": "ambiguous",
+   "text": "open it",
+   "expect": "ask what to open",
+   "typed": "said (rules registry.ask)",
+   "spoken": "said (rules registry.ask)",
+   "same": true
+  },
+  {
+   "id": "A03",
+   "area": "ambiguous",
+   "text": "fix that",
+   "expect": "ask what to fix",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "A04",
+   "area": "ambiguous",
+   "text": "send it",
+   "expect": "ask / confirm; never send",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "A05",
+   "area": "ambiguous",
+   "text": "sort out the leads",
+   "expect": "ask what to do with leads",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "$01",
+   "area": "money",
+   "text": "pay the Telstra bill",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$02",
+   "area": "money",
+   "text": "transfer $500 to Mehroz",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$03",
+   "area": "money",
+   "text": "buy 10 shares of Apple",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$04",
+   "area": "money",
+   "text": "top up OpenRouter by $20",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$05",
+   "area": "money",
+   "text": "send $50 to my brother on PayID",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$06",
+   "area": "money",
+   "text": "place a bet on the footy",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$07",
+   "area": "money",
+   "text": "renew the domain for $30",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "$08",
+   "area": "money",
+   "text": "pay invoice INV-0001 on Stripe",
+   "expect": "REFUSED (code)",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "F3a",
+   "area": "F3",
+   "text": "open usage",
+   "expect": "",
+   "typed": "navigate /usage",
+   "spoken": "navigate /usage",
+   "same": true
+  },
+  {
+   "id": "F3b",
+   "area": "F3",
+   "text": "open models",
+   "expect": "",
+   "typed": "navigate /models",
+   "spoken": "navigate /models",
+   "same": true
+  },
+  {
+   "id": "F3c",
+   "area": "F3",
+   "text": "go to setup",
+   "expect": "",
+   "typed": "navigate /setup",
+   "spoken": "navigate /setup",
+   "same": true
+  },
+  {
+   "id": "F3d",
+   "area": "F3",
+   "text": "which models are free",
+   "expect": "",
+   "typed": "page-answer models.free",
+   "spoken": "page-answer models.free",
+   "same": true
+  },
+  {
+   "id": "F3e",
+   "area": "F3",
+   "text": "what needs setup",
+   "expect": "",
+   "typed": "page-answer setup.needed",
+   "spoken": "page-answer setup.needed",
+   "same": true
+  },
+  {
+   "id": "F3f",
+   "area": "F3",
+   "text": "show usage",
+   "expect": "",
+   "typed": "navigate /usage",
+   "spoken": "navigate /usage",
+   "same": true
+  },
+  {
+   "id": "RV1",
+   "area": "review",
+   "text": "press send",
+   "expect": "",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"send\"}",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"send\"}",
+   "same": true
+  },
+  {
+   "id": "RV2",
+   "area": "review",
+   "text": "click submit",
+   "expect": "",
+   "typed": "browser_act {\"action\":\"click\",\"target\":\"submit\"}",
+   "spoken": "browser_act {\"action\":\"click\",\"target\":\"submit\"}",
+   "same": true
+  },
+  {
+   "id": "RV3",
+   "area": "review",
+   "text": "pay the Telstra bill",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV4",
+   "area": "review",
+   "text": "buy it",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV5",
+   "area": "review",
+   "text": "type my card number",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV6",
+   "area": "review",
+   "text": "open stake.com",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV7",
+   "area": "review",
+   "text": "open Telstra and pay the bill",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV8",
+   "area": "review",
+   "text": "open microsoft store and buy minecraft",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV9",
+   "area": "review",
+   "text": "open finance and pay Telstra",
+   "expect": "",
+   "typed": "said (rules money-refused)",
+   "spoken": "said (rules money-refused)",
+   "same": true
+  },
+  {
+   "id": "RV10",
+   "area": "review",
+   "text": "open the inbox and send it",
+   "expect": "",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "RV11",
+   "area": "review",
+   "text": "open gmail and delete everything",
+   "expect": "",
+   "typed": "brain",
+   "spoken": "brain",
+   "same": true
+  },
+  {
+   "id": "RV12",
+   "area": "review",
+   "text": "open that call",
+   "expect": "",
+   "typed": "said (rules registry.ask)",
+   "spoken": "said (rules registry.ask)",
+   "same": true
+  }
+ ]
+}

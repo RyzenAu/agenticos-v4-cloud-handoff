@@ -1,0 +1,138 @@
+{
+  "label": "integrated",
+  "home": "/today",
+  "nav": {
+    "/jarvis": [
+      161,
+      176
+    ],
+    "/receptionist": [
+      1004,
+      376
+    ],
+    "/work": [
+      335,
+      54
+    ],
+    "/memory": [
+      600,
+      270
+    ],
+    "/finance": [
+      1172,
+      75
+    ],
+    "/studio": [
+      112,
+      39
+    ],
+    "/system": [
+      110,
+      54
+    ],
+    "/today": [
+      54,
+      56
+    ]
+  },
+  "direct": {
+    "/today": {
+      "medianMs": 324,
+      "runs": [
+        316,
+        324,
+        332
+      ]
+    },
+    "/receptionist": {
+      "medianMs": 1629,
+      "runs": [
+        1281,
+        2059,
+        1629
+      ]
+    },
+    "/business": {
+      "medianMs": 423,
+      "runs": [
+        1632,
+        363,
+        423
+      ]
+    },
+    "/memory": {
+      "medianMs": 387,
+      "runs": [
+        821,
+        367,
+        387
+      ]
+    },
+    "/usage": {
+      "medianMs": 349,
+      "runs": [
+        426,
+        349,
+        341
+      ]
+    },
+    "/settings": {
+      "medianMs": 359,
+      "runs": [
+        555,
+        330,
+        359
+      ]
+    },
+    "/jarvis": {
+      "medianMs": 352,
+      "runs": [
+        374,
+        352,
+        325
+      ]
+    },
+    "/work": {
+      "medianMs": 350,
+      "runs": [
+        352,
+        350,
+        312
+      ]
+    },
+    "/finance": {
+      "medianMs": 354,
+      "runs": [
+        471,
+        354,
+        341
+      ]
+    },
+    "/studio": {
+      "medianMs": 314,
+      "runs": [
+        352,
+        313,
+        314
+      ]
+    },
+    "/system": {
+      "medianMs": 338,
+      "runs": [
+        338,
+        329,
+        368
+      ]
+    }
+  },
+  "at": "2026-09-27T13:47:19.168Z",
+  "warmupListenMs": 7050,
+  "coldListenMs": 6585,
+  "coldFirstPageH1Ms": 7127,
+  "coldFirstPageLoadMs": 442,
+  "firstInteraction": [
+    152,
+    114,
+    125
+  ]
+}

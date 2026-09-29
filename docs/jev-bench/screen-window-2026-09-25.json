@@ -1,0 +1,69 @@
+{
+  "summary": {
+    "label": "window-live",
+    "at": "2026-09-25T02:50:02.030Z",
+    "tasks": 2,
+    "ran": 2,
+    "skipped": [],
+    "completed": 2,
+    "completionRate": 100,
+    "questions": 1,
+    "wrongActions": 0,
+    "totalSeconds": 0.6,
+    "p50Seconds": 0.304,
+    "p90Seconds": 0.304,
+    "clipboard": [
+      "end: verified"
+    ],
+    "clipboardFormats": 7,
+    "appState": [
+      "window-main: notepad-tabs restored (verified), notepad-settings unchanged",
+      "window-other: notepad-tabs restored (verified), notepad-settings unchanged"
+    ]
+  },
+  "rows": [
+    {
+      "id": "window-main",
+      "say": "bring Notepad up on my main screen",
+      "ok": true,
+      "questions": 0,
+      "ms": 247,
+      "firstMs": 246,
+      "turns": 2,
+      "tools": [
+        "skill:bring"
+      ],
+      "wrong": [],
+      "said": "Notepad is on your main screen now, sir.",
+      "note": "at 195,220 900x600; wanted \\\\.\\DISPLAY1; front=true",
+      "route": [
+        "rules",
+        "rules"
+      ],
+      "appState": "notepad-tabs restored (verified), notepad-settings unchanged"
+    },
+    {
+      "id": "window-other",
+      "say": "move it to my other screen",
+      "ok": true,
+      "questions": 1,
+      "ms": 304,
+      "firstMs": 138,
+      "turns": 4,
+      "tools": [
+        "skill:move",
+        "skill:move"
+      ],
+      "wrong": [],
+      "said": "Notepad is on the left screen now, sir.",
+      "note": "at -1797,82 900x600; wanted \\\\.\\DISPLAY2; front=true",
+      "route": [
+        "rules",
+        "rules",
+        "rules",
+        "rules"
+      ],
+      "appState": "notepad-tabs restored (verified), notepad-settings unchanged"
+    }
+  ]
+}

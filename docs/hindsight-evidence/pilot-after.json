@@ -1,0 +1,56 @@
+{
+  "authenticated_stats": {
+    "failed_operations": 0,
+    "pending_operations": 0,
+    "status": 200,
+    "total_documents": 1,
+    "total_links": 1017,
+    "total_nodes": 31,
+    "total_observations": 0
+  },
+  "health_no_key": 200,
+  "key_configured": true,
+  "key_source": "file",
+  "listeners": {
+    "5432": [
+      "127.0.0.1",
+      "::1"
+    ],
+    "8878": [
+      "127.0.0.1"
+    ],
+    "8888": [
+      "127.0.0.1"
+    ]
+  },
+  "pass": true,
+  "port": 8888,
+  "proxy_bank_delete_without_approval": 403,
+  "proxy_readonly_recall_mu_pilot": {
+    "results": 7,
+    "status": 200
+  },
+  "proxy_write_while_off": 403,
+  "sql_counts": {
+    "async_operations": "0",
+    "audit_log": "0",
+    "banks": "1",
+    "banks_total": "1",
+    "chunks": "17",
+    "documents": "1",
+    "entities": "85",
+    "llm_requests": "0",
+    "llm_requests_all_banks": "0",
+    "memory_links": "979",
+    "memory_units": "31",
+    "memory_units_with_embedding": "31",
+    "mental_models": "0",
+    "unit_entities": "123"
+  },
+  "unauthenticated": {
+    "GET /banks": 401,
+    "GET stats": 401,
+    "MCP initialize": 401,
+    "POST recall": 401
+  }
+}

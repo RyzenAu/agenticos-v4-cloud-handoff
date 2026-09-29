@@ -1,0 +1,281 @@
+.op-nav-link.ws-nav-design > svg {
+  color: #c5a3eb;
+}
+.op-nav-link.ws-nav-websites > svg {
+  color: #d4bf7b;
+}
+.op-nav-link.ws-nav-hermes > img {
+  box-shadow: 0 0 0 3px #77b8a51b;
+}
+.op-nav-link.ws-nav-design:hover {
+  background: #be92e91a;
+}
+.op-nav-link.ws-nav-websites:hover {
+  background: #dfc66e12;
+}
+.op-nav-link.ws-nav-hermes:hover {
+  background: #7cb9a815;
+}
+.ws-settings {
+  max-width: 1680px;
+  margin: 0 auto 60px;
+}
+.ws-settings-tabs {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 2px;
+  gap: 2px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  margin-bottom: 24px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.ws-settings-tabs > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  border-radius: 999px;
+  white-space: nowrap;
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.ws-settings-tabs > button:hover {
+  color: var(--foreground);
+}
+.ws-settings-tabs > button[aria-selected="true"] {
+  background: var(--surface-raised);
+  color: var(--foreground);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.ws-settings-panel {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 16px;
+  padding: 28px;
+}
+.ws-settings-panel .ws-profile-fields {
+  max-width: 1040px;
+}
+.ws-settings-save {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.ws-settings-memory-link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--inset);
+}
+.ws-settings-memory-link > svg {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+.ws-settings-memory-link > div {
+  flex: 1;
+}
+.ws-settings-memory-link strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.ws-settings-memory-link p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  margin-top: 3px;
+}
+.ws-settings-memory-link a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--brand);
+}
+.ws-settings-panel .op-settings-grid {
+  grid-template-columns: 1fr;
+}
+.ws-settings-panel .op-page {
+  margin-bottom: 0 !important;
+}
+.ws-settings-panel .ws-tools {
+  grid-template-columns: repeat(3, 1fr);
+}
+/* PersonalProfileFields/ToolDiscovery (shared with the dark-only Setup wizard) hardcode dark
+   field colours — patch them to the page tokens so the fields stay legible in light mode here. */
+:root:not(.dark) .ws-settings-panel input,
+:root:not(.dark) .ws-settings-panel textarea,
+:root:not(.dark) .ws-settings-panel select,
+:root:not(.dark) .ws-settings-panel .ws-tool {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+:root:not(.dark) .ws-settings-panel .ws-field-grid > label > span {
+  color: var(--muted-foreground);
+}
+@media (max-width: 850px) {
+  .ws-settings-panel .ws-tools {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ws-settings-tabs > button {
+    padding: 0 13px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 480px) {
+  .ws-settings-tabs {
+    max-width: 100%;
+    /* The strip runs past the viewport at this width and cut off the last
+       tab with no hint it could scroll (audit P1-9) — snap + a soft edge
+       fade signals there's more, the way the inbox source tabs now do. */
+    scroll-snap-type: x proximity;
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 16px,
+      black calc(100% - 16px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 16px,
+      black calc(100% - 16px),
+      transparent 100%
+    );
+  }
+  .ws-settings-tabs > button {
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+  .ws-settings-panel {
+    padding: 18px 14px;
+  }
+  .ws-settings-panel .ws-tools {
+    grid-template-columns: 1fr;
+  }
+  .ws-settings-memory-link {
+    flex-wrap: wrap;
+  }
+  .ws-settings-memory-link a {
+    margin-left: 34px;
+  }
+}
+
+/* Settings → Jarvis */
+.jarvis-settings fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.jarvis-settings h3 {
+  margin: 26px 0 6px;
+  font-size: 14px;
+  color: var(--foreground);
+}
+.jarvis-settings-hint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.jarvis-settings-field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.jarvis-settings input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+.jarvis-settings input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+.jarvis-settings-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+  font-size: 12px;
+}
+.jarvis-settings-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  padding: 0 6px 2px 0;
+}
+.jarvis-settings-table td {
+  padding: 0 6px 0 0;
+  vertical-align: middle;
+}
+.jarvis-settings-table td:last-child {
+  width: 34px;
+}
+.jarvis-settings-table button,
+.jarvis-settings-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--foreground);
+  padding: 7px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.jarvis-settings-table button:hover,
+.jarvis-settings-add:hover {
+  border-color: var(--brand);
+}
+.jarvis-settings .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .jarvis-settings-table thead {
+    display: none;
+  }
+  .jarvis-settings-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .jarvis-settings-table td {
+    padding: 0;
+  }
+  .jarvis-settings-table td:last-child {
+    width: auto;
+  }
+}

@@ -1,0 +1,25 @@
+{"event": "supervisor_started", "pid": 80844, "profile": "synth", "ts": "2026-09-27T23:51:52+10:00"}
+{"event": "api_started", "launch_id": "20260927-235152", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 65572, "profile": "synth", "ts": "2026-09-27T23:51:52+10:00"}
+{"event": "api_healthy", "pid": 65572, "profile": "synth", "startup_s": 23.6, "ts": "2026-09-27T23:52:15+10:00"}
+{"event": "api_stopped", "exit_code": 3, "exit_hex": "0x00000003", "graceful": true, "pid": 65572, "profile": "synth", "reason": "stop_requested", "ts": "2026-09-27T23:53:33+10:00"}
+{"event": "supervisor_stopped", "profile": "synth", "ts": "2026-09-27T23:53:33+10:00"}
+{"event": "supervisor_started", "pid": 74900, "profile": "synth", "ts": "2026-09-27T23:55:01+10:00"}
+{"event": "api_started", "launch_id": "20260927-235502", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 79236, "profile": "synth", "ts": "2026-09-27T23:55:02+10:00"}
+{"event": "api_healthy", "pid": 79236, "profile": "synth", "startup_s": 22.1, "ts": "2026-09-27T23:55:24+10:00"}
+{"at": "2026-09-27T23:58:54+10:00", "error_class": "none", "event": "api_exited", "exit_code": 4294967295, "exit_hex": "0xFFFFFFFF", "kind": "terminated_externally(-1, e.g. Stop-Process/TerminateProcess)", "profile": "synth", "ts": "2026-09-27T23:58:54+10:00", "uptime_s": 232.6}
+{"delay_s": 5.0, "event": "restart_scheduled", "profile": "synth", "restarts_in_window": 1, "ts": "2026-09-27T23:58:54+10:00"}
+{"event": "orphan_postgres_found", "profile": "synth", "ts": "2026-09-27T23:58:59+10:00"}
+{"event": "postgres_stopped", "profile": "synth", "rc": 0, "reason": "orphan", "state_after": "stopped", "ts": "2026-09-27T23:59:00+10:00"}
+{"event": "api_started", "launch_id": "20260927-235900", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 53984, "profile": "synth", "ts": "2026-09-27T23:59:00+10:00"}
+{"event": "api_healthy", "pid": 53984, "profile": "synth", "startup_s": 22.1, "ts": "2026-09-27T23:59:22+10:00"}
+{"event": "supervisor_started", "pid": 51288, "profile": "synth", "ts": "2026-09-27T23:59:36+10:00"}
+{"count": 1, "event": "stale_temp_removed", "profile": "synth", "ts": "2026-09-27T23:59:36+10:00"}
+{"event": "adopted_existing_instance", "healthy": true, "listener_pid": 79028, "pid": 53984, "profile": "synth", "ts": "2026-09-27T23:59:37+10:00"}
+{"event": "api_stopped", "exit_code": null, "exit_hex": null, "graceful": false, "pid": 53984, "profile": "synth", "reason": "stop_requested", "ts": "2026-09-28T00:00:14+10:00"}
+{"event": "postgres_stopped", "profile": "synth", "rc": 0, "reason": "stop_requested", "state_after": "stopped", "ts": "2026-09-28T00:00:15+10:00"}
+{"event": "supervisor_stopped", "profile": "synth", "ts": "2026-09-28T00:00:15+10:00"}
+{"event": "supervisor_started", "pid": 86164, "profile": "synth", "ts": "2026-09-28T00:06:33+10:00"}
+{"event": "api_started", "launch_id": "20260928-000633", "llm_model": "gpt-6-astra", "llm_provider": "openai-codex", "pid": 76816, "profile": "synth", "ts": "2026-09-28T00:06:33+10:00"}
+{"event": "api_healthy", "pid": 76816, "profile": "synth", "startup_s": 22.1, "ts": "2026-09-28T00:06:56+10:00"}
+{"event": "api_stopped", "exit_code": 3, "exit_hex": "0x00000003", "graceful": true, "pid": 76816, "profile": "synth", "reason": "stop_requested", "ts": "2026-09-28T00:06:58+10:00"}
+{"event": "supervisor_stopped", "profile": "synth", "ts": "2026-09-28T00:06:58+10:00"}

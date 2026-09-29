@@ -1,0 +1,20 @@
+{
+  "label": "integrated",
+  "home": "/today",
+  "quietMs": 4000,
+  "idleTouchToRestartMs": 120056,
+  "idleTouchToPageBackMs": 120059,
+  "heldFor15s": true,
+  "heldStatus": {
+    "pending": true,
+    "waitingFor": [
+      "1 agent task active"
+    ],
+    "requestedAt": 1790517296050,
+    "restartsAfter": "2026-09-27T13:55:00.050Z",
+    "quietMs": 4000,
+    "maxDeferMs": 600000
+  },
+  "releaseToRestartMs": 180099,
+  "releaseToPageBackMs": 180102
+}

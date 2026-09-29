@@ -1,0 +1,10 @@
+﻿{
+  "client": "claude",
+  "target": "synth",
+  "bank": "mu-shared",
+  "canary": "Kestrel2bb441",
+  "rc": 0,
+  "found_canary": true,
+  "reply_excerpt": "The Kestrel2bb441 test clinic opens at 7am.",
+  "stderr_tail": ""
+}

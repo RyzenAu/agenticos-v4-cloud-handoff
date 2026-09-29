@@ -1,0 +1,4 @@
+﻿backup status: {"ok": true, "bytes": 112053, "entries": 178, "note": null}
+source (synth) counts:   {"alembic_version": 1, "async_operations": 0, "banks": 1, "chunks": 2, "documents": 2, "entities": 3, "llm_requests": 140, "memory_links": 11, "memory_units": 3, "unit_entities": 5}
+restored scratch counts: {"alembic_version": 1, "async_operations": 0, "banks": 1, "chunks": 2, "documents": 2, "entities": 3, "llm_requests": 140, "memory_links": 11, "memory_units": 3, "unit_entities": 5}
+RESTORE TEST PASS

@@ -1,0 +1,220 @@
+{
+  "run": "0e7e02",
+  "bank": "syn-t6w-0e7e02",
+  "at": "2026-09-28T07:59:04.642Z",
+  "proxy": "this branch's proxy.py, standalone on 8884 against the stage-d API 8893",
+  "os": "quiet copy on 8097",
+  "passed": 12,
+  "failed": 0,
+  "results": [
+    {
+      "step": "setup",
+      "ok": true,
+      "what": "scratch proxy (this branch, writer capability ON) and a quiet OS copy are up; the OS has a browser session",
+      "observed": {
+        "proxy": 8884,
+        "os": 8097,
+        "os_pid": 152544,
+        "bank": "syn-t6w-0e7e02"
+      }
+    },
+    {
+      "step": "a",
+      "ok": true,
+      "what": "the OS registers its capability, then its save lands in Hindsight with a model receipt",
+      "observed": {
+        "save": {
+          "status": 200,
+          "id": "mem-4c165df093",
+          "indexed": "confirmed",
+          "processed_by": {
+            "provider": "openrouter",
+            "model": "deepseek/deepseek-v4.1-flash",
+            "fallback_from": [],
+            "basis": "metered",
+            "calls": 1,
+            "tokens": 3475,
+            "at": "2026-09-28T07:56:39.771794+00:00"
+          },
+          "message": "Remembered in Hindsight memory as mem-4c165df093 (\"Synthetic writer check 0e7e02: the Heron depot opens at\"): indexed in Hindsight. Not written to the vault."
+        },
+        "registrations": [
+          {
+            "decision": "allow",
+            "pid": 152544
+          }
+        ]
+      }
+    },
+    {
+      "step": "b",
+      "ok": true,
+      "what": "another bun.exe can't write: no capability, or an invented one, is refused (403 writer-refused)",
+      "observed": {
+        "no_header": {
+          "status": 403,
+          "code": "writer-refused",
+          "pid": 138672
+        },
+        "invented": {
+          "status": 403,
+          "code": "writer-refused",
+          "pid": 149840
+        }
+      }
+    },
+    {
+      "step": "c",
+      "ok": true,
+      "what": "its forged registration (with a VALID proof: it can read the secret) is refused: it doesn't own the OS's port",
+      "observed": {
+        "status": 403,
+        "error": "refused: only the process serving 127.0.0.1:8097 (the OS), alone on that port, may register as the writer",
+        "pid": 153480
+      }
+    },
+    {
+      "step": "c",
+      "ok": true,
+      "what": "the OS's own capability is unchanged by the forged attempt (its next save lands)",
+      "observed": {
+        "status": 200,
+        "id": "mem-2f7c1e27dc",
+        "indexed": "confirmed",
+        "processed_by": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3492,
+          "at": "2026-09-28T07:56:44.447508+00:00"
+        },
+        "message": "Remembered in Hindsight memory as mem-2f7c1e27dc (\"Synthetic writer check 0e7e02: the Egret desk closes at\"): indexed in Hindsight. Not written to the vault."
+      }
+    },
+    {
+      "step": "d",
+      "ok": true,
+      "what": "a proxy restart (the capability is memory-only): the OS's next write is told to register, re-registers and lands",
+      "observed": {
+        "save": {
+          "status": 200,
+          "id": "mem-9d13b466fb",
+          "indexed": "confirmed",
+          "processed_by": {
+            "provider": "openrouter",
+            "model": "deepseek/deepseek-v4.1-flash",
+            "fallback_from": [],
+            "basis": "metered",
+            "calls": 1,
+            "tokens": 3477,
+            "at": "2026-09-28T07:56:56.340558+00:00"
+          },
+          "message": "Remembered in Hindsight memory as mem-9d13b466fb (\"Synthetic writer check 0e7e02: the Brolga courier comes at\"): indexed in Hindsight. Not written to the vault."
+        },
+        "registrations": [
+          {
+            "decision": "allow",
+            "pid": 152544
+          },
+          {
+            "decision": "deny",
+            "pid": 153480
+          },
+          {
+            "decision": "allow",
+            "pid": 152544
+          }
+        ],
+        "unregistered_refusals": 1
+      }
+    },
+    {
+      "step": "e",
+      "ok": true,
+      "what": "an OS restart: the new process (new PID) registers itself; the old registration died with the old listener",
+      "observed": {
+        "old_pid": 152544,
+        "new_pid": 146452,
+        "save": {
+          "status": 200,
+          "id": "mem-133b45781d",
+          "indexed": "confirmed",
+          "processed_by": {
+            "provider": "openrouter",
+            "model": "deepseek/deepseek-v4.1-flash",
+            "fallback_from": [],
+            "basis": "metered",
+            "calls": 1,
+            "tokens": 3453,
+            "at": "2026-09-28T07:57:50.453004+00:00"
+          },
+          "message": "Remembered in Hindsight memory as mem-133b45781d (\"Synthetic writer check 0e7e02: the Jabiru clinic opens at\"): indexed in Hindsight. Not written to the vault."
+        }
+      }
+    },
+    {
+      "step": "e",
+      "ok": true,
+      "what": "after the OS restart, another bun.exe is still refused",
+      "observed": {
+        "status": 403,
+        "code": "writer-refused"
+      }
+    },
+    {
+      "step": "g 0.0.0.0",
+      "ok": true,
+      "what": "a bun.exe co-binding 0.0.0.0:8097 beside the OS can't register (even with a valid proof) or write; the OS's save waits meanwhile and lands once the co-bind is gone",
+      "observed": {
+        "attacker": {
+          "bound": true,
+          "register": 403,
+          "write": 403,
+          "pid": 144496
+        },
+        "os_save_during": "queued",
+        "os_save_status": 200,
+        "os_reply": "Remembered in Hindsight memory as mem-480bb36c48 (\"Synthetic writer check 0e7e02: the Tern desk opens at\"): queued for Hindsight (the Hindsight proxy didn't acc",
+        "os_save_after": "confirmed"
+      }
+    },
+    {
+      "step": "g ::",
+      "ok": true,
+      "what": "a bun.exe co-binding [::]:8097 beside the OS can't register (even with a valid proof) or write; the OS's save waits meanwhile and lands once the co-bind is gone",
+      "observed": {
+        "attacker": {
+          "bound": true,
+          "register": 403,
+          "write": 403,
+          "pid": 151160
+        },
+        "os_save_during": "queued",
+        "os_save_status": 200,
+        "os_reply": "Remembered in Hindsight memory as mem-167e9c71b1 (\"Synthetic writer check 0e7e02: the Gannet account renews every\"): queued for Hindsight (the Hindsight proxy d",
+        "os_save_after": "confirmed"
+      }
+    },
+    {
+      "step": "f",
+      "ok": true,
+      "what": "with writer_capability OFF, today's behaviour is back: any bun.exe writes (the bypass), and the OS still writes",
+      "observed": {
+        "attacker": {
+          "status": 200
+        },
+        "os": "confirmed"
+      }
+    },
+    {
+      "step": "hygiene",
+      "ok": true,
+      "what": "the proxy log holds route templates and decisions only: no secret, no capability",
+      "observed": {
+        "lines": 81
+      }
+    }
+  ]
+}

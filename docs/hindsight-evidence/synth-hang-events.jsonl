@@ -1,0 +1,31 @@
+{"event": "supervisor_started", "pid": 116500, "profile": "synth-hang", "ts": "2026-09-28T00:53:09+10:00"}
+{"event": "api_started", "launch_id": "20260928-005310", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 113536, "profile": "synth-hang", "ts": "2026-09-28T00:53:10+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T00:57:11+10:00", "uptime_s": 241.0, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 113536, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T00:57:11+10:00"}
+{"at": "2026-09-28T00:57:11+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T00:57:11+10:00", "uptime_s": 241.0}
+{"consecutive_failures": 1, "delay_s": 5.0, "event": "restart_scheduled", "profile": "synth-hang", "restarts_in_window": 1, "ts": "2026-09-28T00:57:11+10:00"}
+{"event": "api_started", "launch_id": "20260928-005716", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 126904, "profile": "synth-hang", "ts": "2026-09-28T00:57:16+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T01:01:17+10:00", "uptime_s": 240.8, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 126904, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T01:01:18+10:00"}
+{"at": "2026-09-28T01:01:18+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T01:01:18+10:00", "uptime_s": 240.8}
+{"consecutive_failures": 2, "delay_s": 10.0, "event": "restart_scheduled", "profile": "synth-hang", "restarts_in_window": 2, "ts": "2026-09-28T01:01:18+10:00"}
+{"event": "api_started", "launch_id": "20260928-010128", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 125400, "profile": "synth-hang", "ts": "2026-09-28T01:01:28+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T01:05:29+10:00", "uptime_s": 240.9, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 125400, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T01:05:29+10:00"}
+{"at": "2026-09-28T01:05:29+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T01:05:29+10:00", "uptime_s": 240.9}
+{"consecutive_failures": 3, "delay_s": 20.0, "event": "restart_scheduled", "profile": "synth-hang", "restarts_in_window": 3, "ts": "2026-09-28T01:05:29+10:00"}
+{"event": "api_started", "launch_id": "20260928-010550", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 128496, "profile": "synth-hang", "ts": "2026-09-28T01:05:50+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T01:09:51+10:00", "uptime_s": 240.8, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 128496, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T01:09:51+10:00"}
+{"at": "2026-09-28T01:09:51+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T01:09:51+10:00", "uptime_s": 240.8}
+{"consecutive_failures": 4, "delay_s": 20.0, "event": "restart_scheduled", "profile": "synth-hang", "restarts_in_window": 3, "ts": "2026-09-28T01:09:51+10:00"}
+{"event": "api_started", "launch_id": "20260928-011011", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 134644, "profile": "synth-hang", "ts": "2026-09-28T01:10:11+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T01:14:12+10:00", "uptime_s": 240.7, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 134644, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T01:14:13+10:00"}
+{"at": "2026-09-28T01:14:13+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T01:14:13+10:00", "uptime_s": 240.7}
+{"consecutive_failures": 5, "delay_s": 20.0, "event": "restart_scheduled", "profile": "synth-hang", "restarts_in_window": 3, "ts": "2026-09-28T01:14:13+10:00"}
+{"event": "api_started", "launch_id": "20260928-011433", "llm_chain": ["openrouter/deepseek/deepseek-v4.1-flash", "groq/openai/gpt-oss-120b", "openai-codex/gpt-6-astra"], "llm_skipped": [], "pid": 132996, "profile": "synth-hang", "ts": "2026-09-28T01:14:33+10:00"}
+{"event": "api_unhealthy", "last_health": null, "profile": "synth-hang", "ts": "2026-09-28T01:18:34+10:00", "uptime_s": 240.8, "why": "startup_timeout"}
+{"event": "api_stopped", "exit_code": 3221225786, "exit_hex": "0xC000013A", "graceful": true, "pid": 132996, "profile": "synth-hang", "reason": "unhealthy", "ts": "2026-09-28T01:18:34+10:00"}
+{"at": "2026-09-28T01:18:34+10:00", "error_class": "none", "event": "api_exited", "exit_code": 3221225786, "exit_hex": "0xC000013A", "kind": "hang:startup_timeout", "profile": "synth-hang", "ts": "2026-09-28T01:18:34+10:00", "uptime_s": 240.8}
+{"bound": "6 failed launches in a row without 900 s of stable uptime", "consecutive_failures": 6, "event": "crashloop_stopped", "profile": "synth-hang", "restarts_in_window": 2, "ts": "2026-09-28T01:18:34+10:00"}

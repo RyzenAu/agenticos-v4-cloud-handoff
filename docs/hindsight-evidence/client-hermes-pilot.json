@@ -1,0 +1,10 @@
+﻿{
+  "client": "hermes",
+  "target": "pilot",
+  "bank": "mu-shared",
+  "canary": null,
+  "rc": 0,
+  "found_canary": null,
+  "reply_excerpt": "0",
+  "stderr_tail": "\nsession_id: 20260928_025124_0a626e\n"
+}

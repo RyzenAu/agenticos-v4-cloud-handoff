@@ -1,0 +1,183 @@
+Skip to content
+M&U Ventures
+Dental
+Law
+Real estate
+AI receptionist
+Work
+Process
+About
+Contact
+Book a call
+
+DENTAL PRACTICE CONCEPT SITE
+
+Lantern Dental: a concept site, built to be explored.
+
+Lantern Dental is a fictional Rozelle clinic we built to show what a dental practice's booking system can actually do: a patient can request a real appointment against a live diary, the backend refuses to double-book a slot, and the clinic runs its whole day from a dashboard — all written inside Ahpra's advertising guidelines.
+
+Dental practice concept site designed and developed by M&U Ventures. An unofficial concept site for a fictional business, not a client project.
+
+Open the live demo
+→
+Request a concept site
+lanterndental.muventures.com.au
+As the visitor scrolls, a lantern slowly lights a glass molar. The scroll moment on Lantern Dental's home page, shown here as a loop. Lantern Dental is a concept demonstration site for a fictional clinic; the film is AI-generated and shows no real premises, staff or patients.
+PAGES
+16 routes
+TYPE
+Fraunces + Manrope
+PALETTE
+Deep blue, pale blue, white
+MOTIF
+Lantern and glass molar
+BOOKING
+Six-step, live diary
+BACKEND
+Postgres, double-booking guard
+
+THE BRAND
+
+Deep blue, a lantern and a glass molar.
+
+Lantern Dental is a fictional practice in Rozelle, Sydney. The current flagship direction uses a calm deep-blue palette and opens on a scroll-driven film: as the visitor scrolls, a lantern slowly lights a glass molar while the promise holds still over it — you'll know the plan, the fee and the time before you start. An interactive visit sequence then explains the patient journey before anyone books. The film is AI-generated and labelled as such on the site. It is calm, clinical and distinct from M&U Ventures' own black and gold, Aldergate's property editorial system and Marden & Rowe's courtroom-timber legal identity.
+
+Sixteen pages carry it: a home page, a treatments overview with six individual treatment pages, a page introducing the team, new-patient information, fees and payment, FAQs, and contact and location — the same up-to-eight-page shape we'd scope for a real practice, extended here to show the full booking system working.
+
+Mid-scroll: the lantern has reached the molar and the promise holds still over it. AI-generated film, concept site
+
+JOURNEYS DEMONSTRATED
+
+A six-step booking flow, checked against a live diary.
+
+The booking flow is not a form that emails a request into the void. It reads real availability from a Postgres-backed diary and writes a real row when a patient submits it.
+
+1. New or returning patient
+2. Appointment type
+3. Practitioner preference
+4. Live availability, read from the diary
+5. Minimal contact details
+6. Review and submit
+Booking: appointment type and practitioner preference, checked against live availability
+
+WHAT HAPPENS NEXT
+
+Some bookings confirm instantly. Others wait for the clinic.
+
+A returning patient booking a check-up gets an instant confirmation — the slot is theirs. A new patient or an urgent visit becomes a request sitting in the clinic's queue, awaiting confirmation, because those need a human to look at them first.
+
+We tested the constraint that makes this trustworthy: three simultaneous booking attempts for the exact same slot. One won. The other two were refused, cleanly, by a database constraint — not a client-side check that a fast enough double-click could slip past.
+
+The same booking flow on a phone, where most patients start it
+
+FEES AND TREATMENTS
+
+Sample fees in plain figures, and Ahpra-aware treatment pages.
+
+The fees and payment page sets out sample fees plainly, before a patient has to call and ask. Every treatment page is written without outcome claims, before/after imagery or clinical testimonials — the same standard we'd hold a real practice's copy to under Ahpra's advertising guidelines.
+
+The visit sequence: we talk, we look, you decide
+
+CLINIC DASHBOARD
+
+Demo access, no password — the whole day, run from one screen.
+
+The dashboard is what the clinic actually runs from: a day calendar per practitioner, the requests queue with confirm or decline, status changes for completed, no-show and cancelled visits, weekly availability editing and closures, appointment types and durations, a patient contact list, and previews of what a notification would say — nothing is actually emailed or texted from the demo.
+
+The clinic dashboard: day calendar, requests queue and availability editing
+
+WHAT'S REAL, WHAT'S SIMULATED
+
+The booking logic is real. The notifications are not.
+
+Real: the Postgres-backed diary, the database constraint that stops double bookings, and demo-access authentication in front of the clinic dashboard. Simulated: outbound email and SMS — the dashboard shows exactly what a confirmation or reminder would say, and sends nothing.
+
+Real — appointment data persists in Postgres, not local storage
+Real — the double-booking guard is enforced by the database, not the browser
+Real — the clinic dashboard sits behind demo authentication
+Simulated — email and SMS notifications (previewed only, nothing sent)
+Simulated — payments and calendar sync
+The dashboard's requests queue, confirming or declining a booking on a phone
+
+CONCEPT DISCLOSURE
+
+Concept demonstration by M&U Ventures.
+
+Concept demonstration by M&U Ventures. Fictional business, synthetic data. Lantern Dental is not a real clinic, has no patients and has never treated anyone — every name, review and appointment on it is invented to show what the build can do.
+
+A treatment page, written inside Ahpra's advertising guidelines
+
+SPEC SHEET
+
+Everything in the build.
+
+Design, brand and content are decided for each business; the machinery below is what a build delivers.
+
+Home, treatments overview, six treatment pages, meet the team, new patients, fees and payment, FAQs, and contact and location pages
+Six-step online booking: new or returning patient, appointment type, practitioner preference, live availability, minimal details, review
+Postgres-backed diary with a database constraint that prevents two bookings landing on the same slot
+Clinic dashboard (demo access, no password): day calendar, requests queue, availability editing, appointment types, patient list and notification previews
+Ahpra-aware copywriting throughout: no testimonials, no before/after, no specialist claims
+
+SEE THE VERTICAL
+
+Dental →
+Law →
+Real estate →
+
+MORE WORK
+
+FLAGSHIP DEMONSTRATION
+Aldergate
+A completed fictional Inner West Sydney agency platform: search, listings, agents, suburb guides, insights, eight lead-capture forms and a listing-specific AI walkthrough assistant.
+CONCEPT STUDY
+Marden & Rowe Solicitors
+A fictional Leichhardt solicitor and conveyancing firm with a courtroom-led client funnel: a five-step quote request that returns an instant estimate or routes to human review, a diary that won't double-book a consultation, and a demo client portal — inside the Legal Profession Uniform Law's rules.
+PROSPECT CONCEPT
+Bianca Brown Realty
+A black-and-gold Blue Mountains real estate concept built as a high-end outreach piece: cinematic listing presentation, luxury seller journey, buyer guidance and a polished follow-up deck for Brooke and Zac.
+
+READY WHEN YOU ARE
+
+Want a concept site like this for your business?
+
+Tell us about your business and your brand. We'll come back with a written proposal for a site designed around you, not around a template.
+
+Request a concept site
+→
+Open the live demo
+
+M&U Ventures
+
+Websites for dental practices, law firms and independent real estate agencies, plus an AI receptionist for the calls you miss.
+
+muventuresau@muventures.com.au
+0493 221 615
+0451 607 104
+
+EXPLORE
+
+Dental
+Law
+Real estate
+AI receptionist
+Work
+Process
+About
+Contact
+
+VERTICALS
+
+Dental
+Law
+Real estate
+
+COMPANY
+
+FAQ
+Privacy Policy
+Terms
+
+© 2026 M&U Ventures. All rights reserved.
+
+M Khan & M.M Khan · Sydney, NSW

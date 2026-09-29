@@ -1,0 +1,637 @@
+{
+  "run": "a0520d",
+  "results": [
+    {
+      "route": "groq",
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "cost_basis": "free tier (rate-limited)",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 12,
+      "errors": 10,
+      "error_detail": [
+        {
+          "round": 0,
+          "doc": 2,
+          "status": 500,
+          "seconds": 0.2
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 1,
+          "doc": 0,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 1,
+          "doc": 1,
+          "status": 500,
+          "seconds": 0.1
+        },
+        {
+          "round": 1,
+          "doc": 2,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 1,
+          "doc": 3,
+          "status": 500,
+          "seconds": 0.0
+        },
+        {
+          "round": 1,
+          "doc": 4,
+          "status": 500,
+          "seconds": 0.1
+        },
+        {
+          "round": 1,
+          "doc": 5,
+          "status": 500,
+          "seconds": 0.0
+        }
+      ],
+      "quality_pct": 16.0,
+      "hallucinations": 0,
+      "facts_per_doc": 0.2,
+      "latency_s": {
+        "median": 2.9,
+        "max": 3.0
+      },
+      "receipts": [
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "error",
+          "calls": 10,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 24
+        },
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "success",
+          "calls": 2,
+          "input_tokens": 6040,
+          "output_tokens": 372,
+          "avg_ms": 2711
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 6040,
+        "output": 372
+      },
+      "usd": 0.0,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 1,
+          "found": 4,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 0,
+          "facts": 0,
+          "found": 0,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 1,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 2,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 3,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 4,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 5,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    },
+    {
+      "route": "openrouter-deepseek",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4.1-flash",
+      "cost_basis": "metered (OpenRouter credit)",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 12,
+      "errors": 0,
+      "error_detail": [],
+      "quality_pct": 100.0,
+      "hallucinations": 0,
+      "facts_per_doc": 1.4,
+      "latency_s": {
+        "median": 4.3,
+        "max": 15.8
+      },
+      "receipts": [
+        {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "status": "success",
+          "calls": 12,
+          "input_tokens": 38136,
+          "output_tokens": 2710,
+          "avg_ms": 6002
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 38136,
+        "output": 2710
+      },
+      "usd": 0.002121,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 1,
+          "found": 5,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 0,
+          "facts": 1,
+          "found": 5,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 1,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 2,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 3,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 4,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 5,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    },
+    {
+      "route": "failover",
+      "provider": "chain",
+      "model": "openrouter(invalid key) -> groq",
+      "cost_basis": "free (groq) after a failed paid attempt",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 3,
+      "errors": 1,
+      "error_detail": [
+        {
+          "round": 0,
+          "doc": 2,
+          "status": 500,
+          "seconds": 0.1
+        }
+      ],
+      "quality_pct": 61.5,
+      "hallucinations": 0,
+      "facts_per_doc": 1.0,
+      "latency_s": {
+        "median": 2.2,
+        "max": 2.3
+      },
+      "receipts": [
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "error",
+          "calls": 1,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 27
+        },
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "success",
+          "calls": 2,
+          "input_tokens": 6037,
+          "output_tokens": 457,
+          "avg_ms": 2015
+        },
+        {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "status": "error",
+          "calls": 3,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 34
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 6037,
+        "output": 457
+      },
+      "usd": 0.0,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 1,
+          "found": 4,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    },
+    {
+      "route": "gemini",
+      "provider": "gemini",
+      "model": "gemini-3.8-flash",
+      "cost_basis": "free tier (unpaid terms)",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 12,
+      "errors": 12,
+      "error_detail": [
+        {
+          "round": 0,
+          "doc": 0,
+          "status": 500,
+          "seconds": 9.2
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "status": 500,
+          "seconds": 21.7
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "status": 500,
+          "seconds": 9.4
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "status": 500,
+          "seconds": 9.2
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "status": 500,
+          "seconds": 8.4
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "status": 500,
+          "seconds": 8.7
+        },
+        {
+          "round": 1,
+          "doc": 0,
+          "status": 500,
+          "seconds": 9.4
+        },
+        {
+          "round": 1,
+          "doc": 1,
+          "status": 500,
+          "seconds": 9.1
+        },
+        {
+          "round": 1,
+          "doc": 2,
+          "status": 500,
+          "seconds": 7.9
+        },
+        {
+          "round": 1,
+          "doc": 3,
+          "status": 500,
+          "seconds": 8.8
+        },
+        {
+          "round": 1,
+          "doc": 4,
+          "status": 500,
+          "seconds": 8.5
+        },
+        {
+          "round": 1,
+          "doc": 5,
+          "status": 500,
+          "seconds": 9.1
+        }
+      ],
+      "quality_pct": 0.0,
+      "hallucinations": 0,
+      "facts_per_doc": 0.0,
+      "latency_s": {
+        "median": null,
+        "max": null
+      },
+      "receipts": [
+        {
+          "provider": "gemini",
+          "model": "gemini-3.8-flash",
+          "status": "error",
+          "calls": 12,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 9930
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 0,
+        "output": 0
+      },
+      "usd": 0.0,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 0,
+          "found": 0,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 0,
+          "facts": 0,
+          "found": 0,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 1,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 2,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 3,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 4,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 1,
+          "doc": 5,
+          "facts": 0,
+          "found": 0,
+          "total": 4,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    }
+  ]
+}

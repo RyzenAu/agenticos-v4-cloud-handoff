@@ -1,0 +1,6 @@
+﻿PASS {"credential_marker_copies": [], "dir_survived_kill_before_sweep": null, "exit_code": 0, "files_in_isolation_dir": ["projects"], "isolation_dir_existed_while_running": true, "leftover_isolation_dirs": [], "mode": "success", "new_temp_folders": [], "pass": true}
+PASS {"credential_marker_copies": [], "dir_survived_kill_before_sweep": null, "exit_code": 1, "files_in_isolation_dir": ["projects"], "isolation_dir_existed_while_running": true, "leftover_isolation_dirs": [], "mode": "failure", "new_temp_folders": [], "pass": true}
+PASS {"credential_marker_copies": [], "dir_survived_kill_before_sweep": true, "exit_code": 1, "files_in_isolation_dir": ["projects"], "isolation_dir_existed_while_running": true, "leftover_isolation_dirs": [], "mode": "kill", "new_temp_folders": [], "pass": true}
+PASS {"created_in_temp": [], "exit_code": 0, "mode": "noroot", "pass": true, "refused_without_root": true}
+PASS marker found only in the fixture itself: ['home\\.claude\\.credentials.json']
+ALL PASS

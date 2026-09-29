@@ -1,0 +1,19 @@
+﻿{"window_found": true, "supervisor_pid": 184808, "state_before": "running"}
+{
+  "query_allowed": true,
+  "handler_seconds": 4.8,
+  "events": [
+    "session_ending",
+    "proxy_stopped",
+    "api_stopped",
+    "postgres_stopped",
+    "supervisor_stopped"
+  ],
+  "left_running": {
+    "api_listener": false,
+    "proxy_listener": false,
+    "postgres": "stopped",
+    "supervisor_alive": false
+  },
+  "pass": true
+}

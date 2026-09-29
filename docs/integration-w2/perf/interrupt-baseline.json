@@ -1,0 +1,20 @@
+{
+  "label": "baseline",
+  "home": "/workspace",
+  "quietMs": 4000,
+  "idleTouchToRestartMs": 120044,
+  "idleTouchToPageBackMs": 120047,
+  "heldFor15s": true,
+  "heldStatus": {
+    "pending": true,
+    "waitingFor": [
+      "1 agent task active"
+    ],
+    "requestedAt": 1790515705190,
+    "restartsAfter": "2026-09-27T13:28:29.190Z",
+    "quietMs": 4000,
+    "maxDeferMs": 600000
+  },
+  "releaseToRestartMs": 180033,
+  "releaseToPageBackMs": 180048
+}

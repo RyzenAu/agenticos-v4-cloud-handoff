@@ -1,0 +1,1034 @@
+{
+ "label": "spot-after",
+ "base": "http://127.0.0.1:8097",
+ "runs": 3,
+ "when": "2026-09-27T18:48:51.176Z",
+ "conditions": "vite dev preview server, warm (one warm-up visit per page), fresh headless Chrome context per run (cold browser cache, cache disabled), 1440x900",
+ "medians": [
+  {
+   "path": "/studio",
+   "ttfb": 10.100000001490116,
+   "fcp": 108,
+   "dcl": 60.899999998509884,
+   "load": 104.40000000223517,
+   "hydrated": 442.5,
+   "requests": 419,
+   "jsRequests": 386,
+   "jsBytes": 9851193,
+   "totalBytes": 11084893,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/today",
+   "ttfb": 23.099999997764826,
+   "fcp": 144,
+   "dcl": 86.69999999925494,
+   "load": 131.5,
+   "hydrated": 498.29999999701977,
+   "requests": 430,
+   "jsRequests": 392,
+   "jsBytes": 10011241,
+   "totalBytes": 11136373,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/work",
+   "ttfb": 10.300000000745058,
+   "fcp": 104,
+   "dcl": 60.400000002235174,
+   "load": 122.19999999925494,
+   "hydrated": 467,
+   "requests": 428,
+   "jsRequests": 392,
+   "jsBytes": 9988667,
+   "totalBytes": 11137887,
+   "imageBytes": 484,
+   "fontBlock": 0
+  },
+  {
+   "path": "/system",
+   "ttfb": 10.600000001490116,
+   "fcp": 112,
+   "dcl": 66,
+   "load": 102,
+   "hydrated": 420.9000000022352,
+   "requests": 436,
+   "jsRequests": 392,
+   "jsBytes": 10022084,
+   "totalBytes": 11254165,
+   "imageBytes": 484,
+   "fontBlock": 0
+  }
+ ],
+ "spot": [],
+ "raw": [
+  {
+   "run": 1,
+   "path": "/studio",
+   "ttfb": 15.200000002980232,
+   "dcl": 72.60000000149012,
+   "load": 113.5,
+   "fcp": 124,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "ms": 45
+    }
+   ],
+   "finalPath": "/studio",
+   "hydrated": 456.70000000298023,
+   "wallMs": 2417,
+   "requests": 419,
+   "jsRequests": 386,
+   "jsBytes": 9851193,
+   "totalBytes": 11084893,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/today",
+   "ttfb": 23.099999997764826,
+   "dcl": 86.69999999925494,
+   "load": 131.5,
+   "fcp": 144,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 20
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "ms": 52
+    }
+   ],
+   "finalPath": "/today",
+   "hydrated": 498.29999999701977,
+   "wallMs": 2578,
+   "requests": 430,
+   "jsRequests": 392,
+   "jsBytes": 10011241,
+   "totalBytes": 11136375,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/work",
+   "ttfb": 10.300000000745058,
+   "dcl": 58.69999999925494,
+   "load": 122.19999999925494,
+   "fcp": 104,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 4
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "ms": 37
+    }
+   ],
+   "finalPath": "/work",
+   "hydrated": 499.1000000014901,
+   "wallMs": 2564,
+   "requests": 428,
+   "jsRequests": 392,
+   "jsBytes": 9988667,
+   "totalBytes": 11137888,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 1,
+   "path": "/system",
+   "ttfb": 13.300000000745058,
+   "dcl": 74.30000000074506,
+   "load": 115.10000000149012,
+   "fcp": 124,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "ms": 50
+    }
+   ],
+   "finalPath": "/system",
+   "hydrated": 445,
+   "wallMs": 2526,
+   "requests": 436,
+   "jsRequests": 392,
+   "jsBytes": 10022084,
+   "totalBytes": 11254165,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 2,
+   "path": "/studio",
+   "ttfb": 9.800000000745058,
+   "dcl": 59.80000000074506,
+   "load": 104.40000000223517,
+   "fcp": 104,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 4
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "ms": 39
+    }
+   ],
+   "finalPath": "/studio",
+   "hydrated": 442.5,
+   "wallMs": 2401,
+   "requests": 419,
+   "jsRequests": 386,
+   "jsBytes": 9851193,
+   "totalBytes": 11084893,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 2,
+   "path": "/today",
+   "ttfb": 11.400000002235174,
+   "dcl": 61.80000000074506,
+   "load": 106.60000000149012,
+   "fcp": 116,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "ms": 40
+    }
+   ],
+   "finalPath": "/today",
+   "hydrated": 427.80000000074506,
+   "wallMs": 2493,
+   "requests": 430,
+   "jsRequests": 392,
+   "jsBytes": 10011241,
+   "totalBytes": 11136373,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 2,
+   "path": "/work",
+   "ttfb": 12,
+   "dcl": 72.59999999776483,
+   "load": 123.19999999925494,
+   "fcp": 128,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 4
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 28
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "ms": 49
+    }
+   ],
+   "finalPath": "/work",
+   "hydrated": 467,
+   "wallMs": 2425,
+   "requests": 428,
+   "jsRequests": 392,
+   "jsBytes": 9988667,
+   "totalBytes": 11137887,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 2,
+   "path": "/system",
+   "ttfb": 9.5,
+   "dcl": 59.19999999925494,
+   "load": 102,
+   "fcp": 112,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 4
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "ms": 39
+    }
+   ],
+   "finalPath": "/system",
+   "hydrated": 405.19999999925494,
+   "wallMs": 2484,
+   "requests": 436,
+   "jsRequests": 392,
+   "jsBytes": 10022084,
+   "totalBytes": 11254165,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 3,
+   "path": "/studio",
+   "ttfb": 10.100000001490116,
+   "dcl": 60.899999998509884,
+   "load": 103.60000000149012,
+   "fcp": 108,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "ms": 40
+    }
+   ],
+   "finalPath": "/studio",
+   "hydrated": 423.30000000074506,
+   "wallMs": 2296,
+   "requests": 310,
+   "jsRequests": 287,
+   "jsBytes": 6791528,
+   "totalBytes": 7703564,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fstudio",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 3,
+   "path": "/today",
+   "ttfb": 257.69999999925494,
+   "dcl": 302.3999999985099,
+   "load": 342.80000000074506,
+   "fcp": 356,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 4
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "ms": 34
+    }
+   ],
+   "finalPath": "/today",
+   "hydrated": 671,
+   "wallMs": 2733,
+   "requests": 430,
+   "jsRequests": 392,
+   "jsBytes": 10011241,
+   "totalBytes": 11136372,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Ftoday",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 3,
+   "path": "/work",
+   "ttfb": 10,
+   "dcl": 60.400000002235174,
+   "load": 97.60000000149012,
+   "fcp": 104,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "ms": 39
+    }
+   ],
+   "finalPath": "/work",
+   "hydrated": 458.19999999925494,
+   "wallMs": 2432,
+   "requests": 428,
+   "jsRequests": 392,
+   "jsBytes": 9988667,
+   "totalBytes": 11137887,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fwork",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  },
+  {
+   "run": 3,
+   "path": "/system",
+   "ttfb": 10.600000001490116,
+   "dcl": 66,
+   "load": 101.80000000074506,
+   "fcp": 108,
+   "fontBlock": 0,
+   "blockingCss": [
+    {
+     "url": "http://127.0.0.1:8097/src/styles.css",
+     "ms": 5
+    },
+    {
+     "url": "http://127.0.0.1:8097/src/operator.css",
+     "ms": 6
+    },
+    {
+     "url": "http://127.0.0.1:8097/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "ms": 44
+    }
+   ],
+   "finalPath": "/system",
+   "hydrated": 420.9000000022352,
+   "wallMs": 2485,
+   "requests": 436,
+   "jsRequests": 392,
+   "jsBytes": 10022084,
+   "totalBytes": 11254165,
+   "imageBytes": 484,
+   "fontRequests": [
+    "/fonts/inter-latin.woff2",
+    "/fonts/jetbrains-mono-latin.woff2"
+   ],
+   "heavy": [
+    {
+     "url": "/src/styles.css",
+     "kb": 327
+    },
+    {
+     "url": "/@tanstack-start/styles.css?routes=__root__%2C%2Fsystem",
+     "kb": 277
+    },
+    {
+     "url": "/@vite/client",
+     "kb": 175
+    },
+    {
+     "url": "/.preview-cache/node_modules/.vite/deps/react-dom_client.js?v=7c65a185",
+     "kb": 982
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/@tanstack/router-core/dist/esm/router.js?v=a2cf7fcf",
+     "kb": 222
+    },
+    {
+     "url": "/@fs/C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/seroval/dist/esm/development/index.mjs?v=a2cf7fcf",
+     "kb": 437
+    },
+    {
+     "url": "/src/lib/free-voice-client.ts",
+     "kb": 157
+    },
+    {
+     "url": "/src/components/floating-oracle.tsx",
+     "kb": 559
+    },
+    {
+     "url": "/src/components/operator/voice-companion.tsx",
+     "kb": 513
+    },
+    {
+     "url": "/src/components/ui/ai-chat-input.tsx",
+     "kb": 200
+    },
+    {
+     "url": "/src/components/operator/account-connections.tsx",
+     "kb": 205
+    }
+   ],
+   "errors": []
+  }
+ ]
+}

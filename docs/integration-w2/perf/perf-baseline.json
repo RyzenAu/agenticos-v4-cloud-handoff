@@ -1,0 +1,90 @@
+{
+  "label": "baseline",
+  "home": "/workspace",
+  "nav": {
+    "/receptionist": [
+      176,
+      191
+    ],
+    "/business": [
+      182,
+      164
+    ],
+    "/memory": [
+      "fail TimeoutError: click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for loc",
+      "fail TimeoutError: click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for loc"
+    ],
+    "/usage": [
+      "fail TimeoutError: click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for loc",
+      "fail TimeoutError: click: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for loc"
+    ],
+    "/settings": [
+      368,
+      106
+    ],
+    "/workspace": [
+      78,
+      67
+    ]
+  },
+  "direct": {
+    "/workspace": {
+      "medianMs": 337,
+      "runs": [
+        330,
+        337,
+        359
+      ]
+    },
+    "/receptionist": {
+      "medianMs": 364,
+      "runs": [
+        485,
+        364,
+        319
+      ]
+    },
+    "/business": {
+      "medianMs": 373,
+      "runs": [
+        1749,
+        353,
+        373
+      ]
+    },
+    "/memory": {
+      "medianMs": 397,
+      "runs": [
+        835,
+        397,
+        376
+      ]
+    },
+    "/usage": {
+      "medianMs": 348,
+      "runs": [
+        479,
+        348,
+        347
+      ]
+    },
+    "/settings": {
+      "medianMs": 341,
+      "runs": [
+        555,
+        341,
+        339
+      ]
+    }
+  },
+  "at": "2026-09-27T13:06:15.725Z",
+  "warmupListenMs": 12941,
+  "coldListenMs": 6183,
+  "coldFirstPageH1Ms": 6755,
+  "coldFirstPageLoadMs": 488,
+  "firstInteraction": [
+    124,
+    120,
+    126
+  ]
+}

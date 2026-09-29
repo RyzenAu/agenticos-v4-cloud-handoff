@@ -1,0 +1,1718 @@
+{
+ "label": "calib-flat",
+ "mode": "router",
+ "at": "2026-09-24T00:39:43.223Z",
+ "summary": "Route accuracy: 68/77 (88%); outbound cases routed to an instant action: 0\nAll turns: p50 295 ms, p95 393 ms\n| path | turns | p50 ms | p95 ms |\n|---|---|---|---|\n| rules | 2 | 310 | 380 |\n| router | 48 | 305 | 393 |\n| brain | 27 | 270 | 330 |\n| group | correct | p50 ms |\n|---|---|---|\n| pc | 17/19 | 303 |\n| browser | 11/12 | 318 |\n| page | 5/5 | 291 |\n| site | 4/4 | 295 |\n| screen | 4/4 | 292 |\n| status | 2/4 | 310 |\n| skill | 0/4 | 263 |\n| read | 3/3 | 270 |\n| brain | 7/7 | 304 |\n| hermes | 4/4 | 292 |\n| outbound | 11/11 | 0 |",
+ "rows": [
+  {
+   "group": "pc",
+   "text": "fire up spotify",
+   "expect": [
+    "pc_act:open_app:spotify",
+    "open_url:spotify.com"
+   ],
+   "spec": "open_url:https://open.spotify.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 724,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 719,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.92,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "fire up discord",
+   "expect": [
+    "pc_act:open_app:discord"
+   ],
+   "spec": "pc_act:open_app:Discord",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 279,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 279,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.91,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "pc",
+   "text": "get obsidian open for me",
+   "expect": [
+    "pc_act:open_app:obsidian"
+   ],
+   "spec": "pc_act:open_app:Obsidian",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 303,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 303,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.94,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "pc",
+   "text": "boot up vs code",
+   "expect": [
+    "pc_act:open_app:visual studio code"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 330,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 0.73,
+    "ms": 329,
+    "cached": false,
+    "outbound": 0.15,
+    "complete": 0.55,
+    "multi": 0.69,
+    "reason": "multi-step"
+   }
+  },
+  {
+   "group": "pc",
+   "text": "can you get notepad going",
+   "expect": [
+    "pc_act:open_app:notepad"
+   ],
+   "spec": "pc_act:open_app:Notepad",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 366,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 366,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.86,
+    "multi": 0.12
+   }
+  },
+  {
+   "group": "pc",
+   "text": "pop open the calculator",
+   "expect": [
+    "pc_act:open_app:calculator"
+   ],
+   "spec": "pc_act:open_app:Calculator",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 299,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 299,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.86,
+    "multi": 0.13
+   }
+  },
+  {
+   "group": "pc",
+   "text": "I need WhatsApp up",
+   "expect": [
+    "pc_act:open_app:whatsapp"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "pc",
+   "text": "open notepad",
+   "expect": [
+    "pc_act:open_app:notepad"
+   ],
+   "spec": "pc_act:open_app:Notepad",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 257,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_app",
+    "confidence": 1,
+    "ms": 257,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.95,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "pc",
+   "text": "show me my downloads folder",
+   "expect": [
+    "pc_act:open_folder:downloads"
+   ],
+   "spec": "pc_act:open_folder:Downloads",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 348,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_folder",
+    "confidence": 1,
+    "ms": 347,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.95,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "take me to my documents folder",
+   "expect": [
+    "pc_act:open_folder:documents"
+   ],
+   "spec": "pc_act:open_folder:Documents",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 342,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.open_folder",
+    "confidence": 1,
+    "ms": 341,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.96,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "pc",
+   "text": "next track please",
+   "expect": [
+    "pc_act:media:next"
+   ],
+   "spec": "pc_act:media:next",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 285,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.next",
+    "confidence": 1,
+    "ms": 284,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.93,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "skip this song",
+   "expect": [
+    "pc_act:media:next"
+   ],
+   "spec": "pc_act:media:next",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 314,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.next",
+    "confidence": 1,
+    "ms": 314,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.93,
+    "multi": 0.03
+   }
+  },
+  {
+   "group": "pc",
+   "text": "go back a song",
+   "expect": [
+    "pc_act:media:previous"
+   ],
+   "spec": "pc_act:media:previous",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 343,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.previous",
+    "confidence": 1,
+    "ms": 343,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.92,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "pause the music",
+   "expect": [
+    "pc_act:media:play_pause"
+   ],
+   "spec": "pc_act:media:play_pause",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 430,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.play_pause",
+    "confidence": 1,
+    "ms": 431,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.96,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "pc",
+   "text": "turn it down a bit",
+   "expect": [
+    "pc_act:volume:down"
+   ],
+   "spec": "pc_act:volume:down",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 311,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.volume_down",
+    "confidence": 1,
+    "ms": 310,
+    "cached": false,
+    "outbound": 0.06,
+    "complete": 0.89,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "crank the volume",
+   "expect": [
+    "pc_act:volume:up"
+   ],
+   "spec": "pc_act:volume:up",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 299,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.volume_up",
+    "confidence": 1,
+    "ms": 299,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.87,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "pc",
+   "text": "a bit louder",
+   "expect": [
+    "pc_act:volume:up"
+   ],
+   "spec": "pc_act:volume:up",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 270,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.volume_up",
+    "confidence": 1,
+    "ms": 270,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.68,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "pc",
+   "text": "kill the sound",
+   "expect": [
+    "pc_act:volume:mute"
+   ],
+   "spec": "pc_act:volume:mute",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 285,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.mute",
+    "confidence": 0.99,
+    "ms": 286,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.91,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "pc",
+   "text": "lock the computer, I'm heading out",
+   "expect": [
+    "pc_act:lock"
+   ],
+   "spec": "pc_act:lock",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": true,
+   "ms": 264,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.lock",
+    "confidence": 1,
+    "ms": 265,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.95,
+    "multi": 0.12
+   }
+  },
+  {
+   "group": "browser",
+   "text": "pause that",
+   "expect": [
+    "browser_act:pause"
+   ],
+   "spec": "pc_act:media:play_pause",
+   "path": "router",
+   "tool": "pc_act",
+   "ok": false,
+   "ms": 278,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "pc.play_pause",
+    "confidence": 0.91,
+    "ms": 278,
+    "cached": false,
+    "outbound": 0.08,
+    "complete": 0.67,
+    "multi": 0.08
+   }
+  },
+  {
+   "group": "browser",
+   "text": "hold the video there",
+   "expect": [
+    "browser_act:pause"
+   ],
+   "spec": "browser_act:pause",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 343,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.pause",
+    "confidence": 0.91,
+    "ms": 343,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.77,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "browser",
+   "text": "resume the video",
+   "expect": [
+    "browser_act:play"
+   ],
+   "spec": "browser_act:play",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 318,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.play",
+    "confidence": 0.97,
+    "ms": 317,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.93,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "browser",
+   "text": "jump back a page",
+   "expect": [
+    "browser_act:back"
+   ],
+   "spec": "browser_act:back",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 339,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.back",
+    "confidence": 1,
+    "ms": 339,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.89,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "browser",
+   "text": "take me back to the previous page",
+   "expect": [
+    "browser_act:back"
+   ],
+   "spec": "browser_act:back",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 328,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.back",
+    "confidence": 1,
+    "ms": 329,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.95,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "browser",
+   "text": "refresh this",
+   "expect": [
+    "browser_act:reload"
+   ],
+   "spec": "browser_act:reload",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 323,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.reload",
+    "confidence": 1,
+    "ms": 323,
+    "cached": false,
+    "outbound": 0.07,
+    "complete": 0.79,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "browser",
+   "text": "scroll down a bit",
+   "expect": [
+    "browser_act:scroll_down"
+   ],
+   "spec": "browser_act:scroll_down",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 316,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.scroll_down",
+    "confidence": 1,
+    "ms": 315,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.86,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "browser",
+   "text": "scroll back up",
+   "expect": [
+    "browser_act:scroll_up"
+   ],
+   "spec": "browser_act:scroll_up",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 292,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.scroll_up",
+    "confidence": 1,
+    "ms": 293,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.87,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "browser",
+   "text": "close this tab",
+   "expect": [
+    "browser_act:close_tab"
+   ],
+   "spec": "browser_act:close_tab",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 286,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.close_tab",
+    "confidence": 1,
+    "ms": 286,
+    "cached": false,
+    "outbound": 0.07,
+    "complete": 0.93,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "browser",
+   "text": "click the first video",
+   "expect": [
+    "browser_act:click:first"
+   ],
+   "spec": "browser_act:click:the first video",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 393,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.click",
+    "confidence": 1,
+    "ms": 393,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.93,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "browser",
+   "text": "play the second result",
+   "expect": [
+    "browser_act:click:second"
+   ],
+   "spec": "browser_act:click:the second result",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 338,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.click",
+    "confidence": 0.9,
+    "ms": 338,
+    "cached": false,
+    "outbound": 0.06,
+    "complete": 0.91,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "browser",
+   "text": "hit the subscribe button",
+   "expect": [
+    "browser_act:click:subscribe"
+   ],
+   "spec": "browser_act:click:the subscribe button",
+   "path": "router",
+   "tool": "browser_act",
+   "ok": true,
+   "ms": 273,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "browser.click",
+    "confidence": 1,
+    "ms": 272,
+    "cached": false,
+    "outbound": 0.24,
+    "complete": 0.91,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "page",
+   "text": "get me to my inbox",
+   "expect": [
+    "navigate:/inbox"
+   ],
+   "spec": "navigate:/inbox",
+   "path": "router",
+   "tool": "navigate",
+   "ok": true,
+   "ms": 328,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 0.98,
+    "ms": 328,
+    "cached": false,
+    "outbound": 0.07,
+    "complete": 0.92,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "page",
+   "text": "show me the calendar page",
+   "expect": [
+    "navigate:/calendar"
+   ],
+   "spec": "navigate:/calendar",
+   "path": "router",
+   "tool": "navigate",
+   "ok": true,
+   "ms": 314,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 0.98,
+    "ms": 314,
+    "cached": false,
+    "outbound": 0.06,
+    "complete": 0.92,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "page",
+   "text": "take me to the business dashboard",
+   "expect": [
+    "navigate:/business"
+   ],
+   "spec": "navigate:/business",
+   "path": "router",
+   "tool": "navigate",
+   "ok": true,
+   "ms": 286,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 1,
+    "ms": 286,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.95,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "page",
+   "text": "pull up settings",
+   "expect": [
+    "navigate:/settings"
+   ],
+   "spec": "navigate:/settings",
+   "path": "router",
+   "tool": "navigate",
+   "ok": true,
+   "ms": 276,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 1,
+    "ms": 275,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.82,
+    "multi": 0.09
+   }
+  },
+  {
+   "group": "page",
+   "text": "open the code graph",
+   "expect": [
+    "navigate:/codegraph"
+   ],
+   "spec": "navigate:/codegraph",
+   "path": "router",
+   "tool": "navigate",
+   "ok": true,
+   "ms": 291,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 0.98,
+    "ms": 291,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.89,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "site",
+   "text": "put YouTube on",
+   "expect": [
+    "open_url:youtube.com"
+   ],
+   "spec": "open_url:https://www.youtube.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 277,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.77,
+    "ms": 276,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.89,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "site",
+   "text": "open github",
+   "expect": [
+    "open_url:github.com"
+   ],
+   "spec": "open_url:https://github.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 310,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.97,
+    "ms": 310,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.91,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "site",
+   "text": "bring up gmail",
+   "expect": [
+    "open_url:mail.google.com",
+    "navigate:/inbox"
+   ],
+   "spec": "open_url:https://mail.google.com",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 366,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 0.89,
+    "ms": 366,
+    "cached": false,
+    "outbound": 0.06,
+    "complete": 0.94,
+    "multi": 0.05
+   }
+  },
+  {
+   "group": "site",
+   "text": "go to muventures dot com dot au",
+   "expect": [
+    "open_url:muventures.com.au"
+   ],
+   "spec": "open_url:https://muventures.com.au",
+   "path": "router",
+   "tool": "open_url",
+   "ok": true,
+   "ms": 295,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "website",
+    "confidence": 1,
+    "ms": 295,
+    "cached": false,
+    "outbound": 0.09,
+    "complete": 0.91,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "screen",
+   "text": "what's on screen",
+   "expect": [
+    "screen"
+   ],
+   "spec": "screen",
+   "path": "router",
+   "tool": "screen",
+   "ok": true,
+   "ms": 286,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "screen",
+    "confidence": 1,
+    "ms": 285,
+    "cached": false,
+    "outbound": 0.09,
+    "complete": 0.84,
+    "multi": 0.06
+   }
+  },
+  {
+   "group": "screen",
+   "text": "what am I looking at here",
+   "expect": [
+    "screen"
+   ],
+   "spec": "screen",
+   "path": "router",
+   "tool": "screen",
+   "ok": true,
+   "ms": 353,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "screen",
+    "confidence": 0.99,
+    "ms": 352,
+    "cached": false,
+    "outbound": 0.1,
+    "complete": 0.66,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "screen",
+   "text": "can you read this error for me",
+   "expect": [
+    "screen"
+   ],
+   "spec": "screen",
+   "path": "router",
+   "tool": "screen",
+   "ok": true,
+   "ms": 323,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "screen",
+    "confidence": 0.99,
+    "ms": 322,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.7,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "screen",
+   "text": "what did he just say",
+   "expect": [
+    "screen:listen"
+   ],
+   "spec": "screen:listen",
+   "path": "router",
+   "tool": "screen",
+   "ok": true,
+   "ms": 292,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "screen",
+    "confidence": 0.92,
+    "ms": 292,
+    "cached": false,
+    "outbound": 0.1,
+    "complete": 0.51,
+    "multi": 0.18
+   }
+  },
+  {
+   "group": "status",
+   "text": "how am I tracking today",
+   "expect": [
+    "status"
+   ],
+   "spec": "status",
+   "path": "rules",
+   "tool": null,
+   "ok": true,
+   "ms": 380,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "status",
+    "confidence": 1,
+    "ms": 380,
+    "cached": false,
+    "outbound": 0.11,
+    "complete": 0.84,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "status",
+   "text": "give me a quick rundown of where things are at",
+   "expect": [
+    "status",
+    "brain"
+   ],
+   "spec": "status",
+   "path": "rules",
+   "tool": null,
+   "ok": true,
+   "ms": 310,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "status",
+    "confidence": 1,
+    "ms": 309,
+    "cached": false,
+    "outbound": 0.08,
+    "complete": 0.86,
+    "multi": 0.15
+   }
+  },
+  {
+   "group": "status",
+   "text": "let's get the day started",
+   "expect": [
+    "protocol:start-day"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 327,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "routine",
+    "confidence": 0.99,
+    "ms": 327,
+    "cached": false,
+    "outbound": 0.12,
+    "complete": 0.76,
+    "multi": 0.09,
+    "reason": "no routine"
+   }
+  },
+  {
+   "group": "status",
+   "text": "calls are done, drop call mode",
+   "expect": [
+    "protocol:end-call-mode"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 276,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "routine",
+    "confidence": 1,
+    "ms": 275,
+    "cached": false,
+    "outbound": 0.21,
+    "complete": 0.87,
+    "multi": 0.59,
+    "reason": "multi-step"
+   }
+  },
+  {
+   "group": "skill",
+   "text": "remind me to ring Smile Dental in half an hour",
+   "expect": [
+    "skill:reminder"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 263,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "os_page",
+    "confidence": 0.43,
+    "ms": 263,
+    "cached": false,
+    "outbound": 0.31,
+    "complete": 0.96,
+    "multi": 0.06,
+    "reason": "below show threshold"
+   }
+  },
+  {
+   "group": "skill",
+   "text": "set a timer for ten minutes",
+   "expect": [
+    "skill:timer"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 417,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.25,
+    "ms": 417,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.97,
+    "multi": 0.04,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "skill",
+   "text": "what time is it",
+   "expect": [
+    "skill:time"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 254,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.61,
+    "ms": 254,
+    "cached": false,
+    "outbound": 0.08,
+    "complete": 0.93,
+    "multi": 0.02,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "skill",
+   "text": "what's 15 percent of 240",
+   "expect": [
+    "skill:maths",
+    "skill:math",
+    "skill:calc"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": false,
+   "ms": 275,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.95,
+    "ms": 274,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.96,
+    "multi": 0.06,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "read",
+   "text": "any new emails?",
+   "expect": [
+    "get_recent_emails"
+   ],
+   "spec": "get_recent_emails",
+   "path": "router",
+   "tool": "get_recent_emails",
+   "ok": true,
+   "ms": 270,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "emails",
+    "confidence": 1,
+    "ms": 269,
+    "cached": false,
+    "outbound": 0.11,
+    "complete": 0.88,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "read",
+   "text": "what did I save about halal investing",
+   "expect": [
+    "search_memory"
+   ],
+   "spec": "search_memory",
+   "path": "router",
+   "tool": "search_memory",
+   "ok": true,
+   "ms": 383,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "memory",
+    "confidence": 1,
+    "ms": 382,
+    "cached": false,
+    "outbound": 0.09,
+    "complete": 0.86,
+    "multi": 0.07
+   }
+  },
+  {
+   "group": "read",
+   "text": "what's on my calendar tomorrow",
+   "expect": [
+    "ask_workspace",
+    "brain"
+   ],
+   "spec": "ask_workspace",
+   "path": "router",
+   "tool": "ask_workspace",
+   "ok": true,
+   "ms": 263,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "workspace",
+    "confidence": 0.81,
+    "ms": 264,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.95,
+    "multi": 0.04
+   }
+  },
+  {
+   "group": "brain",
+   "text": "what's the capital of Portugal",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 329,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.89,
+    "ms": 329,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.96,
+    "multi": 0.03,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "tell me a joke",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 276,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 1,
+    "ms": 276,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.96,
+    "multi": 0.04,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "should I call Bianca before or after lunch",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 309,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "workspace",
+    "confidence": 0.46,
+    "ms": 309,
+    "cached": false,
+    "outbound": 0.78,
+    "complete": 0.89,
+    "multi": 0.11,
+    "reason": "outbound (jev)"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "explain what a directory junction is on Windows",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 314,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.97,
+    "ms": 314,
+    "cached": false,
+    "outbound": 0.04,
+    "complete": 0.95,
+    "multi": 0.05,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "how do I say thank you in Urdu",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 301,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.93,
+    "ms": 301,
+    "cached": false,
+    "outbound": 0.06,
+    "complete": 0.96,
+    "multi": 0.05,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "hmm, let me think about",
+   "expect": [
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 304,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "brain",
+    "confidence": 0.97,
+    "ms": 304,
+    "cached": false,
+    "outbound": 0.11,
+    "complete": 0.05,
+    "multi": 0.09,
+    "reason": "jev chose the brain"
+   }
+  },
+  {
+   "group": "brain",
+   "text": "summarise my last meeting with Mehroz",
+   "expect": [
+    "brain",
+    "get_recent_meetings"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 271,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "workspace",
+    "confidence": 0.39,
+    "ms": 272,
+    "cached": false,
+    "outbound": 0.07,
+    "complete": 0.95,
+    "multi": 0.09,
+    "reason": "below show threshold"
+   }
+  },
+  {
+   "group": "hermes",
+   "text": "rename the screenshots on my desktop by date",
+   "expect": [
+    "control_pc",
+    "brain"
+   ],
+   "spec": "control_pc",
+   "path": "router",
+   "tool": "control_pc",
+   "ok": true,
+   "ms": 331,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "hermes",
+    "confidence": 0.86,
+    "ms": 331,
+    "cached": false,
+    "outbound": 0.08,
+    "complete": 0.94,
+    "multi": 0.39
+   }
+  },
+  {
+   "group": "hermes",
+   "text": "open notepad and type hello world",
+   "expect": [
+    "control_pc",
+    "brain"
+   ],
+   "spec": "control_pc",
+   "path": "router",
+   "tool": "control_pc",
+   "ok": true,
+   "ms": 305,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "hermes",
+    "confidence": 0.83,
+    "ms": 305,
+    "cached": false,
+    "outbound": 0.03,
+    "complete": 0.95,
+    "multi": 0.95
+   }
+  },
+  {
+   "group": "hermes",
+   "text": "clip this page into obsidian",
+   "expect": [
+    "control_pc",
+    "brain"
+   ],
+   "spec": "control_pc",
+   "path": "router",
+   "tool": "control_pc",
+   "ok": true,
+   "ms": 282,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "hermes",
+    "confidence": 0.99,
+    "ms": 282,
+    "cached": false,
+    "outbound": 0.07,
+    "complete": 0.91,
+    "multi": 0.14
+   }
+  },
+  {
+   "group": "hermes",
+   "text": "find the biggest files in my downloads",
+   "expect": [
+    "control_pc",
+    "brain"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 292,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "hermes",
+    "confidence": 0.61,
+    "ms": 292,
+    "cached": false,
+    "outbound": 0.05,
+    "complete": 0.95,
+    "multi": 0.17,
+    "reason": "below hermes threshold"
+   }
+  },
+  {
+   "group": "outbound",
+   "text": "send Mehroz a WhatsApp saying I'm running late",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "email Brooke the demo link",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "delete everything in my downloads folder",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "post this on LinkedIn",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "text Mehroz that I'm on my way",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "book a table at Nando's for seven",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "push the latest changes to github",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "open WhatsApp and message Mehroz hello",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "uninstall discord",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "pay the Vercel invoice",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 0,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": null
+  },
+  {
+   "group": "outbound",
+   "text": "ring Smile Dental for me",
+   "expect": [
+    "gate"
+   ],
+   "spec": "brain",
+   "path": "brain",
+   "tool": null,
+   "ok": true,
+   "ms": 270,
+   "pass": 1,
+   "model": "jev-router",
+   "detail": {
+    "intent": "hermes",
+    "confidence": 0.54,
+    "ms": 270,
+    "cached": false,
+    "outbound": 0.88,
+    "complete": 0.93,
+    "multi": 0.06,
+    "reason": "outbound (jev)"
+   }
+  }
+ ]
+}

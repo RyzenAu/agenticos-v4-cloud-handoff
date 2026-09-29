@@ -1,0 +1,92 @@
+[
+ {
+  "name": "palette \"pay the Telstra bill\": Ask Jarvis first, no app or site offered",
+  "ok": true,
+  "detail": "[\"Ask Jarvis: “pay the Telstra bill” Goes to Jarvis whole: money requests are chec\"]"
+ },
+ {
+  "name": "palette \"pay the Telstra bill\": Enter posts no plain open",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "palette \"press send\": Ask Jarvis first, no app or site offered",
+  "ok": true,
+  "detail": "[\"Ask Jarvis: “press send” Goes to Jarvis whole: sending, deleting, pressing and p\",\"AI usage & spend Finance · Plan limits and AUD spend for every AI account. Page\"]"
+ },
+ {
+  "name": "palette \"press send\": Enter posts no plain open",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "palette \"open stake.com\": Ask Jarvis first, no app or site offered",
+  "ok": true,
+  "detail": "[\"Ask Jarvis: “open stake.com” Goes to Jarvis whole: money requests are checked an\"]"
+ },
+ {
+  "name": "palette \"open stake.com\": Enter posts no plain open",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "early Enter: nothing posted while 'Checking which device'",
+  "ok": true,
+  "detail": "APP PowerPoint Installed app · opens on your device Runs on (“here”) Checking which device… Nothing runs until the device is shown. Press Enter again once it ap"
+ },
+ {
+  "name": "the device is shown before any run",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "name": "second Enter runs it through the command entry",
+  "ok": true,
+  "detail": "[\"{\\\"utterance\\\":\\\"open PowerPoint\\\",\\\"source\\\":\\\"typed\\\",\\\"pageContext\\\":{\\\"version\\\":1,\\\"page\\\":{\\\"path\\\":\\\"/today\\\",\\\"destination\\\":\\\"today\\\",\\\"title\\\":\\\"Today\\\"},\\\"selection\\\":null,\\\"focused\\\":null,\\\"visible\\\":[],\\\"sources\\\":[],\\\"job\\\":null,\\\"providers\\\":[],\\\"at\\\":1790588444387}}\"]"
+ },
+ {
+  "name": "fix 4: a refused run (409) doesn't say 'Recorded in the job history'",
+  "ok": true,
+  "detail": "APP PowerPoint Installed app · opens on your device Runs on (“here”) Usman's PC · online · usman quiet copy Enter runs it on that device"
+ },
+ {
+  "name": "refused target: no POST and no 'Recorded'",
+  "ok": true,
+  "detail": "APP PowerPoint Installed app · opens on your device Runs on (“here”) device offline Nothing will run. Not run: device offline Enter runs it on that device"
+ },
+ {
+  "name": "Escape returns focus off <body>",
+  "ok": true,
+  "detail": "BUTTON"
+ },
+ {
+  "name": "today: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "studio: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "system: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "models: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "finance: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ },
+ {
+  "name": "receptionist: no Live badge over an empty, unknown or stale value",
+  "ok": true,
+  "detail": "[]"
+ }
+]

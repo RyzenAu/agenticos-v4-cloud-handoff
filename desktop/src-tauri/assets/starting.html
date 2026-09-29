@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Jarvis</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #0b0d12; color: #e7e9ee;
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap {
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px; text-align: center;
+    padding: 24px; box-sizing: border-box;
+  }
+  .mark {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, #5b8cff, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 22px; color: #fff;
+  }
+  .spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.15);
+    border-top-color: #8b5cf6;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: 0.2px; }
+  p.status { font-size: 13px; color: #a3aab8; margin: 0; min-height: 32px; max-width: 520px; line-height: 1.5; }
+  p.version { font-size: 11px; color: #5c6270; margin-top: 6px; }
+  p.status { overflow-wrap: anywhere; }
+  body[data-phase="stopped"] .spinner { animation: none; border-top-color: #f59e0b; }
+  body[data-phase="stopped"] h1 { color: #fbbf24; }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: rgba(255, 255, 255, 0.15); }
+  }
+</style>
+</head>
+<body data-phase="__PHASE__">
+  <div class="wrap">
+    <div class="mark" aria-hidden="true">J</div>
+    <div class="spinner" aria-hidden="true"></div>
+    <h1 id="headline" role="status" aria-live="polite">__HEADLINE__</h1>
+    <p class="status" id="status">__DETAIL__</p>
+    <p class="version" id="version">__VERSION__</p>
+  </div>
+  <script>
+    // Status text only: no network calls and no self-redirect. The "is the
+    // server ready yet" check, restarts and the navigation back to the app
+    // are all done from Rust (supervisor.rs's loop), which pushes each state
+    // change here through window.__jarvisStatus. Why the page never navigates
+    // itself: a page-driven redirect away from a data: URL was observed, live,
+    // to leave the WebView2 controller rendering only a ~15px sliver of the
+    // real page (docs/native-20260927). Tauri's navigate() from Rust doesn't.
+    (function () {
+      var headline = document.getElementById("headline");
+      var status = document.getElementById("status");
+      var started = Date.now();
+      var driven = false;
+
+      window.__jarvisStatus = function (h, d, phase) {
+        driven = true;
+        headline.textContent = h;
+        status.textContent = d;
+        document.body.setAttribute("data-phase", phase || "starting");
+      };
+
+      // Fallback narration only, until Rust pushes its first status.
+      function tick() {
+        if (driven) return;
+        var seconds = Math.floor((Date.now() - started) / 1000);
+        if (seconds > 90) {
+          headline.textContent = "Recovering Jarvis…";
+          status.textContent = "The local server hasn't answered in " + seconds + "s.";
+        } else if (seconds > 15) {
+          status.textContent = "Still starting (" + seconds + "s).";
+        }
+        setTimeout(tick, 1000);
+      }
+      setTimeout(tick, 1000);
+    })();
+  </script>
+</body>
+</html>

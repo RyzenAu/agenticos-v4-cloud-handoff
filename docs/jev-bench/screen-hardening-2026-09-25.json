@@ -1,0 +1,112 @@
+{
+  "date": "2026-09-25",
+  "note": "screen-hands hardening flags, before (all off) vs after (recheck, jevIrreversible, denylist, refs; cdp only for vscode). Windows opened by the bench only. Agent Desktop dropped: Windows support is a stub (macOS only).",
+  "live": {
+    "race/off": {
+      "runs": 12,
+      "ok": 2,
+      "wrong": 10,
+      "refused": 0,
+      "p50run": 729,
+      "p90run": 785,
+      "p50step": 713
+    },
+    "race/on": {
+      "runs": 12,
+      "ok": 5,
+      "wrong": 0,
+      "refused": 7,
+      "p50run": 818,
+      "p90run": 1134,
+      "p50step": 803
+    },
+    "vscode/off": {
+      "runs": 6,
+      "ok": 5,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 703,
+      "p90run": 730,
+      "p50step": 684
+    },
+    "vscode/on": {
+      "runs": 6,
+      "ok": 6,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 930,
+      "p90run": 1341,
+      "p50step": 913
+    },
+    "explorer/off": {
+      "runs": 5,
+      "ok": 5,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 1925,
+      "p90run": 2050,
+      "p50step": 1278
+    },
+    "explorer/on": {
+      "runs": 5,
+      "ok": 5,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 1998,
+      "p90run": 2594,
+      "p50step": 1778
+    },
+    "notepad/off": {
+      "runs": 5,
+      "ok": 0,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 465,
+      "p90run": 670,
+      "p50step": 446
+    },
+    "notepad/on": {
+      "runs": 5,
+      "ok": 5,
+      "wrong": 0,
+      "refused": 0,
+      "p50run": 470,
+      "p90run": 627,
+      "p50step": 449
+    }
+  },
+  "raceNote": "SendInput path (no UIA press), layout shifting 48 px every 200-600 ms; OFF claimed 'Clicked \"Save draft\"' on all 10 wrong-target clicks.",
+  "notepadNote": "Taking the foreground (JarvisWin.Focus Alt tap) left Notepad on its File menu; OFF pasted into nothing and reported success; ON closed the menu with Escape and typed.",
+  "vscodeNote": "OFF = UI Automation; ON = CDP on a loopback port (throwaway profile). OFF's one miss: the page wasn't built yet on the first ask.",
+  "nightlight": "skipped: a Settings process of his was running (shell-cloaked, started 05:45), so it wasn't touched",
+  "jevIrreversible": {
+    "irreversibleLabels": 20,
+    "regexGated": 3,
+    "regexPlusJevGated": 18,
+    "missed": [
+      "Format",
+      "End task"
+    ],
+    "harmlessLabels": 20,
+    "falseGates": 0,
+    "p50Ms": 243,
+    "maxMs": 642
+  },
+  "pointBench": {
+    "off": {
+      "cases": 20,
+      "hits": 20,
+      "p50PointMs": 462,
+      "p90PointMs": 961,
+      "p50ArrivedMs": 703
+    },
+    "on": {
+      "cases": 20,
+      "hits": 20,
+      "p50PointMs": 432,
+      "p90PointMs": 937,
+      "p50ArrivedMs": 674
+    }
+  },
+  "visionImages": 0
+}

@@ -1,0 +1,118 @@
+{
+  "run": "0881eb",
+  "results": [
+    {
+      "route": "failover3",
+      "provider": "chain",
+      "model": "openrouter(invalid key) -> groq -> codex",
+      "cost_basis": "free/subscription after a failed paid attempt",
+      "startup_s": 24.0,
+      "status": "ok",
+      "retains": 6,
+      "errors": 0,
+      "error_detail": [],
+      "quality_pct": 96.0,
+      "hallucinations": 0,
+      "facts_per_doc": 1.5,
+      "latency_s": {
+        "median": 5.1,
+        "max": 12.3
+      },
+      "receipts": [
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "error",
+          "calls": 3,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 37
+        },
+        {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "status": "success",
+          "calls": 3,
+          "input_tokens": 9059,
+          "output_tokens": 733,
+          "avg_ms": 2075
+        },
+        {
+          "provider": "openai-codex",
+          "model": "gpt-6-astra",
+          "status": "success",
+          "calls": 3,
+          "input_tokens": 5789,
+          "output_tokens": 479,
+          "avg_ms": 10107
+        },
+        {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "status": "error",
+          "calls": 6,
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "avg_ms": 58
+        }
+      ],
+      "receipt_rows_with_canary_text": 0,
+      "tokens": {
+        "input": 14848,
+        "output": 1212
+      },
+      "usd": null,
+      "per_doc": [
+        {
+          "round": 0,
+          "doc": 0,
+          "facts": 2,
+          "found": 4,
+          "total": 5,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 1,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 2,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 3,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 4,
+          "facts": 2,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        },
+        {
+          "round": 0,
+          "doc": 5,
+          "facts": 1,
+          "found": 4,
+          "total": 4,
+          "hallucinations": 0
+        }
+      ],
+      "bank_deleted": true
+    }
+  ]
+}

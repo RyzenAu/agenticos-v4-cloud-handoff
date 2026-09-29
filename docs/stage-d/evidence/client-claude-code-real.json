@@ -1,0 +1,16 @@
+{
+  "client": "claude-code (real claude -p; MCP entry {type: http, url: http://127.0.0.1:8095/__memory/mcp} via --mcp-config/--strict-mcp-config; ~/.claude.json untouched)",
+  "os": "quiet preview 127.0.0.1:8095 (synthetic vault, dedicated Hindsight 8883, bank syn-stage-d-273c99)",
+  "canary": "Heron52377d",
+  "rc": 0,
+  "is_error": false,
+  "reply": "**Recalled text:** The Heron52377d synthetic florist delivers flowers on Thursdays.\n\n**Source:** mem-cf7ff6fc84",
+  "os_items": [
+    {
+      "id": "mem-cf7ff6fc84",
+      "kind": "memory",
+      "actor": "Usman",
+      "processed_by": "openrouter/deepseek/deepseek-v4.1-flash"
+    }
+  ]
+}

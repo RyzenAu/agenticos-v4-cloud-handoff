@@ -1,0 +1,137 @@
+Skip to content
+M&U Ventures
+Dental
+Law
+Real estate
+AI receptionist
+Work
+Process
+About
+Contact
+Book a call
+
+WORK
+
+Judge us on the product, not the promises.
+
+We'd rather you explore a finished site than read about one. Every project below is a fictional business we designed and built ourselves — real functionality, not client work — one concept site for each vertical, plus Aldergate, a larger flagship platform.
+
+aldergate.muventures.com.au
+FLAGSHIP DEMONSTRATION
+Aldergate
+
+Flagship real estate website demonstration designed and developed by M&U Ventures. A fictional business, not a client.
+
+A completed fictional Inner West Sydney agency platform: search, listings, agents, suburb guides, insights, eight lead-capture forms and a listing-specific AI walkthrough assistant.
+
+Buy, rent and sold search with URL-based filters, sorting, active-filter chips, loading and empty states
+Thirteen listing pages with editorial galleries, floor plans, inspections, location, listing history and similar properties
+Agent directory and profiles with current listings, results and contact forms
+Selling, property management, tenant and maintenance sections with appraisal and enquiry forms
+Read the case study
+→
+Open the live demo
+lanterndental.muventures.com.au
+
+The scroll moment on Lantern Dental's home page, shown here as a loop. Lantern Dental is a concept demonstration site for a fictional clinic; the film is AI-generated and shows no real premises, staff or patients.
+
+CONCEPT STUDY
+Lantern Dental
+
+Dental practice concept site designed and developed by M&U Ventures. A fictional business, not a client.
+
+A fictional Rozelle dental clinic with a real online booking system: a six-step flow backed by a live Postgres diary, a database constraint that stops double bookings, and a clinic dashboard to run it from — inside Ahpra's advertising rules.
+
+Home, treatments overview, six treatment pages, meet the team, new patients, fees and payment, FAQs, and contact and location pages
+Six-step online booking: new or returning patient, appointment type, practitioner preference, live availability, minimal details, review
+Postgres-backed diary with a database constraint that prevents two bookings landing on the same slot
+Clinic dashboard (demo access, no password): day calendar, requests queue, availability editing, appointment types, patient list and notification previews
+Read the case study
+→
+Open the live demo
+mardenrowe.muventures.com.au
+
+The scroll moment on Marden & Rowe's home page, shown here as a loop. Marden & Rowe is a concept demonstration site for a fictional firm; the film is AI-generated, hands only, not real clients or staff.
+
+CONCEPT STUDY
+Marden & Rowe Solicitors
+
+Law firm concept site designed and developed by M&U Ventures. A fictional business, not a client.
+
+A fictional Leichhardt solicitor and conveyancing firm with a courtroom-led client funnel: a five-step quote request that returns an instant estimate or routes to human review, a diary that won't double-book a consultation, and a demo client portal — inside the Legal Profession Uniform Law's rules.
+
+Home, services, buying, selling, contract review, the conveyancing process, fees and quote request, about and team, FAQs, resources and contact pages
+Five-step quote request: matter type, property type, suburb and state, stage and deadline, contact
+Instant sample estimate for standard NSW residential matters; automatic routing to human review for anything unusual, with the reason stated
+20-minute consultation booking with a diary that refuses an already-taken slot
+Read the case study
+→
+Open the live demo
+bianca.muventures.com.au
+PROSPECT CONCEPT
+Bianca Brown Realty
+
+Premium real estate prospect concept designed and developed by M&U Ventures. A fictional business, not a client.
+
+A black-and-gold Blue Mountains real estate concept built as a high-end outreach piece: cinematic listing presentation, luxury seller journey, buyer guidance and a polished follow-up deck for Brooke and Zac.
+
+Home, featured properties, selling, buying, area guide and contact pathways
+Black-and-gold visual system with Blue Mountains atmosphere and high-end editorial spacing
+Seller journey built around appraisal confidence, presentation, campaign launch and negotiation
+Buyer journey with property context, inspection prompts and enquiry continuity
+Read the case study
+→
+Open the live demo
+
+NEXT
+
+Your business could be the next concept site here.
+
+We publish client work only with the business’s approval. Until then, these concept sites are the most honest thing we can show you: the product itself.
+
+Start a conversation →
+
+READY WHEN YOU ARE
+
+Want a concept site like this for your business?
+
+Tell us about your business and your brand. We'll come back with a written proposal for a site designed around you.
+
+Request a concept site
+→
+Book a call
+
+M&U Ventures
+
+Websites for dental practices, law firms and independent real estate agencies, plus an AI receptionist for the calls you miss.
+
+muventuresau@muventures.com.au
+0493 221 615
+0451 607 104
+
+EXPLORE
+
+Dental
+Law
+Real estate
+AI receptionist
+Work
+Process
+About
+Contact
+
+VERTICALS
+
+Dental
+Law
+Real estate
+
+COMPANY
+
+FAQ
+Privacy Policy
+Terms
+
+© 2026 M&U Ventures. All rights reserved.
+
+M Khan & M.M Khan · Sydney, NSW

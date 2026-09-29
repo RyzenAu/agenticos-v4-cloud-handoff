@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Race bench #0 ready</title>
+<style>
+  body { margin: 0; font: 16px "Segoe UI", sans-serif; background: #fafafa; }
+  #banner { height: 0; overflow: hidden; background: #ffe066; transition: none; }
+  #banner.on { height: 48px; }
+  main { padding: 24px; width: 360px; }
+  button { display: block; width: 320px; height: 48px; margin: 0; border: 1px solid #999; font: inherit; background: #fff; }
+</style>
+</head>
+<body>
+<!-- A layout that shifts under the pointer: a banner comes and goes above the buttons every
+     200-600 ms, pushing them 48 px down and back. Clicking at a stale point lands on a neighbour.
+     Every button only records its name in the title; nothing here does anything. -->
+<div id="banner">A banner that comes and goes</div>
+<main>
+  <button type="button">Delete all</button>
+  <button type="button">Save draft</button>
+  <button type="button">Archive</button>
+</main>
+<script>
+  let n = 0;
+  for (const b of document.querySelectorAll("button")) b.addEventListener("click", () => { n++; document.title = `Race bench #${n} ${b.textContent}`; });
+  const banner = document.getElementById("banner");
+  const flip = () => { banner.classList.toggle("on"); setTimeout(flip, 200 + Math.random() * 400); };
+  setTimeout(flip, 300);
+</script>
+</body>
+</html>

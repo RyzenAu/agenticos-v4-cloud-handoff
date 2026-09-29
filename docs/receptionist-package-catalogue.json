@@ -1,0 +1,807 @@
+{
+  "schemaVersion": 2,
+  "catalogueVersion": "2026-09-27",
+  "source": "src/lib/receptionist-packages.ts",
+  "mode": "draft-only",
+  "liveCapabilitiesVerified": false,
+  "liveLineBooks": false,
+  "gstBasis": "Quoted ex GST; M&U is GST registered, so 10% GST is added.",
+  "unsupportedSectors": [
+    {
+      "sector": "trades",
+      "reason": "No trades playbook in SUPPORTED_NICHES; video material labels it 'Example trade set-up'. Not sold."
+    }
+  ],
+  "packages": [
+    {
+      "catalogueId": "receptionist-essential",
+      "catalogueVersion": "2026-09-27",
+      "title": "Booking Receptionist · Essential",
+      "tier": 1,
+      "shortName": "Essential",
+      "audience": "One location that wants its calls answered and booked. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]",
+      "sectors": [
+        "dental",
+        "property",
+        "legal"
+      ],
+      "pricing": {
+        "status": "approved",
+        "approvedAt": "2026-09-28",
+        "approvalReference": "Owner decision 28 Sep 2026: monthly price, launch allowance of included minutes and extra-minute rate approved, plus GST (M&U is GST registered). Review after 30 days or the first five paying clients. Setup fee NOT approved (setupStatus proposed).",
+        "setup": {
+          "cents": 99000,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "setupStatus": "proposed",
+        "monthly": {
+          "cents": 69900,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedMinutes": 400,
+        "overagePerMinute": {
+          "cents": 80,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedSmsSegments": 200,
+        "extraSmsSegment": {
+          "cents": 15,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "customerBilling": "per-second-aggregate-period",
+        "billing": {
+          "incrementSeconds": 1,
+          "periodRounding": "ceil-minute",
+          "minimumBillableSeconds": 5,
+          "rollover": false,
+          "receptionistRoundingMode": "PER_PERIOD",
+          "excluded": [
+            "Calls under 5 seconds",
+            "Calls that never reach the receptionist",
+            "M&U demo and test calls"
+          ]
+        },
+        "minimumTermMonths": 3,
+        "noticeDays": 30,
+        "rationale": "Owner-approved A$699/month and A$0.80 per extra minute (28 Sep). 400 minutes covers about 160 calls of 2.5 minutes at one location."
+      },
+      "display": {
+        "monthly": {
+          "exGstCents": 69900,
+          "inclGstCents": 76890
+        },
+        "setup": {
+          "exGstCents": 99000,
+          "inclGstCents": 108900
+        },
+        "setupStatus": "proposed",
+        "overagePerMinute": {
+          "exGstCents": 80,
+          "inclGstCents": 88
+        },
+        "extraSmsSegment": {
+          "exGstCents": 15,
+          "inclGstCents": 17
+        },
+        "gstNote": "Prices are quoted excluding GST. M&U Ventures is registered for GST, so 10% GST is added to every invoice."
+      },
+      "inclusions": {
+        "phoneNumbers": 1,
+        "locations": 1,
+        "calendars": 1,
+        "concurrentCallsFairUse": 3,
+        "coverModes": [
+          "After hours",
+          "When busy / no answer"
+        ],
+        "sms": [
+          "Booking confirmation (at go-live)"
+        ],
+        "reports": [
+          "Monthly usage summary: minutes used, remaining and overage"
+        ]
+      },
+      "support": {
+        "hours": "Mon–Fri 9:00am–5:00pm Sydney time, excluding NSW public holidays",
+        "firstResponse": "Next business day",
+        "channels": [
+          "Email",
+          "Phone"
+        ],
+        "reviews": "Setup review after the first 2 weeks"
+      },
+      "fairUse": [
+        "Inbound calls to the client's own business number(s) only; no outbound or marketing calls.",
+        "Up to 3 simultaneous calls; more by arrangement.",
+        "Included minutes and SMS reset each billing period and do not roll over."
+      ],
+      "readiness": {
+        "state": "internal-testing",
+        "checkedAt": "2026-09-27",
+        "evidence": [
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/buildmaster/client-profile.ts SUPPORTED_NICHES = REAL_ESTATE, DENTAL, LEGAL"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      },
+      "scope": [
+        {
+          "id": "answer",
+          "label": "Answers calls in the cover configured for each business; says it is automated and the call is recorded. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "message",
+          "label": "Takes a structured message and callback request",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "safety",
+          "label": "Urgent or life-threatening wording gets the 000 line first",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "booking",
+          "label": "Checks availability and books into a connected Google Calendar or Cal.com calendar, with a reference (a booking request otherwise)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "staff-alert",
+          "label": "Email alert to the practice for each new booking or urgent message",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "sms-confirmation",
+          "label": "SMS booking confirmation with STOP opt-out (caller consent asked on the call)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)"
+        },
+        {
+          "id": "transfer",
+          "label": "Live transfer to a person",
+          "state": "not-offered",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): TRANSFER_EXECUTION_ENABLED defaults false; audit 27 Sep found a branch that announced a transfer that never happened. Not offered."
+        }
+      ],
+      "integrations": [
+        {
+          "name": "Retell AI voice agent + Twilio AU mobile number",
+          "state": "live",
+          "limitation": "Demo line +61 485 011 208 is live on prompt v3 (message-taking). Client numbers are set up per client."
+        },
+        {
+          "name": "Google Calendar or Cal.com (up to 1)",
+          "state": "local-code",
+          "limitation": "Adapters exist; not yet activated in production. Confirmed bookings need a connected calendar."
+        },
+        {
+          "name": "Twilio SMS (confirmations, reminders, STOP)",
+          "state": "local-code",
+          "limitation": "Built and tested (send functions, STOP webhook, reminder cron); dry-run by default, not deployed; nothing has been sent."
+        },
+        {
+          "name": "Practice-management software",
+          "state": "absent",
+          "limitation": "Cliniko, Dentally, Core Practice and similar are not integrated. Scoped separately if ever built."
+        }
+      ],
+      "limitations": [
+        "The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests.",
+        "Not an emergency service. Anyone describing an emergency is told to hang up and call 000.",
+        "No clinical, legal or financial advice. No live transfer to a person in any tier.",
+        "Books only into a connected Google Calendar or Cal.com calendar. Practice-management software (Cliniko, Dentally, Core Practice) is not integrated.",
+        "Call audio and transcripts are processed by overseas providers, including in the United States.",
+        "No guaranteed number of bookings, patients or revenue."
+      ],
+      "onboarding": [
+        "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+        "Connect one Google Calendar or Cal.com calendar (client grants access; no passwords shared)",
+        "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+        "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+        "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured"
+      ],
+      "approvalRequired": false,
+      "publishable": false,
+      "kind": "receptionist",
+      "configurationDraft": {
+        "catalogueId": "receptionist-essential",
+        "catalogueVersion": "2026-09-27",
+        "niche": null,
+        "supportedNiches": [
+          "DENTAL",
+          "REAL_ESTATE",
+          "LEGAL"
+        ],
+        "configurationState": "draft-requires-tenant-acceptance",
+        "provisionable": false,
+        "enabledTools": [],
+        "calendarConfigured": false,
+        "transferConfigured": false,
+        "smsConfigured": false,
+        "calendarsAllowed": 1,
+        "phoneNumbersAllowed": 1,
+        "includedMinutes": 400,
+        "includedSmsSegments": 200,
+        "customerBilling": "per-second-aggregate-period",
+        "roundingMode": "PER_PERIOD",
+        "minimumBillableSeconds": 5,
+        "priceApproval": "approved",
+        "onboarding": [
+          "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+          "Connect one Google Calendar or Cal.com calendar (client grants access; no passwords shared)",
+          "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+          "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+          "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      }
+    },
+    {
+      "catalogueId": "receptionist-professional",
+      "catalogueVersion": "2026-09-27",
+      "title": "Booking Receptionist · Professional",
+      "tier": 2,
+      "shortName": "Professional",
+      "audience": "A busy practice with several practitioners that wants reminders and a weekly report.",
+      "sectors": [
+        "dental",
+        "property",
+        "legal"
+      ],
+      "pricing": {
+        "status": "approved",
+        "approvedAt": "2026-09-28",
+        "approvalReference": "Owner decision 28 Sep 2026: monthly price, launch allowance of included minutes and extra-minute rate approved, plus GST (M&U is GST registered). Review after 30 days or the first five paying clients. Setup fee NOT approved (setupStatus proposed).",
+        "setup": {
+          "cents": 149000,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "setupStatus": "proposed",
+        "monthly": {
+          "cents": 109900,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedMinutes": 1000,
+        "overagePerMinute": {
+          "cents": 75,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedSmsSegments": 600,
+        "extraSmsSegment": {
+          "cents": 15,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "customerBilling": "per-second-aggregate-period",
+        "billing": {
+          "incrementSeconds": 1,
+          "periodRounding": "ceil-minute",
+          "minimumBillableSeconds": 5,
+          "rollover": false,
+          "receptionistRoundingMode": "PER_PERIOD",
+          "excluded": [
+            "Calls under 5 seconds",
+            "Calls that never reach the receptionist",
+            "M&U demo and test calls"
+          ]
+        },
+        "minimumTermMonths": 3,
+        "noticeDays": 30,
+        "rationale": "Owner-approved A$1,099/month and A$0.75 per extra minute (28 Sep). 2.5x Essential's minutes for 1.57x the price; reminders and the weekly proof report add retention value, and support time doubles."
+      },
+      "display": {
+        "monthly": {
+          "exGstCents": 109900,
+          "inclGstCents": 120890
+        },
+        "setup": {
+          "exGstCents": 149000,
+          "inclGstCents": 163900
+        },
+        "setupStatus": "proposed",
+        "overagePerMinute": {
+          "exGstCents": 75,
+          "inclGstCents": 83
+        },
+        "extraSmsSegment": {
+          "exGstCents": 15,
+          "inclGstCents": 17
+        },
+        "gstNote": "Prices are quoted excluding GST. M&U Ventures is registered for GST, so 10% GST is added to every invoice."
+      },
+      "inclusions": {
+        "phoneNumbers": 1,
+        "locations": 1,
+        "calendars": 3,
+        "concurrentCallsFairUse": 5,
+        "coverModes": [
+          "After hours",
+          "When busy / no answer",
+          "All calls"
+        ],
+        "sms": [
+          "Booking confirmation (at go-live)",
+          "Appointment reminder (at go-live)",
+          "Callback confirmation (at go-live)"
+        ],
+        "reports": [
+          "Monthly usage summary",
+          "Weekly proof report: calls, bookings, urgent calls routed, issues flagged (at go-live)"
+        ]
+      },
+      "support": {
+        "hours": "Mon–Fri 9:00am–5:00pm Sydney time, excluding NSW public holidays",
+        "firstResponse": "Same business day (within 4 business hours)",
+        "channels": [
+          "Email",
+          "Phone"
+        ],
+        "reviews": "Monthly 20-minute check-in"
+      },
+      "fairUse": [
+        "Inbound calls to the client's own business number(s) only; no outbound or marketing calls.",
+        "Up to 5 simultaneous calls; more by arrangement.",
+        "Included minutes and SMS reset each billing period and do not roll over."
+      ],
+      "readiness": {
+        "state": "internal-testing",
+        "checkedAt": "2026-09-27",
+        "evidence": [
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/buildmaster/client-profile.ts SUPPORTED_NICHES = REAL_ESTATE, DENTAL, LEGAL"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      },
+      "scope": [
+        {
+          "id": "answer",
+          "label": "Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "message",
+          "label": "Takes a structured message and callback request",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "safety",
+          "label": "Urgent or life-threatening wording gets the 000 line first",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "booking",
+          "label": "Checks availability and books into a connected Google Calendar or Cal.com calendar, with a reference (a booking request otherwise)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "staff-alert",
+          "label": "Email alert to the practice for each new booking or urgent message",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "sms-confirmation",
+          "label": "SMS booking confirmation with STOP opt-out (caller consent asked on the call)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)"
+        },
+        {
+          "id": "sms-reminder",
+          "label": "SMS appointment reminders outside 8pm–9am quiet hours",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)"
+        },
+        {
+          "id": "weekly-report",
+          "label": "Weekly proof report with automatic call-quality checks",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): docs/delivery/ADD-ONS.md (Call QA + weekly proof report built, synthetic data only, never run on a real call)"
+        },
+        {
+          "id": "transfer",
+          "label": "Live transfer to a person",
+          "state": "not-offered",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): TRANSFER_EXECUTION_ENABLED defaults false; audit 27 Sep found a branch that announced a transfer that never happened. Not offered."
+        }
+      ],
+      "integrations": [
+        {
+          "name": "Retell AI voice agent + Twilio AU mobile number",
+          "state": "live",
+          "limitation": "Demo line +61 485 011 208 is live on prompt v3 (message-taking). Client numbers are set up per client."
+        },
+        {
+          "name": "Google Calendar or Cal.com (up to 3)",
+          "state": "local-code",
+          "limitation": "Adapters exist; not yet activated in production. Confirmed bookings need a connected calendar."
+        },
+        {
+          "name": "Twilio SMS (confirmations, reminders, STOP)",
+          "state": "local-code",
+          "limitation": "Built and tested (send functions, STOP webhook, reminder cron); dry-run by default, not deployed; nothing has been sent."
+        },
+        {
+          "name": "Practice-management software",
+          "state": "absent",
+          "limitation": "Cliniko, Dentally, Core Practice and similar are not integrated. Scoped separately if ever built."
+        }
+      ],
+      "limitations": [
+        "The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests.",
+        "Not an emergency service. Anyone describing an emergency is told to hang up and call 000.",
+        "No clinical, legal or financial advice. No live transfer to a person in any tier.",
+        "Books only into a connected Google Calendar or Cal.com calendar. Practice-management software (Cliniko, Dentally, Core Practice) is not integrated.",
+        "Call audio and transcripts are processed by overseas providers, including in the United States.",
+        "No guaranteed number of bookings, patients or revenue."
+      ],
+      "onboarding": [
+        "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+        "Connect up to 3 practitioner calendars (Google Calendar or Cal.com) and map services to each",
+        "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+        "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+        "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured",
+        "SMS consent wording and reminder timing agreed; first weekly report date set"
+      ],
+      "approvalRequired": false,
+      "publishable": false,
+      "kind": "receptionist",
+      "configurationDraft": {
+        "catalogueId": "receptionist-professional",
+        "catalogueVersion": "2026-09-27",
+        "niche": null,
+        "supportedNiches": [
+          "DENTAL",
+          "REAL_ESTATE",
+          "LEGAL"
+        ],
+        "configurationState": "draft-requires-tenant-acceptance",
+        "provisionable": false,
+        "enabledTools": [],
+        "calendarConfigured": false,
+        "transferConfigured": false,
+        "smsConfigured": false,
+        "calendarsAllowed": 3,
+        "phoneNumbersAllowed": 1,
+        "includedMinutes": 1000,
+        "includedSmsSegments": 600,
+        "customerBilling": "per-second-aggregate-period",
+        "roundingMode": "PER_PERIOD",
+        "minimumBillableSeconds": 5,
+        "priceApproval": "approved",
+        "onboarding": [
+          "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+          "Connect up to 3 practitioner calendars (Google Calendar or Cal.com) and map services to each",
+          "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+          "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+          "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured",
+          "SMS consent wording and reminder timing agreed; first weekly report date set"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      }
+    },
+    {
+      "catalogueId": "receptionist-premium",
+      "catalogueVersion": "2026-09-27",
+      "title": "Booking Receptionist · Premium",
+      "tier": 3,
+      "shortName": "Premium",
+      "audience": "Multi-location or high-volume practices that want all calls covered and M&U reviewing call quality every week.",
+      "sectors": [
+        "dental",
+        "property",
+        "legal"
+      ],
+      "pricing": {
+        "status": "approved",
+        "approvedAt": "2026-09-28",
+        "approvalReference": "Owner decision 28 Sep 2026: monthly price, launch allowance of included minutes and extra-minute rate approved, plus GST (M&U is GST registered). Review after 30 days or the first five paying clients. Setup fee NOT approved (setupStatus proposed).",
+        "setup": {
+          "cents": 249000,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "setupStatus": "proposed",
+        "monthly": {
+          "cents": 199900,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedMinutes": 1800,
+        "overagePerMinute": {
+          "cents": 70,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "includedSmsSegments": 1200,
+        "extraSmsSegment": {
+          "cents": 15,
+          "currency": "AUD",
+          "gst": "exclusive"
+        },
+        "customerBilling": "per-second-aggregate-period",
+        "billing": {
+          "incrementSeconds": 1,
+          "periodRounding": "ceil-minute",
+          "minimumBillableSeconds": 5,
+          "rollover": false,
+          "receptionistRoundingMode": "PER_PERIOD",
+          "excluded": [
+            "Calls under 5 seconds",
+            "Calls that never reach the receptionist",
+            "M&U demo and test calls"
+          ]
+        },
+        "minimumTermMonths": 6,
+        "noticeDays": 30,
+        "rationale": "Owner-approved A$1,999/month and A$0.70 per extra minute (28 Sep). Covers up to 3 numbers and 3 extra hours a month of M&U call review."
+      },
+      "display": {
+        "monthly": {
+          "exGstCents": 199900,
+          "inclGstCents": 219890
+        },
+        "setup": {
+          "exGstCents": 249000,
+          "inclGstCents": 273900
+        },
+        "setupStatus": "proposed",
+        "overagePerMinute": {
+          "exGstCents": 70,
+          "inclGstCents": 77
+        },
+        "extraSmsSegment": {
+          "exGstCents": 15,
+          "inclGstCents": 17
+        },
+        "gstNote": "Prices are quoted excluding GST. M&U Ventures is registered for GST, so 10% GST is added to every invoice."
+      },
+      "inclusions": {
+        "phoneNumbers": 3,
+        "locations": 3,
+        "calendars": 10,
+        "concurrentCallsFairUse": 8,
+        "coverModes": [
+          "After hours",
+          "When busy / no answer",
+          "All calls"
+        ],
+        "sms": [
+          "Booking confirmation (at go-live)",
+          "Appointment reminder (at go-live)",
+          "Callback confirmation (at go-live)"
+        ],
+        "reports": [
+          "Monthly usage summary",
+          "Weekly proof report (at go-live)",
+          "M&U works the call-review queue weekly and writes fix notes (at go-live)"
+        ]
+      },
+      "support": {
+        "hours": "Mon–Fri 9:00am–5:00pm Sydney time, excluding NSW public holidays",
+        "firstResponse": "Within 2 business hours",
+        "channels": [
+          "Email",
+          "Phone",
+          "Named contact"
+        ],
+        "reviews": "Monthly 45-minute optimisation review"
+      },
+      "fairUse": [
+        "Inbound calls to the client's own business number(s) only; no outbound or marketing calls.",
+        "Up to 8 simultaneous calls across locations; more by arrangement.",
+        "Included minutes and SMS reset each billing period and do not roll over."
+      ],
+      "readiness": {
+        "state": "internal-testing",
+        "checkedAt": "2026-09-27",
+        "evidence": [
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)",
+          "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/buildmaster/client-profile.ts SUPPORTED_NICHES = REAL_ESTATE, DENTAL, LEGAL"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      },
+      "scope": [
+        {
+          "id": "answer",
+          "label": "Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "message",
+          "label": "Takes a structured message and callback request",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "safety",
+          "label": "Urgent or life-threatening wording gets the 000 line first",
+          "state": "available",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
+        },
+        {
+          "id": "booking",
+          "label": "Checks availability and books into a connected Google Calendar or Cal.com calendar, with a reference (a booking request otherwise)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "staff-alert",
+          "label": "Email alert to the practice for each new booking or urgent message",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/calendar/* (Google Calendar, Cal.com adapters), src/app/api/retell/tools/route.ts, docs/BOOKING-DEMO-ENABLEMENT.md (commit 4b8f483; new booking paths not yet test-proven; deploy, migrations and Retell tools need owner yes)"
+        },
+        {
+          "id": "sms-confirmation",
+          "label": "SMS booking confirmation with STOP opt-out (caller consent asked on the call)",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)"
+        },
+        {
+          "id": "sms-reminder",
+          "label": "SMS appointment reminders outside 8pm–9am quiet hours",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): src/lib/sms/* + docs/SMS-ENABLEMENT.md STATUS 27 Sep (built and tested: send functions, STOP webhook, reminder cron, 85 tests; dry-run by default, nothing sent, not deployed; Twilio messaging, live send and deploy need owner yes, docs/GO-LIVE-CHECKLIST.md steps 9-12)"
+        },
+        {
+          "id": "weekly-report",
+          "label": "Weekly proof report with automatic call-quality checks",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): docs/delivery/ADD-ONS.md (Call QA + weekly proof report built, synthetic data only, never run on a real call)"
+        },
+        {
+          "id": "assured-review",
+          "label": "M&U reviews flagged calls weekly and fixes prompt or knowledge gaps",
+          "state": "at-go-live",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): docs/delivery/ADD-ONS.md (Call QA + weekly proof report built, synthetic data only, never run on a real call)"
+        },
+        {
+          "id": "transfer",
+          "label": "Live transfer to a person",
+          "state": "not-offered",
+          "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): TRANSFER_EXECUTION_ENABLED defaults false; audit 27 Sep found a branch that announced a transfer that never happened. Not offered."
+        }
+      ],
+      "integrations": [
+        {
+          "name": "Retell AI voice agent + Twilio AU mobile number",
+          "state": "live",
+          "limitation": "Demo line +61 485 011 208 is live on prompt v3 (message-taking). Client numbers are set up per client."
+        },
+        {
+          "name": "Google Calendar or Cal.com (up to 10)",
+          "state": "local-code",
+          "limitation": "Adapters exist; not yet activated in production. Confirmed bookings need a connected calendar."
+        },
+        {
+          "name": "Twilio SMS (confirmations, reminders, STOP)",
+          "state": "local-code",
+          "limitation": "Built and tested (send functions, STOP webhook, reminder cron); dry-run by default, not deployed; nothing has been sent."
+        },
+        {
+          "name": "Practice-management software",
+          "state": "absent",
+          "limitation": "Cliniko, Dentally, Core Practice and similar are not integrated. Scoped separately if ever built."
+        }
+      ],
+      "limitations": [
+        "The live demo line does not book yet: it takes a message. Booking and SMS start at go-live after owner activation and acceptance tests.",
+        "Not an emergency service. Anyone describing an emergency is told to hang up and call 000.",
+        "No clinical, legal or financial advice. No live transfer to a person in any tier.",
+        "Books only into a connected Google Calendar or Cal.com calendar. Practice-management software (Cliniko, Dentally, Core Practice) is not integrated.",
+        "Call audio and transcripts are processed by overseas providers, including in the United States.",
+        "No guaranteed number of bookings, patients or revenue."
+      ],
+      "onboarding": [
+        "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+        "Connect up to 10 calendars across up to 3 locations; one number per location",
+        "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+        "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+        "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured",
+        "SMS consent wording and reminder timing agreed; first weekly report date set",
+        "30-day hypercare: daily call-review for the first 2 weeks, then weekly"
+      ],
+      "approvalRequired": false,
+      "publishable": false,
+      "kind": "receptionist",
+      "configurationDraft": {
+        "catalogueId": "receptionist-premium",
+        "catalogueVersion": "2026-09-27",
+        "niche": null,
+        "supportedNiches": [
+          "DENTAL",
+          "REAL_ESTATE",
+          "LEGAL"
+        ],
+        "configurationState": "draft-requires-tenant-acceptance",
+        "provisionable": false,
+        "enabledTools": [],
+        "calendarConfigured": false,
+        "transferConfigured": false,
+        "smsConfigured": false,
+        "calendarsAllowed": 10,
+        "phoneNumbersAllowed": 3,
+        "includedMinutes": 1800,
+        "includedSmsSegments": 1200,
+        "customerBilling": "per-second-aggregate-period",
+        "roundingMode": "PER_PERIOD",
+        "minimumBillableSeconds": 5,
+        "priceApproval": "approved",
+        "onboarding": [
+          "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",
+          "Connect up to 10 calendars across up to 3 locations; one number per location",
+          "Configure prompt, knowledge summary and disclosures; set billing to per-period rounding",
+          "Client switches on call forwarding in the agreed cover; until Acceptance the line only takes messages; rollback = switch it off",
+          "5 scripted test calls with the client: a booking (or booking request), an urgent-wording call, and calls through the configured cover; a text too when SMS is configured",
+          "SMS consent wording and reminder timing agreed; first weekly report date set",
+          "30-day hypercare: daily call-review for the first 2 weeks, then weekly"
+        ],
+        "releaseGates": [
+          "Owner yes: deploy + migrations for booking and SMS (receptionist branch fix/prompt-truth-20260927)",
+          "Owner yes: attach booking tools, booking prompt and inbound webhook to the Retell agent; 5 retest calls",
+          "Owner yes: Twilio messaging on +61 485 011 208, STOP webhook and Vercel env; 5-text live test to the owner's own mobile",
+          "Booking and SMS synthetic suites written and passing (DST, race, no slots, out of hours, opt-out)",
+          "Client calendar connected and a test booking confirmed in the client's own calendar",
+          "Signed service agreement after qualified legal review; client privacy policy names overseas processors (APP 1, 5, 8)"
+        ]
+      }
+    }
+  ]
+}

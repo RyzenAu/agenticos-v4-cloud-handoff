@@ -1,0 +1,556 @@
+/* Generated readable-size overrides (L4, 29 Sep 2026): every font-size under 13px on this page is lifted to 13px.
+   Scoped under .ws-settings-panel so it wins on specificity and the source files stay untouched. */
+.ws-settings-panel .ws-codex-connections li strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-codex-connections li > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-photo > div > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-photo > div > button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-photo-button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-field-grid > label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-field-grid > label > span > small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-field-grid input,
+.ws-settings-panel .ws-field-grid select,
+.ws-settings-panel .ws-field-grid textarea {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-money-input > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-details > summary {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-details > summary > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-primary {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-error {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-muted {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-success {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-discovery > header p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-tool strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-tool small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-status {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-discovery-note {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-text-button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-account-choices strong,
+.ws-settings-panel .ws-export-entry strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-account-choices small,
+.ws-settings-panel .ws-export-entry small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-import-scopes legend {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-import-scopes label {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-import-actions > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive summary > span:not(.mc-source-brand) {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive > div {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-connections-step .ws-discovery h3 {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-connections-step .ws-discovery > header p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-connections-step .ws-text-button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-connections-step .ws-discovery-note {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-name-field > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-name-field input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-resources {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-hourly-heading label {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-hourly-heading > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-hourly-scale {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-hourly-field > .ws-muted {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles > header > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-exit {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-tabs button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-field > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-goals label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-back {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm .ws-error {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-modal-done {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-setup-agent header small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-setup-agent dl {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-setup-agent p,
+.ws-settings-panel .ws-setup-agents p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-preferences {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-direct-photo span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-about-pair a {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles.is-compact h2 {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles.is-compact > p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles.is-compact label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-social-profiles.is-compact input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-tabs button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-flow-next {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-back {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-field > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-social-profiles.is-compact label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-social-profiles.is-compact input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-goals input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-social-profiles.is-compact label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-social-profiles.is-compact input {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-setup-guide {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-imported > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-imported > em {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-existing-heading p,
+.ws-settings-panel .ar-existing-footnote,
+.ws-settings-panel .ar-native-details p {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-existing-selection small {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-native-details {
+  font-size: 13px;
+}
+.ws-settings-panel .op-form label.ar-mail-access-choice span {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-direct-heading p {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-client-drop small {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-client-instructions {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-client-instructions .ar-redirect-uri {
+  font-size: 13px;
+}
+.ws-settings-panel .ar-account-direct .ar-direct-private {
+  font-size: 13px;
+}
+.ws-settings-panel .agentic-account-groups button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-link-list li > div > span,
+.ws-settings-panel .ws-profile-link-list small,
+.ws-settings-panel .ws-profile-link-suggestion small {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-link-list a,
+.ws-settings-panel .ws-profile-link-suggestion a {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-public-profiles label {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-public-profiles :is(input, select) {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-link-finder > summary {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-profile-link-suggestions > strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-settings-memory-link p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-settings-memory-link a {
+  font-size: 13px;
+}
+.ws-settings-panel .jarvis-settings-hint {
+  font-size: 13px;
+}
+.ws-settings-panel .jarvis-settings-field {
+  font-size: 13px;
+}
+.ws-settings-panel .jarvis-settings-table {
+  font-size: 13px;
+}
+.ws-settings-panel .jarvis-settings-table button,
+.ws-settings-panel .jarvis-settings-add {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connect-accounts {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connections-summary strong {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connections-summary p {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-provider-group > h3 {
+  font-size: 13px !important;
+}
+.ws-settings-panel .biz-provider-identity strong {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-provider-identity > span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-provider-status {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-provider-action {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-assistant-imports summary {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-assistant-imports p {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connection-error {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connection-notice {
+  font-size: 13px;
+}
+.ws-settings-panel .business-studio .biz-finance-demo {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-youtube-channel > label {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-youtube-channel > p {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-youtube-channel input {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-youtube-edit {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-youtube-history {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-visual-eyebrow {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-visual-copy>span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-step-number {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-title>span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-draft {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-personal summary>span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-field-note {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-goal-kicker {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-goal-kicker>span:first-child {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-goal-saved {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-week-review>span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-widget-list small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-share>p {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory>summary small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-modes button {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-label>small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-prompts button {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-storage {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-file span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-remove-file {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-duplicate {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-status li {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-status small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-status a {
+  font-size: 13px;
+}
+@media (max-width: 450px) {
+.ws-settings-panel .ws-field-grid > label > span {
+  font-size: 13px;
+}
+}
+@media (max-width: 600px) {
+.ws-settings-panel .ws-connections-step .ws-account-choices strong {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-mail-archive summary > span:not(.mc-source-brand) {
+  font-size: 13px;
+}
+}
+@media (max-width: 520px) {
+.ws-settings-panel .ws-personal-settings > summary > span {
+  font-size: 13px;
+}
+}
+@media (max-width: 560px) {
+.ws-settings-panel .ws-calm-exit {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-tabs button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-question p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-goals label > span {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm-goals input {
+  font-size: 13px;
+}
+}
+@media(max-width:560px) {
+.ws-settings-panel .ws-calm[data-setup-step="1"] .ws-calm-question p {
+  font-size: 13px;
+}
+}
+@media (max-width:700px) {
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-tabs button {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-calm-question p {
+  font-size: 13px;
+}
+.ws-settings-panel .ws-calm.ws-framed .ws-flow-next {
+  font-size: 13px;
+}
+}
+@media(max-width:480px) {
+.ws-settings-panel .agentic-account-groups button {
+  font-size: 13px;
+}
+}
+@media (max-width: 680px) {
+.ws-settings-panel .biz-provider-status {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-provider-action {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connections-summary p {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-connect-accounts {
+  font-size: 13px;
+}
+}
+@media(max-width:1100px) {
+.ws-settings-panel .biz-setup-steps>button {
+  font-size: 13px;
+}
+}
+@media(max-width:820px) {
+.ws-settings-panel .biz-setup-visual-copy>small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-visual-copy>span {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-visual-eyebrow {
+  font-size: 13px;
+}
+}
+@media(max-width:520px) {
+.ws-settings-panel .biz-setup-visual-copy>small {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-steps>button {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-goal-kicker {
+  font-size: 13px;
+}
+.ws-settings-panel .biz-setup-memory-save {
+  font-size: 13px;
+}
+}
+
+.ws-settings-panel .op-panel-title small {
+  font-size: 13px;
+}
+.ws-settings-panel .op-panel-title > a {
+  font-size: 13px;
+}
+.ws-settings-panel .op-form label {
+  font-size: 13px;
+}
+.ws-settings-panel .op-input,
+.ws-settings-panel .op-form input,
+.ws-settings-panel .op-form select,
+.ws-settings-panel .op-form textarea,
+.ws-settings-panel .op-select {
+  font-size: 13px;
+}
+.ws-settings-panel .op-form-help {
+  font-size: 13px;
+}
+.ws-settings-panel .op-library-tools .op-select {
+  font-size: 13px;
+}
+.ws-settings-panel .op-setting h3 {
+  font-size: 13px;
+}
+.ws-settings-panel .op-setting p {
+  font-size: 13px;
+}
+.ws-settings-panel .op-setting-links a {
+  font-size: 13px;
+}

@@ -1,0 +1,149 @@
+{
+  "dashboardCommercial": {
+    "ok": true,
+    "mrrCents": 109900,
+    "setupFeesCents": 149000,
+    "unassignedClients": 0,
+    "source": "receptionist-packages.ts (monthly price approved, ex GST; setup fee proposed, not approved) x locally-assigned clients",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "dashboardClients": {
+    "ok": true,
+    "rows": [
+      {
+        "organizationId": "org_synthetic_1",
+        "slug": "synthetic-dental",
+        "name": "Synthetic Dental (fictional)",
+        "niche": "DENTAL",
+        "isDemoTenant": false,
+        "packageId": "receptionist-professional",
+        "packageName": "Professional",
+        "onboardingStatus": "live",
+        "calendar": {
+          "connected": true,
+          "provider": "GOOGLE",
+          "reason": "configured"
+        },
+        "minutes": {
+          "includedPerMonth": 1000,
+          "usedThisMonth": 1200,
+          "remaining": 0,
+          "overageMinutes": 200,
+          "billableCurrentPeriod": 1200
+        },
+        "bookings": {
+          "total": 200,
+          "confirmed": 200,
+          "cancelled": 0,
+          "failed": 0,
+          "madeOnCalls": 200,
+          "sandbox": 0,
+          "upcoming": 20
+        },
+        "transfers": {
+          "attempted": 0,
+          "confirmed": 0,
+          "failed": 0
+        },
+        "handoffs": {
+          "pendingAlerts": 0,
+          "failedAlerts": 0,
+          "callbackRequests": 0
+        },
+        "sms": {
+          "enabled": false
+        },
+        "costs": {
+          "estimatedMonthlyCents": 26635,
+          "measuredMonthlyCents": null,
+          "reconciledMonthlyCents": null,
+          "reason": "Estimate only: one or more provider rates are unknown (see business-economics.ts warnings)."
+        },
+        "commercial": {
+          "setupFeeCents": 149000,
+          "mrrCents": 109900,
+          "marginCents": 98265,
+          "marginPct": 78.67,
+          "caveat": "Estimated contribution margin from this month's aggregate minutes, not per-call durations or a reconciled invoice."
+        }
+      }
+    ],
+    "source": "MU-Receptionist agency feed (/api/agency/feed?view=metadata)",
+    "asOf": "2026-09-27T14:45:08.286Z",
+    "stale": false,
+    "staleAfterMs": 86400000
+  },
+  "invoiceDraft": {
+    "lines": [
+      {
+        "description": "AI receptionist, Booking Receptionist · Professional: first month (approved catalogue price, ex GST)",
+        "cents": 109900,
+        "gst": "exclusive",
+        "exGstCents": 109900,
+        "gstCents": 10990,
+        "totalCents": 120890
+      }
+    ],
+    "notInvoiced": [
+      "AI receptionist setup, Booking Receptionist · Professional: not invoiced; the setup fee is proposed, not yet approved."
+    ],
+    "subtotal": 109900,
+    "gst": 10990,
+    "total": 120890
+  },
+  "fixture": {
+    "packageId": "receptionist-professional",
+    "billableMinutes": 1200,
+    "lines": [
+      {
+        "id": "monthly",
+        "description": "Booking Receptionist · Professional, monthly fee",
+        "quantity": 1,
+        "unitExGstCents": 109900,
+        "exGstCents": 109900,
+        "gstCents": 10990,
+        "inclGstCents": 120890
+      },
+      {
+        "id": "overage-minutes",
+        "description": "Extra AI minutes beyond 1,000 included",
+        "quantity": 200,
+        "unitExGstCents": 75,
+        "exGstCents": 15000,
+        "gstCents": 1500,
+        "inclGstCents": 16500
+      },
+      {
+        "id": "sms-overage",
+        "description": "Extra SMS segments beyond 600 included",
+        "quantity": 0,
+        "unitExGstCents": 15,
+        "exGstCents": 0,
+        "gstCents": 0,
+        "inclGstCents": 0
+      }
+    ],
+    "totals": {
+      "exGstCents": 124900,
+      "gstCents": 12490,
+      "totalInclGstCents": 137390
+    },
+    "setupFee": {
+      "status": "proposed",
+      "invoiced": false,
+      "note": "Setup fees are PROPOSED; no app may add a setup line."
+    },
+    "transfers": {
+      "legs": [
+        {
+          "count": 2,
+          "seconds": 180
+        }
+      ],
+      "customerBillable": false,
+      "note": "Transfer is not offered in any tier today. Post-transfer minutes are carrier cost only: Retell's AI fee stops at the handoff and the client is billed for AI minutes only."
+    }
+  }
+}
