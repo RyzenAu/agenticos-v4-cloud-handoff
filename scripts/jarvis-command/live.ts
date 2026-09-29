@@ -18,6 +18,7 @@ import { browserSkillIntent } from "../j2/intents";
 import { typedBrowserTarget } from "../j2/typed";
 import { receptionistAnswer, receptionistQuestion } from "./receptionist";
 import type { ReceptionistSnapshot } from "../receptionist/types";
+import type { DeskPayments } from "../desk-payments/service";
 
 /** A preview (ARGENTIC_PREVIEW=1) or quiet copy (AGENTIC_OS_NO_BACKGROUND=1): no real OS side effects. */
 const previewCopy = () => backgroundJobsDisabled() || process.env.ARGENTIC_PREVIEW === "1";
@@ -37,9 +38,11 @@ export function createLiveCommandService(options: {
   /** The leads service (createLeadsApi): CRM actions by voice or typing. */
   leads?: () => LeadsApiLike | undefined;
   /** The Jarvis skills (timers, alarms, reminders): "remember to …" becomes a real reminder. */
-  skills?: () => { run(body: unknown, options?: { remote?: boolean }): Promise<{ ok: boolean; said: string }> } | undefined;
+  skills?: () => { run(body: unknown, options?: { remote?: boolean; desk?: boolean }): Promise<{ ok: boolean; said: string }> } | undefined;
   /** The same frontmost Jarvis Chrome check used by voice for current-page actions. */
   jarvisChromeInFront?: () => Promise<boolean>;
+  /** Desk payments (scripts/desk-payments, P1): typed words at his desk. Absent: typed commands are exactly as before. */
+  deskPay?: () => DeskPayments | undefined;
 }): CommandService {
   const { devices } = options;
   // Track 3's coding detector, when its branch is in this tree (coding words then open its draft page).
@@ -90,6 +93,40 @@ export function createLiveCommandService(options: {
       if ("skill" in req && req.skill === "say") return { ok: false, said: String((req as { text?: string }).text ?? "When should I remind you?") };
       const r = await skills.run(req, { remote: principal.via !== "loopback-owner" });
       return { ok: r.ok, said: r.said };
+    },
+    // Desk payments: a typed payment order, yes, no, or "open my bank" is answered here ONLY for the owner at his desk.
+    deskPay: {
+      handle: async (utterance, principal, source) => {
+        const desk = options.deskPay?.();
+        if (!desk) return null;
+        const verdict = desk.verdict(principal);
+        if (!verdict.ok) return null;
+        // Only the typed box's own words count as his here. A command a model sent (source "voice") is never recorded as heard, and
+        // its "yes" or "no" never answers a payment: it is just text.
+        const typed = source === "typed";
+        const turn = await desk.turn(utterance, { desk: true, answered: false, channel: typed ? "typed" : "voice", record: typed });
+        if (!turn) return null;
+        if ("say" in turn) return { ok: !turn.refused && !turn.ask, said: turn.say, ask: turn.ask, refused: turn.refused };
+        const call = turn.call as { skill?: string; action?: string; url?: string; name?: string };
+        if (call.skill === "browser") {
+          const skills = options.skills?.();
+          if (!skills) return { ok: false, said: "Jarvis's browser skill isn't available here, so nothing opened." };
+          const r = await skills.run(call, { remote: false, desk: true });
+          return { ok: r.ok, said: r.said };
+        }
+        if (call.action === "confirm" && typed) {
+          const c = turn.call as { id?: unknown; ticket?: unknown };
+          const r = await desk.confirm(String(c.id ?? ""), { how: "typed-yes", ticket: c.ticket }, { desk: verdict, source: "typed" });
+          return { ok: r.ok, said: r.said };
+        }
+        if (call.action === "confirm") return null;
+        const r = await desk.request(String((turn.call as { text?: unknown }).text ?? utterance), { desk: verdict, source: typed ? "typed" : "voice" });
+        return { ok: r.ok, said: r.said, ask: r.asks, refused: r.refused };
+      },
+      cancelAll: (principal) => {
+        const desk = options.deskPay?.();
+        if (desk && desk.verdict(principal).ok) desk.cancel("all");
+      },
     },
     ...(options.receptionist
       ? {

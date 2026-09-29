@@ -40,6 +40,8 @@ import { commandIntent } from "./jarvis-command/words";
 import { rememberToReminder } from "./jarvis-command/plan";
 import { createTone, spokenSafe } from "./j4/spoken";
 import { needsMeIntent, needsYouSaid, type NeedsYouSources } from "./workspace/needs-you-voice";
+import { deskMoneyOrder, deskOpenOrder, type DeskOpen } from "./desk-payments/request";
+import type { DeskTurn } from "./desk-payments/service";
 /**
  * Turn-based Jarvis engine on free-tier providers: Groq Whisper hears, a Groq model
  * decides and calls the same tools as the realtime engine, and Groq Orpheus or Gemini
@@ -73,6 +75,15 @@ type Dependencies = {
   /** Away mode (scripts/away-mode): "away mode on/off", "while I'm away, …" → the line to say, else null. */
   away?: (utterance: string) => Promise<string | null>;
   /**
+   * Desk payments (scripts/desk-payments, P1 29 Sep): only ever consulted for a turn the HOST verified as the owner at his
+   * desk (`trusted.desk`, never a body field). His own words → a `payment` skill call (request, or a confirm carrying a
+   * one-time ticket), a browser open for a bank or payment site, or one line; null when it isn't a payment matter.
+   */
+  deskPay?: {
+    turn(utterance: string, t: { desk: boolean; answered?: boolean; channel?: "voice" | "typed"; previousAssistant?: string | null; spokenYes?: string | null; record?: boolean }): Promise<DeskTurn>;
+    open(text: string): DeskOpen;
+  };
+  /**
    * Shared memory (scripts/memory/voice-turn.ts): "remember …", "save this to the vault …", "what do we
    * know about …", "correct that …", "forget …" → the line to say, else null. `caller` is the verified
    * request identity the host passed to handle(); a forget's yes needs `spokenYes`, the id the voice
@@ -98,6 +109,8 @@ type Dependencies = {
   /** Model health for the brain/voice rotation (default: in-memory, mirrored to the shared file). */
   health?: HealthStore;
 };
+/** Facts the HOST verified about the caller (never from a request body). `desk`: the owner at his desk (scripts/desk-payments/policy.ts). */
+type Trusted = { desk?: boolean };
 type TtsProvider = "groq" | "gemini" | "elevenlabs";
 type SpokenBy = TtsProvider;
 type Settings = { tts: TtsProvider; groqVoice: string; geminiVoice: string; elevenVoice?: string; elevenVoiceName?: string };
@@ -460,12 +473,31 @@ export function finalClickToScreen(call: ToolCall): ToolCall {
   return { ...call, function: { name: "screen_act", arguments: JSON.stringify({ goal: `press ${target}`.slice(0, 600) }) } };
 }
 
-export function guardToolCall(call: ToolCall, lastUser: string, options: { sharing?: boolean } = {}): ToolCall {
+export function guardToolCall(call: ToolCall, lastUser: string, options: { sharing?: boolean; desk?: boolean; deskOpen?: (text: string) => DeskOpen } = {}): ToolCall {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(call.function.arguments || "{}");
   } catch {
     return call;
+  }
+  // Desk payments (P1, 29 Sep). A MODEL never starts, confirms or cancels a payment: a `payment` skill call it made is
+  // rebuilt from HIS last words (a request, at the desk, when those words order one) or turned into a harmless status look.
+  // The confirm ticket is minted only by the turn rules, never here.
+  if (call.function.name === "skill" && args.skill === "payment") {
+    const req = options.desk && deskMoneyOrder(lastUser) ? { skill: "payment", action: "request", text: lastUser.slice(0, 600) } : { skill: "payment", action: "status" };
+    return { ...call, function: { name: "skill", arguments: JSON.stringify(req) } };
+  }
+  // The typed command entry also starts a payment from its words at the desk: so a command a MODEL chose carries HIS last
+  // words whenever either side orders a payment, never the model's rewording of them (or its own idea of one).
+  if (options.desk && call.function.name === "jarvis_command" && typeof args.utterance === "string" && lastUser.trim() && deskMoneyOrder(args.utterance) && !deskMoneyOrder(lastUser))
+    return { ...call, function: { name: "jarvis_command", arguments: JSON.stringify({ ...args, utterance: lastUser.slice(0, 600) }) } };
+  // At the desk, whatever tool a brain or Jev picked for HIS words that order a payment (control_pc, screen_act, browser_act,
+  // open_url, pc_act, jarvis_command) becomes the payment skill built from his own last words, never from the model's text;
+  // his words that only open a bank or payment site open it. Not his words → unchanged (the strict gates below and in the executors).
+  if (options.desk && lastUser.trim() && !isAffirmative(lastUser) && ["control_pc", "screen_act", "browser_act", "open_url", "pc_act", "jarvis_command"].includes(call.function.name)) {
+    if (deskMoneyOrder(lastUser)) return { ...call, function: { name: "skill", arguments: JSON.stringify({ skill: "payment", action: "request", text: lastUser.slice(0, 600) }) } };
+    const open = (options.deskOpen ?? deskOpenOrder)(lastUser);
+    if (open?.ok) return { ...call, function: { name: "skill", arguments: JSON.stringify({ skill: "browser", action: "open", url: open.url, name: open.name }) } };
   }
   const gated = finalClickToScreen(call);
   if (gated !== call) return gated;
@@ -1153,16 +1185,18 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
   }
 
   /** A turn, with the repetition guard over whatever it would say (rules or model). */
-  async function turn(body: unknown, caller?: unknown) {
-    const result = await turnInner(body, caller);
+  async function turn(body: unknown, caller?: unknown, trusted?: Trusted) {
+    const result = await turnInner(body, caller, trusted);
     const content = (result as { content?: unknown }).content;
     if (typeof content !== "string" || !content.trim()) return result;
     const instead = repeatGuard(validateMessages(object(body).messages, toolNames), content);
     return instead ? { ...result, content: instead } : result;
   }
 
-  async function turnInner(body: unknown, caller?: unknown) {
+  async function turnInner(body: unknown, caller?: unknown, trusted?: Trusted) {
     const input = object(body);
+    // The host's verdict, never the body's: the owner at his desk (loopback, no relay, live session, away off).
+    const desk = trusted?.desk === true && !!dependencies.deskPay;
     const messages = validateMessages(input.messages, toolNames);
     // A spoken "uh" / "um" in front of the command is not part of it ("uh fire up notepad", J4). The words after it are kept whole.
     const tail = messages[messages.length - 1];
@@ -1247,6 +1281,19 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       // Away mode: "I'm heading out, away mode on", "while I'm away, tidy Downloads" (rules, no model).
       const away = dependencies.away ? await dependencies.away(last.content).catch(() => null) : null;
       if (away) return { content: away, model: "rules" };
+      // Desk payments (P1): at his desk his words that order a payment (or say yes or no to one waiting) are the payment
+      // skill's, or open a bank or payment site; nothing here presses anything (the skill reads the page, shows the card
+      // and waits for his yes). Not at the desk: this rule doesn't exist, and every gate below is exactly as before.
+      if (desk) {
+        // A yes answers the payment only right after Jarvis's own payment question (previousAssistant), and is "spoken" only if the
+        // server's STT ledger heard it (spokenYes is checked there, not trusted).
+        const before = messages[messages.length - 2];
+        const d = await dependencies.deskPay!
+          .turn(last.content, { desk: true, answered: answer !== null, channel: "voice", previousAssistant: before?.role === "assistant" && typeof before.content === "string" ? before.content : null, spokenYes: typeof input.spokenYes === "string" ? input.spokenYes : null })
+          .catch(() => null);
+        if (d && "call" in d) return oneCall("skill", d.call);
+        if (d && "say" in d) return { content: d.say, model: "rules", route: { intent: "desk_payment" } };
+      }
       // Shared memory by rules (no model): the answer names its source; a forget is asked back first.
       if (dependencies.memory && caller) {
         const previous = messages[messages.length - 2];
@@ -1464,12 +1511,16 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     const reminderWords = last?.role === "user" ? rememberToReminder(last.content) : null;
     const skill = last?.role === "user" ? skillIntent(last.content, skillContext(messages)) ?? (reminderWords ? skillIntent(reminderWords, skillContext(messages)) : null) : null;
     if (skill?.skill === "say") return { content: skill.text, model: "rules" };
-    if (skill)
+    if (skill) {
+      // At his desk "what's my AI spend, and pay it" answers the spend AND asks for the payment part itself (P1): the
+      // words go along, so the skill (which re-checks the desk) can read them. Anywhere else it says what it always said.
+      const withWords = desk && last?.role === "user" && skill.skill === "ai_usage" && skill.action === "spend" && skill.wontPay ? { ...skill, deskText: last.content.slice(0, 300) } : skill;
       return {
         content: null,
-        tool_calls: [{ id: ruleId(), type: "function" as const, function: { name: "skill", arguments: JSON.stringify(skill) } }],
+        tool_calls: [{ id: ruleId(), type: "function" as const, function: { name: "skill", arguments: JSON.stringify(withWords) } }],
         model: "rules",
       };
+    }
     const used = last?.role === "user" ? shorthandIn(last.content, dependencies.shorthand?.() ?? DEFAULT_SHORTHAND) : [];
     // Added server-side, after the client's lines, so a page can't spoof them.
     const capabilities = dependencies.capabilities?.().trim();
@@ -1512,7 +1563,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
         guardToolCall(
           { id: `jev_${Date.now().toString(36)}`, type: "function", function: { name: routed.call.name, arguments: JSON.stringify(routed.call.arguments) } },
           last.content,
-          { sharing },
+          { sharing, desk, deskOpen: dependencies.deskPay?.open },
         ),
         last.content,
       );
@@ -1669,7 +1720,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
                   function: { name: call.function.name, arguments: String(call.function.arguments ?? "{}") },
                 },
                 typeof lastUser === "string" ? lastUser : "",
-                { sharing },
+                { sharing, desk, deskOpen: dependencies.deskPay?.open },
               ),
             )
         : [];
@@ -1875,7 +1926,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     status,
     speakStream,
     /** `caller`: the host's verified request identity (only the memory rule uses it). */
-    async handle(path: string, body: unknown, caller?: unknown) {
+    async handle(path: string, body: unknown, caller?: unknown, trusted?: Trusted) {
       if (path === "/voice/free/reflex") return reflexPartial(body);
       // Latency instrumentation only (scripts/voice-latency.ts, scripts/voice-latency-report.ts):
       // one JSONL line per command, speech end → route decided → action started → action done.
@@ -1890,7 +1941,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       }
       if (path === "/voice/free/configure") return configure(body);
       if (path === "/voice/free/stt") return transcribe(body);
-      if (path === "/voice/free/turn") return turn(body, caller);
+      if (path === "/voice/free/turn") return turn(body, caller, trusted);
       if (path === "/voice/free/tts") return speak(body);
       if (path === "/voice/free/eleven-voices") return elevenVoices();
       throw new Error("Unknown voice action.");

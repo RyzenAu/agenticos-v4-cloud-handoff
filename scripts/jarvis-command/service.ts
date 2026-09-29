@@ -74,6 +74,17 @@ export type Delegates = {
    * typed = spoken). `match` is pure; nothing that types or moves windows is matched.
    */
   skill?: { match(utterance: string): string | null; run(utterance: string, principal: Principal): Promise<{ ok: boolean; said: string }> };
+  /**
+   * Desk payments (P1, 29 Sep): the typed command box is the owner's words at his desk too. `handle` is asked first (after
+   * a stop): for the owner at his desk (the live wiring checks it: loopback, a live session, away off) his words that order
+   * a payment become a confirm card, his yes or no answers one waiting, and a bank or payment site opens; null otherwise
+   * (anyone else, or not a payment matter), and the command goes on exactly as before. `cancelAll` drops what is waiting.
+   */
+  deskPay?: {
+    /** `source`: "typed" only from the typed box or palette (the client's own path); a command a model sent is "voice" and can never confirm or cancel a payment. */
+    handle(utterance: string, principal: Principal, source: "typed" | "voice"): Promise<{ ok: boolean; said: string; ask?: boolean; refused?: boolean } | null>;
+    cancelAll(principal: Principal): void;
+  };
 };
 
 export type CommandServiceDeps = {
@@ -192,6 +203,7 @@ export function createCommandService(deps: CommandServiceDeps) {
     // "stop", "cancel that", "never mind" typed or said as a command (AUDIT-F4 F14): stop this person's
     // running commands through the job service. Never typed into a window, never a new job.
     if (STOP_WORDS.test(raw)) {
+      deps.delegates?.deskPay?.cancelAll(principal);
       const stopped = await cancelAllFor(principal);
       return { type: "done", ok: true, stopped: true, said: stopped.length ? `Stopped ${stopped.length === 1 ? "it" : `${stopped.length} commands`}.` : "Nothing of yours was running.", kind: "answer", jobId: stopped[0] ?? null, runId: "", targetDeviceId: null };
     }
@@ -250,6 +262,23 @@ export function createCommandService(deps: CommandServiceDeps) {
     };
 
     const note = (ctx: ExecutorContext, s: Omit<Step, "seq" | "at" | "ms"> & { ms?: number }) => ctx.step({ ms: 0, ...s });
+
+    // 0. A payment at his desk (P1): his own typed words are his go-ahead to READ the page and show the confirm card; the
+    //    press waits for his Confirm or yes (scripts/desk-payments). Only for the owner at his desk; null for everything else.
+    if (deps.delegates?.deskPay && source !== "away" && source !== "acceptance") {
+      const pay = await deps.delegates.deskPay.handle(utterance, principal, source === "typed" ? "typed" : "voice").catch(() => null);
+      if (pay)
+        return start("none", async (ctx, out) => {
+          const d = decisionOf({ op: "desk.payment", confidence: 1, policy: "act", source: "rules", why: "a payment at his desk: the page is read and the confirm card shown; nothing is pressed until he confirms" });
+          out({ type: "decision", decision: d, seq: 0 });
+          note(ctx, { intent: `desk payment: ${pay.said.slice(0, 160)}`, executor: "none", jev: d, outcome: pay.ok ? "ok" : pay.ask ? "asked" : "refused" });
+          return pay.ok
+            ? { type: "done", ok: true, said: pay.said, kind: "answer", jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: null }
+            : pay.ask
+              ? { type: "done", ok: false, ask: true, said: pay.said, kind: "ask", jobId: null, runId: "", targetDeviceId: "none", decision: d }
+              : { type: "done", ok: false, refused: true, said: pay.said, kind: "refused", jobId: null, runId: "", targetDeviceId: "none", decision: d };
+        });
+    }
 
     // 1. Hard refusals: before any device, context or model. Only secrets and private data are refused here.
     //    A money REQUEST is not (owner decision 29 Sep: "money requests are fine"): it goes to the routing

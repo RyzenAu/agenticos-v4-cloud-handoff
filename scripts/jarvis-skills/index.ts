@@ -25,7 +25,7 @@ import type { ScreenName } from "./monitors";
 import { answerWeather, weatherIntent, type WeatherRequest } from "./weather";
 import { answerFinance, financeIntent, type FinanceRequest } from "./finance";
 import { createStripeSync } from "../finance/stripe";
-import { aiUsageIntent, answerAiUsage, type AiUsageRequest } from "../ai-usage/jarvis-intent";
+import { aiUsageIntent, answerAiUsage, answerAiUsageAtDesk, type AiUsageRequest } from "../ai-usage/jarvis-intent";
 import { aiUsageSnapshot } from "../ai-usage/plugin";
 import { receptionistIntent, type ReceptionistRequest } from "../receptionist/jarvis-intent";
 import { receptionistSentence } from "../receptionist/plugin";
@@ -318,7 +318,8 @@ export function parseSkillRequest(body: unknown): SkillRequest {
     case "ai_usage": {
       if (b.action === "spend") {
         const provider = b.provider === "anthropic" || b.provider === "openai" ? b.provider : undefined;
-        return { skill: "ai_usage", action: "spend", ...(provider ? { provider } : {}), ...(b.wontPay === true ? { wontPay: true as const } : {}) };
+        const deskText = str(b.deskText, 300);
+        return { skill: "ai_usage", action: "spend", ...(provider ? { provider } : {}), ...(b.wontPay === true ? { wontPay: true as const } : {}), ...(deskText ? { deskText } : {}) };
       }
       if (b.action === "codex" || b.action === "claude") return { skill: "ai_usage", action: b.action };
       fail();
@@ -360,6 +361,11 @@ export type SkillDeps = {
   windows?: WindowDeps;
   /** J2 browser hands (tests: a CDP stub runner; default: agent-browser against Jarvis Chrome). */
   browser?: { hands?: BrowserHands; ensure?: () => Promise<boolean>; task?: BrowserSkillDeps["task"] };
+  /**
+   * Desk payments (P1): the payment part of "what's my AI spend, and pay it", for a caller the host verified at his desk.
+   * Without it (or without the desk) the spend answer says what it always said: it reads, it never pays.
+   */
+  deskPayment?: { compound(text: string): Promise<string> };
 };
 
 export function createJarvisSkills(root: string, deps: SkillDeps) {
@@ -420,7 +426,8 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
   // handle blocks rmSync of a temp test directory (EBUSY), the same class of issue as the FTS5 note.
   const stripe = createStripeSync(root);
 
-  async function answer(req: SkillRequest): Promise<string | { said: string; keep?: string }> {
+  /** `desk`: the HOST verified the caller is the owner at his desk (scripts/desk-payments/policy.ts). Never from the request body. */
+  async function answer(req: SkillRequest, ctx: { desk?: boolean } = {}): Promise<string | { said: string; keep?: string }> {
     switch (req.skill) {
       case "timer":
       case "reminder":
@@ -485,6 +492,9 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
         return answerFinance(req, { root, stripe });
       case "ai_usage":
         try {
+          // At his desk the "I won't pay" notice goes: the spend answer stays, and the payment part is the desk payments'
+          // (a confirm card when it names a payee or amount, else one question).
+          if (ctx.desk && req.action === "spend" && req.wontPay && deps.deskPayment) return await answerAiUsageAtDesk(req, await aiUsageSnapshot(), deps.deskPayment.compound);
           return answerAiUsage(req, await aiUsageSnapshot());
         } catch {
           return "I couldn't read the usage figures.";
@@ -502,7 +512,7 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
 
   return {
     /** POST /jarvis/skill. `remote` is someone signed in from another device. */
-    async run(body: unknown, options: { remote?: boolean } = {}): Promise<SkillResult> {
+    async run(body: unknown, options: { remote?: boolean; desk?: boolean } = {}): Promise<SkillResult> {
       const started = Date.now();
       let req: SkillRequest;
       try {
@@ -513,7 +523,7 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
       if (options.remote && !REMOTE_SAFE.has(req.skill))
         return { ok: false, said: "That one only works at the PC itself, sir.", ms: Date.now() - started, skill: req.skill };
       try {
-        const out = await answer(req);
+        const out = await answer(req, { desk: options.desk === true && !options.remote });
         const said = typeof out === "string" ? out : out.said;
         return { ok: true, said, ms: Date.now() - started, skill: req.skill, ...(typeof out === "object" && out.keep ? { keep: out.keep } : {}) };
       } catch (error) {
