@@ -14,7 +14,8 @@ import { HONEST_LABEL, HONEST_MEANING } from "@/lib/honest-state";
 import { readMotion, subscribeMotion, type MotionState } from "@/lib/motion";
 import { Freshness } from "../page-parts";
 import { DESTINATIONS } from "../destinations";
-import { HANDOFF_EVENT, HANDOFF_STATE_LABEL, PLACE_LABEL, codingHandoff, handoffMotion, parseHandoff, visibleHandoffs, type Handoff } from "../handoff";
+import { HANDOFF_EVENT, HANDOFF_STATE_LABEL, PLACE_LABEL, claimSweep, codingHandoff, handoffMotion, parseHandoff, visibleHandoffs, type Handoff } from "../handoff";
+import { LEAD_LINK_GAP, RX_SOURCE_LABEL, receptionistHandoffs, type DashboardHandoffInput } from "../receptionist-handoff";
 import { codingObject, codingPage, financeObject, leadsObject, memoryObject, receptionistObject, type FinanceStatusLike, type MemoryStatusLike, type SceneObject } from "./scene-status";
 import "./command-scene.css";
 
@@ -23,6 +24,26 @@ async function getJson<T>(url: string): Promise<T> {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json() as Promise<T>;
 }
+
+// A handoff's sweep plays once per state per browser session, so a refresh, a retry or reopening the scene never replays it.
+const SWEEP_KEY = "os:handoff-swept";
+const SWEPT = new Set<string>(
+  (() => {
+    try {
+      const v = JSON.parse(window.sessionStorage.getItem(SWEEP_KEY) ?? "[]");
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(-200) : [];
+    } catch {
+      return [];
+    }
+  })(),
+);
+const persistSwept = () => {
+  try {
+    window.sessionStorage.setItem(SWEEP_KEY, JSON.stringify([...SWEPT].slice(-200)));
+  } catch {
+    /* storage can be blocked; the in-memory set still holds for this page */
+  }
+};
 
 function useCoding() {
   const [state, setState] = useState<{ read: boolean; job: { title: string; state: string; updatedAt: string } | null; handoff: Handoff | null }>({ read: false, job: null, handoff: null });
@@ -57,6 +78,14 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
   const memory = useQuery({ queryKey: ["scene", "memory-status"], queryFn: () => getJson<MemoryStatusLike>("/__memory/status"), staleTime: 30_000, retry: false, enabled: open });
   const finance = useQuery({ queryKey: ["finance-manual-status"], queryFn: () => getJson<FinanceStatusLike>("/__finance_manual/status"), staleTime: 30_000, retry: 1, enabled: open });
   const coding = useCoding();
+  // The receptionist's staff handoffs come from the same feed read the Receptionist page uses (counts, with their own read time).
+  const rxDash = useQuery({
+    queryKey: ["receptionist", "dashboard"],
+    queryFn: async () => getJson<DashboardHandoffInput>("/__receptionist/dashboard"),
+    staleTime: 60_000,
+    retry: false,
+    enabled: open,
+  });
   // Handoffs: the coding one is derived from the job history above; others arrive as `os:handoff` events
   // from the track that owns them (receptionist calls). Nothing is drawn that no source announced.
   const [announced, setAnnounced] = useState<Handoff[]>([]);
@@ -70,7 +99,20 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
   }, []);
   const [motion, setMotion] = useState<MotionState>(() => readMotion());
   useEffect(() => subscribeMotion(setMotion), []);
-  const handoffs = visibleHandoffs([...announced, ...(coding.handoff ? [coding.handoff] : [])], now);
+  const rxHandoffs = rxDash.data ? receptionistHandoffs(rxDash.data, now) : rxDash.isError ? receptionistHandoffs(null, now) : [];
+  const handoffs = visibleHandoffs([...announced, ...rxHandoffs, ...(coding.handoff ? [coding.handoff] : [])], now);
+  const sweeps = useRef(new Map<string, "travel" | "still">());
+  const [, redraw] = useState(0);
+  const travelFor = (h: Handoff): "travel" | "still" => {
+    if (handoffMotion(h, motion.holds, motion.reduced) !== "travel") return "still";
+    const key = `${h.id}:${h.state}`;
+    const known = sweeps.current.get(key);
+    if (known) return known;
+    const v = claimSweep(key, SWEPT) ? "travel" : "still";
+    if (v === "travel") persistSwept();
+    sweeps.current.set(key, v);
+    return v;
+  };
   const objects: SceneObject[] = [
     receptionistObject(rx as never, now),
     leadsObject(calls as never, now),
@@ -145,7 +187,7 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
                 data-slot={i}
                 data-state={o.state}
                 data-handoff={incoming?.state}
-                data-travel={incoming ? handoffMotion(incoming, motion.holds, motion.reduced) : undefined}
+                data-travel={incoming ? travelFor(incoming) : undefined}
                 tabIndex={i === focus ? 0 : -1}
                 onFocus={() => setFocus(i)}
                 onClick={() => openObject(o)}
@@ -167,7 +209,18 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
                   <span className="cs-source">{o.source}</span>
                   {o.lastUpdate !== null ? <Freshness at={o.lastUpdate} now={now} staleAfterMs={Infinity} className="cs-when" /> : <span className="cs-when">No successful read yet</span>}
                 </span>
-                {incoming ? <span key={`${incoming.id}:${incoming.state}`} className="cs-sweep" aria-hidden="true" /> : null}
+                {incoming ? (
+                  <span
+                    key={`${incoming.id}:${incoming.state}`}
+                    className="cs-sweep"
+                    aria-hidden="true"
+                    onAnimationEnd={() => {
+                      // Played once: from here the same state never draws it again, not even when the scene is reopened.
+                      sweeps.current.set(`${incoming.id}:${incoming.state}`, "still");
+                      redraw((n) => n + 1);
+                    }}
+                  />
+                ) : null}
               </button>
               );
             })}
@@ -183,11 +236,15 @@ export default function CommandScene({ open, onOpenChange, returnFocus }: { open
                   </span>
                   <span className="cs-handoff-what">{h.label}</span>
                   <span className="cs-handoff-state">{HANDOFF_STATE_LABEL[h.state]}</span>
-                  <span className="cs-source">{h.source === "job-history" ? "Job history (/__jobs)" : "Announced by the owning page"}{h.deviceId ? ` · device ${h.deviceId}` : ""}</span>
-                  <Freshness at={h.at} now={now} staleAfterMs={Infinity} className="cs-when" />
+                  <span className="cs-source">{h.source === "job-history" ? "Job history (/__jobs)" : h.source === "receptionist-feed" ? RX_SOURCE_LABEL : "Announced by the owning page"}{h.deviceId ? ` · device ${h.deviceId}` : ""}</span>
+                  {h.basis ? <span className="cs-handoff-basis">{h.basis}</span> : null}
+                  {h.state === "unknown" ? null : <Freshness at={h.at} now={now} staleAfterMs={Infinity} className="cs-when" />}
                 </p>
               ))
             )}
+            <p className="cs-handoff-empty" data-gap="lead-link">
+              <strong>{LEAD_LINK_GAP.state}.</strong> {LEAD_LINK_GAP.text}
+            </p>
           </section>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

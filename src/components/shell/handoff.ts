@@ -7,8 +7,10 @@
 import type { JobSummary } from "@/lib/job-events";
 import type { HoldReason } from "@/lib/motion";
 
-export type HandoffPlace = "jarvis" | "receptionist" | "leads" | "coding" | "memory" | "finance";
-export type HandoffState = "queued" | "running" | "needs-you" | "done" | "failed";
+/** "staff" is a place with no Command-scene object: a handoff to it shows in the list and lights nothing. */
+export type HandoffPlace = "jarvis" | "receptionist" | "leads" | "coding" | "memory" | "finance" | "staff";
+/** "unknown": the source is missing, unreadable, stale or gives no confirmation. Never drawn as moving. */
+export type HandoffState = "queued" | "running" | "needs-you" | "done" | "failed" | "unknown";
 export type Handoff = {
   id: string;
   from: HandoffPlace;
@@ -19,14 +21,16 @@ export type Handoff = {
   /** Epoch ms of this state. A new state replays the travel once; the same state never loops. */
   at: number;
   deviceId?: string;
-  source: "job-history" | "event";
+  /** One plain line saying what the state rests on (for example "count from the agency feed, not a single call"). */
+  basis?: string;
+  source: "job-history" | "event" | "receptionist-feed";
 };
 
 export const HANDOFF_EVENT = "os:handoff";
 /** A finished handoff stays visible this long; running and waiting ones stay until they change. */
 export const HANDOFF_LINGER_MS = 90_000;
-const PLACES: readonly HandoffPlace[] = ["jarvis", "receptionist", "leads", "coding", "memory", "finance"];
-const STATES: readonly HandoffState[] = ["queued", "running", "needs-you", "done", "failed"];
+const PLACES: readonly HandoffPlace[] = ["jarvis", "receptionist", "leads", "coding", "memory", "finance", "staff"];
+const STATES: readonly HandoffState[] = ["queued", "running", "needs-you", "done", "failed", "unknown"];
 
 const clip = (s: string, n: number) => s.replace(/\s+/g, " ").trim().slice(0, n);
 
@@ -72,7 +76,10 @@ export function codingHandoff(jobs: readonly Pick<JobSummary, "id" | "kind" | "s
 }
 
 export function isVisible(h: Handoff, now: number) {
-  return h.state === "queued" || h.state === "running" || h.state === "needs-you" || now - h.at < HANDOFF_LINGER_MS;
+  // A receptionist-feed row is the feed's CURRENT state, rebuilt from every read (and dropped to "unknown" when the read goes
+  // stale), so it stays while it is true instead of lingering by its read time.
+  if (h.source === "receptionist-feed") return true;
+  return h.state === "queued" || h.state === "running" || h.state === "needs-you" || h.state === "unknown" || now - h.at < HANDOFF_LINGER_MS;
 }
 
 /** Newest handoff per id, visible ones only, newest first. */
@@ -102,6 +109,7 @@ export const HANDOFF_STATE_LABEL: Record<HandoffState, string> = {
   "needs-you": "Waiting for your yes",
   done: "Done",
   failed: "Failed",
+  unknown: "Not confirmed",
 };
 
 export const PLACE_LABEL: Record<HandoffPlace, string> = {
@@ -111,4 +119,12 @@ export const PLACE_LABEL: Record<HandoffPlace, string> = {
   coding: "Coding",
   memory: "Memory",
   finance: "Finance",
+  staff: "Staff",
 };
+
+/** One sweep per handoff state per browser session: a refresh, a retry or reopening the scene never replays it. */
+export function claimSweep(key: string, seen: Set<string>): boolean {
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
+}

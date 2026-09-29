@@ -269,6 +269,26 @@
 .cs-handoff-state {
   color: var(--brand);
 }
+.cs-handoff[data-state="unknown"] {
+  border-left-color: var(--border);
+}
+.cs-handoff[data-state="unknown"] .cs-handoff-state,
+.cs-handoff[data-state="failed"] .cs-handoff-state {
+  color: var(--muted-foreground);
+}
+.cs-handoff[data-state="failed"] .cs-handoff-state {
+  color: var(--danger);
+}
+.cs-handoff-basis {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.cs-object[data-handoff="unknown"] {
+  border-top-color: var(--border);
+  box-shadow: var(--elev-3);
+}
 @media (max-width: 899px) {
   .cs-world {
     grid-template-columns: 1fr;
