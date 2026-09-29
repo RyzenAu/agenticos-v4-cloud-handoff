@@ -186,6 +186,8 @@ const SIG_SIZE = 32;
 const SIG_MAX_TOKENS = 4000;
 /** A note renamed and edited between two scans has no exact hash match; this many shared words still says it is the same note. */
 export const RENAME_SIMILARITY = 0.6;
+/** Needed before a note may take over an identity that carries an unindex or forget decision. */
+export const DECIDED_SIMILARITY = 0.85;
 const RENAME_MIN_TOKENS = 8;
 const fnv = (seed: number, token: string) => {
   let h = (0x811c9dc5 ^ Math.imul(seed + 1, 0x9e3779b1)) >>> 0;
@@ -233,9 +235,12 @@ export function assignNoteIds(
   now: Date = new Date(),
   /** Ids still held in Hindsight (e.g. under a pending removal hold): their identity is kept however long. */
   stillIndexed: Set<string> = new Set(),
-): { map: NoteMap; renames: { from: string; to: string; id: string }[] } {
+  /** True for an id the owner has decided on ("remove from search", or forgotten): such an identity is never handed to a look-alike. */
+  hasDecision: (noteId: string) => boolean = () => false,
+): { map: NoteMap; renames: { from: string; to: string; id: string }[]; held: { path: string; of: string }[] } {
   const map: NoteMap = {};
   const renames: { from: string; to: string; id: string }[] = [];
+  const held: { path: string; of: string }[] = [];
   const present = new Set(notes.map((n) => n.path));
   const taken = new Set<string>();
   const vanished = Object.entries(previous).filter(([p]) => !present.has(p));
@@ -287,6 +292,12 @@ export function assignNoteIds(
       .map(([p, e]) => ({ p, e, score: signatureSimilarity(sig, e.sig) }))
       .sort((a, b) => b.score - a.score);
     const best = scored[0];
+    // An identity the owner decided on (unindexed, forgotten) moves only to a near-identical note. A looser look-alike
+    // neither inherits the decision nor is indexed: it is held out and reported, so nothing is silently hidden or leaked.
+    if (best && best.score >= RENAME_SIMILARITY && best.score < DECIDED_SIMILARITY && hasDecision(best.e.id)) {
+      held.push({ path: n.path, of: best.p });
+      continue;
+    }
     if (best && best.score >= RENAME_SIMILARITY && (!scored[1] || best.score - scored[1].score >= 0.15)) {
       usedVanished.add(best.p);
       renames.push({ from: best.p, to: n.path, id: best.e.id });
@@ -307,7 +318,7 @@ export function assignNoteIds(
     map[p] = { ...e, missing_since: since };
     taken.add(e.id);
   }
-  return { map, renames };
+  return { map, renames, held };
 }
 
 // ── documents ───────────────────────────────────────────────────────────────────────────

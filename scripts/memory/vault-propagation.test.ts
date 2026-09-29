@@ -98,6 +98,36 @@ describe("Obsidian edits reach the shared pool", () => {
     expect(readFileSync(join(h.vault, "wiki/topics/business/kestrel-hours.md"), "utf8")).toContain("9am to 5pm");
   }, T);
 
+  test("an unindexed or forgotten note's decision is never handed to a merely similar note", async () => {
+    const h = await setup();
+    await h.api.sync({ force: true });
+    const oldId = h.api.connector.store.readNotes()[PLAYBOOK].id;
+    const r = await h.api.forget(usman, { kind: "unindex", target: PLAYBOOK });
+    if (!r.ok) throw new Error(r.message);
+    const body = rd(h.vault, PLAYBOOK);
+    rmSync(join(h.vault, PLAYBOOK));
+    // A different note that shares a good part of the words (well under a light edit, well over the rename floor).
+    const text = body.replace(/^---[\s\S]*?---\n/, "");
+    const words = [...new Set(text.split(/\s+/))];
+    const similar = words.slice(0, Math.ceil(words.length * 0.95)).join(" ") + " " + Array.from({ length: Math.ceil(words.length * 0.15) }, (_, i) => `fresh${i}word`).join(" ");
+    const sim = signatureSimilarity(noteSignature(text), noteSignature(similar));
+    expect(sim).toBeGreaterThan(0.6);
+    expect(sim).toBeLessThan(0.85);
+    wr(h.vault, "wiki/topics/business/other-clinic.md", `---\nbucket: business\n---\n${similar}\n`);
+    const s = await h.api.sync({ force: true });
+    // It does not take the removed note's id (no rename), it is not indexed, and the owner is told why.
+    expect(s.renames).toEqual([]);
+    expect(Object.values(h.api.connector.store.readNotes()).filter((e) => e.id === oldId && !e.missing_since)).toHaveLength(0);
+    expect(notesIn(h).some((k) => k === oldId)).toBe(false);
+    expect(JSON.stringify(h.api.connector.store.readStatus().skipped)).toContain("held: looks like");
+    expect(JSON.stringify((await h.api.recall(usman, "other clinic")).facts)).not.toContain("fresh0word");
+    // Its own frontmatter id is the owner's way to index it as a separate note.
+    wr(h.vault, "wiki/topics/business/other-clinic.md", `---\nbucket: business\nid: other-clinic-1\n---\n${similar}\n`);
+    await h.api.sync({ force: true });
+    expect(h.api.connector.store.readNotes()["wiki/topics/business/other-clinic.md"].id).toBe("n-other-clinic-1");
+    expect(JSON.stringify(h.api.connector.store.readStatus().skipped)).not.toContain("held: looks like");
+  }, T);
+
   test("an edit that turns a note credential-shaped retracts it; an opt-out retracts it; deleting retracts it; restoring brings it back once", async () => {
     const h = await setup();
     await h.api.sync({ force: true });

@@ -347,7 +347,17 @@ export function mailArchive(root: string, options: { cacheBudgetBytes?: number; 
       // close(true) finalizes every prepared statement now; the default close()
       // leaves a zombie connection that keeps the file locked on Windows until
       // each Statement wrapper is garbage-collected.
-      if (!closed) { db.close(true); closed = true; }
+      if (closed) return;
+      try {
+        db.close(true);
+      } catch (error) {
+        // Bun on Linux throws "database is locked" from close(true) whenever a statement was prepared (reproduced with a bare
+        // table and one unrun prepare), with nothing else holding the file. Every write here is its own committed transaction,
+        // so nothing is pending. Fall back to the plain close, which succeeds there; if that also fails, the failure is real.
+        if (!/locked|busy/i.test((error as Error).message)) throw error;
+        db.close();
+      }
+      closed = true;
     },
   };
 }
