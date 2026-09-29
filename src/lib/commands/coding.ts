@@ -13,14 +13,16 @@ import { parseSiteAsk } from "../site-maker";
 const LEAD = /^\s*(?:(?:hey|ok|okay)\s+)?(?:jarvis\b[,\s]*)?(?:(?:can|could|would|will) you\s+|please\s+|i want (?:you )?to\s+|let's\s+|go\s+)?/i;
 const WORK_VERB = /^(?:fix|build|change|implement|refactor|rename|remove|add|update|write|create|make|improve|clean up|debug|investigate|set)\b/i;
 /** "assign Codex to …", "tell Claude Code to …", or the agent named first: "Codex, fix …". */
-const AGENT_FIRST = String.raw`^(?:(?:assign|get|have|ask|use|tell)\s+(?:an?\s+|another\s+)?(?:opus|sonnet|codex|claude(?:\s+code)?|hermes|deep ?seek|mimo|cline|agent|builder)|(?:opus|sonnet|codex|claude(?:\s+code)?)\s*,)`;
+const AGENT_FIRST = String.raw`^(?:(?:assign|get|have|ask|use|tell)\s+(?:an?\s+|another\s+)?(?:opus|sonnet|codex|claude(?:\s+code)?|hermes|deep ?seek|mimo|muse|cline|agent|builder)|(?:opus|sonnet|codex|claude(?:\s+code)?|mimo|muse|deep ?seek|cline)\s*,)`;
 const ASSIGN = new RegExp(AGENT_FIRST + String.raw`[^.]{0,40}?\b(?:to\s+)?(?:fix|build|change|implement|refactor|rename|remove|add|update|write|create|make|improve|debug|investigate|review)\b`, "i");
 /** Softer verbs ("look into", "check", "test") count only with a code target: "ask Claude to look into the flaky test in AgenticOS". */
 const ASSIGN_SOFT = new RegExp(AGENT_FIRST + String.raw`[^.]{0,40}?\b(?:to\s+)?(?:look\s+(?:into|at)|check|test|fix\s+up)\b`, "i");
 /** Models or roles named: the request is clearly for coding agents. */
-const ROLE = /\b(?:opus|sonnet|codex|hermes|deep ?seek|mimo|cline|another agent|an agent)\b[^.,;]{0,24}\b(?:builds?|reviews?|builder|reviewer|implements?|fix(?:es)?)\b|\b(?:builds?|reviews?|builder|reviewer)\b[^.,;]{0,24}\b(?:opus|sonnet|codex|hermes|deep ?seek|mimo|cline|another agent)\b|\bcoding job\b/i;
+const ROLE = /\b(?:opus|sonnet|codex|hermes|deep ?seek|mimo|muse|cline|another agent|an agent)\b[^.,;]{0,24}\b(?:builds?|reviews?|builder|reviewer|implements?|fix(?:es)?)\b|\b(?:builds?|reviews?|builder|reviewer)\b[^.,;]{0,24}\b(?:opus|sonnet|codex|hermes|deep ?seek|mimo|muse|cline|another agent)\b|\bcoding job\b/i;
 /** "… in the dental site", "… in AgenticOS", "… on the receptionist dashboard", "… in src/app/page.tsx". */
 const TARGET = /\b(?:in|on|for|of)\s+(?:the\s+|our\s+|my\s+)?(?:[\w.'-]+\s+){0,3}?(?:site|website|app|repo|repository|codebase|project|dashboard|os|agenticos|agentic os|page|component|api|server|client|tests?|module|file|branch)\b|\b(?:[\w-]+\/)+[\w.-]+\.(?:tsx?|jsx?|mjs|cjs|py|css|md|json|sql|prisma)\b/i;
+/** "start a coding job …", "kick off a coding task …", "open a new coding job: …": a job is asked for by name. */
+const JOB_START = /^(?:please\s+)?(?:start|begin|kick off|create|open|set up|run|spin up|queue|make)\s+(?:me\s+)?(?:a|an|the|another)?\s*(?:new\s+)?coding\s+(?:job|task|run)\b/i;
 /** Things that share the verbs but aren't code: never the coding harness. */
 const NOT_CODE = /\b(?:volume|brightness|reminder|remind|alarm|timer|appointment|meeting|calendar|event|email|message|text|call|note|playlist|song|video|photo|picture|slide|presentation|powerpoint|excel|spreadsheet|document|lead|invoice|payment|transfer|coffee|dinner|lunch|booking)s?\b/i;
 
@@ -31,6 +33,8 @@ export function isCodingRequest(text: string, repoIds: readonly string[] = []): 
   // W-F: "make a top-tier dental site for <lead>" is the site entry's (it drafts with the full site brief),
   // so the spoken coding rules never shape the bare words first.
   if (parseSiteAsk(t)) return false;
+  // F1: "start a coding job to fix the calls table in the receptionist app" says a job is wanted outright.
+  if (JOB_START.test(t)) return true;
   if (ASSIGN.test(t)) return true;
   if (ASSIGN_SOFT.test(t) && TARGET.test(t) && !NOT_CODE.test(t)) return true;
   if (!WORK_VERB.test(t)) return false;

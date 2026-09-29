@@ -205,18 +205,25 @@ describe("AUDIT-F4 rows owned by Track 2 (pure)", () => {
   test("F11 runLeadAction: one match writes and reads back; several ask; none says so", async () => {
     const { runLeadAction } = await import("./leads");
     const writes: unknown[] = [];
+    const activities: Array<{ id: number; kind: string; outcome: string; by: string }> = [];
     let status = "new";
     const api = (hits: Array<{ group: string; leadId: number; title: string }>, readBack = true) => ({
       handle: async (path: string, _m: string, body: unknown, params: URLSearchParams) => {
         if (path === "/leads/search") return { hits };
-        if (path === "/leads/log") return (writes.push(body), (status = (body as { outcome: string }).outcome), { lead: {} });
+        if (path === "/leads/detail") return { activities };
+        if (path === "/leads/log") {
+          const b = body as { outcome: string; kind: string; by: string };
+          writes.push(body); status = b.outcome;
+          activities.push({ id: activities.length + 1, kind: b.kind, outcome: b.outcome, by: b.by });
+          return { lead: {}, duplicate: false };
+        }
         if (path === "/leads/list") return { leads: readBack && params.get("status") === status ? [{ id: 7 }] : [] };
         if (path === "/leads/cards") return { cards: [{ leadId: 7, name: "Synthetic Dental Co", vertical: "dental", area: "Parramatta" }] };
         throw new Error(path);
       },
     });
     const one = [{ group: "leads", leadId: 7, title: "Synthetic Physio Studio" }];
-    expect(await runLeadAction(api(one), { action: "status", lead: "Synthetic Physio Studio", outcome: "won" }, { personId: "mehroz" })).toEqual({ ok: true, said: "Marked Synthetic Physio Studio as won.", verified: true });
+    expect(await runLeadAction(api(one), { action: "status", lead: "Synthetic Physio Studio", outcome: "won" }, { personId: "mehroz" })).toEqual({ ok: true, said: "Marked Synthetic Physio Studio as won, confirmed in the CRM.", verified: true });
     expect(writes).toEqual([{ lead: 7, outcome: "won", kind: "note", by: "mehroz" }]);
     const two = [...one, { group: "leads", leadId: 8, title: "Synthetic Physio Studio North" }];
     expect((await runLeadAction(api(two), { action: "log", lead: "physio", outcome: "no_answer" }, { personId: "usman" })).said).toMatch(/Which one\?/);

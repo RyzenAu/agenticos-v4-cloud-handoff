@@ -85,6 +85,8 @@ type Dependencies = {
    * caller and spoken-yes rules as memory. `navigate` opens the Coding page (the line is spoken after).
    */
   coding?: (utterance: string, turn: { caller: unknown; spokenYes: string | null; previousAssistant: string | null }) => Promise<{ say: string; navigate?: string } | null>;
+  /** Local drafts and reviewed calendar additions, using the host's verified caller. */
+  flows?: (utterance: string, turn: { caller: unknown; spokenYes: string | null; previousAssistant: string | null }) => Promise<{ say: string; navigate?: string } | null>;
   /**
    * "What needs me?": the SAME two workspace panels the Home page's "Needs you" widget reads (the needs-you count and the
    * waiting decisions), so Jarvis and Home can't disagree (scripts/workspace/needs-you-voice.ts). Absent: the question goes on to
@@ -1238,6 +1240,17 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
         // (Spoken: never a memory ID, a vault path or an ISO date aloud; those are on the Memory page.)
         if (said) return { content: spokenSafe(said), model: "rules", route: { intent: "memory" } };
       }
+      if (dependencies.flows && caller) {
+        const previous = messages[messages.length - 2];
+        const flow = await dependencies.flows(last.content, {
+          caller,
+          spokenYes: typeof input.spokenYes === "string" ? input.spokenYes.slice(0, 64) : null,
+          previousAssistant: previous?.role === "assistant" && typeof previous.content === "string" ? previous.content : null,
+        }).catch((): { say: string; navigate?: string } => ({ say: "That didn't save, so please check the page before trying again." }));
+        if (flow?.navigate)
+          return { content: null, tool_calls: [{ id: `flow_${ruleId()}`, type: "function" as const, function: { name: "navigate", arguments: JSON.stringify({ path: flow.navigate, say: flow.say }) } }], model: "rules", route: { intent: "flows" } };
+        if (flow) return { content: flow.say, model: "rules", route: { intent: "flows" } };
+      }
       // (Money REQUESTS are not refused here since 29 Sep, owner decision "money requests are fine": they go to
       // the normal routing below. Executing one stays gated: control_pc, screen_act, the browser's final and
       // money buttons and away mode all refuse or ask; see scripts/jarvis-execution/spoken-money.ts.)
@@ -1285,6 +1298,10 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
           content = "I can't reach the workspace right now, so I won't guess what needs you.";
         }
         return { content: tone(content), model: "rules", route: { intent: "needs_you" } };
+      }
+      if (dependencies.needsYou && /^(?:open|show|take me to) (?:my |the )?(?:waiting decisions|agent approvals|coding drafts|coding decisions)$/i.test(last.content.trim().replace(/[.!?]$/, ""))) {
+        const coding = /coding/i.test(last.content);
+        return oneCall("navigate", { path: coding ? "/coding" : "/work", say: coding ? "Open Coding to review the draft or approval. Start still needs your explicit confirmation." : "Open Work to review and complete the waiting decision." });
       }
       // "Do it" / "go ahead" with nothing pending is never forwarded to Hermes or the screen hands: ask what (J4). (When Jarvis
       // just asked something, the answer belongs to that question and goes on as before.)

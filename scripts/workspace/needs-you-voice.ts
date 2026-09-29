@@ -9,6 +9,7 @@ import { NEEDS_YOU_LIST_SHOWN, needsYouBadge, needsYouBreakdown, type NeedsYouPa
 export type NeedsYouSources = {
   needsYou: PanelResult<NeedsYouPanel>;
   today: PanelResult<{ approvals: { id: string; title: string }[]; derivedError?: string | null }>;
+  coding?: Array<{ id: string; state: string; title: string }> | null;
 };
 
 /** "what needs me", "what needs me today", "what do I need to do (today)", "what's waiting on me", "anything need me". */
@@ -52,6 +53,11 @@ export function needsYouSaid(src: NeedsYouSources): string {
       parts.push(`${top.length === 1 ? "The decision waiting" : "First up"}: ${top.join("; ")}.${more > 0 ? ` ${plural(more, "more")} in Work.` : ""}`);
     }
   } else parts.push("The list of waiting decisions couldn't be read.");
+  if (src.coding?.length) {
+    const drafts = src.coding.filter((j) => j.state === "draft" || j.state === "awaiting_confirmation");
+    const approvals = src.coding.length - drafts.length;
+    parts.push(`${drafts.length ? `${plural(drafts.length, "coding draft")} waiting for your review and Start. ` : ""}${approvals ? `${plural(approvals, "coding decision")} waiting in Coding. ` : ""}Open Coding to review; nothing starts on its own.`);
+  } else if (src.coding === null) parts.push("Coding decisions couldn't be read.");
   const said = parts.join(" ");
   return said.charAt(0).toUpperCase() + said.slice(1);
 }

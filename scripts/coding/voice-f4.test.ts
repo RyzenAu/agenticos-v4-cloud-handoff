@@ -147,7 +147,7 @@ const BUILDER: ClaudeStep[] = [
 ];
 
 describe("F8: a SYNTHETIC coding job driven by voice (fake STT) end to end", () => {
-  test("request → plan + repo shown → 'Start it?' → spoken yes → build → test → review → gate → handoff, with receipts", async () => {
+  test("request → plan + repo shown → 'Say start…' → spoken yes → build → test → review → gate → handoff, with receipts", async () => {
     const fx = fastFixture();
     const store = CodingStore.open(join(fx.root, "coding-data"));
     const registry: RepoRegistry = { version: 1, repos: [fx.entry] };
@@ -184,11 +184,8 @@ describe("F8: a SYNTHETIC coding job driven by voice (fake STT) end to end", () 
     // 1. The request: the plan and repo are shown and a clear confirmation is asked for.
     const drafted = await say("Jarvis, set a to 42 in src/a.ts of the fixture app. Opus builds, another Opus reviews. Show me the tests and what changed.");
     expect(drafted?.navigate).toBe("/coding");
-    expect(drafted?.say).toContain("Draft ready: fixture-app");
-    expect(drafted?.say).toContain("Opus builds");
-    expect(drafted?.say).toContain("Opus reviews");
-    expect(drafted?.say).toContain("src/a.ts");
-    expect(drafted?.say).toMatch(/Start it\?$/);
+    // F1: one short line (the title), then what to say; the team, files and checks are on the Coding page.
+    expect(drafted?.say).toMatch(/^Draft ready: Set a to 42 in src\/a\.ts of the fixture app\. Source snapshot: main at [a-f0-9]{12}; uncommitted checkout changes are excluded\. Selected routes: builder-1: claude-opus-5-5; reviewer: claude-opus-5-5\. Say start when you want it built\.$/);
     const job0 = store.listJobs({ limit: 1 })[0];
     expect(job0.state).toBe("awaiting_confirmation");
     // Nothing runs before the yes.
@@ -346,7 +343,7 @@ describe("REVIEW-T3 R4-1: the yes starts the plan that was read out, and only a 
   test("the reviewer's sequence: a program's edits and relayed yes change nothing; the person's yes starts exactly what he heard", async () => {
     const h = harness();
     const heard = await h.personSay(REQUEST);
-    expect(heard?.say).toMatch(/Start it\?$/);
+    expect(heard?.say).toMatch(/Say start when you want it built\.$/);
     const job = h.store.listJobs({ limit: 1 })[0];
     const before = JSON.stringify(job.spec.roles);
     // A program with his id tries to edit the draft he's been asked about.
@@ -378,7 +375,7 @@ describe("REVIEW-T3 R4-1: the yes starts the plan that was read out, and only a 
     h.orch.revise(job.id, reviseSpec(job.spec, { roles: job.spec.roles.filter((r) => r.role !== "reviewer") }));
     const again = await h.personSay("yes", heard!.say);
     expect(again?.say).toMatch(/^The plan changed since I asked, so nothing started\./);
-    expect(again?.say).toMatch(/Start it\?$/);
+    expect(again?.say).toMatch(/Say start when you want it built\.$/);
     expect(h.store.getJob(job.id)!.state).toBe("awaiting_confirmation");
     expect(h.spawns()).toBe(0);
     // His yes to the plan he has now heard starts it.

@@ -140,6 +140,44 @@ export function loadRegistry(file: string): RepoRegistry {
   return validateRegistry(parsed);
 }
 
+/** Where the repo-tracked defaults live, and how a test or preview points somewhere else. */
+export const DEFAULT_REGISTRY_FILE = "config/coding-repos.defaults.json";
+export function defaultRegistryFile(root: string, env: NodeJS.ProcessEnv = process.env): string | null {
+  const v = env.CODING_REGISTRY_DEFAULTS;
+  if (v === "off") return null;
+  return v ? nodePath.resolve(v) : nodePath.join(root, ...DEFAULT_REGISTRY_FILE.split("/"));
+}
+
+export type LayeredRegistry = { registry: RepoRegistry; defaultsError: string | null; liveError: string | null; fromDefaults: string[]; fromLive: string[] };
+
+/**
+ * The registry the harness runs on: the defaults tracked in the repo (config/coding-repos.defaults.json)
+ * with the owner's live file (.operator-data/coding/repos.json) merged OVER them by repo id. The live
+ * file is never written here. Each layer is validated as a whole with the same rules; a bad layer is
+ * ignored and named (never partly loaded), so a typo in the live file leaves the defaults working. When
+ * the two together are invalid (say, a live entry points at a default's checkout under another id) the
+ * defaults alone are used and the live problem is reported.
+ */
+export function loadRegistryLayered(liveFile: string, defaultsFile: string | null): LayeredRegistry {
+  const empty: RepoRegistry = { version: 1, repos: [] };
+  let defaults = empty;
+  let defaultsError: string | null = null;
+  if (defaultsFile) {
+    try { defaults = loadRegistry(defaultsFile); } catch (e) { defaultsError = (e as Error).message; }
+  }
+  let live = empty;
+  let liveError: string | null = null;
+  try { live = loadRegistry(liveFile); } catch (e) { liveError = (e as Error).message; }
+  const liveIds = new Set(live.repos.map((r) => r.id));
+  const merged: RepoRegistry = { version: 1, repos: [...defaults.repos.filter((r) => !liveIds.has(r.id)), ...live.repos] };
+  try {
+    validateRegistry(merged);
+    return { registry: merged, defaultsError, liveError, fromDefaults: defaults.repos.filter((r) => !liveIds.has(r.id)).map((r) => r.id), fromLive: live.repos.map((r) => r.id) };
+  } catch (e) {
+    return { registry: defaults, defaultsError, liveError: liveError ?? (e as Error).message, fromDefaults: defaults.repos.map((r) => r.id), fromLive: [] };
+  }
+}
+
 export function repoById(registry: RepoRegistry, id: RepoId | string): RepoRegistryEntry | null {
   return registry.repos.find((r) => r.id === id) ?? null;
 }

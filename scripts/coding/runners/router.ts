@@ -102,7 +102,8 @@ export function routerRunner(options: RouterRunnerOptions = {}): RoleRunner {
           if (!owns) return finish({ status: "failed", error: { code: "spawn_failed", message: "A routed builder needs its ownership." } });
           prompt += `\n\nYOUR OWNED FILES (current text):\n${ownedContext(input.cwd, owns, options.contextBytes ?? 120_000)}\n\nAnswer with ONLY one JSON object, no prose: {"files":[{"path":"<repo-relative path you own>","content":"<the complete new file text>"}],"summary":"<one paragraph: what you changed and why>"}. Include only files you change. Never include a file you don't own.`;
         }
-        emit({ type: "step", label: `Routing to ${b.model} (automatic fallback along ${b.task})` });
+        const freeOnly = b.model.startsWith("cline/");
+        emit({ type: "step", label: `Routing to ${b.model} (${freeOnly ? "free routes only" : `automatic fallback along ${b.task}`})` });
         let run: RunResult<string>;
         try {
           run = await (options.chat ?? routedChat)({
@@ -111,7 +112,7 @@ export function routerRunner(options: RouterRunnerOptions = {}): RoleRunner {
             messages: [{ role: "system", content: input.system }, { role: "user", content: prompt }],
             root: options.root,
             timeoutMs: options.timeoutMs ?? Math.min(input.limits.wallMs, 10 * 60_000),
-            constraints: { selected: b.model, selectedBy: "owner" },
+            constraints: { selected: b.model, selectedBy: "owner", freeOnly },
             parentRequestId: input.jobId,
             signal: controller.signal,
             deps: options.deps,

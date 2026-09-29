@@ -60,7 +60,7 @@ export type Delegates = {
   /** The receptionist's state from its own feed (never invented). */
   receptionist?: (utterance: string) => Promise<{ ok: boolean; said: string; verified?: boolean | null }>;
   /** A CRM action on a named lead (log a call, set a status, who's next), read back after any write. */
-  leads?: (action: LeadAction, principal: Principal) => Promise<{ ok: boolean; said: string; verified: boolean | null }>;
+  leads?: (action: LeadAction, principal: Principal, eventId?: string) => Promise<{ ok: boolean; said: string; verified: boolean | null }>;
   /** A real reminder through the reminder skill ("remind me to …" words). */
   reminder?: (words: string, principal: Principal) => Promise<{ ok: boolean; said: string }>;
   /**
@@ -552,7 +552,7 @@ export function createCommandService(deps: CommandServiceDeps) {
       if (rule.to === "leads") {
         const action = leadActionIn(utterance);
         if (!action || !deps.delegates?.leads) return finish(false, "The leads service isn't connected here, so nothing in the CRM changed.", null);
-        const r = await deps.delegates.leads(action, principal).catch((e: Error) => ({ ok: false, said: `The CRM didn't take it: ${e.message.slice(0, 120)}`, verified: false as boolean | null }));
+        const r = await deps.delegates.leads(action, principal, `jarvis-command:${ctx.jobId}`).catch((e: Error) => ({ ok: false, said: `The CRM didn't take it: ${e.message.slice(0, 120)}`, verified: false as boolean | null }));
         return finish(r.ok && r.verified !== false, r.said, r.verified, r.ok ? {} : { ask: /which one/i.test(r.said) });
       }
       if (rule.to === "reminder") {

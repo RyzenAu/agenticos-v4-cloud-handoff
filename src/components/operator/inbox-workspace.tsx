@@ -56,6 +56,36 @@ type Message = InboxItem & {
   starred?: boolean;
   remoteDraftId?: string;
 };
+type FlowDraft = { id: string; to: { name: string; email: string | null }; subject: string; body: string };
+function JarvisDraftCard({ message, refresh }: { message: FlowDraft; refresh: () => void }) {
+  const [email, setEmail] = useState(message.to.email ?? "");
+  const [subject, setSubject] = useState(message.subject);
+  const [body, setBody] = useState(message.body);
+  const [saved, setSaved] = useState({ email: message.to.email ?? "", subject: message.subject, body: message.body });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const dirty = email !== saved.email || subject !== saved.subject || body !== saved.body;
+  async function save() {
+    setBusy(true); setError("");
+    try {
+      await operatorRequest("/flows/update-draft", { id: message.id, email, subject, content: body });
+      setSaved({ email, subject, body }); refresh();
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  const mailto = saved.email ? `mailto:${encodeURIComponent(saved.email)}?subject=${encodeURIComponent(saved.subject)}&body=${encodeURIComponent(saved.body)}` : "";
+  return <article id={`draft-${message.id}`} className="mt-3 border-t border-border pt-3">
+    <p className="text-sm">To {message.to.name}. Edit the draft, save it, then open it in your mail app to review and send yourself.</p>
+    <label className="mt-2 block text-sm">Email address<input className="op-input mt-1 w-full" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Recipient address" /></label>
+    <label className="mt-2 block text-sm">Subject<input className="op-input mt-1 w-full" value={subject} onChange={(e) => setSubject(e.target.value)} /></label>
+    <label className="mt-2 block text-sm">Message<textarea className="op-input mt-1 w-full" rows={6} value={body} onChange={(e) => setBody(e.target.value)} /></label>
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+    <button className="op-button mt-2" disabled={busy || !dirty || !subject.trim() || !body.trim()} onClick={() => void save()}>Save edits</button>
+    <a className="op-button mt-2 inline-block" href={mailto || undefined} aria-disabled={!mailto || dirty} onClick={(e) => { if (!mailto || dirty) e.preventDefault(); }}>Open in mail app</a>
+    <button className="op-button mt-2" onClick={() => void operatorRequest("/flows/discard-draft", { id: message.id }).then(refresh)}>Discard</button>
+    <p className="mt-2 text-xs text-muted-foreground">Opening a compose window does not send this message.</p>
+  </article>;
+}
 type InboxAskResult = {
   id: string;
   source: InboxItem["source"];
@@ -212,6 +242,7 @@ function GmailDemoWorkspace({ onExit }: { onExit: () => void }) {
 }
 
 function LiveInboxWorkspace() {
+  const flowDrafts = useQuery<{ emailDrafts: FlowDraft[] }>({ queryKey: ["operator-flow-drafts"], queryFn: () => operatorRequest("/flows"), refetchInterval: 15000 });
   const { state, refresh, error } = useOperator(),
     accounts = useAccounts();
   const nativeAccounts = useNativeConnections();
@@ -793,6 +824,13 @@ function LiveInboxWorkspace() {
           </>
         }
       />
+      {!!flowDrafts.data?.emailDrafts.length && (
+        <section className="rounded-lg border border-border bg-card p-4" aria-label="Jarvis email drafts">
+          <h2 className="font-medium">Drafts from Jarvis</h2>
+          <p className="text-sm text-muted-foreground">Saved here for review. Nothing has been sent.</p>
+          {flowDrafts.data.emailDrafts.map((message) => <JarvisDraftCard key={message.id} message={message} refresh={() => void flowDrafts.refetch()} />)}
+        </section>
+      )}
       {(failure || error) && <Notice tone="danger">{failure || error?.message}</Notice>}
       {notice && (
         <Notice

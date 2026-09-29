@@ -17,7 +17,7 @@ import { loadAccounts, type AccountsConfig } from "./accounts";
 import type { CodingJob, RepoRegistry, RepoRegistryEntry, UsageReceipt } from "./contracts";
 import { createOrchestrator } from "./orchestrator";
 import { agentPlanner } from "./planner";
-import { loadRegistry } from "./registry";
+import { defaultRegistryFile, loadRegistryLayered } from "./registry";
 import { codingRoute, sseFrames, type CodingRuntime } from "./routes";
 import { claudeRunner, primeClaudeCodingBinary } from "./runners/claude";
 import { runCapture } from "../nonblocking-exec";
@@ -172,8 +172,16 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
   const env = options.env ?? process.env;
   const dataDir = codingDataDir(root, env);
   const readOnly = backgroundJobsDisabled(env);
+  // F1: the repo-tracked defaults (config/coding-repos.defaults.json) under the owner's live repos.json,
+  // which is never written. A bad layer is named once and ignored; the other layer keeps working.
+  const defaultsFile = defaultRegistryFile(root, env);
+  const warned = new Set<string>();
   function safeRegistry(): RepoRegistry {
-    try { return loadRegistry(join(dataDir, "repos.json")); } catch { return { version: 1, repos: [] }; }
+    const layered = loadRegistryLayered(join(dataDir, "repos.json"), defaultsFile);
+    for (const problem of [layered.liveError, layered.defaultsError]) {
+      if (problem && !warned.has(problem)) { warned.add(problem); console.warn(`[coding] registry: ${problem.slice(0, 300)}`); }
+    }
+    return layered.registry;
   }
   let store: CodingStore;
   try {
