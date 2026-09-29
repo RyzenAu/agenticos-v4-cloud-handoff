@@ -4,9 +4,9 @@
 // and the rules. Honest states: a draft waits for a clear Start; "waiting for approval" is not done;
 // interrupted says "not replayed"; a test count is only ever the orchestrator's own run.
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Activity, ArrowRight, Hand, ListChecks, Loader2, Play, Sparkles, SquareTerminal } from "lucide-react";
+import { ListChecks, Loader2, Play, Sparkles, SquareTerminal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { AttentionCard, Button, Disclosure, Notice, PageFoot, PageHeader, Segmented, Widget, WidgetGrid, fmtRelative } from "@/components/ds";
+import { Button, Disclosure, Notice, PageFoot, PageHeader, Segmented, Widget, WidgetGrid, fmtRelative } from "@/components/ds";
 import { cn } from "@/lib/utils";
 import {
   ACTIVE_STATES,
@@ -43,6 +43,12 @@ export function matches(job: CodingJob, f: Filter) {
   if (f === "needs-you") return needsYou(job);
   if (f === "completed") return job.state === "completed";
   return ["failed", "interrupted", "cancelled"].includes(job.state);
+}
+
+/** Decisions first, then work in progress, then the most recently updated jobs. */
+export function sortJobsForAction(jobs: CodingJob[]): CodingJob[] {
+  const rank = (job: CodingJob) => needsYou(job) ? 0 : (ACTIVE_STATES as string[]).includes(job.state) ? 1 : 2;
+  return [...jobs].sort((a, b) => rank(a) - rank(b) || Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 }
 
 /** Why a job needs you, in one line a person would say. */
@@ -101,7 +107,7 @@ export function CodingList({ request }: { request?: string }) {
     return () => { stop = true; };
   }, [navigate, request]);
 
-  const shown = useMemo(() => (jobs ?? []).filter((j) => matches(j, filter)), [jobs, filter]);
+  const shown = useMemo(() => sortJobsForAction((jobs ?? []).filter((j) => matches(j, filter))), [jobs, filter]);
   const waiting = useMemo(() => (jobs ?? []).filter(needsYou), [jobs]);
   const running = useMemo(() => (jobs ?? []).filter((j) => (ACTIVE_STATES as string[]).includes(j.state)), [jobs]);
   const firstRepo = repos.data?.[0]?.id ?? null;
@@ -114,63 +120,26 @@ export function CodingList({ request }: { request?: string }) {
     });
   };
 
-  // L2 (29 Sep, owner: "fill the screen like the Inbox"): one headline, then a full-width widget grid
-  // that leads with what the page DOES: start a job (the composer) beside what needs you and what's
-  // running, then the jobs, then the harness (W-B's lane, unchanged). Sources sit in the page foot.
+  // Lead with the task and the ordered queue. Account and policy detail remains one click away.
   const loading = jobs === null && !error;
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="Coding" description="Start a coding job, or review one an agent has finished." />
+      <PageHeader title="Coding" description="Assign work and see what needs your decision." />
 
-      {error && <Notice tone="danger" title="Couldn't load coding jobs" className="mb-6">{error} It retries every few seconds.</Notice>}
+      {error && <Notice tone="danger" title="Couldn't load coding jobs" className="mb-6">{error} {jobs ? "The list below is the last successful read." : "Job counts are unavailable."} It retries every few seconds. <Button variant="outline" size="sm" onClick={() => void load()}>Try now</Button></Notice>}
 
       <WidgetGrid aria-label="Coding">
         <NewJob text={composer} setText={setComposer} textareaRef={composerRef} autoDraft={request ?? ""} onDrafted={load} />
-        <Widget
-          icon={Hand}
-          title="Needs you"
-          value={loading || error ? null : waiting.length}
-          tone={waiting.length ? "warn" : "default"}
-          line={waiting.length ? "Open one to answer it. Nothing moves until you do." : loading ? "Reading jobs…" : "Nothing waits on you."}
-          action={waiting.length ? <Button variant="outline" size="sm" className="rounded-full" onClick={() => setFilter("needs-you")}>Show them</Button> : undefined}
-          data-coding-stat="needs-you"
-        />
-        <Widget
-          icon={Activity}
-          title="Running"
-          value={loading || error ? null : running.length}
-          line={jobs ? `${jobs.length} job${jobs.length === 1 ? "" : "s"} in all` : loading ? "Reading jobs…" : "Unknown"}
-          action={running.length ? <Button variant="outline" size="sm" className="rounded-full" onClick={() => setFilter("active")}>Show them</Button> : undefined}
-          data-coding-stat="running"
-        />
-
-        {waiting.length > 0 && (
-          <Widget icon={Hand} span={4} title="Waiting on you" badge={waiting.length}>
-            <ul className="flex flex-col gap-3" aria-label="Coding jobs that need you">
-              {waiting.slice(0, 4).map((job) => (
-                <AttentionCard
-                  key={job.id}
-                  severity="attention"
-                  severityText={jobStateLabel(job.state).label}
-                  title={job.spec.objective}
-                  meta={`${needsYouLine(job)} · ${job.spec.repo.repoId} · updated ${fmtRelative(job.updatedAt)}`}
-                  actions={
-                    <Button variant="outline" className="h-10 rounded-full px-5" asChild>
-                      <Link to="/coding/$jobId" params={{ jobId: job.id }}>Open <ArrowRight aria-hidden="true" /></Link>
-                    </Button>
-                  }
-                />
-              ))}
-            </ul>
-            {waiting.length > 4 && <p className="mt-3 text-sm text-muted-foreground">{waiting.length - 4} more under Jobs → Needs you.</p>}
-          </Widget>
-        )}
-
         <Widget icon={ListChecks} span={4} title="Jobs" badge={jobs?.length || undefined} id="coding-jobs">
-          <Segmented value={filter} options={FILTERS} onChange={setFilter} ariaLabel="Filter coding jobs" className="mb-4 max-w-full overflow-x-auto" />
+          <p className="mt-3 text-sm text-muted-foreground" role="status">
+            {loading ? "Reading jobs…" : !jobs ? "Job status unavailable" : `${waiting.length} need you · ${running.length} running${error ? " · last successful read" : ""}`}
+          </p>
+          <Segmented value={filter} options={FILTERS} onChange={setFilter} ariaLabel="Filter coding jobs" className="my-4 max-w-full overflow-x-auto" />
           {loading ? (
             <div role="status" aria-busy="true" className="rounded-2xl bg-inset p-6 text-sm text-muted-foreground">Loading coding jobs…</div>
-          ) : (jobs ?? []).length === 0 ? (
+          ) : !jobs ? (
+            <p className="rounded-2xl border border-dashed border-border-strong p-6 text-sm text-muted-foreground">Jobs could not be read. Try again above.</p>
+          ) : jobs.length === 0 ? (
             <FirstJob onExample={useExample} repo={firstRepo} />
           ) : shown.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border-strong p-6 text-sm text-muted-foreground">No job matches this filter.</p>
@@ -182,18 +151,20 @@ export function CodingList({ request }: { request?: string }) {
             </ul>
           )}
         </Widget>
-
-        <h2 className="col-span-full mt-6 text-lg font-semibold text-foreground">The harness</h2>
-        <div className="col-span-full min-w-0 md:col-span-2">
-          <AgentsCard data={accounts.data} error={accounts.error} />
-        </div>
-        <ReposCard repos={repos.data} error={repos.error} />
-        <PolicyCard />
       </WidgetGrid>
 
+      <section className="mt-6 rounded-2xl border border-border bg-card px-3 py-2" aria-label="Coding setup">
+        <Disclosure summary={<span className="font-medium">Agents, repositories and rules</span>} meta="Setup details">
+          <WidgetGrid>
+            <div className="col-span-full min-w-0 md:col-span-2"><AgentsCard data={accounts.data} error={accounts.error} /></div>
+            <ReposCard repos={repos.data} error={repos.error} />
+            <PolicyCard />
+          </WidgetGrid>
+        </Disclosure>
+      </section>
+
       <PageFoot>
-        Each lane shows where a job is: draft, plan, builder, tests, review, merge. Agents work in their own git worktrees; you start every job, and nothing is merged or
-        deployed without your yes. Jobs refresh every few seconds from the coding harness; accounts and repos from its registry.
+        Jobs refresh every few seconds. Agents work in separate git worktrees; merge and deploy need your approval.
       </PageFoot>
     </div>
   );
@@ -231,7 +202,6 @@ export function JobCard({ job }: { job: CodingJob }) {
   const state = jobStateLabel(job.state);
   const steps = pipelineFor(job);
   const blocked = job.runs.find((r) => r.state === "blocked_allowance");
-  const roles = job.spec.roles.filter((r) => r.agent);
   return (
     <Link
       to="/coding/$jobId"
@@ -247,9 +217,8 @@ export function JobCard({ job }: { job: CodingJob }) {
           {state.label}
         </span>
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {job.spec.repo.repoId} · {job.spec.repo.jobBranch} · {roles.map((r) => `${r.roleId} ${modelLabel(r.agent)}`).join(" · ")} · updated {fmtRelative(job.updatedAt)}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{job.spec.repo.repoId} · updated {fmtRelative(job.updatedAt)}</p>
+      {needsYou(job) && <p className="mt-2 text-sm font-medium text-warn">{needsYouLine(job)}</p>}
       <div className="mt-4"><PipelineDots steps={steps} /></div>
       {blocked && (
         <p className="mt-3 text-xs text-warn">
@@ -314,7 +283,7 @@ function NewJob({ text, setText, textareaRef, autoDraft, onDrafted }: { text: st
   }
 
   return (
-    <Widget icon={SquareTerminal} span={2} title="Start a job" data-coding="start">
+    <Widget icon={SquareTerminal} span={4} title="Start a job" data-coding="start">
       <div className="flex flex-col gap-4">
         <label htmlFor="coding-request" className="text-base font-medium text-foreground">What should change, and in which repo?</label>
         <textarea

@@ -189,6 +189,15 @@ describe("the Coding page", () => {
     expect(html).toContain("Merge approval");
     expect(needsYouLine(j)).toContain("Not merged yet");
   });
+  test("the queue puts decisions before running work and recent completed jobs", async () => {
+    const { sortJobsForAction } = await import("../../src/components/coding/coding-list");
+    const done = job("completed", { id: "done", updatedAt: "2026-09-29T12:00:00Z" });
+    const working = job("building", { id: "working", updatedAt: "2026-09-29T10:00:00Z" });
+    const decision = job("awaiting_confirmation", { id: "decision", updatedAt: "2026-09-29T09:00:00Z" });
+    const ordered = sortJobsForAction([done, working, decision]);
+    expect(ordered.map((j) => j.id)).toEqual(["decision", "working", "done"]);
+    expect([done, working, decision].map((j) => j.id)).toEqual(["done", "working", "decision"]);
+  });
   test("starting stays a person's clear Start bound to the digest (T3 rules unchanged)", () => {
     const src = readFileSync(join(ROOT, "src/components/coding/coding-list.tsx"), "utf8");
     expect(src).toContain("codingClient.start(result.jobId, result.specDigest)");

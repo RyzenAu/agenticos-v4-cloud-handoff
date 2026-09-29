@@ -208,25 +208,35 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
 }
 
 function Progress({ events }: { events: CodingEvent[] }) {
-  const shown = events.filter((e) => ["state", "step", "spoken", "policy", "input_request", "input_resolved", "error", "recovery", "gate", "approval_request", "apply", "handoff", "text"].includes(e.type)).slice(-200).reverse();
-  if (!shown.length) return <EmptyState title="No progress yet" body="Events appear here as the job runs." />;
+  const [showAll, setShowAll] = useState(false);
+  const history = events.filter((e) => ["state", "step", "spoken", "policy", "input_request", "input_resolved", "error", "recovery", "gate", "approval_request", "apply", "handoff", "text"].includes(e.type)).slice(-200).reverse();
+  if (!history.length) return <EmptyState title="No progress yet" body="Updates appear here as the job runs." />;
+  const shown = showAll ? history : history.slice(0, 20);
   return (
-    <ol className="flex flex-col gap-1.5" aria-label="Progress timeline">
-      {shown.map((e) => (
-        <li key={e.seq} className="flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm odd:bg-inset/60 sm:flex-row sm:gap-3">
-          <span className="shrink-0 text-xs text-muted-foreground sm:w-20">{fmtTime(new Date(e.at), { seconds: true })}<span className="sm:hidden"> · {e.roleId ?? "orchestrator"}</span></span>
-          <span className="hidden w-24 shrink-0 truncate text-xs text-muted-foreground sm:inline">{e.roleId ?? "orchestrator"}</span>
-          <span className="min-w-0 flex-1">{describe(e)}</span>
-        </li>
-      ))}
-    </ol>
+    <section aria-label="Progress timeline">
+      <p className="mb-3 text-sm text-muted-foreground">Latest updates first · {history.length} shown in this history</p>
+      <ol className="flex flex-col gap-1.5">
+        {shown.map((e) => (
+          <li key={e.seq} className="flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm odd:bg-inset/60 sm:flex-row sm:gap-3">
+            <span className="shrink-0 text-xs text-muted-foreground sm:w-20">{fmtTime(new Date(e.at), { seconds: true })}<span className="sm:hidden"> · {e.roleId ?? "orchestrator"}</span></span>
+            <span className="hidden w-24 shrink-0 truncate text-xs text-muted-foreground sm:inline">{e.roleId ?? "orchestrator"}</span>
+            <span className="min-w-0 flex-1">{describe(e)}</span>
+          </li>
+        ))}
+      </ol>
+      {history.length > 20 && (
+        <Button variant="outline" className="mt-4" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Show recent updates" : `Show all ${history.length} updates`}
+        </Button>
+      )}
+    </section>
   );
 }
 
 function describe(e: CodingEvent): string {
   const p = e.payload as any;
   switch (e.type) {
-    case "state": return p.scope === "job" ? `Job: ${p.from} → ${p.to}` : `Agent: ${p.from} → ${p.to} (${String(p.reason).replace(/_/g, " ")})`;
+    case "state": return p.scope === "job" ? `Job moved to ${String(p.to).replace(/_/g, " ")}` : `Agent is ${runStateLabel(String(p.to)).label.toLowerCase()} (${String(p.reason).replace(/_/g, " ")})`;
     case "step": return p.detail ? `${p.label} — ${p.detail}` : p.label;
     case "spoken": return `Jarvis: “${p.line}”`;
     case "policy": return `Policy ${p.decision === "auto-allow" ? "allowed" : p.decision === "auto-deny" ? "refused" : "asked you about"} ${p.nativeKind} (${String(p.rule).replace(/-/g, " ")}): ${p.target}`;
