@@ -45,7 +45,7 @@ Finance page: render `/receptionist-payments` next to the summary cards. `recept
 
 ## Not done and not claimed
 
-No live Hindsight, no real vault, no Windows run, no browser check of the Memory or Finance pages, no paid model call. The signature match runs on the first scan after upgrade only for notes that are re-scanned; existing `notes.json` entries have no signature until their note changes or is re-saved, so a rename plus edit of a note untouched since the upgrade still falls back to a new id. `bun test` for whole `scripts` was not run.
+No live Hindsight, no real vault, no Windows run, no browser check of the Memory or Finance pages, no paid model call. Existing notes get their signature on the first scan after upgrade, so a note that is renamed and edited before that first scan still falls back to a new id. `bun test` for whole `scripts` was not run.
 
 ## Windows and live-data acceptance (later, on the PC)
 
