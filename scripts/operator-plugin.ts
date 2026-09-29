@@ -11,7 +11,9 @@ import { workspaceProfile } from "./workspace-profile";
 import { privacyPaneAction, setupDiscovery } from "./setup-discovery";
 import { openAIVoice } from "./openai-voice";
 import { freeVoice as freeVoiceEngine } from "./free-voice";
-import { codingVoiceFor } from "./coding/plugin";
+import { codingVoiceFor, codingRuntime } from "./coding/plugin";
+import { createFlows } from "./flows/service";
+import { inboxContacts, liveCalendarPort } from "./flows/live";
 import { claudeBridge } from "./claude-bridge";
 import { clineBridge } from "./cline-bridge";
 import { pageTokenMatches, requestPrincipal } from "./identity/gate";
@@ -510,6 +512,7 @@ export function operatorPlugin({
     vault.schedule(current.sources);
   };
   const accounts = accountConnections(root, load, save, { homeDir: memoryHome });
+  const flows = createFlows({ root, contacts: inboxContacts(load), calendar: liveCalendarPort({ load, save, accounts }) });
   const existingConnections = nativeConnectionDiscovery(root, { homeDir: memoryHome });
   const skool = createSkoolMessages(root, { homeDir: memoryHome });
   const leadsApi = createLeadsApi(root);
@@ -647,7 +650,8 @@ export function operatorPlugin({
       const get = loopbackJson(() => ownOrigin);
       const signal = AbortSignal.timeout(14_000);
       const [needsYou, today] = await Promise.all([get("/__workspace/needs-you", signal), get("/__workspace/today", signal)]);
-      return { needsYou, today };
+      const coding = await codingRuntime(root).then((rt) => rt.store.listJobs({ limit: 100 }).filter((j) => ["draft", "awaiting_confirmation", "needs_owner", "awaiting_approval"].includes(j.state)).map((j) => ({ id: j.id, state: j.state, title: j.spec.objective.slice(0, 100) }))).catch(() => null);
+      return { needsYou, today, coding };
     },
     warmHermes: () => warmHermes(),
     lessonActive: () => screenHands.lessons.active,
@@ -665,6 +669,7 @@ export function operatorPlugin({
       : undefined,
     // Track 3: coding jobs by voice (scripts/coding/voice.ts), on the same verified caller as memory.
     coding: async (utterance, turn) => (await codingVoiceFor(root)).handle(utterance, { caller: turn.caller as never, spokenYes: turn.spokenYes, previousAssistant: turn.previousAssistant }),
+    flows: async (utterance, turn) => flows.handle(utterance, { caller: turn.caller as never, spokenYes: turn.spokenYes, previousAssistant: turn.previousAssistant }),
   });
   const memoryImages = voiceImages(root, load);
   const localVoiceImages = voiceLocalImages({allowed:()=>brainEnabled(peek(), "images")});
@@ -2321,6 +2326,24 @@ export function operatorPlugin({
             res.once("close", closed);
             try { return send(await inboxAsk.ask(body, controller.signal)); }
             finally { res.removeListener("close", closed); }
+          }
+          if (path === "/flows" && method === "GET") return send(flows.recent());
+          if (path === "/flows/update-draft" && method === "POST") {
+            const id = typeof body.id === "string" ? body.id : "";
+            const email = typeof body.email === "string" ? body.email.trim().slice(0, 320) : "";
+            const subject = typeof body.subject === "string" ? body.subject.trim().slice(0, 500) : "";
+            const content = typeof body.content === "string" ? body.content.trim().slice(0, 100000) : "";
+            if ((email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) || !subject || !content) return send({ error: "A subject and message are required; check the email address." }, 400);
+            const draft = flows.updateDraft(id, principal.personId, { email: email || null, subject, body: content });
+            return draft ? send({ draft, sent: false }) : send({ error: "Draft not found." }, 404);
+          }
+          if (path === "/flows/discard-draft" && method === "POST") {
+            const draft = typeof body.id === "string" ? flows.recent().emailDrafts.find((d) => d.id === body.id && d.by === principal.personId) : null;
+            return draft ? send({ ok: !!flows.discardDraft(draft.id) }) : send({ error: "Draft not found." }, 404);
+          }
+          if (path === "/flows/undo-event" && method === "POST") {
+            const event = typeof body.id === "string" ? flows.recent().events.find((e) => e.id === body.id && e.by === principal.personId) : null;
+            return event ? send(await flows.undoEvent(event.id)) : send({ error: "Event not found." }, 404);
           }
           if (path === "/inbox/import" && method === "POST") {
             const state = load();

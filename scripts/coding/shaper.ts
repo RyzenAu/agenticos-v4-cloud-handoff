@@ -23,6 +23,8 @@ import { redactText } from "./redact";
 import { codingMoneyRefusal } from "../jarvis-execution/spoken-money";
 import { reposFor } from "./registry";
 import { claudeBinding, codexBinding, draftSpec, routerBinding, slugOf } from "./spec";
+import { isSiteRequest, siteObjective } from "../../src/lib/site-maker";
+import { siteDraftPlan } from "./site-plan";
 
 /**
  * The shaper (CODING-HARNESS §3.2, task C4): a spoken or typed request → a bounded, UNCONFIRMED TaskSpec,
@@ -95,8 +97,9 @@ const MODEL_WORDS: Array<{ re: RegExp; binding: (d: ShaperDeps, preferredSlot?: 
   { re: /\bhaiku\b/i, binding: (d) => claudeBinding("claude-haiku-4-5", d.cliVersions().claude) },
   { re: /\bclaude\b/i, binding: (d) => claudeBinding("claude-opus-5-5", d.cliVersions().claude) },
   { re: /\bhermes\b|\bgpt[- ]?6[- ]?sol\b/i, binding: () => routerBinding("codex/gpt-6-sol") },
-  { re: /\bdeep ?seek\b/i, binding: () => routerBinding("openrouter/deepseek-v4-pro") },
-  { re: /\bmimo\b/i, binding: () => routerBinding("openrouter/mimo-v2.6-pro") },
+  { re: /\bdeep ?seek\b/i, binding: () => routerBinding("cline/deepseek-v4.1-flash") },
+  { re: /\bmimo\b/i, binding: () => routerBinding("cline/mimo-v2.6-flash") },
+  { re: /\bmuse\b/i, binding: () => routerBinding("cline/muse-spark-1.3") },
   { re: /\bcline\b/i, binding: () => routerBinding("cline/deepseek-v4.1-flash") },
   { re: /\bcodex\b|\bgpt[- ]?6[- ]?astra\b|\bastra\b/i, binding: (d) => codexFor(d) },
 ];
@@ -127,7 +130,7 @@ export function templateFrom(text: string): RoleTemplate {
   return "build+review";
 }
 
-const AGENT_WORD = "(?:opus|sonnet|fable|haiku|codex|claude|hermes|deep ?seek|mimo|cline|astra)";
+const AGENT_WORD = "(?:opus|sonnet|fable|haiku|codex|claude|hermes|deep ?seek|mimo|muse|cline|astra)";
 /** A sentence that starts with the task itself ("Fix the Claude reviewer badge…"), not with who does it. */
 const TASK_SENTENCE = /^\s*(?:(?:hey\s+)?jarvis[,\s]+)?(?:please\s+)?(?:fix|make|change|update|add|remove|delete|rename|set|move|refactor|rewrite|create|implement|improve|investigate|look into|find out|debug|repair|replace|hide|show|style|colou?r|clean up|tidy|speed up|stop|ensure|align|centre|center|correct|swap|convert|build (?:a|an|the)\b)/i;
 /** One clause that only says who does which role ("Opus builds", "another Opus reviews it", "use Sonnet for the build"). */
@@ -161,14 +164,22 @@ const AGENT_DOES = new RegExp(
  * even when the task names an agent or a role ("Fix the Claude reviewer badge colour", REVIEW-T3 R5), and
  * only its team clauses ("…, Opus builds, Codex reviews") are dropped.
  */
+/**
+ * "start a coding job to fix X", "kick off a coding task for X", "open a new coding job: X" (F1): the words that
+ * only say a job is wanted. Stripped, so what follows is the objective.
+ */
+const JOB_LEAD = /^\s*(?:please\s+)?(?:start|begin|kick off|create|open|set up|run|spin up|queue|make)\s+(?:me\s+)?(?:a|an|the|another)?\s*(?:new\s+)?coding\s+(?:job|task|run)\s*(?:to|for|that|which|so (?:that )?it|:|,|-)?\s*/i;
+export const startsCodingJob = (text: string) => JOB_LEAD.test(text.replace(/^\s*(?:hey\s+)?jarvis[,\s]+/i, ""));
+
 export function objectiveFrom(text: string): string {
   return text
     .replace(/^\s*(?:hey\s+)?jarvis[,\s]+/i, "")
+    .replace(JOB_LEAD, "")
     .replace(LEAD_IN, "$1")
     .replace(AGENT_DOES, (_m, lead: string, verb: string) => `${lead}${verb.toLowerCase()} `)
     // A sentence ends at a full stop followed by a space (or the end), so "src/a.ts" doesn't split one.
     .replace(/(?:[^.]|\.(?=\S))*\b(?:builds?|reviews?|reviewer|builder|tester)\b(?:[^.]|\.(?=\S))*\.?/gi, (s) => {
-      if (!/\b(?:opus|sonnet|codex|claude|hermes|deepseek|mimo|cline|another|agent)\b/i.test(s)) return s;
+      if (!/\b(?:opus|sonnet|codex|claude|hermes|deepseek|mimo|muse|cline|another|agent)\b/i.test(s)) return s;
       if (!TASK_SENTENCE.test(s)) return "";
       const parts = s.split(/(\s*[,;]\s*|\s+and\s+)/i);
       const kept: string[] = [parts[0]];
@@ -189,6 +200,9 @@ export function objectiveComplete(objective: string): boolean {
   const words = objective.split(/\s+/).filter(Boolean);
   if (words.length < 4) return false;
   if (words.length >= 9) return true;
+  // F1: a task verb, a specific thing and where it is ("fix the calls table in the receptionist app") is enough
+  // to draft: the planner reads the repo and asks its own question if the change is still unclear.
+  if (words.length >= 6 && /^(?:fix|change|update|add|remove|rename|refactor|rewrite|improve|debug|repair|replace|hide|show|style|clean up|speed up|correct|implement|build|create|make)\b/i.test(objective) && /\b(?:in|on|of|for)\s+(?:the\s+|our\s+|my\s+|a\s+)?[\w'-]+/i.test(objective)) return true;
   return /\b(?:so that|because|when|shows?|should|to\s+\w+|instead of|wrong|broken|missing|error|fails?|set|add|rename|remove|change|make)\b/i.test(objective) && words.length >= 5;
 }
 
@@ -198,7 +212,8 @@ function repoByWords(text: string, repos: readonly RepoRegistryEntry[]): { id: s
   const t = text.toLowerCase();
   return repos
     .map((r) => {
-      const idWords = r.id.split("-").filter((w) => w.length > 2);
+      // "muv" is every M&U repo's prefix, not a word that says which one (F1).
+      const idWords = r.id.split("-").filter((w) => w.length > 2 && w !== "muv");
       let score = t.includes(r.id) ? 3 : 0;
       for (const w of idWords) if (new RegExp(`\\b${w}`, "i").test(t)) score += 1;
       for (const w of r.description.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4)) if (t.includes(w)) score += 0.25;
@@ -246,10 +261,16 @@ export function createShaper(deps: ShaperDeps) {
     const builder = roleModel(text, "build", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
     const reviewer = template === "build-only" ? null : roleModel(text, "review", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
     const tester = template === "build+review+test-author" ? roleModel(text, "test", deps) ?? codexFor(deps) : null;
-    const objective = p.objective ?? objectiveFrom(p.utterance);
+    const site = isSiteRequest(p.utterance);
+    const objective = p.objective ?? (site ? siteObjective(p.utterance) : objectiveFrom(p.utterance));
     const specId = randomUUID() as Uuid;
     let plan: PlannerDraft | { question: string } | null = null;
-    if (deps.planner && p.usePlanner) {
+    // F1: a "make a site" request is drafted from its own known shape (the site's source folders, the repo's
+    // build, the skills' brief): no planner call, no allowance spent. A repo with no site-shaped top level
+    // falls through to the planner or a question, as any other request does.
+    if (site) plan = siteDraftPlan(entry, p.utterance);
+    if (plan) { /* the site plan */ }
+    else if (deps.planner && p.usePlanner) {
       try { plan = await deps.planner({ entry, objective, utterance: text, specId }); }
       catch (e) { return { kind: "refused", reason: `The planner couldn't draft this: ${redactText((e as Error).message, 200)}` }; }
     } else plan = heuristicPlan(entry, objective, text);
@@ -322,6 +343,11 @@ export function createShaper(deps: ShaperDeps) {
     const money = codingMoneyRefusal(utterance);
     if (money) return { kind: "refused", reason: money };
     const p: Pending = { draftId: randomUUID() as Uuid, principal: input.principal, usePlanner: input.usePlanner !== false, channel: input.channel, utterance, repoId: null, objective: null, asked: null, options: [], clarifications: [], decisions: [], jevModel: "none", jevMs: 0, at: Date.now() };
+    // F1: a site request already says what to build; its first sentence is the objective, so nothing is asked.
+    if (isSiteRequest(utterance)) p.objective = siteObjective(utterance);
+    // A repo that exists but isn't registered is said plainly, not guessed between two other repos.
+    const unregistered = unregisteredRepoMention(utterance, repos);
+    if (unregistered) return { kind: "refused", reason: unregistered };
     const jev = await askJev(deps, utterance, repos);
     p.jevModel = jev.model;
     p.jevMs = jev.ms;
@@ -366,6 +392,17 @@ export function createShaper(deps: ShaperDeps) {
   return { shape, pending: () => pending.size };
 }
 
+/**
+ * Repos the owner talks about that the registry may not hold yet. The receptionist app lives on D:, outside the
+ * five site repos the defaults seed, and its base branch and test command are the owner's to set.
+ */
+export function unregisteredRepoMention(text: string, repos: readonly RepoRegistryEntry[]): string | null {
+  if (repos.some((r) => /receptionist/i.test(r.id))) return null;
+  if (/\bmu-receptionist\b/i.test(text) || /\b(?:mu[- ]?)?receptionist (?:app|repo|repository|project|codebase|dashboard)\b/i.test(text))
+    return "The receptionist app isn't in the coding registry yet, so I can't draft that. Add mu-receptionist to .operator-data/coding/repos.json (its base branch and check commands) and ask again.";
+  return null;
+}
+
 /** A plan from the request's own words: only when it names files (else the planner or a question decides). */
 export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text: string): PlannerDraft | null {
   const files = [...new Set([...text.matchAll(/\b((?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|md|json|css|html|txt|sql|prisma|yml|yaml))\b/g)].map((m) => m[1]))];
@@ -389,22 +426,38 @@ export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text:
 
 const MODEL_NAME: Record<string, string> = {
   "claude-opus-5-5": "Opus", "claude-sonnet-5": "Sonnet", "claude-fable-5-1": "Fable", "claude-haiku-4-5": "Haiku",
-  "gpt-6-astra": "Codex", "codex/gpt-6-sol": "Hermes (GPT-6 Sol)", "openrouter/deepseek-v4-pro": "DeepSeek", "openrouter/mimo-v2.6-pro": "MiMo", "cline/deepseek-v4.1-flash": "Cline DeepSeek",
+  "gpt-6-astra": "Codex", "codex/gpt-6-sol": "Hermes (GPT-6 Sol)", "openrouter/deepseek-v4-pro": "DeepSeek", "openrouter/mimo-v2.6-pro": "MiMo", "cline/deepseek-v4.1-flash": "Cline DeepSeek", "cline/mimo-v2.6-flash": "Cline MiMo", "cline/muse-spark-1.3": "Cline Muse",
 };
 export const modelName = (b: AgentBinding | null) => (b ? MODEL_NAME[b.model] ?? b.model : "nobody");
 
-/** "Draft ready: receptionist app, Opus builds, Opus reviews, tests and typecheck. Start it?" */
+/** What Jarvis says after "Draft ready: <title>." A whole-utterance "start" answers it (voice.ts). */
+export const START_PROMPT = "Say start when you want it built.";
+/** The question the last spoken line ended on: the older "Start it?" or the current prompt. */
+export const STARTS_WITH_PROMPT = /(?:\bStart it\?|Say start when you want it built\.)\s*$/i;
+
+/**
+ * A short title for a job from its objective: "Fix the calls table in the receptionist app". The site maker's
+ * "(CRM lead #12, …)" aside and its ", in the X repo, starting from …" tail are dropped; the repo and team are
+ * on the Coding page. At most about 90 characters, cut at a word.
+ */
+export function draftTitle(spec: Pick<TaskSpec, "objective" | "repo">): string {
+  let t = spec.objective
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/,?\s+(?:in|on) the [a-z0-9-]+ repo\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.:;,\s]+$/, "");
+  if (t.length > 90) t = t.slice(0, 90).replace(/\s+\S*$/, "").replace(/[.:;,\s]+$/, "") + "…";
+  t = t || "coding job";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** "Draft ready: Fix the calls table in the receptionist app. Say start when you want it built." */
 export function spokenSummary(spec: TaskSpec): string {
-  const builders = spec.roles.filter((r) => r.role === "builder");
-  const reviewer = spec.roles.find((r) => r.role === "reviewer");
-  const tester = spec.roles.find((r) => r.role === "test-author");
-  const who = [
-    `${[...new Set(builders.map((b) => modelName(b.agent)))].join(" and ")} build${builders.length === 1 ? "s" : ""}`,
-    tester ? `${modelName(tester.agent)} writes tests` : null,
-    reviewer ? `${modelName(reviewer.agent)} reviews` : "no review",
-  ].filter(Boolean).join(", ");
-  const files = builders.flatMap((b) => [...b.owns.globs, ...b.owns.newFiles]).slice(0, 3).join(", ");
-  return `Draft ready: ${spec.repo.repoId}, branch ${spec.repo.jobBranch}. ${who}. It may change ${files || "nothing yet"}. Checks: ${spec.checks.join(" and ") || "none"}. Start it?`;
+  const roles = spec.roles ?? [];
+  const routes = roles.filter((r) => r.agent).map((r) => `${r.roleId}: ${r.agent!.model}${r.agent!.model.startsWith("cline/") ? " (free only)" : r.agent!.route === "model-router" ? " (automatic fallback may use metered models)" : ""}`);
+  const snapshot = spec.repo?.baseSha ? `Source snapshot: ${spec.repo.baseRef} at ${spec.repo.baseSha.slice(0, 12)}; uncommitted checkout changes are excluded. ` : "";
+  return "Draft ready: " + draftTitle(spec) + ". " + snapshot + (routes.length ? `Selected routes: ${routes.join("; ")}. ` : "") + START_PROMPT;
 }
 
 export { slugOf };

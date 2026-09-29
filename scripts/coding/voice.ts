@@ -5,7 +5,8 @@ import type { AgentBinding, CodingJob, JobState, PersonId, RoleKind, VerifiedPri
 import type { Orchestrator } from "./orchestrator";
 import { redactText } from "./redact";
 import { codexBinding, claudeBinding, routerBinding, reviseSpec, shortSha, specDigest } from "./spec";
-import { spokenSummary, type createShaper } from "./shaper";
+import { spokenSummary, STARTS_WITH_PROMPT, type createShaper } from "./shaper";
+import { siteRequestFromWords } from "../../src/lib/commands/site-maker";
 import { isCodingRequest } from "../../src/lib/commands/coding";
 import type { CodingStore } from "./store";
 
@@ -62,7 +63,7 @@ export const voiceStateKey = (caller: VoiceCaller) => (caller.actor === "human" 
 
 const STATE_TTL = 15 * 60_000;
 // Kept for reference: the phrases the shared detector covers.
-const _ROLE_WORDS = /\b(?:opus|sonnet|codex|claude|hermes|deep ?seek|mimo|cline|another agent|an agent)\b[^.,;]{0,24}\b(?:build|builds|review|reviews|builder|reviewer|implement|implements|fix|fixes)\b|\b(?:build|builds|review|reviews|builder|reviewer)\b[^.,;]{0,24}\b(?:opus|sonnet|codex|claude|hermes|deep ?seek|mimo|cline|another agent)\b|\bcoding job\b|\bhave an? (?:opus|codex|sonnet|claude) builder\b/i;
+const _ROLE_WORDS = /\b(?:opus|sonnet|codex|claude|hermes|deep ?seek|mimo|muse|cline|another agent|an agent)\b[^.,;]{0,24}\b(?:build|builds|review|reviews|builder|reviewer|implement|implements|fix|fixes)\b|\b(?:build|builds|review|reviews|builder|reviewer)\b[^.,;]{0,24}\b(?:opus|sonnet|codex|claude|hermes|deep ?seek|mimo|muse|cline|another agent)\b|\bcoding job\b|\bhave an? (?:opus|codex|sonnet|claude) builder\b/i;
 const _START_VERBS = /^\s*(?:hey\s+)?(?:jarvis[,\s]+)?(?:please\s+)?(?:fix|build|implement|add|change|update|refactor|rename|remove|make|write|improve|create|set|investigate|review)\b/i;
 
 /** The SAME detector the command registry uses (src/lib/commands/coding.ts), so typed and spoken agree. */
@@ -138,9 +139,10 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     if (/\bopus\b/i.test(text)) return claudeBinding("claude-opus-5-5", v.claude);
     if (/\bsonnet\b/i.test(text)) return claudeBinding("claude-sonnet-5", v.claude);
     if (/\bcodex\b/i.test(text)) return codexBinding("gpt-6-astra", "codex:openai-2", v.codex);
-    if (/\bdeep ?seek\b/i.test(text)) return routerBinding("openrouter/deepseek-v4-pro");
+    if (/\bdeep ?seek\b/i.test(text)) return routerBinding("cline/deepseek-v4.1-flash");
     if (/\bhermes\b/i.test(text)) return routerBinding("codex/gpt-6-sol");
-    if (/\bmimo\b/i.test(text)) return routerBinding("openrouter/mimo-v2.6-pro");
+    if (/\bmimo\b/i.test(text)) return routerBinding("cline/mimo-v2.6-flash");
+    if (/\bmuse\b/i.test(text)) return routerBinding("cline/muse-spark-1.3");
     return null;
   }
 
@@ -155,7 +157,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     if (person.endsWith(PROGRAM_KEY)) {
       touch(person, { jobId: j.id, draftId: undefined, startQuestion: { id: `program-${j.id}`, at: now(), digest } });
       deps.setFocus(j.id, "plan");
-      return { say: summary.replace(/\s*Start it\?$/, " It's on the Coding page; a signed-in person starts it there."), navigate: "/coding" };
+      return { say: summary.replace(/\s*(?:Start it\?|Say start when you want it built\.)$/, " It's on the Coding page; a signed-in person starts it there."), navigate: "/coding" };
     }
     const q = (deps.spoken.ask as (s: string) => { id: string; at: number }).call(deps.spoken, "coding");
     touch(person, { jobId: j.id, draftId: undefined, startQuestion: { ...q, digest } });
@@ -210,7 +212,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     // REVIEW-T3 F7c: "start it" is not a shared yes (S2); here it answers ONLY Jarvis's own "Start it?",
     // as the whole utterance, in the very next turn. Anything said in between (a refused money request,
     // another rule's answer) means the question is no longer the one being answered.
-    if (s.startQuestion && s.jobId && WHOLE_YES.test(text) && !/\bStart it\?\s*$/i.test(prev.trim())) {
+    if (s.startQuestion && s.jobId && WHOLE_YES.test(text) && !STARTS_WITH_PROMPT.test(prev.trim())) {
       touch(person, { startQuestion: undefined });
       return { say: "I'm not sure what that yes is for, so nothing started. The draft is still on the Coding page; say start it right after I ask, or press Start there.", navigate: "/coding" };
     }
@@ -256,8 +258,15 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
     if (s.startQuestion) touch(person, { startQuestion: undefined });
 
     // ── the answer to the shaper's question ──
-    if (s.draftId && !isCodingStart(text, deps.repoIds?.() ?? []) && !/^(?:how'?s|what'?s|stop|cancel|show)\b/i.test(text)) {
+    if (s.draftId && !isCodingStart(text, deps.repoIds?.() ?? []) && !siteRequestFromWords(text) && !/^(?:how'?s|what'?s|stop|cancel|show)\b/i.test(text)) {
       const r = await deps.shaper.shape({ utterance: text, channel: "voice", principal: verified(caller), draftId: s.draftId, answer: text, usePlanner: person_ });
+      return shaped(person, r);
+    }
+
+    // ── "make a top-tier dental site for <lead>": the site maker's own request (F1), drafted the same way ──
+    const siteRequest = siteRequestFromWords(text);
+    if (siteRequest) {
+      const r = await deps.shaper.shape({ utterance: siteRequest, channel: "voice", principal: verified(caller), usePlanner: person_ });
       return shaped(person, r);
     }
 

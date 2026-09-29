@@ -60,7 +60,7 @@ export type Delegates = {
   /** The receptionist's state from its own feed (never invented). */
   receptionist?: (utterance: string) => Promise<{ ok: boolean; said: string; verified?: boolean | null }>;
   /** A CRM action on a named lead (log a call, set a status, who's next), read back after any write. */
-  leads?: (action: LeadAction, principal: Principal) => Promise<{ ok: boolean; said: string; verified: boolean | null }>;
+  leads?: (action: LeadAction, principal: Principal, eventId?: string) => Promise<{ ok: boolean; said: string; verified: boolean | null }>;
   /** A real reminder through the reminder skill ("remind me to …" words). */
   reminder?: (words: string, principal: Principal) => Promise<{ ok: boolean; said: string }>;
   /**

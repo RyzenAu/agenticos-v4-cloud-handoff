@@ -431,13 +431,16 @@ describe("orchestrator: consequential steps behind B2 approvals", () => {
     expect(w.approvals.decide(approval.id, { ...owner, sessionId: "sk1.fake-session-key" }, "approve", { uiConfirm: true, cardNonce: crypto.randomUUID() })).toMatchObject({ ok: false });
     // A yes heard BEFORE the question doesn't count.
     const early = w.spoken.record("yes")!;
+    await Bun.sleep(3); // a yes counts only if strictly after the question; never rely on same-millisecond ordering
     const q = w.approvals.ask(approval.id, owner);
     expect(w.approvals.decide(approval.id, owner, "approve", { spokenYes: early.id, questionId: q.questionId })).toMatchObject({ ok: false });
     // Mehroz's yes doesn't either (the approver is the owner).
     const q2 = w.approvals.ask(approval.id, owner);
+    await Bun.sleep(3);
     const his = w.spoken.record("yes")!;
     expect(w.approvals.decide(approval.id, { personId: "mehroz", via: "tailnet-person", actor: "human" }, "approve", { spokenYes: his.id, questionId: q2.questionId })).toMatchObject({ ok: false });
     const q3 = w.approvals.ask(approval.id, owner);
+    await Bun.sleep(3);
     const yes = w.spoken.record("yes, approve")!;
     expect(w.approvals.decide(approval.id, owner, "approve", { spokenYes: yes.id, questionId: q3.questionId })).toMatchObject({ ok: true });
     const merged = await until(w, job.id, (j) => j.applies.some((a) => a.state === "succeeded" || a.state === "failed"));
@@ -462,6 +465,7 @@ describe("orchestrator: consequential steps behind B2 approvals", () => {
     w.store.updateJob(job.id, { headSha: w.fx.baseSha });
     const owner = { personId: "usman" as const, via: "loopback-owner" as const, actor: "human" as const, deviceId: "usman-pc" };
     const q = w.approvals.ask(approval.id, owner);
+    await Bun.sleep(3);
     const yes = w.spoken.record("yes")!;
     w.approvals.decide(approval.id, owner, "approve", { spokenYes: yes.id, questionId: q.questionId });
     const after = await until(w, job.id, (j) => j.applies[0].state !== "awaiting_approval" && j.applies[0].state !== "running");

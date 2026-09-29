@@ -81,6 +81,12 @@ describe("routed coding roles (model route verification)", () => {
       expect(out.providerModel).toBe(model);
     }
   }, 60_000);
+  test("an explicit free Cline choice never reaches a metered OpenRouter fallback", async () => {
+    const { chat, sink } = fakeChat({ "cline/deepseek-v4.1-flash": "limited", "openrouter/deepseek-v4-pro": "ok" }, "{}");
+    const out = await start("cline/deepseek-v4.1-flash", true, chat).handle.done;
+    expect(out.status).toBe("blocked_allowance");
+    expect((sink.receipts as RouterReceipt[]).some((r) => r.model === "openrouter/deepseek-v4-pro")).toBe(false);
+  }, 60_000);
   test("every route down → blocked with every reason, never a fake success", async () => {
     const { chat } = fakeChat({}, "x");
     const out = await start("codex/gpt-6-sol", true, chat).handle.done;

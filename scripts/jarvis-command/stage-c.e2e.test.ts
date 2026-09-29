@@ -154,13 +154,17 @@ async function rig(options: { jev?: ReturnType<typeof jev>; memory?: boolean; gr
   const h: Hands = { screen: [], apps: [], opened: [], urls: [], youtube: [], decks: [], blank: [], notepad: [], coding: [], leads: [], reminders: [], skills: [] };
   // A synthetic CRM behind the leads API shape (search → log → list read-back).
   const crm = new Map<number, { title: string; status: string }>([[7, { title: "Synthetic Physio Studio", status: "new" }], [8, { title: "Synthetic Dental Co", status: "to_call" }]]);
+  const crmActivities: Array<{ id: number; leadId: number; kind: string; outcome: string; by: string; event?: string }> = [];
   const fakeLeads = {
     handle: async (path: string, _m: string, body: unknown, params: URLSearchParams) => {
       if (path === "/leads/search") return { hits: [...crm].filter(([, l]) => l.title.toLowerCase().includes((params.get("q") ?? "").toLowerCase())).map(([id, l]) => ({ group: "leads", leadId: id, title: l.title })) };
+      if (path === "/leads/detail") return { activities: crmActivities.filter((a) => a.leadId === Number(params.get("id"))) };
       if (path === "/leads/log") {
-        const b = body as { lead: number; outcome: string };
+        const b = body as { lead: number; outcome: string; kind: string; by: string; event?: string };
+        if (b.event && crmActivities.some((a) => a.event === b.event)) return { lead: {}, duplicate: true };
+        crmActivities.push({ id: crmActivities.length + 1, leadId: b.lead, kind: b.kind, outcome: b.outcome, by: b.by, event: b.event });
         crm.get(b.lead)!.status = b.outcome;
-        return { lead: {} };
+        return { lead: {}, duplicate: false };
       }
       if (path === "/leads/list") return { leads: [...crm].filter(([, l]) => l.status === params.get("status")).map(([id]) => ({ id })) };
       if (path === "/leads/cards") return { cards: [{ leadId: 8, name: "Synthetic Dental Co", vertical: "dental", area: "Parramatta" }] };
@@ -693,9 +697,9 @@ describe("AUDIT-F4 rows owned by Track 2 (SYNTHETIC, the real voice entry)", () 
     const r = await rig();
     const won = await r.say("mehroz", "Mark Synthetic Physio Studio as won");
     expect(won.done).toMatchObject({ ok: true, verified: true, decision: { op: "leads.action", delegateTo: "leads" } });
-    expect(won.line).toBe("Marked Synthetic Physio Studio as won.");
+    expect(won.line).toBe("Marked Synthetic Physio Studio as won, confirmed in the CRM.");
     const logged = await r.say("local", "Log a call to Synthetic Dental Co as no answer");
-    expect(logged.line).toBe("Logged a call to Synthetic Dental Co as no answer.");
+    expect(logged.line).toBe("Logged a call to Synthetic Dental Co as no answer, confirmed in the CRM.");
     const next = await r.say("local", "Who should I call next?");
     expect(next.line).toMatch(/^Next to call: Synthetic Dental Co/);
     expect(r.h.leads[0]).toMatch(/^mehroz:/); // who asked is the verified principal

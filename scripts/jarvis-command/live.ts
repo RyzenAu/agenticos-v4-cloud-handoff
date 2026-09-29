@@ -46,10 +46,10 @@ export function createLiveCommandService(options: {
   void loadCodingDetector();
   const delegates: Delegates = {
     ...(options.memoryTurn ? { memory: (utterance: string, caller: unknown, spokenYes: string | null) => options.memoryTurn!(caller, utterance, spokenYes) } : {}),
-    leads: async (action, principal) => {
+    leads: async (action, principal, eventId) => {
       const api = options.leads?.();
       if (!api) return { ok: false, said: "The leads service isn't running here, so nothing in the CRM changed.", verified: null };
-      return runLeadAction(api, action, principal);
+      return runLeadAction(api, action, principal, eventId);
     },
     // J6: his browser commands typed use the same hands as spoken ones (agent-browser in Jarvis Chrome, and the task loop).
     browser: {
