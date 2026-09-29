@@ -59,7 +59,15 @@ export type PendingPayment = {
   argsDigest: string;
 };
 /** A payment receipt (kept, never pruned with the 7-day step log). */
-export type PaymentReceipt = { ts: string; task: number; kind: string; amount: string; currency: string; payee: string; host: string | null; reference: string | null; outcome: "confirmed" | "unknown"; shot?: string | null };
+export type PaymentReceipt = {
+  ts: string; task: number; kind: string; amount: string; currency: string; payee: string; host: string | null; reference: string | null;
+  outcome: "confirmed" | "unknown" | "pressing" | "stopped" | "failed"; shot?: string | null;
+  /**
+   * Desk payments (P1, 29 Sep): a payment he confirmed at his desk writes the same kind of line, marked `mode: "desk"`
+   * (away mode's have no mode field), with what he confirmed with and where the request came from. Never a secret.
+   */
+  mode?: "desk"; id?: string; what?: string; how?: string; source?: string; button?: string;
+};
 export type AwayState = {
   version: 1;
   on: boolean;

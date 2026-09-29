@@ -55,6 +55,11 @@ function settings(root: string): AwaySettings {
   }
 }
 
+/** Where away mode keeps its audit log and receipts (D:\AgenticOS\away-mode unless his config says otherwise). Desk payments write their receipts to the same file. */
+export function awayDataDir(root: string): string {
+  return settings(root).dataDir ?? DEFAULT_DATA_DIR;
+}
+
 /** His Telegram user ID: the people.json person whose role says owner. */
 export function ownerTelegram(root: string) {
   const owner = readPeople(root).find((p) => /\bowner\b/i.test(p.role ?? ""));

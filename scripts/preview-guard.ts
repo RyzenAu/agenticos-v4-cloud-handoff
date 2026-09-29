@@ -22,6 +22,15 @@ export function quietMemoryAllowed(path: string, env: NodeJS.ProcessEnv = proces
   return /^\/__memory(?:\/[a-z/-]*)?$/.test(path) || path === "/__operator/voice/free/turn" || path === "/__operator/voice/free/stt";
 }
 
+/**
+ * A quiet copy started with DESK_PAY_SYNTHETIC=1 has a FAKE Jarvis Chrome and its own scratch receipts (scripts/desk-payments/
+ * live.ts), so the desk payment routes may be exercised beside the live app: nothing real can be paid or opened. The
+ * skills route stays payment-only there (the operator plugin refuses any other skill in that mode).
+ */
+export function deskPaySyntheticAllowed(path: string, env: NodeJS.ProcessEnv = process.env) {
+  return env.DESK_PAY_SYNTHETIC === "1" && backgroundJobsDisabled(env) && /^\/__operator\/(?:desk-pay\/(?:confirm|cancel)|jarvis\/skill)$/.test(path);
+}
+
 export function previewAllowsMutation(path: string) {
   if (path === "/__website-os/connect") return true; // Read-only local preview inspection.
   // CRM deal fields, board moves and stage rules only touch this workspace's own crm.sqlite.
@@ -45,7 +54,7 @@ export function previewGuard(): Plugin {
       if (backgroundJobsDisabled()) {
         server.middlewares.use((req, res, next) => {
           const path = new URL(req.url || "/", "http://localhost").pathname;
-          if (!path.startsWith("/__") || ["GET", "HEAD", "OPTIONS"].includes(req.method || "GET") || quietMemoryAllowed(path)) return next();
+          if (!path.startsWith("/__") || ["GET", "HEAD", "OPTIONS"].includes(req.method || "GET") || quietMemoryAllowed(path) || deskPaySyntheticAllowed(path)) return next();
           res.statusCode = 409;
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ error: "This is a quiet read-only copy (AGENTIC_OS_NO_BACKGROUND=1). Use the main app on 127.0.0.1:8081." }));

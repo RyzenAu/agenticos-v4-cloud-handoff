@@ -29,6 +29,7 @@ import { AgentLivePanel } from "@/components/operator/agent-live-panel";
 import { ScreenShareControl } from "@/components/operator/screen-share-control";
 import { MeetingModeControl, MeetingModePanel } from "@/components/operator/meeting-mode-hud";
 import { ScreenDrivePill } from "@/components/operator/screen-drive-pill";
+import { DeskPaymentCard } from "@/components/operator/desk-payment-card";
 // Track 1: the ONE command palette (Ctrl/⌘K; CRM search is one of its sources) and the page-context API.
 import { CommandPaletteButton, CommandPaletteHost } from "@/components/shell/command-palette";
 import { PageContextShell } from "@/components/shell/page-context";
@@ -182,6 +183,8 @@ function RootComponent() {
           </Late>
         )}
         <ScreenDrivePill />
+        {/* The desk payment confirm card: only ever shown to the owner at his desk (the server sends an empty feed otherwise). */}
+        <DeskPaymentCard />
         {setupWorkspace ? (
           <main className="ws-fullscreen-route">
             <Outlet />

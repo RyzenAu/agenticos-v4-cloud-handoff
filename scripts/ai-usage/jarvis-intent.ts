@@ -9,7 +9,11 @@
 import type { AiUsageSnapshot, SubscriptionCard } from "./types";
 
 /** `wontPay`: the same sentence also ordered a payment ("how much do I owe OpenAI, pay it"); the answer says plainly it only reads. */
-export type AiUsageRequest = { skill: "ai_usage"; action: "spend"; provider?: "anthropic" | "openai"; wontPay?: true } | { skill: "ai_usage"; action: "codex" | "claude" };
+export type AiUsageRequest =
+  // deskText (P1): at his desk the words of a compound ("what's my spend, and pay it") travel with the request, so the payment
+  // part is handled by the desk payments; the skills runner drops it anywhere else.
+  | { skill: "ai_usage"; action: "spend"; provider?: "anthropic" | "openai"; wontPay?: true; deskText?: string }
+  | { skill: "ai_usage"; action: "codex" | "claude" };
 
 const clean = (u: string) =>
   u
@@ -120,6 +124,23 @@ export function providerSpend(snap: AiUsageSnapshot, provider: "anthropic" | "op
 
 /** Said before the spend when the same sentence also ordered a payment: it reads, it never pays. */
 export const WONT_PAY = "I can tell you what you've spent, but I won't pay, transfer or send anything: that part is yours to do.";
+
+/**
+ * At his desk (P1, 29 Sep): "what's my AI spend, and pay it" answers the spend WITHOUT the "I won't pay" notice, then
+ * gives the payment part's own line (a confirm question when it names a payee or amount, else "Who and how much?").
+ * `pay` is the desk payments' compound(); only the skills runner calls this, and only for a caller the host verified at the desk.
+ */
+export async function answerAiUsageAtDesk(
+  req: Extract<AiUsageRequest, { action: "spend" }>,
+  snap: AiUsageSnapshot,
+  pay: (text: string) => Promise<string>,
+  now = Date.now(),
+): Promise<string> {
+  const { wontPay: _notice, deskText, ...plain } = req;
+  const spend = answerAiUsage(plain, snap, now);
+  const line = deskText ? await pay(deskText).catch(() => "Who and how much?") : "Who and how much?";
+  return `${spend} ${line}`;
+}
 
 export function answerAiUsage(req: AiUsageRequest, snap: AiUsageSnapshot, now = Date.now()): string {
   if (req.action === "spend" && req.wontPay) {

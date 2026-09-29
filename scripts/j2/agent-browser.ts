@@ -1,7 +1,7 @@
 // J2 browser hands: agent-browser (the browser tool Hermes' toolset uses) called DIRECTLY against Jarvis Chrome over
 // CDP, never through Hermes (too slow). One adapter: open or activate a tab, navigate, snapshot (refs), click or
 // type by ref, read the page. Every input action passes the existing gates first, in code:
-//   - S2c: a final button ("Send", "Pay", "Delete"…) is never pressed from the browser (finalClickRefusal);
+//   - S2c: a final button ("Send", "Pay", "Delete"â€¦) is never pressed from the browser (finalClickRefusal);
 //   - S2e: the Hermes tool-guard verdict (money buttons, money pages, payment steps, card numbers, money hosts);
 // so a page with a money or final action still needs his spoken yes, and secrets refusals are unchanged.
 //
@@ -13,6 +13,8 @@ import { join } from "node:path";
 import { candidateNames, finalClickRefusal, type PageMoneyContext } from "../browser-hands";
 import { toolGuardVerdict } from "../away-mode/tool-guard";
 import { SECRET_BEARING } from "../../src/lib/control-risk";
+import { ConfirmedPress } from "../desk-payments/confirmed";
+import { deskOpenVerdict } from "../desk-payments/policy";
 
 export type AbRun = (args: string[], timeoutMs?: number) => Promise<{ code: number; stdout: string; stderr: string }>;
 export type AbResult<T = Record<string, unknown>> = { ok: true; data: T } | { ok: false; error: string };
@@ -86,6 +88,46 @@ const PAGE_JS = `(() => {
     embeds: !!document.querySelector("iframe, canvas"), progress: !!document.querySelector("progress, [role=progressbar]") };
 })()`;
 
+/**
+ * The page as a desk payment needs it (scripts/desk-payments): the text with its LINES kept (a total is a line of its
+ * own), the controls' names, and what the form fields say (a login or a card still to type is his to do, never Jarvis's).
+ * A field counts as filled when it has a value or the browser has autofilled it (autofilled values read as empty until
+ * a click). A card in a cross-origin frame (Stripe Elements) can't be checked, so its frame is reported.
+ */
+export type DeskPage = {
+  title: string;
+  url: string;
+  ready: boolean;
+  text: string;
+  controls: string;
+  embeds: boolean;
+  progress: boolean;
+  fields: { passwordPresent: boolean; passwordEmpty: boolean; cardPresent: boolean; cardEmpty: boolean; cardFrame: boolean; otpEmpty: boolean };
+};
+const DESK_PAGE_JS = String.raw`(() => {
+  const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== "hidden" && s.display !== "none"; };
+  const filled = (e) => !!(e.value && String(e.value).length) || !!(e.matches && (e.matches(":-webkit-autofill") || e.matches(":autofill")));
+  const hint = (e) => [e.getAttribute("autocomplete"), e.name, e.id, e.getAttribute("aria-label"), e.placeholder].filter(Boolean).join(" ").toLowerCase();
+  const isCard = (e) => /cc-number|cc-csc|cc-exp|card.?(number|no)|cvv|cvc|security.?code|expir/.test(hint(e));
+  const isOtp = (e) => /one-time-code|otp|verification.?code|sms.?code|2fa|passcode/.test(hint(e));
+  const inputs = [...document.querySelectorAll("input, textarea")].filter((e) => e.type !== "hidden" && vis(e));
+  const pw = inputs.filter((e) => e.type === "password");
+  const controls = [...document.querySelectorAll("button, [role=button], input, select, a[href]")].slice(0, 200)
+    .map((c) => [c.getAttribute("aria-label"), c.getAttribute("name"), c.id, c.getAttribute("autocomplete"), (c.innerText || c.value || "").slice(0, 60)].filter(Boolean).join(" "))
+    .filter(Boolean).join("\n").slice(0, 4000);
+  return {
+    title: document.title, url: location.href, ready: document.readyState === "complete",
+    text: String(document.body ? document.body.innerText : "").slice(0, 12000), controls,
+    embeds: !!document.querySelector("iframe, canvas"), progress: !!document.querySelector("progress, [role=progressbar]"),
+    fields: {
+      passwordPresent: pw.length > 0, passwordEmpty: pw.some((e) => !filled(e)),
+      cardPresent: inputs.some(isCard), cardEmpty: inputs.filter(isCard).some((e) => !filled(e)),
+      cardFrame: !!document.querySelector('iframe[name*="privateStripeFrame"], iframe[title*="card" i], iframe[src*="card" i]'),
+      otpEmpty: inputs.filter(isOtp).some((e) => !filled(e)),
+    },
+  };
+})()`;
+
 export type BrowserHands = ReturnType<typeof createAgentBrowserHands>;
 export function createAgentBrowserHands(options: { run: AbRun; port?: number; session?: string }) {
   const port = options.port ?? jarvisCdpPort();
@@ -141,6 +183,82 @@ export function createAgentBrowserHands(options: { run: AbRun; port?: number; se
       const now = where === "new-tab" ? (r.data as { targetId?: string }).targetId : (await active())?.targetId;
       return { ok: true, said: "Opened.", ...(now ? { targetId: String(now) } : {}), ...(r.data.url ? { url: String(r.data.url) } : {}) };
     },
+    /**
+     * AT HIS DESK ONLY (the caller has a desk verdict: scripts/desk-payments/policy.ts deskVerdict): open a bank, payment
+     * or biller site. A broker, exchange or bookie, a shortener, a raw IP and a look-alike host still refuse.
+     */
+    async openDesk(url: string, where: "new-tab" | "this-tab" = "new-tab"): Promise<{ ok: boolean; said: string; targetId?: string; url?: string }> {
+      // Whatever opens for anyone opens here; what the strict rules refuse (a bank, payment or biller site, a checkout page) opens
+      // only if it isn't a broker, exchange or bookie, a shortener, a raw IP or a look-alike host.
+      if (!toolGuardVerdict({ tool: "browser_navigate", args: { url } }).allow) {
+        const verdict = deskOpenVerdict(url);
+        if (!verdict.ok) return { ok: false, said: verdict.said };
+      }
+      const r = where === "new-tab" ? await ab<{ targetId?: string; url?: string }>(["tab", "new", url]) : await ab<{ url?: string }>(["open", url]);
+      if (!r.ok) return { ok: false, said: `The browser didn't open it: ${r.error}.` };
+      const now = where === "new-tab" ? (r.data as { targetId?: string }).targetId : (await active())?.targetId;
+      return { ok: true, said: "Opened.", ...(now ? { targetId: String(now) } : {}), ...(r.data.url ? { url: String(r.data.url) } : {}) };
+    },
+    /** The page for a desk payment (lines kept, form fields described). Null when it can't be read. */
+    async readDesk(): Promise<DeskPage | null> {
+      const r = await ab<{ result?: DeskPage }>(["eval", "-b", Buffer.from(DESK_PAGE_JS, "utf8").toString("base64")]);
+      const v = r.ok ? r.data.result : undefined;
+      return v && typeof v === "object" && typeof v.url === "string" && typeof v.text === "string" && v.fields && typeof v.fields === "object" ? v : null;
+    },
+    /** Every name a control carries (visible text, aria-label, title, value, alt), or null if any read fails (fail closed). */
+    namesOf: labelsOf,
+    /**
+     * The ONE press of a confirmed desk payment. It needs the ConfirmedPress the desk payment store made when he clicked
+     * Confirm or said yes at the desk; a press that was already made, or a made-up object, presses nothing. The caller
+     * has just re-read the page and checked the control is the one he confirmed. Never used by any other path.
+     */
+    async pressBound(confirmed: ConfirmedPress, ref: string, expect?: { name: string; targetId: string; url: string; pageHash: string; pageTitle: string }): Promise<{ ok: boolean; said: string; clicked?: false }> {
+      if (!(confirmed instanceof ConfirmedPress) || confirmed.used) return { ok: false, clicked: false, said: "That confirmation was already used, so nothing was pressed." };
+      confirmed.used = true;
+      // The last checks, as close to the click as the hands allow: the same tab at the same address, and the element under the
+      // button's centre IS the button (an overlay or a frame drawn over it takes the click instead). Without `expect` (never in
+      // the service) only the press happens.
+      if (expect) {
+        const tab = await active().catch(() => null);
+        const bare = (u: string) => u.split("#")[0];
+        if (!tab || tab.targetId !== expect.targetId || bare(tab.url) !== bare(expect.url)) return { ok: false, clicked: false, said: "The page moved just before the press, so nothing was pressed." };
+        await ab(["scrollintoview", `@${ref}`]);
+        const box = await ab<Record<string, unknown>>(["get", "box", `@${ref}`]);
+        const b = (box.ok ? ((box.data.box as Record<string, unknown> | undefined) ?? box.data) : null) as Record<string, unknown> | null;
+        const [x, y, w, h] = ["x", "y", "width", "height"].map((k) => Number(b?.[k]));
+        if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return { ok: false, clicked: false, said: "I couldn't check what is under the button, so nothing was pressed." };
+        const expected = { url: bare(expect.url), title: expect.pageTitle, hash: expect.pageHash, name: expect.name, x: Math.round(x + w / 2), y: Math.round(y + h / 2) };
+        const marker = Buffer.from(JSON.stringify(expected), "utf8").toString("base64");
+        const script = `/*DESK_ATOMIC_PRESS:${marker}*/ (async () => {
+          const expected = ${JSON.stringify(expected)};
+          if (location.href.split("#")[0] !== expected.url) return { state: "moved" };
+          if (document.title !== expected.title || !crypto.subtle) return { state: "changed" };
+          const before = String(document.body?.innerText ?? "").slice(0, 12000);
+          const bytes = new TextEncoder().encode(before);
+          const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), b => b.toString(16).padStart(2, "0")).join("");
+          if (digest !== expected.hash) return { state: "changed" };
+          // The digest awaits Web Crypto. A page can change while it runs; compare again in the same synchronous
+          // turn as the click. No other page task can run between this check and button.click().
+          if (String(document.body?.innerText ?? "").slice(0, 12000) !== before) return { state: "changed" };
+          if (location.href.split("#")[0] !== expected.url || document.title !== expected.title) return { state: "moved" };
+          const hit = document.elementFromPoint(expected.x, expected.y);
+          const button = hit?.closest("button, [role=button], a, input, [onclick]");
+          const label = button ? [button.getAttribute("aria-label"), button.innerText, button.value, button.title].filter(Boolean).join(" | ").toLowerCase().replace(/\\s+/g, " ") : "";
+          if (!button || !label.includes(expected.name.toLowerCase().replace(/\\s+/g, " "))) return { state: "covered" };
+          button.click();
+          return { state: "clicked" };
+        })()`;
+        const result = await ab<{ result?: { state?: string } }>(["eval", "-b", Buffer.from(script, "utf8").toString("base64")]);
+        if (!result.ok) return { ok: false, said: `The click didn't go through: ${result.error}.` };
+        const state = result.data.result?.state;
+        if (state === "moved") return { ok: false, clicked: false, said: "The page moved just before the press, so nothing was pressed." };
+        if (state === "changed") return { ok: false, clicked: false, said: "The payment page changed just before the press, so nothing was pressed." };
+        if (state === "covered") return { ok: false, clicked: false, said: "Something else is over the button, so nothing was pressed." };
+        return state === "clicked" ? { ok: true, said: "Pressed." } : { ok: false, said: "The browser did not confirm whether the press occurred." };
+      }
+      const r = await ab(["click", `@${ref}`]);
+      return r.ok ? { ok: true, said: "Pressed." } : { ok: false, said: `The click didn't go through: ${r.error}.` };
+    },
     async activate(targetId: string) {
       const r = await ab(["tab", targetId]);
       return r.ok;
@@ -182,7 +300,7 @@ export function createAgentBrowserHands(options: { run: AbRun; port?: number; se
      * the S2e verdict on the page it's on. A final or money press is refused with the line to say; nothing pressed.
      */
     async click(target: string): Promise<{ ok: boolean; said: string }> {
-      const want = target.trim().replace(/^["“']|["”']$/g, "").slice(0, 80);
+      const want = target.trim().replace(/^["â€œ']|["â€']$/g, "").slice(0, 80);
       if (!want) return { ok: false, said: "Click what?" };
       if (SECRET_BEARING.test(want)) return { ok: false, said: "That names a secret-bearing file or private data, which I never open. Nothing was touched." };
       const refs = await this.snapshot();

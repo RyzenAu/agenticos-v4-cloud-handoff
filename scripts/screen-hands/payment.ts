@@ -97,6 +97,8 @@ function payeeLine(texts: string): string | null {
   // "Payee: X", "Paying: X", "Merchant: X" need their colon (a title like "Pay a payee - NetBank" isn't a payee line).
   return payeeLines(texts)[0] ?? null;
 }
+/** Does the page's own text carry a payee line ("Paying: X", "Pay to X")? (Desk payments: a stated payee is compared alone.) */
+export const hasPayeeLine = (texts: string): boolean => payeeLine(texts) !== null;
 /** Letters of more than one script (a Cyrillic "М" inside "Mehroz"), or invisible characters: never a match. */
 const SCRIPTS = [/\p{Script=Latin}/u, /\p{Script=Cyrillic}/u, /\p{Script=Greek}/u, /\p{Script=Armenian}/u, /\p{Script=Cherokee}/u, /\p{Script=Arabic}/u, /\p{Script=Hebrew}/u, /\p{Script=Devanagari}/u, /\p{Script=Han}/u, /\p{Script=Hangul}/u, /\p{Script=Thai}/u, /\p{Script=Georgian}/u, /\p{Script=Coptic}/u];
 export function mixedScript(name: string): boolean {
@@ -153,7 +155,7 @@ export function paymentFence(title: string, url: string | null, texts = "", poli
 }
 
 /** The never-approvable part alone (every step of a payment task, before any press): the reason, or null. Pure. */
-export function paymentNever(title: string, url: string | null, texts = ""): string | null {
+export function paymentNever(title: string, url: string | null, texts = "", options: { allowNewPayee?: boolean } = {}): string | null {
   const kind = moneySurfaceKind({ title, url });
   if (kind === "broker") return "That's a broker or trading screen. Trades and investing orders are never approvable, even with your code.";
   if (kind === "crypto") return "That's a crypto exchange or wallet. Crypto is never approvable, even with your code.";
@@ -167,7 +169,8 @@ export function paymentNever(title: string, url: string | null, texts = ""): str
   if (BET_PAGE.test(all)) return "That page is a bet or a lottery. Those are never approvable, even with your code.";
   if (CRYPTO_PAGE.test(all)) return "That's a crypto payment or a page paying from crypto. Crypto is never approvable, even with your code.";
   if (TRADE_PAGE.test(all) || TRADE_TICKER.test(all)) return "That page is a share, ETF or other trade. Trades are never approvable, even with your code.";
-  if (NEW_PAYEE_PAGE.test(all) || BSB_PAIR.test(all)) return "That's a new payee or raw bank details. Paying someone new is never approvable: only payees already saved in your bank or app.";
+  // (At his desk a new payee is allowed: he sees the confirm card first. Away mode keeps this refusal.)
+  if (!options.allowNewPayee && (NEW_PAYEE_PAGE.test(all) || BSB_PAIR.test(all))) return "That's a new payee or raw bank details. Paying someone new is never approvable: only payees already saved in your bank or app.";
   return null;
 }
 

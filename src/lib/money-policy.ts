@@ -342,6 +342,19 @@ export function moneyHostKind(hostOrUrl: string): InstitutionKind | null {
   }
   return null;
 }
+/** A host explicitly listed for an institution. Label guesses are useful for refusal, but cannot establish trust. */
+export function listedMoneyHostKind(hostOrUrl: string): InstitutionKind | null {
+  let host: string;
+  try {
+    host = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(hostOrUrl) ? hostOrUrl : `https://${hostOrUrl}`).hostname.toLowerCase().replace(/\.$/, "");
+  } catch {
+    return null;
+  }
+  for (const institution of INSTITUTIONS) {
+    if ([...(institution.hosts ?? []), ...(institution.exact ?? [])].some((known) => host === known || host.endsWith(`.${known}`))) return institution.kind;
+  }
+  return null;
+}
 /** Is this hostname (or URL) a money site (see moneyHostKind)? Pure. */
 export function moneyHost(hostOrUrl: string): boolean {
   return moneyHostKind(hostOrUrl) !== null;
@@ -1179,4 +1192,21 @@ export function exactRegistrableDomain(entry: string | null | undefined): string
   const e = String(entry ?? "").trim().toLowerCase().replace(/^www\./, "");
   const r = registrableDomain(e);
   return r && r === e ? r : null;
+}
+
+// --- desk payments (29 Sep 2026, P1): which institution a name is, and where it lives -------------------
+/**
+ * The institution a name in his words is ("open CommBank", "my ANZ", "PayPal"): its kind and its first listed
+ * host. Only whole-word names from the shared table, on every reading of his words. Used to OPEN a bank or
+ * payment site at his desk (never to pay), and to refuse a broker, exchange or bookie by kind. Pure.
+ */
+export function institutionFor(text: string): { kind: InstitutionKind; host: string } | null {
+  for (const v of textVariants(text)) {
+    for (const i of INSTITUTIONS) {
+      const host = i.hosts?.[0] ?? i.exact?.[0];
+      if (!host) continue;
+      for (const n of i.names ?? []) if (new RegExp(`(?<![\\w-])(?:${n})(?![\\w-])`, "i").test(v)) return { kind: i.kind, host };
+    }
+  }
+  return null;
 }

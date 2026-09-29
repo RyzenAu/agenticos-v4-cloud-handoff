@@ -102,7 +102,10 @@ import { businessContent } from "./business-content";
 import { competitorWatch } from "./competitor-watch";
 import { briefModelSettings, businessBrief, checkedBriefModelKey } from "./business-brief";
 import { generateBusinessBrief } from "./business-brief-generation";
-import { act as browserAct, jarvisChromePid, openInJarvisChrome, parseActRequest } from "./browser-hands";
+import { act as browserAct, ensureJarvisChrome, jarvisChromePid, openInJarvisChrome, parseActRequest } from "./browser-hands";
+import { awayStateOn, createLiveDeskPayments } from "./desk-payments/live";
+import { deskPayRoute } from "./desk-payments/route";
+import { deskMoneyOrder } from "./desk-payments/request";
 import { createScreenHands, parseScreenRequest } from "./screen-hands";
 import { entryFor, lessonRoute } from "./screen-hands/routes";
 import { commandRoute } from "./jarvis-command/route";
@@ -626,6 +629,19 @@ export function operatorPlugin({
   // Away mode (scripts/away-mode): a task queue Jarvis works through while he's out, with Telegram
   // approvals, the lock-screen check, the kill switch and a 7-day audit log on D:.
   const awayMode = createAwayService(root, screenHands);
+  // Desk payments (P1, 29 Sep): at his desk (the owner's live session at this PC, away mode off) a payment request becomes
+  // ONE confirm card and is done through the browser hands once he clicks Confirm or says yes. Anyone or anything else, and
+  // away mode, keep the strict paths untouched. Never: trades, crypto, betting, Jarvis typing a card number or password.
+  const deskPayments = createLiveDeskPayments({
+    root,
+    // Away mode's own state as it is on disk (an unreadable file is "unknown", which is NOT the desk), and its live status.
+    awayOn: () => {
+      const file = awayStateOn(root);
+      return file === null ? null : file || awayMode.away.status().on;
+    },
+    present: async () => (jarvisSkills ? ((await jarvisSkills.run({ skill: "window", action: "bring", target: "front", screen: "main" }).catch(() => null))?.said ?? null) : null),
+    ensure: () => ensureJarvisChrome(root),
+  });
   // Narrate my workflow (scripts/meeting-mode/narrate.ts): "I'm going to walk you through how I do
   // X" -> local-Whisper mic-only capture -> a DRAFT skill via the Claude bridge. Never installs
   // anything on its own; see /skill-drafts (narrate-api.ts) for approve/edit/discard.
@@ -654,6 +670,7 @@ export function operatorPlugin({
       const intent = awayVoiceIntent(utterance);
       return intent ? awayMode.away.voice(intent) : null;
     },
+    deskPay: { turn: (utterance, t) => deskPayments.turn(utterance, t), open: (text) => deskPayments.openOrder(text) },
     meetingGate: () => meetings.meeting.gate(),
     narrateGate: () => narrate.gate(),
     memory: sharedMemory
@@ -1023,6 +1040,8 @@ export function operatorPlugin({
       jarvisSkills = createJarvisSkills(root, {
         events: jarvisEvents,
         city: resolveWeatherCity,
+        // The payment part of "what's my AI spend, and pay it": reached only for a caller the host verified at his desk.
+        deskPayment: { compound: (text) => deskPayments.compound(text, { desk: { ok: true }, source: "voice" }) },
         agents: {
           jobs: () => nativeTasks?.list(),
           // Chat runs and their approval cards live in vite.config.ts; read their status only.
@@ -1133,6 +1152,7 @@ export function operatorPlugin({
         receptionist: () => receptionistSnapshot(),
         leads: () => leadsApi,
         skills: () => jarvisSkills,
+        deskPay: () => deskPayments,
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());
@@ -1158,6 +1178,9 @@ export function operatorPlugin({
           const remote = isAtHub(principal)
             ? null
             : { name: principal.displayName, personId: principal.personId, role: principal.personId === "usman" ? "owner" : "co-founder" };
+          // P1: is this the owner AT HIS DESK? (loopback, no relay, his live signed-in session, away mode read off.) Only then
+          // can a payment be started or confirmed; everything else keeps the strict paths. Never from a body or a header.
+          const desk = deskPayments.verdict(principal);
           // Device control is routing, not permission: it resolves to the requester's OWN device
           // (resolveTarget). These executors run on this PC, so anyone else's command is refused here
           // (never re-routed to the hub), with the reason resolveTarget gave.
@@ -1266,6 +1289,15 @@ export function operatorPlugin({
               screenRequest = parseScreenRequest(body);
             } catch (error) {
               return send({ type: "done", ok: false, said: (error as Error).message, steps: 0, ms: 0, stepMs: [] }, 400);
+            }
+            // P1: at his desk, when HIS OWN last words (`said`, attached by the voice client from the conversation, never from
+            // the tool call) order a payment ("press Pay now", "pay the invoice"), the screen goal becomes a confirm card and
+            // nothing is pressed here. A goal a model wrote for other words, and every other caller, meet the screen hands'
+            // own gates, which refuse it as before.
+            const said = typeof body?.said === "string" ? body.said.slice(0, 600) : "";
+            if (desk.ok && !screenRequest.confirm && said && deskMoneyOrder(said)) {
+              const r = await deskPayments.request(said, { desk, source: "screen" });
+              return send({ type: "done", ok: false, said: r.said, steps: 0, ms: 0, stepMs: [], ...(r.ok ? { ask: true } : {}) });
             }
             const controller = new AbortController();
             // res, not req: a request's "close" fires once its body is read, not on disconnect.
@@ -1381,9 +1413,16 @@ export function operatorPlugin({
           // Voice `skill` (scripts/jarvis-skills): timers, reminders, time, maths, system info,
           // clipboard, notes, typing, windows. Someone signed in remotely gets only the pure answers.
           if (path === "/jarvis/skill" && method === "POST") {
+            // P1: the desk payment skill (request, confirm with a one-time ticket, cancel, status). The desk verdict is the
+            // host's, here, again: a flag that was true when the turn was decided is never trusted at the press.
+            if (body && typeof body === "object" && (body as { skill?: unknown }).skill === "payment") return send(await deskPayments.skill(body, { desk, source: "voice" }));
+            // (The synthetic desk-payment preview is a quiet copy with a FAKE browser: it answers the payment skill and nothing else.)
+            if (process.env.DESK_PAY_SYNTHETIC === "1" && backgroundJobsDisabled()) return send({ error: "This synthetic copy only answers the payment skill." }, 409);
             if (!jarvisSkills) return send({ ok: false, said: "Skills aren't running yet, sir." }, 503);
-            return send(await jarvisSkills.run(body, { remote: !!remote }));
+            return send(await jarvisSkills.run(body, { remote: !!remote, desk: desk.ok }));
           }
+          // The confirm card (P1): its feed, and his click on Confirm or Cancel.
+          if (await deskPayRoute({ path, method, body, desk, service: deskPayments, send })) return;
           if (path === "/jarvis/timers" && method === "GET") return send(jarvisSkills ? jarvisSkills.timers() : { now: new Date().toISOString(), items: [] });
           if (path === "/jarvis/settings" && method === "GET") return send(readJarvisSettings(root));
           if (path === "/jarvis/settings" && method === "POST") {
@@ -1539,7 +1578,7 @@ export function operatorPlugin({
             // so a remote founder's device actions go to his own device (never a client-sent flag).
             if (path === "/voice/free/turn" && method === "POST" && body && typeof body === "object" && !Array.isArray(body)) body.remote = !!remote;
             if (path.startsWith("/voice/free/") && method === "POST")
-              return send(await freeVoice.handle(path, body, path === "/voice/free/turn" ? (sharedMemory?.principalFor(req) ?? undefined) : undefined));
+              return send(await freeVoice.handle(path, body, path === "/voice/free/turn" ? (sharedMemory?.principalFor(req) ?? undefined) : undefined, path === "/voice/free/turn" ? { desk: desk.ok } : undefined));
             if (path === "/voice/openai/status" && method === "GET") return send(openaiVoice.status());
             if (path.startsWith("/voice/openai/") && method === "POST") return send(await openaiVoice.handle(path, body));
             if (path === "/voice/status" && method === "GET") return send(companionVoice.status());

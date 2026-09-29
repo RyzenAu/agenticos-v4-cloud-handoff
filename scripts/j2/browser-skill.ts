@@ -12,6 +12,11 @@ export type BrowserSkillDeps = {
   present: () => Promise<string | null>;
   /** Start Jarvis Chrome when it isn't running (the launcher); true when its DevTools port answers. */
   ensure?: () => Promise<boolean>;
+  /**
+   * The HOST verified the caller is the owner at his desk (scripts/desk-payments/policy.ts): a bank or payment site may
+   * OPEN (a broker, exchange or bookie still never does). Only ever set by the skills runner, never from a request body.
+   */
+  desk?: boolean;
 };
 
 const hostOf = (url: string) => {
@@ -61,8 +66,9 @@ async function runBrowserSkillPlain(req: BrowserSkillRequest, deps: BrowserSkill
   const { hands } = deps;
   /** Open in a new Jarvis Chrome tab (starting Jarvis Chrome once if it isn't up), remember it, bring it forward. */
   const openHere = async (url: string, label: string, done: (where: string) => string) => {
-    let r = await hands.open(url, "new-tab");
-    if (!r.ok && deps.ensure && /connect|refused|ECONN|not running|no browser|CDP/i.test(r.said) && (await deps.ensure())) r = await hands.open(url, "new-tab");
+    const open = (u: string) => (deps.desk ? hands.openDesk(u, "new-tab") : hands.open(u, "new-tab"));
+    let r = await open(url);
+    if (!r.ok && deps.ensure && /connect|refused|ECONN|not running|no browser|CDP/i.test(r.said) && (await deps.ensure())) r = await open(url);
     if (!r.ok) return r.said;
     rememberReferent({ app: "chrome", jarvisChrome: true, title: label, ...(r.targetId ? { targetId: r.targetId } : {}) });
     if (r.targetId) await hands.activate(r.targetId);

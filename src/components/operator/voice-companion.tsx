@@ -1669,7 +1669,9 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       const vision = shareState().cloudVision;
       // A yes re-sends just that one press: a key ("enter", "ctrl+enter") or the named button.
       const target = confirm ? (/^(?:enter|delete|space|(?:(?:ctrl|alt|shift)\+)+[a-z0-9]+)$/i.test(confirm) ? `press ${confirm}` : `click ${confirm}`) : goal;
-      const response = await voicePost("/screen/act", { goal: target, ...(confirm ? { confirm, spokenYes } : {}), vision }, controller.signal);
+      // `said`: his own last words, taken from the conversation here (never from the tool call's arguments), so the server can
+      // tell his order to pay from a goal a model wrote (desk payments only ever start from his words).
+      const response = await voicePost("/screen/act", { goal: target, ...(confirm ? { confirm, spokenYes } : {}), said: latestUserRequest.current.slice(0, 600), vision }, controller.signal);
       if (!response.ok || !response.body) {
         const data = (await response.json().catch(() => ({}))) as { said?: string; error?: string };
         return `Not done: ${data.said || data.error || `status ${response.status}`}`;
@@ -2082,6 +2084,8 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         const result = await operatorRequest<{ ok: boolean; said: string; skill?: string; keep?: string }>("/jarvis/skill", args);
         note(result.said.slice(0, 80));
         if (result.skill === "timer" || result.skill === "reminder") window.dispatchEvent(new CustomEvent("jarvis:timers"));
+        // A payment request, yes or cancel: the desk payment card refreshes at once (src/components/operator/desk-payment-card.tsx).
+        if (result.skill === "payment") window.dispatchEvent(new CustomEvent("jarvis:desk-pay"));
         // A page read aloud: the words are spoken, but the history keeps only a neutral line (src/lib/page-read.ts).
         if (result.keep && engineRef.current === "free") return pageReadEnvelope(result.said);
         return result.said;
