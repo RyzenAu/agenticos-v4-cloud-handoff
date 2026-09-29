@@ -224,7 +224,7 @@ describe("AUDIT-F4 rows owned by Track 2 (pure)", () => {
     });
     const one = [{ group: "leads", leadId: 7, title: "Synthetic Physio Studio" }];
     expect(await runLeadAction(api(one), { action: "status", lead: "Synthetic Physio Studio", outcome: "won" }, { personId: "mehroz" })).toEqual({ ok: true, said: "Marked Synthetic Physio Studio as won, confirmed in the CRM.", verified: true });
-    expect(writes).toEqual([{ lead: 7, outcome: "won", kind: "note", by: "mehroz" }]);
+    expect(writes).toEqual([{ lead: 7, outcome: "won", kind: "note", by: "mehroz", event: expect.stringMatching(/^jarvis-crm:/) }]);
     const two = [...one, { group: "leads", leadId: 8, title: "Synthetic Physio Studio North" }];
     expect((await runLeadAction(api(two), { action: "log", lead: "physio", outcome: "no_answer" }, { personId: "usman" })).said).toMatch(/Which one\?/);
     expect((await runLeadAction(api([]), { action: "log", lead: "Nobody", outcome: "no_answer" }, { personId: "usman" })).said).toMatch(/can't find a lead called Nobody/);

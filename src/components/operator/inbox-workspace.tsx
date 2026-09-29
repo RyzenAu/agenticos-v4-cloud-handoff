@@ -824,7 +824,7 @@ function LiveInboxWorkspace() {
           </>
         }
       />
-      {!!flowDrafts.data?.emailDrafts.length && (
+      {!!flowDrafts.data?.emailDrafts?.length && (
         <section className="rounded-lg border border-border bg-card p-4" aria-label="Jarvis email drafts">
           <h2 className="font-medium">Drafts from Jarvis</h2>
           <p className="text-sm text-muted-foreground">Saved here for review. Nothing has been sent.</p>

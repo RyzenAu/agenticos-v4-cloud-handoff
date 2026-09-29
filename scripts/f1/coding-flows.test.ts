@@ -229,13 +229,14 @@ describe("F1 flow 1: 'make a top-tier dental site for <lead>' drafts against the
     };
     const before = snapshotOf(fx);
     const drafted = await say("Jarvis, make a top-tier dental site for Harbour Dental");
+    const draftedSay = drafted!.say; // toMatchObject rewrites matched fields in the received object
     expect(drafted).toMatchObject({ say: expect.stringMatching(/^Draft ready: Make a top-tier dental website for Harbour Dental\. Source snapshot: .* Selected routes: .* Say start when you want it built\.$/), navigate: "/coding" });
     const job = store.listJobs({ limit: 1 })[0];
     expect(job.state).toBe("awaiting_confirmation");
     await Bun.sleep(150);
     expect(store.getJob(job.id)!.state).toBe("awaiting_confirmation"); // nothing runs before start
     expect(snapshotOf(fx)).toBe(before);
-    const started = await say("start", drafted!.say);
+    const started = await say("start", draftedSay);
     expect(started?.say).toContain("Started");
     const done = await (async () => {
       const t0 = Date.now();
@@ -339,6 +340,7 @@ describe("F1 flow 2: 'start a coding job to fix X in <repo>' by voice or typing"
     const planned: string[] = [];
     const h = harness([entry], fakePlanner(planned));
     const drafted = await h.say("Jarvis, start a coding job to fix the calls table in the receptionist app");
+    const draftedSay = drafted!.say; // toMatchObject rewrites matched fields in the received object
     expect(drafted).toMatchObject({ say: expect.stringMatching(/^Draft ready: Fix the calls table in the receptionist app\. Source snapshot: .* Say start when you want it built\.$/), navigate: "/coding" });
     expect(planned).toEqual(["fix the calls table in the receptionist app"]); // the sentence, minus the "start a coding job to" lead-in
     const job = h.store.listJobs({ limit: 1 })[0];
@@ -347,7 +349,7 @@ describe("F1 flow 2: 'start a coding job to fix X in <repo>' by voice or typing"
     expect(job.state).toBe("awaiting_confirmation");
     await Bun.sleep(100);
     expect(h.spawns()).toBe(0);
-    const started = await h.say("start", drafted!.say);
+    const started = await h.say("start", draftedSay);
     expect(started?.say).toContain("Started");
     expect(h.store.getJob(job.id)!.spec.confirmation).toMatchObject({ state: "confirmed" });
     h.orch.cancel(job.id);

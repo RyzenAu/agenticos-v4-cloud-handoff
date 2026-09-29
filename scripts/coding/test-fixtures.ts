@@ -58,7 +58,7 @@ export function fixtureRepo(options: { dirty?: boolean } = {}): FixtureRepo {
   mkdirSync(canonical);
   gitIn(canonical, "init", "-q", "-b", "main");
   gitIn(canonical, "config", "core.autocrlf", "false");
-  write(canonical, ".gitignore", "node_modules/\n");
+  write(canonical, ".gitignore", "node_modules\n");
   write(canonical, "src/a.ts", "export const a = 1;\n");
   write(canonical, "src/b.ts", "export const b = 2;\n");
   write(canonical, "lib/c.ts", "export const c = 3;\n");
