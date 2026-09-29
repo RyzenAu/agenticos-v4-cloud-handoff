@@ -193,6 +193,13 @@ export type RecalledFact = {
   version: number;
   version_hash: string;
   date: string;
+  /** Provenance: where the text first came from, and who saved or last changed it (null: unknown, e.g. a hand edit in Obsidian). */
+  origin: Origin;
+  actor: string | null;
+  /** Whether this exact version is confirmed in Hindsight. Recall only returns confirmed or locally indexed versions. */
+  indexed: IndexState;
+  /** The model route Hindsight's receipt says processed this version; null when no receipt was found (unknown, not a guess). */
+  processed_by: ProcessedBy | null;
   via: ("hindsight" | "local")[];
   score: number;
 };

@@ -142,6 +142,33 @@ export function scanVault(vaultRoot: string, sync: { allow: string[]; deny: stri
   return { notes, skipped };
 }
 
+// ── copies ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Two permitted notes with the same words (a "copy of…" made in Obsidian, a duplicated file) would put the
+ * same text into the shared pool twice. One note stands for the group: the one that already has an
+ * identity in the vault map, else the first path. Notes that declare different frontmatter ids are
+ * deliberately separate, even with the same words. The rest are reported as skipped, so the Memory page says why.
+ */
+export function withoutCopies(notes: ScannedNote[], previous: NoteMap): { notes: ScannedNote[]; skipped: Skip[] } {
+  const groups = new Map<string, ScannedNote[]>();
+  for (const n of notes) {
+    // Same declared id = the same note (a copy carries its frontmatter along); different ids are separate on purpose.
+    const key = n.fields.id ? `id:${n.fields.id}` : tokenize(n.body).length >= 3 ? `body:${n.bodyHash}` : null;
+    if (key) groups.set(key, [...(groups.get(key) ?? []), n]);
+  }
+  const drop = new Map<string, string>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const known = group.find((n) => previous[n.path] && !previous[n.path].missing_since);
+    const keep = known ?? group[0];
+    for (const n of group) if (n !== keep) drop.set(n.path, keep.path);
+  }
+  return {
+    notes: notes.filter((n) => !drop.has(n.path)),
+    skipped: [...drop].map(([path, of]) => ({ path, reason: `duplicate of ${of}` })),
+  };
+}
+
 // ── note ids ────────────────────────────────────────────────────────────────────────────
 /**
  * `missing_since`: the note isn't in the vault right now (deleted, moved out, a branch switch, a sync
@@ -149,10 +176,42 @@ export function scanVault(vaultRoot: string, sync: { allow: string[]; deny: stri
  * same content, gets the same id back: no duplicate in Hindsight, no re-processing, and an "unindex"
  * decision still applies (REVIEW-STAGE-D B5).
  */
-export type NoteEntry = { id: string; hash: string; bodyHash: string; rev: number; missing_since?: string | null };
+export type NoteEntry = { id: string; hash: string; bodyHash: string; rev: number; missing_since?: string | null; /** MinHash of the body's words (noteSignature): finds a note that was renamed AND edited before the next scan. */ sig?: string };
 /** How long a vanished note's identity is remembered. */
 export const NOTE_MEMORY_MS = 30 * 24 * 3600_000;
 export type NoteMap = Record<string, NoteEntry>; // path → entry
+
+// ── similarity (rename + edit) ───────────────────────────────────────────────────────────
+const SIG_SIZE = 32;
+const SIG_MAX_TOKENS = 4000;
+/** A note renamed and edited between two scans has no exact hash match; this many shared words still says it is the same note. */
+export const RENAME_SIMILARITY = 0.6;
+const RENAME_MIN_TOKENS = 8;
+const fnv = (seed: number, token: string) => {
+  let h = (0x811c9dc5 ^ Math.imul(seed + 1, 0x9e3779b1)) >>> 0;
+  for (let i = 0; i < token.length; i++) h = Math.imul(h ^ token.charCodeAt(i), 0x01000193) >>> 0;
+  return h;
+};
+/** MinHash of the body's distinct words: cheap to store, comparable without the old text. "" when the note is too short to judge. */
+export function noteSignature(body: string): string {
+  const tokens = [...new Set(tokenize(body).slice(0, SIG_MAX_TOKENS))];
+  if (tokens.length < RENAME_MIN_TOKENS) return "";
+  const out: string[] = [];
+  for (let k = 0; k < SIG_SIZE; k++) {
+    let min = 0xffffffff;
+    for (const t of tokens) min = Math.min(min, fnv(k, t));
+    out.push(min.toString(36));
+  }
+  return out.join(".");
+}
+export function signatureSimilarity(a: string | undefined, b: string | undefined): number {
+  if (!a || !b) return 0;
+  const x = a.split("."), y = b.split(".");
+  if (x.length !== SIG_SIZE || y.length !== SIG_SIZE) return 0;
+  let same = 0;
+  for (let i = 0; i < SIG_SIZE; i++) if (x[i] === y[i]) same++;
+  return same / SIG_SIZE;
+}
 
 const FM_ID = /^[A-Za-z0-9_.:-]{1,80}$/;
 const newNoteId = (taken: Set<string>) => {
@@ -181,6 +240,8 @@ export function assignNoteIds(
   const taken = new Set<string>();
   const vanished = Object.entries(previous).filter(([p]) => !present.has(p));
   const usedVanished = new Set<string>();
+  /** Reused while the note is unchanged, so a large vault is not re-hashed on every scan. */
+  const sigOf = (n: ScannedNote) => (previous[n.path]?.hash === n.hash && previous[n.path].sig !== undefined ? previous[n.path].sig! : noteSignature(n.body));
 
   // Pass 1: frontmatter ids and unchanged paths.
   const pending: ScannedNote[] = [];
@@ -192,7 +253,7 @@ export function assignNoteIds(
       const vanishedSame = vanished.find(([, e]) => e.id === id);
       if (vanishedSame && !prevAtPath) (renames.push({ from: vanishedSame[0], to: n.path, id }), usedVanished.add(vanishedSame[0]));
       const prev = prevAtPath?.id === id ? prevAtPath : vanishedSame?.[1];
-      map[n.path] = { id, hash: n.hash, bodyHash: n.bodyHash, rev: prev ? prev.rev + (prev.hash === n.hash ? 0 : 1) : 1 };
+      map[n.path] = { id, hash: n.hash, bodyHash: n.bodyHash, rev: prev ? prev.rev + (prev.hash === n.hash ? 0 : 1) : 1, sig: sigOf(n) };
       taken.add(id);
       if (vanishedSame) usedVanished.add(vanishedSame[0]);
     } else pending.push(n);
@@ -200,22 +261,40 @@ export function assignNoteIds(
   for (const n of [...pending]) {
     const prev = previous[n.path];
     if (prev && !taken.has(prev.id)) {
-      map[n.path] = { id: prev.id, hash: n.hash, bodyHash: n.bodyHash, rev: prev.rev + (prev.hash === n.hash ? 0 : 1) };
+      map[n.path] = { id: prev.id, hash: n.hash, bodyHash: n.bodyHash, rev: prev.rev + (prev.hash === n.hash ? 0 : 1), sig: sigOf(n) };
       taken.add(prev.id);
       pending.splice(pending.indexOf(n), 1);
     }
   }
   // Pass 2: renames by content, then fresh ids.
+  const unmatched: ScannedNote[] = [];
   for (const n of pending) {
     const match = vanished.find(([p, e]) => !usedVanished.has(p) && !taken.has(e.id) && (e.hash === n.hash || e.bodyHash === n.bodyHash));
     if (match) {
       usedVanished.add(match[0]);
       renames.push({ from: match[0], to: n.path, id: match[1].id });
-      map[n.path] = { id: match[1].id, hash: n.hash, bodyHash: n.bodyHash, rev: match[1].rev };
+      map[n.path] = { id: match[1].id, hash: n.hash, bodyHash: n.bodyHash, rev: match[1].rev, sig: sigOf(n) };
       taken.add(match[1].id);
+    } else unmatched.push(n);
+  }
+  // Pass 3: renamed AND edited between scans. Best word-overlap match among the vanished notes, and only
+  // when it is clearly the best one: a note that keeps its identity keeps its Hindsight document, its
+  // "remove from search" decision and its history; a wrong guess would inherit someone else's.
+  for (const n of unmatched) {
+    const sig = sigOf(n);
+    const scored = vanished
+      .filter(([p, e]) => !usedVanished.has(p) && !taken.has(e.id))
+      .map(([p, e]) => ({ p, e, score: signatureSimilarity(sig, e.sig) }))
+      .sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    if (best && best.score >= RENAME_SIMILARITY && (!scored[1] || best.score - scored[1].score >= 0.15)) {
+      usedVanished.add(best.p);
+      renames.push({ from: best.p, to: n.path, id: best.e.id });
+      map[n.path] = { id: best.e.id, hash: n.hash, bodyHash: n.bodyHash, rev: best.e.rev + 1, sig };
+      taken.add(best.e.id);
     } else {
       const id = newNoteId(new Set([...taken, ...Object.values(previous).map((e) => e.id)]));
-      map[n.path] = { id, hash: n.hash, bodyHash: n.bodyHash, rev: 1 };
+      map[n.path] = { id, hash: n.hash, bodyHash: n.bodyHash, rev: 1, sig };
       taken.add(id);
     }
   }
