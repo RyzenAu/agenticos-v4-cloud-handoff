@@ -17,6 +17,7 @@ import type { PersonId } from "./types";
 
 export const RISKY = /\b(send|pay|payment|delete|remove|publish|post|transfer|purchase|buy)\b/i;
 export const APPROVAL_TTL_MS = 2 * 60 * 1000;
+export const DEDUPE_WINDOW_MS = 5_000;
 
 export type Risk = "send" | "pay" | "delete" | "publish";
 export type Approval = { personId: PersonId; via: "spoken-yes"; at: number };
@@ -28,6 +29,12 @@ export type CommandInput = {
   args?: Record<string, unknown>;
   risk?: Risk;
   approval?: Approval;
+  /**
+   * Idempotency: the same key from the same person for the same executor and args, while the command is
+   * queued or running, or finished OK within DEDUPE_WINDOW_MS, is the same command (typed + voice echo,
+   * a double tap). It returns that command's result and queues nothing new. A failed or cancelled one is retried.
+   */
+  commandKey?: string;
 };
 export type WireCommand = { id: string; executor: string; args: Record<string, unknown>; risk?: Risk; approval?: Approval; personId: PersonId };
 export type CommandStatus = "queued" | "delivered" | "done" | "failed" | "cancelled";
@@ -55,6 +62,8 @@ export class Dispatcher {
   private pollers = new Map<string, (take: boolean) => void>();
   private cancels = new Map<string, string[]>();
   private sweeper?: ReturnType<typeof setInterval>;
+  /** person + key → the command it started and its outcome promise (see CommandInput.commandKey). */
+  private keyed = new Map<string, { commandId: string; sig: string; done: Promise<DispatchResult>; settledAt?: number; ok?: boolean }>();
 
   constructor(private readonly registry: DeviceRegistry, private readonly now: () => number = Date.now) {}
 
@@ -90,6 +99,14 @@ export class Dispatcher {
     const device = this.registry.get(target.deviceId);
     if (!device) return { ok: false, reason: "device offline", deviceId: target.deviceId };
     if (device.kind === "hub") return { ok: true, local: true, deviceId: device.id };
+    const keyName = input.commandKey ? `${target.owner}|${input.commandKey.slice(0, 200)}` : null;
+    const sig = JSON.stringify([device.id, executor, input.args ?? {}]);
+    if (keyName) {
+      const prior = this.keyed.get(keyName);
+      const fresh = prior && (prior.settledAt === undefined || (prior.ok && this.now() - prior.settledAt <= DEDUPE_WINDOW_MS));
+      if (prior && fresh && prior.sig === sig) return prior.done;
+      if (prior) this.keyed.delete(keyName);
+    }
     const record: CommandRecord = {
       id: randomUUID(),
       executor,
@@ -118,7 +135,18 @@ export class Dispatcher {
       this.waiters.set(record.id, waiter);
     });
     this.wake(device.id);
-    return done.finally(() => opts.signal?.removeEventListener("abort", onAbort));
+    const settled = done.finally(() => opts.signal?.removeEventListener("abort", onAbort));
+    if (keyName) {
+      const entry: { commandId: string; sig: string; done: Promise<DispatchResult>; settledAt?: number; ok?: boolean } = { commandId: record.id, sig, done: settled };
+      this.keyed.set(keyName, entry);
+      void settled.then((r) => {
+        entry.settledAt = this.now();
+        entry.ok = r.ok;
+        if (!r.ok && this.keyed.get(keyName) === entry) this.keyed.delete(keyName);
+        if (this.keyed.size > 200) for (const [k, v] of this.keyed) if (v.settledAt !== undefined && this.now() - v.settledAt > DEDUPE_WINDOW_MS) this.keyed.delete(k);
+      });
+    }
+    return settled;
   }
 
   /** Cancel a queued or running command. Only the person who owns it may cancel it. */

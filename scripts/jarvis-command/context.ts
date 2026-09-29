@@ -114,6 +114,8 @@ const NOUN_KINDS: Record<string, string[]> = {
   number: ["margin", "metric"],
   metric: ["metric", "margin"],
 };
+/** "explain the job", "open the client": only these two nouns take "the", and only as the whole request (the page names them). */
+const DEFINITE = /^(?:please\s+)?(?:can you\s+)?(?:explain|open|show|read|summari[sz]e|what(?:'s| is)|how(?:'s| is))\s+(?:me\s+)?the\s+(job|client)(?:\s+(?:status|now|please))?\s*[.!?]?$/i;
 const DEICTIC = /\b(this|that|these|those|the (?:selected|highlighted|open|current|focused))\s+(?:one\s+)?([a-z]+)\b/i;
 /** Only a whole request that is just the verb and the pronoun ("open it", "explain this one"): "…and show it" is not a page reference. */
 const BARE_IT = /^(?:please\s+)?(?:can you\s+)?(?:explain|open|show|read|summari[sz]e|what(?:'s| is))\s+(?:me\s+)?(it|this|that)(?:\s+one)?(?:\s+please)?\s*[.!?]?$/i;
@@ -127,12 +129,14 @@ export function referenceIn(utterance: string): Reference | null {
     const kinds = NOUN_KINDS[noun];
     if (kinds) return { word: m[1].toLowerCase(), noun, kinds };
   }
+  const def = DEFINITE.exec(utterance.trim());
+  if (def) return { word: "the", noun: def[1].toLowerCase(), kinds: NOUN_KINDS[def[1].toLowerCase()] };
   const bare = BARE_IT.exec(utterance);
   return bare ? { word: bare[1].toLowerCase(), noun: null, kinds: null } : null;
 }
 
 export type Resolution =
-  | { kind: "resolved"; item: PageContextItem; tier: "focused" | "selected" | "visible"; page: string }
+  | { kind: "resolved"; item: PageContextItem; tier: "focused" | "selected" | "visible" | "page"; page: string }
   | { kind: "ambiguous"; candidates: PageContextItem[]; tier: "focused" | "selected" | "visible"; said: string }
   | { kind: "none"; said: string };
 
@@ -155,5 +159,73 @@ export function resolveReference(ref: Reference, ctx: PageContext | null): Resol
       return { kind: "ambiguous", candidates: hits, tier, said: `There are ${hits.length} ${ref.noun ? `${ref.noun}s` : "items"} here (${names}${hits.length > 3 ? "…" : ""}). Which one do you mean?` };
     }
   }
+  // "the job" / "this job": the job the page is showing (pageContext.jobId) when no job item was listed.
+  if (ctx.jobId && ref.kinds?.includes("job")) return { kind: "resolved", item: { kind: "job", id: ctx.jobId, label: `job ${ctx.jobId}` }, tier: "page", page: ctx.page };
   return { kind: "none", said: `I can't find ${ref.noun ? `a ${ref.noun}` : "that"} on ${ctx.title ?? ctx.page}, so I won't guess. Which one do you mean?` };
+}
+
+// ------------------------------------------------------------------------------------------------
+// One resolver for typed and spoken commands.
+
+/** A page context captured longer ago than this (client clock) is treated as unknown: Jarvis asks. */
+export const CONTEXT_MAX_AGE_MS = 2 * 60_000;
+/** A spoken command that arrives with no context may use the last one this same person sent, this long. */
+export const CONTEXT_MEMORY_TTL_MS = 45_000;
+
+export type CommandContext = {
+  context: PageContext | null;
+  /** "sent": the request's own; "remembered": this person's last one (spoken only); "stale": sent but too old, so dropped; "none". */
+  from: "sent" | "remembered" | "stale" | "none";
+  reference: Reference | null;
+  resolution: Resolution | null;
+};
+
+/**
+ * Typed and spoken commands both resolve their page words HERE: parse and bound what the client sent, drop
+ * it if its capture time is too old (unknown → Jarvis asks), use the person's remembered context only when
+ * nothing was sent and `allowMemory` (spoken), then resolve "this margin" / "the job" against it. Pure.
+ */
+export function resolveCommandContext(input: { utterance: string; pageContext?: unknown; remembered?: PageContext | null; allowMemory?: boolean; now?: number }): CommandContext {
+  const now = input.now ?? Date.now();
+  const reference = referenceIn(input.utterance);
+  let context = parsePageContext(input.pageContext);
+  let from: CommandContext["from"] = context ? "sent" : "none";
+  if (context && typeof context.capturedAt === "number" && now - context.capturedAt > CONTEXT_MAX_AGE_MS) {
+    context = null;
+    from = "stale";
+  }
+  if (!context && from === "none" && input.allowMemory && input.remembered) {
+    context = input.remembered;
+    from = "remembered";
+  }
+  if (!reference) return { context, from, reference: null, resolution: null };
+  const resolution = resolveReference(reference, context);
+  if (resolution.kind === "none" && from === "stale")
+    return { context, from, reference, resolution: { kind: "none", said: `What's on screen may be out of date, so I don't know which ${plural(reference.noun)} you mean. Which one?` } };
+  return { context, from, reference, resolution };
+}
+
+/**
+ * The last page context each verified person sent, bounded and short-lived. Never shared across people:
+ * the key is the verified personId, so one founder's page can't answer for the other.
+ */
+export function createContextMemory(ttlMs = CONTEXT_MEMORY_TTL_MS, maxPeople = 16) {
+  const seen = new Map<string, { ctx: PageContext; at: number }>();
+  return {
+    remember(personId: string, ctx: PageContext | null, now = Date.now()) {
+      if (!ctx || !personId) return;
+      seen.delete(personId);
+      seen.set(personId, { ctx, at: now });
+      while (seen.size > maxPeople) seen.delete(seen.keys().next().value as string);
+    },
+    recall(personId: string, now = Date.now()): PageContext | null {
+      const hit = seen.get(personId);
+      if (!hit) return null;
+      if (now - hit.at > ttlMs) {
+        seen.delete(personId);
+        return null;
+      }
+      return hit.ctx;
+    },
+  };
 }

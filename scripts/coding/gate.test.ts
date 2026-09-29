@@ -280,3 +280,16 @@ describe("runner output parsing", () => {
     expect(testOutcome("(pass) a > b\n(fail) c > b\n", "b")).toBe("failed");
   });
 });
+
+describe("coding done gate: usage receipts", () => {
+  test("a finished run with no usage receipt fails the gate (no model is claimed without a receipt); with them it passes", async () => {
+    const { input } = await build({ "src/a.ts": "export const a = 10;\n" });
+    const missing = runDoneGate({ ...input, unreceipted: ["reviewer (attempt 1)"] });
+    expect(check(missing, "receipts-recorded")).toMatchObject({ passed: false });
+    expect(check(missing, "receipts-recorded").detail).toContain("reviewer (attempt 1)");
+    expect(missing.passed).toBe(false);
+    const present = runDoneGate({ ...input, unreceipted: [] });
+    expect(check(present, "receipts-recorded").passed).toBe(true);
+    expect(present.passed).toBe(true);
+  });
+});

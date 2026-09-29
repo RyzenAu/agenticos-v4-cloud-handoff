@@ -4,6 +4,7 @@ import type { ApprovalService } from "../approvals/service";
 import type { AccountsConfig } from "./accounts";
 import { claudeAllowance, slotReadings } from "./accounts";
 import { readApproval, type IsolationApproval } from "./codex-isolation";
+import { modelsUsed } from "./receipts";
 import type { AgentBinding, ApprovalAction, CodingEvent, CodingJob, CommandId, Handoff, JobState, RepoRegistry, UsageReceipt } from "./contracts";
 import { verifiedFromApprovalPrincipal, OrchestratorError, type Orchestrator } from "./orchestrator";
 import { redactText } from "./redact";
@@ -21,7 +22,7 @@ import type { CodingStore } from "./store";
  * the owner's spoken yes or his Telegram code for a job's own merge. A person is never read from a body.
  *
  *   GET  /coding/jobs?state=&repo=&limit=        { jobs }
- *   GET  /coding/jobs/:id                        { job, receipts, approvals, handoff, events, liveRoles }
+ *   GET  /coding/jobs/:id                        { job, receipts, modelsUsed, approvals, handoff, events, liveRoles }
  *   GET  /coding/jobs/:id/events?after=N         SSE (poll=1 → { events, last })
  *   GET  /coding/artefacts/:jobId/:artefactId    text/plain (redacted)
  *   POST /coding/shape      { requestId, utterance, channel, draftId?, answer? }
@@ -146,6 +147,8 @@ export function jobView(rt: CodingRuntime, job: CodingJob) {
   return {
     job,
     receipts: receiptsOf(rt, job.id),
+    /** Per role turn: the model SELECTED vs the model that RAN (from its receipt), and why when they differ. */
+    modelsUsed: modelsUsed(job.runs, rt.store.events(job.id, 0, 5000)),
     approvals: approvalsOf(rt, job),
     handoff: (rt.orch.handoffFor(job.id) ?? null) as Handoff | null,
     events,

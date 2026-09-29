@@ -237,6 +237,8 @@ async function rig(options: { jev?: ReturnType<typeof jev>; memory?: boolean; gr
     micOwner: (p) => hub.svc.registry.micOwner(p),
     deviceLabel: (id) => hub.svc.registry.all().find((d) => d.id === id)?.label ?? id,
     graceMs: options.graceMs ?? 400,
+    // Off here: these acceptance tests repeat identical words on purpose. Duplicate suppression is proved in context-device.test.ts.
+    dedupeMs: 0,
     delegates: {
       ...(memoryTurn
         ? {
@@ -562,22 +564,25 @@ describe("Stage C (SYNTHETIC) through the real voice entry", () => {
     expect(rx.line).toContain("Source: receptionist dashboard (Retell and the agency feed), read ");
     const margin = await r.say("local", "What's our margin on the Professional package with 8 clients?");
     expect(margin.done).toMatchObject({ ok: true, kind: "answer", verified: true, numbers: { clients: 8, source: expect.stringContaining("business-economics") } });
-    // Page context: the Operations page with Professional selected. Numbers come from code, never the page.
+    // Page context: the Operations page with Professional selected. The answer quotes the page's OWN figure with its
+    // source and state, and cross-checks the package against the economics model (code), flagging a mismatch.
     const ops: PageContextSnapshot = {
       version: 1,
       page: { path: "/operations", destination: "operations", title: "Operations" },
       selection: { kind: "package", id: "receptionist-professional", label: "Professional package", facts: { contributionMarginPct: "999%" } },
       focused: null,
       visible: [],
-      sources: [],
+      sources: [{ id: "econ", label: "Economics model", state: "simulated", source: "src/lib/business-economics.ts", lastSuccess: null }],
       job: null,
       providers: ["operations"],
       at: Date.now(),
     };
     const typed = await r.type("local", "Explain this margin", ops);
     expect(typed.done).toMatchObject({ ok: true, kind: "answer", decision: { op: "answer.margin", source: "context" } });
-    expect(typed.done.said).toContain("Source: src/lib/receptionist-packages.ts + src/lib/business-economics.ts");
-    expect(typed.done.said).toMatch(/doesn't match the model/); // a stale page figure is called out, not repeated
+    expect(typed.done.said).toContain("contribution margin 999%");
+    expect(typed.done.said).toContain("Source: Economics model. This is simulated data, not real figures");
+    expect(typed.done.said).toMatch(/doesn't match the 999% shown/); // a wrong page figure is called out, not smoothed over
+    expect(typed.done).toMatchObject({ verified: false, numbers: { crossCheck: "mismatch", source: { name: "Economics model", state: "simulated" } } });
   }, T);
 
   test("'open that call' resolves against the page; two calls → Jev asks; no page → says so; never guesses", async () => {

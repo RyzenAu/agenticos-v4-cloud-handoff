@@ -7,6 +7,8 @@ import { normalisePersonId, PERSON_IDS, type PersonId, type ResolveContext, type
  * Rules, all fail-closed:
  *  - A person's commands go only to a device that person owns. Usman's PC (the hub) is just
  *    another device owned by Usman; it is never a fallback for anyone else.
+ *  - "here" / "this pc" / "this computer" means the device the request came from (originDeviceId: the
+ *    companion, or the mic-owner companion), else that person's own primary/only device. Never someone else's.
  *  - A spoken target ("on my laptop") must match exactly one device that person owns.
  *    Naming someone else's device ("on Usman's PC" from Mehroz) is refused.
  *  - No spoken target: the device the command came from (if it is theirs), else their primary
@@ -30,7 +32,7 @@ export function resolveTarget(ctx: ResolveContext, registry: DeviceRegistry = ac
   if (spoken) {
     if (spoken.owner !== person)
       return { ok: false, reason: `that device belongs to ${spoken.owner}; you can only run commands on your own devices` };
-    if (!spoken.words.length) return pickDefault();
+    if (!spoken.words.length) return pickDefault(); // also "here" / "this pc": origin first, then their own primary
     const matches = mine.filter((d) => matchesWords(d, spoken.words));
     if (matches.length === 1) return pick(matches[0]);
     if (matches.length > 1)
@@ -63,7 +65,9 @@ const SYNONYMS: Record<string, string> = {
   laptop: "laptop", notebook: "laptop",
   phone: "phone", mobile: "phone",
 };
-const FILLER = new Set(["on", "in", "using", "at", "from", "the", "a", "an", "my", "mine", "own", "his", "her", "to", "please", "run", "it", "this", "that", "device"]);
+const FILLER = new Set(["on", "in", "using", "at", "from", "the", "a", "an", "my", "mine", "own", "to", "please", "run", "it", "this", "that", "device"]);
+
+const HERE_NOUNS = new Set(["pc", "device"]);
 
 function tokens(text: string) {
   return text
@@ -82,9 +86,11 @@ function canon(word: string) {
  * "on my laptop" → { owner: speaker, words: ["laptop"] };
  * "on Usman's PC" → { owner: "usman", words: ["pc"] }. Empty text → null.
  */
-export function parseSpokenTarget(text: string, speaker: PersonId): { owner: PersonId; words: string[] } | null {
+export function parseSpokenTarget(text: string, speaker: PersonId): { owner: PersonId; words: string[]; here?: boolean } | null {
   const raw = tokens(text);
   if (!raw.length) return null;
+  // "here", "right here", "this pc", "this computer": the machine the request came from, no name to match.
+  const here = raw.includes("here") || raw.some((t, i) => t === "this" && HERE_NOUNS.has(canon(raw[i + 1] ?? "")));
   let owner: PersonId = speaker;
   const words: string[] = [];
   for (const token of raw) {
@@ -95,10 +101,10 @@ export function parseSpokenTarget(text: string, speaker: PersonId): { owner: Per
       continue;
     }
     const word = bare.replace(/'/g, "");
-    if (!word || FILLER.has(word)) continue;
+    if (!word || FILLER.has(word) || (here && (word === "here" || word === "right" || HERE_NOUNS.has(canon(word))))) continue;
     words.push(canon(word));
   }
-  return { owner, words };
+  return { owner, words, ...(here ? { here: true } : {}) };
 }
 
 function vocabulary(device: TargetDevice) {

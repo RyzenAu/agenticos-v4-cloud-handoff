@@ -43,11 +43,26 @@ export function createLiveCommandService(options: {
   jarvisChromeInFront?: () => Promise<boolean>;
   /** Desk payments (scripts/desk-payments, P1): typed words at his desk. Absent: typed commands are exactly as before. */
   deskPay?: () => DeskPayments | undefined;
+  /** The coding command entry (scripts/coding/command-entry.ts), resolved lazily: absent, coding words open the draft page as before. */
+  coding?: () => Promise<{ handle(utterance: string, turn: { personId: string; actor: "human" | "process"; via: string; spokenYes?: string | null; previousAssistant?: string | null }): Promise<{ say: string; navigate?: string; jobId?: string; jobState?: string; draft?: unknown } | null> }>;
 }): CommandService {
   const { devices } = options;
   // Track 3's coding detector, when its branch is in this tree (coding words then open its draft page).
   void loadCodingDetector();
+  // "Start it" answers only Jarvis's own last coding line, so remember it per person, briefly (typed turns carry no transcript).
+  const lastCodingSay = new Map<string, { say: string; at: number }>();
   const delegates: Delegates = {
+    ...(options.coding
+      ? {
+          coding: async (utterance: string, turn: { personId: string; actor: "human" | "process"; via: string; spokenYes: string | null }) => {
+            const entry = await options.coding!();
+            const prev = lastCodingSay.get(`${turn.personId}:${turn.actor}`);
+            const r = await entry.handle(utterance, { ...turn, previousAssistant: prev && Date.now() - prev.at < 10 * 60_000 ? prev.say : null });
+            if (r) lastCodingSay.set(`${turn.personId}:${turn.actor}`, { say: r.say, at: Date.now() });
+            return r;
+          },
+        }
+      : {}),
     ...(options.memoryTurn ? { memory: (utterance: string, caller: unknown, spokenYes: string | null) => options.memoryTurn!(caller, utterance, spokenYes) } : {}),
     leads: async (action, principal, eventId) => {
       const api = options.leads?.();

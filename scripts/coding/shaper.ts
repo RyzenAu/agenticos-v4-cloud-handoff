@@ -20,6 +20,7 @@ import type {
   VerifiedPrincipal,
 } from "./contracts";
 import { redactText } from "./redact";
+import { chooseRoles, choiceSentence, DEFAULT_CODING_PREFS, modelLabel, type ChoiceEnv, type CodingModelPrefs, type RoleChoiceResult } from "./role-choice";
 import { codingMoneyRefusal } from "../jarvis-execution/spoken-money";
 import { reposFor } from "./registry";
 import { claudeBinding, codexBinding, draftSpec, routerBinding, slugOf } from "./spec";
@@ -60,6 +61,10 @@ export type ShaperDeps = {
   jev?: JevFn | null;
   planner?: PlannerFn | null;
   cliVersions: () => { claude: string; codex: string };
+  /** The owner's paid/free preferences (coding-prefs.json). Default: paid subscription models allowed, free-only off. */
+  prefs?: () => CodingModelPrefs;
+  /** What is known about availability (CLI installed, Codex isolation applied, a stop window); anything unset is assumed available. */
+  choice?: () => Partial<Pick<ChoiceEnv, "claudeAvailable" | "codexAvailable" | "codexReady" | "claudeBlocked" | "route" | "hasKey" | "readings">>;
   now?: () => Date;
 };
 
@@ -83,6 +88,8 @@ type Pending = {
   decisions: JevDecision[];
   jevModel: string;
   jevMs: number;
+  /** Models Jev proposed for a role (only when it acted on them); the words and the prefs still win. */
+  jevModels: { builder?: string | null; reviewer?: string | null };
   at: number;
 };
 
@@ -103,6 +110,12 @@ const MODEL_WORDS: Array<{ re: RegExp; binding: (d: ShaperDeps, preferredSlot?: 
   { re: /\bcline\b/i, binding: () => routerBinding("cline/deepseek-v4.1-flash") },
   { re: /\bcodex\b|\bgpt[- ]?6[- ]?astra\b|\bastra\b/i, binding: (d) => codexFor(d) },
 ];
+
+/** The binding a phrase names ("Use Codex", "Sonnet"), or null. The one place the model words live (voice.ts edits use it too). */
+export function bindingFromWords(text: string, d: ShaperDeps): AgentBinding | null {
+  for (const m of MODEL_WORDS) if (m.re.test(text)) return m.binding(d);
+  return null;
+}
 
 function codexFor(d: ShaperDeps): AgentBinding {
   // Owner decision 1: a NEW job goes to the least-used connected account below the limit.
@@ -125,7 +138,7 @@ function roleModel(text: string, role: "build" | "review" | "test", d: ShaperDep
 export function templateFrom(text: string): RoleTemplate {
   if (/\b(?:just|only)\s+review\b|\breview[- ]only\b|\breview (?:the|my) (?:branch|code|changes)\b/i.test(text)) return "review-only";
   if (/\b(?:add|with) a tester\b|\btest[- ]author\b|\bwrite (?:the )?tests\b/i.test(text)) return "build+review+test-author";
-  if (/\bno review\b|\bbuild[- ]only\b/i.test(text)) return "build-only";
+  if (/\b(?:no|without)\s+(?:a\s+|any\s+)?review(?:er)?\b|\bbuild[- ]only\b/i.test(text)) return "build-only";
   if (/\binvestigate\b|\blook into\b|\bfind out why\b/i.test(text)) return "investigate";
   return "build+review";
 }
@@ -158,6 +171,17 @@ const AGENT_DOES = new RegExp(
 );
 
 /**
+ * "assign a builder to fix X and a reviewer to check it", "have a builder fix X", "get a builder to X and a
+ * second agent to check it" (no model named): the role words only say who does what. The lead-in and the
+ * reviewer tail are stripped so the objective is the task itself.
+ */
+const ROLE_LEAD = new RegExp(`(^|[.!?]\\s+)(?:please\\s+)?(?:assign|get|have|let|put|give me|i want)\\s+(?:an?|the|another|one)\\s+(?:builder|coder|developer|agent)(?:\\s+and\\s+(?:an?|the|another|one)\\s+(?:reviewer|checker|second agent))?(?:\\s+to)?\\s+(?=${TASK_AHEAD})`, "gi");
+const ROLE_NOUN = "(?:second agent|another agent|second reviewer|reviewer|checker)";
+const ROLE_TAIL = new RegExp(`(?:\\s*[,;]\\s*|\\s+(?:and|then|plus|with)\\s+)(?:(?:an?|the|another|one)\\s+)?${ROLE_NOUN}\\s+(?:(?:should|will|can|must|to)\\s+)?(?:check|checks|review|reviews|verify|verifies)\\b(?:\\s+(?:it|this|that|them|the (?:build|code|changes?|work|diff|fix)|after(?:wards)?|too|as well))*(?=\\s*(?:[.!,;]|$|\\b(?:and|then)\\b))`, "gi");
+/** A whole sentence that is only the reviewer's job: "Then a reviewer checks it." */
+const ROLE_SENTENCE = new RegExp(`(^|[.!?]\\s+)(?:(?:and|then)\\s+)?(?:(?:an?|the|another|one)\\s+)?${ROLE_NOUN}\\s+(?:(?:should|will|can|must|to)\\s+)?(?:check|checks|review|reviews|verify|verifies)\\b(?:\\s+(?:it|this|that|them|the (?:build|code|changes?|work|diff|fix)|after(?:wards)?|too|as well))*\\s*[.!]?(?=\\s|$)`, "gi");
+
+/**
  * The request with the team/model/show-me phrasing stripped: what's left is the objective.
  * Agent-first lead-ins ("Codex, fix X…", "ask Codex to fix X and Claude to review") are stripped first.
  * A sentence about who builds/reviews is dropped whole; but a sentence that starts with the task keeps it,
@@ -176,6 +200,9 @@ export function objectiveFrom(text: string): string {
     .replace(/^\s*(?:hey\s+)?jarvis[,\s]+/i, "")
     .replace(JOB_LEAD, "")
     .replace(LEAD_IN, "$1")
+    .replace(ROLE_LEAD, "$1")
+    .replace(ROLE_TAIL, "")
+    .replace(ROLE_SENTENCE, "$1")
     .replace(AGENT_DOES, (_m, lead: string, verb: string) => `${lead}${verb.toLowerCase()} `)
     // A sentence ends at a full stop followed by a space (or the end), so "src/a.ts" doesn't split one.
     .replace(/(?:[^.]|\.(?=\S))*\b(?:builds?|reviews?|reviewer|builder|tester)\b(?:[^.]|\.(?=\S))*\.?/gi, (s) => {
@@ -237,6 +264,9 @@ async function askJev(deps: ShaperDeps, text: string, repos: readonly RepoRegist
     repo: { type: "choice", instructions: "Which code repository is this coding request about?", criteria: Object.fromEntries(repos.map((r) => [r.id, r.description])) },
     complete: { type: "score", instructions: "Does the request say concretely what should change or what is wrong (not just which area)?" },
     consequential: { type: "score", instructions: "Does the request ask to merge, push, deploy, publish or release anything?" },
+    // Jev may delegate: which model is best for each role. Its pick is used only if that model is available and allowed.
+    builder: { type: "choice", instructions: "Which model should BUILD this change (write the code)?", criteria: MODEL_CRITERIA },
+    reviewer: { type: "choice", instructions: "Which model should independently REVIEW the change? It must not be the builder's model.", criteria: MODEL_CRITERIA },
   };
   try {
     const out = await deps.jev({ state: { request: redactText(text, 1000) }, questions });
@@ -245,6 +275,13 @@ async function askJev(deps: ShaperDeps, text: string, repos: readonly RepoRegist
   } catch { return { answers: null, model: "jev-error", ms: 0 }; }
 }
 
+const MODEL_CRITERIA: Record<string, string> = {
+  "claude-opus-5-5": "Opus: the strongest general coder; large or subtle changes",
+  "claude-sonnet-5": "Sonnet: lighter and faster; small, well-scoped changes",
+  "gpt-6-astra": "Codex: strong at test and typecheck repair and mechanical refactors",
+};
+const isFreeBinding = (b: AgentBinding) => b.route === "model-router" && b.model.startsWith("cline/");
+
 // ─────────────────────────── the shaper ───────────────────────────
 
 export function createShaper(deps: ShaperDeps) {
@@ -252,15 +289,30 @@ export function createShaper(deps: ShaperDeps) {
   const now = () => (deps.now?.() ?? new Date());
   const sweep = () => { const t = Date.now(); for (const [k, p] of pending) if (t - p.at > TTL) pending.delete(k); };
 
+  const choiceEnv = (): ChoiceEnv => ({ cliVersions: deps.cliVersions(), accounts: deps.accounts(), readings: slotReadings(), ...deps.choice?.() });
+  /** Builder and an independent reviewer for these words (named models win; the prefs and Jev's pick fill the rest). */
+  function pickRoles(text: string, template: RoleTemplate, jevModels: Pending["jevModels"], prefs: CodingModelPrefs, override?: { builder?: AgentBinding | null; reviewer?: AgentBinding | null }): RoleChoiceResult {
+    return chooseRoles({
+      text, template, prefs, env: choiceEnv(), jev: jevModels,
+      named: { builder: override?.builder ?? roleModel(text, "build", deps), reviewer: override?.reviewer ?? roleModel(text, "review", deps) },
+    });
+  }
+
   async function finish(p: Pending): Promise<ShapeResult> {
     const registry = deps.registry();
     const entry = registry.repos.find((r) => r.id === p.repoId);
     if (!entry) return { kind: "refused", reason: "That repo isn't in the coding registry." };
     const text = [p.utterance, ...p.clarifications.map((c) => c.answer)].join(". ");
     const template = templateFrom(p.utterance);
-    const builder = roleModel(text, "build", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
-    const reviewer = template === "build-only" ? null : roleModel(text, "review", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
-    const tester = template === "build+review+test-author" ? roleModel(text, "test", deps) ?? codexFor(deps) : null;
+    const prefs = deps.prefs?.() ?? DEFAULT_CODING_PREFS;
+    // The words the owner said win; who does what when they don't is role-choice.ts (an independent reviewer,
+    // the owner's paid/free prefs), and each pick carries the reason the draft says aloud.
+    const chosen = pickRoles(text, template, p.jevModels, prefs);
+    if (!chosen.ok) return { kind: "refused", reason: chosen.reason };
+    const { builder, reviewer } = { builder: chosen.builder.binding, reviewer: chosen.reviewer?.binding ?? null };
+    const namedTester = roleModel(text, "test", deps);
+    const tester = template === "build+review+test-author" ? namedTester ?? (prefs.freeOnly ? builder : codexFor(deps)) : null;
+    if (tester && namedTester && prefs.freeOnly && !isFreeBinding(namedTester)) return { kind: "refused", reason: `Free-only is on, so I won't run ${modelLabel(namedTester.model)}; it uses a paid plan or metered API. Name a free model or turn free-only off in coding-prefs.json.` };
     const site = isSiteRequest(p.utterance);
     const objective = p.objective ?? (site ? siteObjective(p.utterance) : objectiveFrom(p.utterance));
     const specId = randomUUID() as Uuid;
@@ -301,6 +353,7 @@ export function createShaper(deps: ShaperDeps) {
       checks: plan.checks,
       approvalPoints: CONSEQUENTIAL_WORDS.test(p.utterance) ? [{ action: "git.merge.protected", describe: `merge into ${entry.defaultBaseRef} of ${entry.id} (asked after completion)`, when: "after-completion" }] : [],
       jev,
+      roleChoices: [chosen.builder.choice, ...(chosen.reviewer ? [chosen.reviewer.choice] : [])],
       planner: plan.plannerSession ?? null,
       now: deps.now,
     });
@@ -342,7 +395,7 @@ export function createShaper(deps: ShaperDeps) {
     // and the Coding page all come through here (REVIEW S2d-2).
     const money = codingMoneyRefusal(utterance);
     if (money) return { kind: "refused", reason: money };
-    const p: Pending = { draftId: randomUUID() as Uuid, principal: input.principal, usePlanner: input.usePlanner !== false, channel: input.channel, utterance, repoId: null, objective: null, asked: null, options: [], clarifications: [], decisions: [], jevModel: "none", jevMs: 0, at: Date.now() };
+    const p: Pending = { draftId: randomUUID() as Uuid, principal: input.principal, usePlanner: input.usePlanner !== false, channel: input.channel, utterance, repoId: null, objective: null, asked: null, options: [], clarifications: [], decisions: [], jevModel: "none", jevMs: 0, jevModels: {}, at: Date.now() };
     // F1: a site request already says what to build; its first sentence is the objective, so nothing is asked.
     if (isSiteRequest(utterance)) p.objective = siteObjective(utterance);
     // A repo that exists but isn't registered is said plainly, not guessed between two other repos.
@@ -351,6 +404,15 @@ export function createShaper(deps: ShaperDeps) {
     const jev = await askJev(deps, utterance, repos);
     p.jevModel = jev.model;
     p.jevMs = jev.ms;
+    for (const role of ["builder", "reviewer"] as const) {
+      const pick = jev.answers?.[role];
+      const probs2 = pick?.probabilities ? Object.entries(pick.probabilities).sort((a, b) => b[1] - a[1]) : [];
+      if (!pick?.choice || !probs2.length) continue;
+      const m2 = probs2.length > 1 ? probs2[0][1] - probs2[1][1] : probs2[0][1];
+      const policy = jevPolicy(probs2[0][1], m2);
+      p.decisions.push({ question: "modelFor", subject: role, choice: pick.choice, confidence: probs2[0][1], probabilities: pick.probabilities ?? undefined, policy });
+      if (policy === "act") p.jevModels[role] = pick.choice;
+    }
     // Repo: the owner's explicit words, else Jev, else ask.
     const byWords = repoByWords(utterance, repos);
     const probs = jev.answers?.repo?.probabilities ?? null;
@@ -389,7 +451,7 @@ export function createShaper(deps: ShaperDeps) {
     return finish(p);
   }
 
-  return { shape, pending: () => pending.size };
+  return { shape, pending: () => pending.size, pickRoles: (text: string, template: RoleTemplate, override?: { builder?: AgentBinding | null; reviewer?: AgentBinding | null }) => pickRoles(text, template, {}, deps.prefs?.() ?? DEFAULT_CODING_PREFS, override), bindingFromWords: (text: string) => bindingFromWords(text, deps), prefs: () => deps.prefs?.() ?? DEFAULT_CODING_PREFS };
 }
 
 /**
@@ -424,11 +486,7 @@ export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text:
   };
 }
 
-const MODEL_NAME: Record<string, string> = {
-  "claude-opus-5-5": "Opus", "claude-sonnet-5": "Sonnet", "claude-fable-5-1": "Fable", "claude-haiku-4-5": "Haiku",
-  "gpt-6-astra": "Codex", "codex/gpt-6-sol": "Hermes (GPT-6 Sol)", "openrouter/deepseek-v4-pro": "DeepSeek", "openrouter/mimo-v2.6-pro": "MiMo", "cline/deepseek-v4.1-flash": "Cline DeepSeek", "cline/mimo-v2.6-flash": "Cline MiMo", "cline/muse-spark-1.3": "Cline Muse",
-};
-export const modelName = (b: AgentBinding | null) => (b ? MODEL_NAME[b.model] ?? b.model : "nobody");
+export const modelName = (b: AgentBinding | null) => (b ? modelLabel(b.model) : "nobody");
 
 /** What Jarvis says after "Draft ready: <title>." A whole-utterance "start" answers it (voice.ts). */
 export const START_PROMPT = "Say start when you want it built.";
@@ -457,7 +515,8 @@ export function spokenSummary(spec: TaskSpec): string {
   const roles = spec.roles ?? [];
   const routes = roles.filter((r) => r.agent).map((r) => `${r.roleId}: ${r.agent!.model}${r.agent!.model.startsWith("cline/") ? " (free only)" : r.agent!.route === "model-router" ? " (automatic fallback may use metered models)" : ""}`);
   const snapshot = spec.repo?.baseSha ? `Source snapshot: ${spec.repo.baseRef} at ${spec.repo.baseSha.slice(0, 12)}; uncommitted checkout changes are excluded. ` : "";
-  return "Draft ready: " + draftTitle(spec) + ". " + snapshot + (routes.length ? `Selected routes: ${routes.join("; ")}. ` : "") + START_PROMPT;
+  const who = choiceSentence(spec.roleChoices);
+  return "Draft ready: " + draftTitle(spec) + ". " + snapshot + (routes.length ? `Selected routes: ${routes.join("; ")}. ` : "") + (who ? who + " " : "") + START_PROMPT;
 }
 
 export { slugOf };

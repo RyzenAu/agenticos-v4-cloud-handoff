@@ -16,6 +16,7 @@ import type {
   RepoRegistry,
   RepoRegistryEntry,
   RoleAssignment,
+  RoleChoice,
   RoleId,
   RoleLimits,
   RoleTemplate,
@@ -78,6 +79,7 @@ export type DraftInput = {
   approvalPoints?: ApprovalPoint[];
   dataClass?: "synthetic" | "business-internal";
   jev?: JevShapingRecord | null;
+  roleChoices?: readonly RoleChoice[];
   planner?: TaskSpec["planner"];
   now?: () => Date;
   id?: Uuid;
@@ -124,13 +126,14 @@ export function draftSpec(input: DraftInput): TaskSpec {
     dataClass: input.dataClass ?? "business-internal",
     jobLimits: { maxWallMinutes: 120, maxConcurrentAgents: 3 },
     jev: input.jev ?? null,
+    ...(input.roleChoices?.length ? { roleChoices: input.roleChoices } : {}),
     planner: input.planner ?? null,
     confirmation: { state: "unconfirmed" },
   };
 }
 
 /** An edit before confirmation: a new revision (approvals bound to the old digest are void). */
-export function reviseSpec(spec: TaskSpec, patch: Partial<Pick<TaskSpec, "objective" | "doneWhen" | "roles" | "checks" | "nonGoals" | "roleTemplate">>): TaskSpec {
+export function reviseSpec(spec: TaskSpec, patch: Partial<Pick<TaskSpec, "objective" | "doneWhen" | "roles" | "checks" | "nonGoals" | "roleTemplate" | "roleChoices">>): TaskSpec {
   if (spec.confirmation.state === "confirmed") throw new Error("A confirmed spec is immutable.");
   return { ...spec, ...patch, revision: spec.revision + 1, confirmation: { state: "unconfirmed" } };
 }
