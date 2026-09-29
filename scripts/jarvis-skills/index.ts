@@ -459,6 +459,7 @@ export function createJarvisSkills(root: string, deps: SkillDeps) {
         return runBrowserSkillDetailed(req, {
           hands,
           task: deps.browser?.task ?? (await defaultTask()),
+          desk: ctx.desk === true,
           present: () => answerWindow({ skill: "window", action: "bring", target: "front", screen: "main" }, ps, windowDeps()),
           ensure:
             deps.browser?.ensure ??

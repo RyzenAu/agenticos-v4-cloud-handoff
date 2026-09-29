@@ -582,9 +582,11 @@ describe("a search result that lands on an error page is not a success", () => {
 });
 
 describe("typed browser entry", () => {
-  test("typed YouTube search and compound search use the browser skill, including its task loop", async () => {
+  test("typed YouTube search and compound Google search use the browser skill, including its task loop", async () => {
     expect(await typedBrowserRequest("youtube lo-fi beats")).toMatchObject({ skill: "browser", action: "search", engine: "youtube", query: "lo-fi beats" });
-    expect(await typedBrowserRequest("search YouTube for lo-fi beats and play the first video")).toMatchObject({ skill: "browser", action: "task", goal: "search YouTube for lo-fi beats and play the first video" });
+    // (Integration with the command entry: YouTube search-and-play stays with its app-owned browser, so the task loop declines it.)
+    expect(await typedBrowserRequest("search YouTube for lo-fi beats and play the first video")).toBeNull();
+    expect(await typedBrowserRequest("search Google for dentists and open the first result")).toMatchObject({ skill: "browser", action: "task" });
   });
   test("page actions follow the frontmost Jarvis Chrome check used by voice", async () => {
     expect(await typedBrowserRequest("open the first result", async () => false)).toBeNull();

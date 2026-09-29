@@ -619,6 +619,8 @@ export function guardToolCall(call: ToolCall, lastUser: string, options: { shari
 export function webGoalIn(text: string): string | null {
   const t = String(text ?? "").trim();
   if (!t || t.length > 200 || DEICTIC.test(t) || needsConfirmation(t)) return null;
+  // "What matters in this video" is the transcript watcher's (scripts/jarvis-command/words.ts), not a browsing step.
+  if (/\b(?:watch|summari[sz]e|what(?:'s| is)? (?:important|matters)|key points|main points)\b/i.test(t) && /\b(?:this|the|that) video\b/i.test(t)) return null;
   if (!/\b(?:google|youtube|gmail|web\s?site|site|search results?|(?:the\s+)?(?:first|second|third|top)\s+(?:result|link|video)|[a-z0-9-]+\.(?:com|com\.au|net|org|io|au))\b/i.test(t)) return null;
   if (!/\b(?:open|click|find|search|look up|play|read|fill|go to|show me|visit|watch|check out|tell me)\b/i.test(t)) return null;
   if (/\b(?:send|post|publish|delete|remove|buy|pay|order|book|sign in|log ?in|password|change|edit|update|upload|download|install|email|message|text|call)\b/i.test(t)) return null;

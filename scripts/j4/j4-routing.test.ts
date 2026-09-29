@@ -111,8 +111,8 @@ describe("2. paraphrase families reach the fast rules and the J2 hands, with a w
     ["open YouTube and search lo-fi beats", "youtube", "lo-fi beats"],
     ["search YouTube for lo-fi beats", "youtube", "lo-fi beats"],
   ];
-  test("put on YouTube music reaches the multi-step browser task", () => {
-    expect(browserSkillIntent("put on some lo-fi beats on YouTube")).toMatchObject({ action: "task", goal: "put on some lo-fi beats on YouTube" });
+  test("put on YouTube music is a YouTube search (YouTube play stays with the command entry, not the task loop)", () => {
+    expect(browserSkillIntent("put on some lo-fi beats on YouTube")).toMatchObject({ action: "search", engine: "youtube", query: "lo-fi beats" });
   });
   test.each(SEARCH)("%s", async (words, engine, query) => {
     const t = await one(words);

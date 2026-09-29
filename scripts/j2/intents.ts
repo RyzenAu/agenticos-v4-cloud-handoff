@@ -111,7 +111,10 @@ export function browserSkillIntent(utterance: string, options: { sharing?: boole
   // search for X", "fill the contact form…"): the task loop. A goal on the page in front waits for the sharing check below.
   if (!options.noTask) {
     const task = browserTaskIntent(u);
-    if (task && (task.action === "task" || !options.sharing)) return task;
+    // YouTube search/play/open-result stays with the command entry's app-owned browser (its transcript watcher, device routing
+    // and job record); the task loop is for the rest of the web. The loop still runs a YouTube goal when asked for one by name.
+    const youtube = /\byou\s?tube\b/i.test(u);
+    if (task && !youtube && (task.action === "task" || !options.sharing)) return task;
   }
   // Our own site (muventures.com.au, never a guessed .com).
   const own = ownSiteIn(u);
