@@ -2636,7 +2636,14 @@ export function operatorPlugin({
         }
       });
     },
-    closeBundle() { apps.stop(); vault.stop(); photoIndex.close(); mailSync?.close(); existingConnections.close(); nativeTasks?.close(); archive.close(); leadsApi.close(); },
+    closeBundle() {
+      // Each store closes on its own: one that is still locked (mail archive on a busy or shared file) is reported, and never
+      // skips the rest or turns a finished build into exit 1.
+      const steps: Array<[string, () => void]> = [["apps", () => apps.stop()], ["vault", () => vault.stop()], ["photo index", () => photoIndex.close()], ["mail sync", () => mailSync?.close()], ["existing connections", () => existingConnections.close()], ["native tasks", () => nativeTasks?.close()], ["mail archive", () => archive.close()], ["leads", () => leadsApi.close()]];
+      for (const [name, close] of steps) {
+        try { close(); } catch (e) { console.warn(`[closeBundle] ${name} did not close cleanly: ${(e as Error).message}`); }
+      }
+    },
   };
 }
 
