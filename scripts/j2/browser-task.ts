@@ -314,7 +314,7 @@ export async function runBrowserTask(input: { goal: string; shape?: TaskShape | 
     // A goal on the page already in front is bound to that page's site, so its links are inspected too.
     if (!state.history.length && !state.scratch.expectHost && state.view && ["find_page", "contact_read", "fill_form"].includes(shape.kind) && "site" in shape && shape.site === null) {
       const current = hostnameOf(state.view.url);
-      if (registrableDomain(current)) state.scratch.expectHost = current;
+      if (current) state.scratch.expectHost = current;
     }
     // 3. Choose ONE next action.
     if (placing) await placing;
@@ -492,13 +492,15 @@ const where = (state: TaskState) => (state.scratch.where ? ` on ${state.scratch.
 
 /** Words an error page uses (HTTP error pages, "soft" 404s served with status 200, the browser's own error pages). */
 const ERROR_PAGE = /\b404\b|\bnot found\b|page (?:unavailable|(?:can(?:no|'|’)t|could not) be found|(?:doesn'?t|does not) exist)|access denied|\bforbidden\b|internal server error|bad gateway|service unavailable|can(?:no|'|’)t be reached|\berr_[a-z_]+\b|video unavailable|no longer available|\b(?:error|status) (?:403|410|500|502|503)\b/i;
+/** Unambiguous "this page is missing" wording, trusted anywhere in the page text (nav boilerplate can push it past the first 250 characters). */
+const SOFT_404 = /\bpage not found\b|\b(?:sorry, )?we (?:can(?:no|'|’)t|could not|couldn't) find (?:that|this|the) page\b|\bthis page (?:doesn'?t|does not) exist\b/i;
 /** Why this page is an error page (an HTTP error status or clear error-page content), or null when it looks like a real page. Pure. */
 export function errorPageReason(view: PageView | null, tree: TreeNode[] = []): string | null {
   if (!view) return null;
   if (typeof view.status === "number" && view.status >= 400) return `HTTP ${view.status}`;
   if (/^chrome-error:/i.test(view.url)) return "the browser's error page";
-  const headings = tree.filter((n) => n.role === "heading" && (n.level ?? 1) <= 2).map((n) => n.name).join(" ");
-  const hit = `${view.title} ${headings} ${view.text.slice(0, 250)}`.match(ERROR_PAGE);
+  const headings = tree.filter((n) => n.role === "heading").map((n) => n.name).join(" ");
+  const hit = `${view.title} ${headings} ${view.text.slice(0, 250)}`.match(ERROR_PAGE) ?? view.text.match(SOFT_404);
   return hit ? `it says "${clip(hit[0], 40)}"` : null;
 }
 

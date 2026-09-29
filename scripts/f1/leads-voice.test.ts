@@ -168,6 +168,20 @@ describe("F1 flow 3: CRM retry identity (a repeated command is one event)", () =
     expect(leadEventKey("usman", "log", 2, "no_answer", T0 + LEAD_EVENT_WINDOW_MS)).not.toBe(k); // a later, separate call is its own event
   });
 
+  test("interested, won, interested again inside one window is three commands, not a dropped replay", async () => {
+    let t = T0;
+    const c = crm(ROWS, { stamp: () => t });
+    const say = async (outcome: string) => {
+      t += 60_000;
+      return runLeadAction(c.api, { action: "status", lead: "Blacktown Family Dental", outcome } as never, usman, undefined, { now: () => t });
+    };
+    expect(await say("interested")).toMatchObject({ ok: true, verified: true });
+    expect(await say("won")).toMatchObject({ ok: true, verified: true });
+    expect(await say("interested")).toMatchObject({ ok: true, verified: true });
+    expect(c.state.get(2)!.status).toBe("interested");
+    expect(c.writes).toHaveLength(3);
+  });
+
   test("resubmitting the same command (re-spoken, or spoken with a spelling slip) sends the same key and writes once", async () => {
     const c = crm(ROWS);
     const now = () => T0;

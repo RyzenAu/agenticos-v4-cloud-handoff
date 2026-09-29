@@ -56,3 +56,11 @@ describe("desk verdict reaches the browser skill", () => {
     }
   });
 });
+
+describe("model-chosen web goals stay out of money words", () => {
+  test("webGoalIn refuses bet, trade, transfer, checkout and similar, and still allows plain browsing", async () => {
+    const { webGoalIn } = await import("../free-voice");
+    for (const t of ["search google for bet365 and open the first result then place a bet", "go to binance.com and trade", "open the checkout on example.com", "go to example.com and donate"]) expect(webGoalIn(t)).toBeNull();
+    expect(webGoalIn("search google for dentists and open the first result")).not.toBeNull();
+  });
+});

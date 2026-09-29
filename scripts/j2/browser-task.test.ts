@@ -448,6 +448,16 @@ describe("a site-bound task inspects a link's destination before clicking it", (
     expect(out.ok).toBe(false);
     expect(web.clicked).toEqual([]);
   });
+  test("negative: a goal on an IP, localhost or single-label page in front is bound to that host too", async () => {
+    for (const home of ["http://192.168.1.5/", "http://localhost:3000/", "http://intranet/"]) {
+      const web = fakeWeb({ overrides: { [home]: { title: "Home", text: "Home", nodes: [{ role: "link", name: "Pricing", url: "https://evil.test/pricing" }] } } });
+      const r = rig(web);
+      await r.hands.open(home, "new-tab");
+      const out = await r.run("find the pricing page");
+      expect(out.ok).toBe(false);
+      expect(web.clicked).toEqual([]);
+    }
+  });
   test("positive: a goal on the page in front still follows its own Contact link", async () => {
     const r = rig();
     await r.hands.open(SMILE, "new-tab");
@@ -523,6 +533,13 @@ describe("a search result that lands on an error page is not a success", () => {
     failed(await ask(googleOnly({ title: "Error 404 | Broken Dental", text: "x" })));
     failed(await ask(googleOnly({ title: "Broken Dental", text: "Access denied. You don't have permission." })));
     failed(await ask(googleOnly({ title: "Broken Dental", text: "This page can't be found" })));
+  });
+  test("negative: a soft 404 whose message sits past the first 250 characters, or in a small heading", async () => {
+    const boiler = "Home Services About Team Blog Contact Careers Privacy Terms ".repeat(6);
+    failed(await ask(googleOnly({ title: "Broken Dental", text: `${boiler} Sorry, we couldn't find that page.` })));
+    const view = { url: "https://broken.example.com.au/x", title: "Broken Dental", ready: true, text: boiler, password: false, card: false, video: null };
+    expect(errorPageReason(view as never, [{ ref: "e1", role: "heading", name: "Page not found", level: 3, depth: 1, index: 0 }])).toContain("not found");
+    expect(errorPageReason(view as never, [])).toBeNull();
   });
   test("negative: a result that redirects to an error page is judged on where it lands", async () => {
     const w2 = fakeWeb({ overrides: {

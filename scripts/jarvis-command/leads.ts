@@ -23,9 +23,9 @@ export const LEAD_EVENT_WINDOW_MS = 15 * 60_000;
  * not contain a job or turn id: a re-spoken command is a new job but the same intent, and must not add a
  * second activity. A genuinely different command (another lead, outcome or action) has a different key.
  */
-export function leadEventKey(personId: string, action: "log" | "status", leadId: number, outcome: string, nowMs: number = Date.now()): string {
+export function leadEventKey(personId: string, action: "log" | "status", leadId: number, outcome: string, nowMs: number = Date.now(), lastActivityId: number = 0): string {
   const bucket = Math.floor(nowMs / LEAD_EVENT_WINDOW_MS);
-  const digest = createHash("sha256").update(`${personId}\u0000${action}\u0000${leadId}\u0000${outcome}`).digest("hex").slice(0, 24);
+  const digest = createHash("sha256").update(`${personId}\u0000${action}\u0000${leadId}\u0000${outcome}\u0000${lastActivityId}`).digest("hex").slice(0, 24);
   return `jarvis-crm:${digest}:${bucket}`;
 }
 
@@ -49,16 +49,21 @@ export async function runLeadAction(api: LeadsApiLike, action: LeadAction, princ
   const lead = found.lead;
   const kind = action.action === "log" ? "call" : "note";
   const nowMs = (opts.now ?? Date.now)();
-  // An explicit id (a caller's own retry token) wins; otherwise the key comes from the intent itself.
-  const key = eventId ?? leadEventKey(principal.personId, action.action, lead.id, action.outcome, nowMs);
   type Act = { id: number; at?: string; kind: string; outcome: string; by: string };
   const detail = async () => (await api.handle("/leads/detail", "GET", {}, q({ id: String(lead.id) }), false)) as { activities?: Act[] };
   const before = await detail();
+  // The newest DIFFERENT activity on the lead is part of the intent: "interested, won, interested" within a window is three
+  // intents, while a resubmit of the same command (its own earlier write is not "different") still maps to one key.
+  const same = (a: Act) => a.kind === kind && a.outcome === action.outcome && a.by === principal.personId;
+  const lastId = Math.max(0, ...(before.activities ?? []).filter((a) => !same(a)).map((a) => a.id));
+  // An explicit id (a caller's own retry token) wins; otherwise the key comes from the intent itself.
+  const key = eventId ?? leadEventKey(principal.personId, action.action, lead.id, action.outcome, nowMs, lastId);
   // A matching activity from this person, recent enough to be the same intent (covers a key-window edge and a
-  // write whose read-back failed): confirm it by read-back, never write it again.
+  // write whose read-back failed): confirm it by read-back, never write it again. One that a different activity has
+  // since followed does not count, so a later change of status makes the repeat a new command.
   const recent = (before.activities ?? []).find((a) => {
     const at = a.at ? Date.parse(a.at) : NaN;
-    return a.kind === kind && a.outcome === action.outcome && a.by === principal.personId && Number.isFinite(at) && nowMs - at >= -60_000 && nowMs - at < LEAD_EVENT_WINDOW_MS;
+    return a.id > lastId && same(a) && Number.isFinite(at) && nowMs - at >= -60_000 && nowMs - at < LEAD_EVENT_WINDOW_MS;
   });
   let duplicate = !!recent;
   if (!recent) {
