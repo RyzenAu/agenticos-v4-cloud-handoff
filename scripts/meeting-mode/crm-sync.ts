@@ -33,10 +33,27 @@ function activityFor(db: Database, eventId: string): number | null {
   return row?.activity_id ?? null;
 }
 
+/** 9 am at the business's Sydney calendar day, including AEST/AEDT transitions. */
+export function sydneyFollowupAt(day: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error("Choose a valid follow-up day.");
+  const target = Date.parse(`${day}T09:00:00Z`);
+  if (!Number.isFinite(target) || new Date(target).toISOString().slice(0, 10) !== day) throw new Error("Choose a valid follow-up day.");
+  const format = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+  let guess = target;
+  for (let i = 0; i < 3; i++) {
+    const parts = Object.fromEntries(format.formatToParts(new Date(guess)).map(p => [p.type, p.value]));
+    const wall = Date.parse(`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}Z`);
+    const difference = target - wall;
+    guess += difference;
+    if (!difference) return new Date(guess).toISOString();
+  }
+  throw new Error("Could not resolve that Sydney follow-up day.");
+}
+
 export function applyNotes(db: Database, notes: MeetingNotes, lead: Lead): CrmResult {
   const eventId = `meeting:${notes.id}`;
   const duplicate = eventLogged(db, eventId);
-  const nextAt = notes.crm.next ? new Date(`${notes.crm.next}T09:00:00+10:00`).toISOString() : null;
+  const nextAt = notes.crm.next ? sydneyFollowupAt(notes.crm.next) : null;
   const kind = notes.source === "granola" ? "meeting" : "call";
   const tag = { meeting: "meeting mode", debrief: "debrief", granola: "Granola" }[notes.source];
   logActivity(db, lead, {

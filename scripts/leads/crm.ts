@@ -506,11 +506,14 @@ export function logActivity(
       );
     }
     const contact = entry.kind === "call" || entry.kind === "email" || entry.kind === "meeting";
+    // Adding context is not completing a promise. The old API sends null for a note without
+    // a date, so keep the existing follow-up unless this is a contact/terminal outcome.
+    const keepNext = entry.kind === "note" && !entry.nextAt && !["won", "lost", "not_interested", "do_not_contact"].includes(outcome);
     db.query(`UPDATE leads SET status = COALESCE(NULLIF($status, ''), status),
       last_contact_at = CASE WHEN $contact THEN $at ELSE last_contact_at END,
-      next_at = $next, owner = CASE WHEN owner = '' THEN $by ELSE owner END,
+      next_at = CASE WHEN $keepNext THEN next_at ELSE $next END, owner = CASE WHEN owner = '' THEN $by ELSE owner END,
       google_at = CASE WHEN $contact THEN NULL ELSE google_at END WHERE id = $id`).run({
-      $status: outcome, $contact: contact ? 1 : 0, $at: at, $next: entry.nextAt ?? null, $by: entry.by ?? "", $id: lead.id,
+      $status: outcome, $contact: contact ? 1 : 0, $at: at, $next: entry.nextAt ?? null, $keepNext: keepNext ? 1 : 0, $by: entry.by ?? "", $id: lead.id,
     });
     if (outcome === "do_not_contact") {
       db.query("UPDATE leads SET email_ok = 0 WHERE id = ?").run(lead.id);

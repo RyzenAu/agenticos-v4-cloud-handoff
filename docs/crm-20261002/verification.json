@@ -1,0 +1,40 @@
+{
+  "base": "e9ad7c2bcd2fc4ae9e4778345e90d59265eed5fa",
+  "verificationDate": "2026-10-02",
+  "syntheticOnly": true,
+  "focusedTests": {
+    "pass": 1129,
+    "skip": 3,
+    "fail": 0,
+    "assertions": 11575,
+    "files": 91
+  },
+  "uiTypecheck": {
+    "exitCode": 0,
+    "runtime": "Node 24.19.0, TypeScript from frozen lockfile"
+  },
+  "scriptsTypecheck": {
+    "exitCode": 0
+  },
+  "productionBuild": {
+    "status": "blocked",
+    "exitCode": 137,
+    "reason": "SIGKILL in both normal and low-memory attempts; resource pressure suspected"
+  },
+  "browser": {
+    "status": "blocked",
+    "reason": "net::ERR_BLOCKED_BY_CLIENT on first permitted localhost visit; no screenshots"
+  },
+  "fullReleaseSuite": {
+    "status": "blocked",
+    "reason": "Safety reviewer stopped unestablished Typesafe egress; diagnostic also stopped"
+  },
+  "logChecksums": {
+    "final-focused.log": "3abeb12d75f2f1f89c9994069c6f245536f9ae19e9ed6cb2acf0c3ab2a5e04e3",
+    "typecheck-ui-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "typecheck-scripts-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "concurrency.log": "71711ce57bae9d357e40b3030b847db50d789566e654db82e8f2682fd27522f4",
+    "build.log": "688742ba30f8af19e9cac6fbc8f144e5e63811180b95c1406a12b081160c3e96",
+    "build-smol.log": "d1b16e94738e87b912e5342f5edcd96b10d49e007c66e0c555054e9394ad63c7"
+  }
+}

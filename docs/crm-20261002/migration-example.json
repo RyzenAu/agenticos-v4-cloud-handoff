@@ -1,0 +1,161 @@
+{
+  "fixture": "Disposable in-memory synthetic records only; no live database",
+  "dryRun": {
+    "fromVersion": 0,
+    "toVersion": 1,
+    "applied": false,
+    "counts": {
+      "leads": 2,
+      "activities": 1,
+      "deals": 2,
+      "followUps": 1,
+      "kickoffs": 0,
+      "optouts": 1,
+      "duplicates": 0,
+      "excluded": 0,
+      "companiesAlreadyLinked": 0
+    },
+    "relationships": {
+      "orphanActivities": 0,
+      "orphanDeals": 0,
+      "orphanKickoffs": 0,
+      "danglingDuplicates": 0
+    },
+    "ambiguities": [
+      {
+        "leadId": 8,
+        "code": "name-unavailable",
+        "detail": "No independently sourced business name; live Google display content is not migrated."
+      },
+      {
+        "leadId": 8,
+        "code": "transient-fields-omitted",
+        "detail": "Unproven Google-derived fields stay outside CRM records. Original row is unchanged."
+      }
+    ],
+    "preservedTables": [
+      "leads",
+      "activities",
+      "activity_events",
+      "lead_deals",
+      "kickoffs",
+      "coaching",
+      "phone_findings",
+      "lead_locations",
+      "optouts",
+      "places_usage",
+      "goals",
+      "crm_settings"
+    ]
+  },
+  "applied": {
+    "fromVersion": 0,
+    "toVersion": 1,
+    "applied": true,
+    "counts": {
+      "leads": 2,
+      "activities": 1,
+      "deals": 2,
+      "followUps": 1,
+      "kickoffs": 0,
+      "optouts": 1,
+      "duplicates": 0,
+      "excluded": 0,
+      "companiesAlreadyLinked": 0
+    },
+    "relationships": {
+      "orphanActivities": 0,
+      "orphanDeals": 0,
+      "orphanKickoffs": 0,
+      "danglingDuplicates": 0
+    },
+    "ambiguities": [
+      {
+        "leadId": 8,
+        "code": "name-unavailable",
+        "detail": "No independently sourced business name; live Google display content is not migrated."
+      },
+      {
+        "leadId": 8,
+        "code": "transient-fields-omitted",
+        "detail": "Unproven Google-derived fields stay outside CRM records. Original row is unchanged."
+      }
+    ],
+    "preservedTables": [
+      "leads",
+      "activities",
+      "activity_events",
+      "lead_deals",
+      "kickoffs",
+      "coaching",
+      "phone_findings",
+      "lead_locations",
+      "optouts",
+      "places_usage",
+      "goals",
+      "crm_settings"
+    ],
+    "validation": {
+      "companies": 2,
+      "deals": 2,
+      "tasks": 1,
+      "projects": 0,
+      "activities": 1,
+      "originalRowsUnchanged": true,
+      "foreignKeyViolations": 0
+    }
+  },
+  "repeated": {
+    "fromVersion": 1,
+    "toVersion": 1,
+    "applied": false,
+    "counts": {
+      "leads": 2,
+      "activities": 1,
+      "deals": 2,
+      "followUps": 1,
+      "kickoffs": 0,
+      "optouts": 1,
+      "duplicates": 0,
+      "excluded": 0,
+      "companiesAlreadyLinked": 2
+    },
+    "relationships": {
+      "orphanActivities": 0,
+      "orphanDeals": 0,
+      "orphanKickoffs": 0,
+      "danglingDuplicates": 0
+    },
+    "ambiguities": [
+      {
+        "leadId": 8,
+        "code": "name-unavailable",
+        "detail": "No independently sourced business name; live Google display content is not migrated."
+      },
+      {
+        "leadId": 8,
+        "code": "transient-fields-omitted",
+        "detail": "Unproven Google-derived fields stay outside CRM records. Original row is unchanged."
+      }
+    ],
+    "preservedTables": [
+      "leads",
+      "activities",
+      "activity_events",
+      "lead_deals",
+      "kickoffs",
+      "coaching",
+      "phone_findings",
+      "lead_locations",
+      "optouts",
+      "places_usage",
+      "goals",
+      "crm_settings"
+    ]
+  },
+  "rollback": {
+    "schemaVersion": 0,
+    "originalRecordsUnchanged": true,
+    "originalRecordsSha256": "cf5397a603543b31d792b98b0615bde248ed012a71b0955639a19f545356135d"
+  }
+}
