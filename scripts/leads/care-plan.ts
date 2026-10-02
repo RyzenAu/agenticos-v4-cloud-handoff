@@ -40,7 +40,8 @@ export function monthChanges(root: string, slug: string, month: string, repoPath
     const items = readFileSync(file, "utf8")
       .split("\n")
       .filter((l) => l.trim().startsWith("- "))
-      .filter((l) => !month || l.includes(`[${month}`) || true) // CHANGES.md has no date field of its own yet -- surfaces everything on file
+      // Undated founder notes remain visible; explicitly dated notes belong only to that month.
+      .filter((l) => { const dated = /\[(\d{4}-\d{2})(?:-\d{2})?\]/.exec(l); return !month || !dated || dated[1] === month; })
       .map((l) => l.replace(/^-\s*/, "").trim())
       .filter(Boolean);
     return { source: "changes-file", items };

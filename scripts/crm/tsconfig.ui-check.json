@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": ["bun", "vite/client"] },
+  "include": [
+    "../../src/components/crm/**/*.ts",
+    "../../src/components/crm/**/*.tsx",
+    "../../src/lib/crm-*.ts"
+  ],
+  "exclude": []
+}

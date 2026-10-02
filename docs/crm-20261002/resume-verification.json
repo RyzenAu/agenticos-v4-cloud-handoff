@@ -1,0 +1,108 @@
+{
+  "verificationDate": "2026-10-02",
+  "base": "e9ad7c2bcd2fc4ae9e4778345e90d59265eed5fa",
+  "previousPublishedHead": "d7fc93b62a55de9c77a2b5e74e73cf4cdcfff803",
+  "scope": "Resumed CRM-owned tree; shared mounts absent. Earlier assembled-candidate results are historical only.",
+  "syntheticOnly": true,
+  "runtime": {
+    "bun": "1.4.2",
+    "node": "24.19.0",
+    "frozenLockfileUnchanged": true
+  },
+  "safeSuite": {
+    "pass": 680,
+    "todo": 1,
+    "fail": 0,
+    "assertions": 3228,
+    "files": 68,
+    "seconds": 29.5,
+    "excluded": [
+      "scripts/crm/plugin.test.ts (existing socket-binding HTTP checks; socketless handler contracts ran)"
+    ]
+  },
+  "explicitBusinessContracts": {
+    "pass": 13,
+    "todo": 1,
+    "fail": 0,
+    "assertions": 149,
+    "fake": [
+      "research executor",
+      "owning Jobs subjects/agent reader",
+      "HTTP identity injection"
+    ],
+    "real": [
+      "disposable SQLite",
+      "existing durable Jobs",
+      "saved artifact storage"
+    ]
+  },
+  "finalAffectedChecks": {
+    "pass": 32,
+    "fail": 0,
+    "assertions": 323,
+    "files": 5,
+    "isolatedDomInteractions": 18,
+    "browser": false
+  },
+  "typechecks": {
+    "fullBackend": {
+      "status": "passed",
+      "exitCode": 0,
+      "command": "node --max-old-space-size=3072 node_modules/typescript/bin/tsc --noEmit -p tsconfig.scripts.json"
+    },
+    "crmBackendAndTests": {
+      "status": "passed",
+      "exitCode": 0,
+      "config": "scripts/crm/tsconfig.check.json"
+    },
+    "crmUiAndTests": {
+      "status": "passed",
+      "exitCode": 0,
+      "config": "scripts/crm/tsconfig.ui-check.json"
+    },
+    "fullUi": {
+      "status": "blocked",
+      "exitCode": 137,
+      "reason": "SIGKILL, no compiler diagnostics; not counted as a pass"
+    }
+  },
+  "productionBuild": {
+    "status": "not-rerun",
+    "reason": "Shared mount/generated routing remains Claude-owned and absent; earlier assembled candidate build attempts were SIGKILL/137"
+  },
+  "fullReleaseSuite": {
+    "status": "blocked",
+    "reason": "Prior safety review denied unestablished Typesafe egress; no provider retry"
+  },
+  "browser": {
+    "status": "blocked",
+    "reason": "Prior permitted cloud localhost visit returned ERR_BLOCKED_BY_CLIENT; no alternate route/tool/port used",
+    "runner": "scripts/crm/browser-acceptance.ts",
+    "runnerExecuted": false,
+    "screenshots": [],
+    "widthsRequested": [
+      1440,
+      768,
+      390
+    ]
+  },
+  "liveJobsSubjects": {
+    "status": "todo",
+    "owner": "Claude",
+    "reason": "Existing Jobs subject persistence and /__jobs subject filter absent; fake contract verified only"
+  },
+  "publication": {
+    "branch": "dot/crm-workspace-20261002",
+    "pr": "https://github.com/RyzenAu/agenticos-v4-cloud-handoff/pull/1",
+    "draft": true,
+    "merge": false,
+    "deployment": false,
+    "exactHead": "See the verified current PR head; this file is part of that commit"
+  },
+  "performance": {
+    "before": "performance-before.json",
+    "after": "performance-after.json",
+    "scope": "Five warm local samples, no browser/HTTP/network timing; SQL statement counts exclude transaction control and seeding"
+  },
+  "sourceManifestSha256": "ba96f4c0a9adf61399fc702e07b920a0ed75a1b43a5edc03cfec20658aceb80f"
+}
