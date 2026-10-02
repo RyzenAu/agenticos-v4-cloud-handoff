@@ -5,6 +5,7 @@ import {
   crmErrorMessage,
   crmOperation,
   getCrmSnapshot,
+  getCrmRecord,
   resetCrmToken,
 } from "@/lib/crm-client";
 const originalFetch = globalThis.fetch;
@@ -15,6 +16,20 @@ afterEach(() => {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 describe("CRM browser transport", () => {
+  test("reads document content with an identity-gated GET and no mutation token", async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return json({ ok: true, text: "Opened", data: { id: "doc-a" } });
+    }) as typeof fetch;
+    expect((await getCrmRecord<{ id: string }>({ kind: "document", id: "doc-a" })).data?.id).toBe(
+      "doc-a",
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("/__crm/record?ref=crm%3Adocument%3Adoc-a");
+    expect(calls[0].init?.method ?? "GET").toBe("GET");
+    expect(calls[0].init?.credentials).toBe("same-origin");
+  });
   test("sends typed operations with the page token and preserves the receipt", async () => {
     const calls: { url: string; init?: RequestInit }[] = [];
     globalThis.fetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -86,7 +101,10 @@ describe("CRM browser transport", () => {
     expect(writes).toBe(1);
   });
   test("an unreadable successful response is not called saved", async () => {
-    globalThis.fetch = (async () => new Response("Not JSON", { status: 200 })) as typeof fetch;
+    globalThis.fetch = Object.assign(
+      async (_url: RequestInfo | URL) => new Response("Not JSON", { status: 200 }),
+      { preconnect: () => {} },
+    );
     await expect(getCrmSnapshot()).rejects.toThrow("unreadable response");
   });
 });

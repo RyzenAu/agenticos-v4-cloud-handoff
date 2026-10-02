@@ -11,5 +11,5 @@ test("CRM isolated non-browser React DOM interactions", () => {
   const output = (result.stdout ?? "") + (result.stderr ?? "");
   if (result.status !== 0) console.log(output.slice(-8000));
   expect(result.status).toBe(0);
-  expect(Number(output.match(/(\d+) pass/)?.[1] ?? 0)).toBeGreaterThanOrEqual(9);
+  expect(Number(output.match(/(\d+) pass/)?.[1] ?? 0)).toBeGreaterThanOrEqual(18);
 }, 120000);

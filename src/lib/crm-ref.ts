@@ -34,7 +34,12 @@ export function resolveLegacyLead(
   const mapped = lookup?.(ref.id);
   return mapped && isCrmRef(mapped) ? mapped : ref;
 }
-export type CrmContext = { crm?: CrmRef | null; candidates?: readonly CrmRef[] };
+export type CrmContext = {
+  crm?: CrmRef | null;
+  candidates?: readonly CrmRef[];
+  /** Existing page-context contract: only an explicit CRM route/ref is authoritative context. */
+  selection?: { to?: string; search?: Record<string, string> } | null;
+};
 export type CrmTargetResult =
   | { ok: true; ref: CrmRef; how: "explicit" | "active-record" | "only-candidate" }
   | { ok: false; ask: string; candidates: CrmRef[] };
@@ -51,7 +56,10 @@ export function resolveCrmContext(input: {
       ? { ok: true, ref, how: "explicit" }
       : { ok: false, ask: "Choose a valid CRM record of the required type.", candidates: [] };
   }
-  const active = input.context?.crm;
+  const selection = input.context?.selection;
+  const active =
+    input.context?.crm ??
+    (selection?.to === "/crm" ? parseCrmRef(selection.search?.ref ?? "") : null);
   if (active && isCrmRef(active) && allowed(active))
     return { ok: true, ref: active, how: "active-record" };
   const unique = new Map<string, CrmRef>();

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowUpRight, Building2, Check, FileText, Plus } from "lucide-react";
 import {
@@ -22,7 +22,7 @@ import type {
   Project,
 } from "../../../scripts/crm/types";
 import { artifactHref } from "@/lib/crm-links";
-import { crmErrorMessage, crmOperation, type CrmReceipt } from "@/lib/crm-client";
+import { crmErrorMessage, crmOperation, getCrmRecord, type CrmReceipt } from "@/lib/crm-client";
 import { fmtDateTime, fmtDay } from "@/lib/format";
 import { fetchJob, JOB_STATE_LABEL } from "@/lib/job-events";
 import { Field, Modal, NativeSelect, ExternalLink, ownerName, SaveActions } from "./controls";
@@ -37,6 +37,7 @@ import {
 import { TaskRows, money, type WorkspaceActions } from "./workspace-views";
 import { ActivityEditor, DocumentVersionEditor } from "./record-editor";
 import { CrmFinancePanel } from "./finance-panel";
+import { WorkflowJourney } from "./workflow-journey";
 
 export function CompanyWorkspace({
   company,
@@ -183,6 +184,12 @@ export function CompanyWorkspace({
           </div>
         </div>
       </Surface>
+      <WorkflowJourney
+        company={company}
+        snapshot={snapshot}
+        selectedId={selectedId}
+        actions={actions}
+      />
       <Tabs
         idBase="crm-company"
         label="Company workspace"
@@ -323,7 +330,12 @@ export function CompanyWorkspace({
                 </Button>
               }
             >
-              <Documents documents={documents} actions={actions} newVersion={setVersionDoc} />
+              <Documents
+                panel="overview"
+                documents={documents}
+                actions={actions}
+                newVersion={setVersionDoc}
+              />
             </Section>
             <CrmFinancePanel companyId={company.id} />
             <Section title="Connected work">
@@ -480,6 +492,7 @@ export function CompanyWorkspace({
         </Section>
         <Section title="Proposals and agreements">
           <Documents
+            panel="deals"
             documents={documents.filter((d) => d.dealId)}
             actions={actions}
             newVersion={setVersionDoc}
@@ -522,6 +535,7 @@ export function CompanyWorkspace({
         </Section>
         <Section title="Delivery documents">
           <Documents
+            panel="delivery"
             documents={documents.filter(
               (d) => d.projectId || d.kind === "deliverable" || d.kind === "brief",
             )}
@@ -670,10 +684,12 @@ function AgentWork({ jobId }: { jobId: string }) {
   );
 }
 function Documents({
+  panel,
   documents,
   actions,
   newVersion,
 }: {
+  panel: "overview" | "deals" | "delivery";
   documents: Document[];
   actions: WorkspaceActions;
   newVersion: (document: Document) => void;
@@ -692,7 +708,7 @@ function Documents({
         {documents.map((document) => (
           <div
             key={document.id}
-            id={`crm-document-${document.id}`}
+            id={`crm-document-${panel}-${document.id}`}
             className="py-3 first:pt-0 last:pb-0"
           >
             <div className="flex items-start justify-between gap-2">
@@ -716,54 +732,101 @@ function Documents({
                 <ExternalLink href={document.externalUrl}>Open document</ExternalLink>
               </div>
             )}
-            <Disclosure
-              className="mt-2"
-              summary="Versions and content"
-              meta={String(document.versions.length)}
-            >
-              <div className="space-y-4">
-                {[...document.versions].reverse().map((version) => {
-                  const href = version.artifact ? artifactHref(version.artifact) : null;
-                  return (
-                    <article key={version.id}>
-                      <p className="text-xs text-muted-foreground">
-                        Version {version.number} · {fmtDateTime(version.createdAt)}
-                      </p>
-                      {version.pricing && (
-                        <p className="ds-num mt-2 text-sm">
-                          {money(version.pricing.oneOffCents)} +{" "}
-                          {money(version.pricing.recurringCents)} / month · GST{" "}
-                          {version.pricing.gstTreatment} · Deal version{" "}
-                          {version.pricing.dealVersion ?? "unknown"}
-                        </p>
-                      )}
-                      {version.content && (
-                        <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-sans text-sm">
-                          {version.content}
-                        </pre>
-                      )}
-                      {href && (
-                        <a
-                          className="ds-interactive mt-2 inline-block rounded text-sm underline"
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open version result ↗
-                        </a>
-                      )}
-                    </article>
-                  );
-                })}
-                <Button variant="outline" onClick={() => newVersion(document)}>
-                  Add version
-                </Button>
-              </div>
-            </Disclosure>
+            <DocumentVersions document={document} newVersion={newVersion} />
           </div>
         ))}
       </div>
     </Surface>
+  );
+}
+export function DocumentVersions({
+  document,
+  newVersion,
+}: {
+  document: Document;
+  newVersion: (document: Document) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const deferred = document.versions.some((version) => version.contentDeferred);
+  const query = useQuery({
+    queryKey: ["crm", "document-content", document.id, document.version],
+    queryFn: async ({ signal }) => {
+      const receipt = await getCrmRecord<Document>({ kind: "document", id: document.id }, signal);
+      if (!receipt.data || receipt.data.versions.some((version) => version.contentDeferred))
+        throw new Error("Full document content was not returned. Refresh and try again.");
+      return receipt.data;
+    },
+    enabled: open && deferred,
+    staleTime: 15_000,
+    retry: false,
+  });
+  const full = deferred ? query.data : document;
+  return (
+    <Disclosure
+      className="mt-2"
+      summary="Versions and content"
+      meta={String(document.versions.length)}
+      open={open}
+      onOpenChange={setOpen}
+    >
+      {deferred && query.isError && (
+        <Notice
+          tone="warn"
+          title={full ? "Showing previously loaded content" : "Document content could not load"}
+          action={
+            <Button variant="outline" onClick={() => void query.refetch()}>
+              Retry content
+            </Button>
+          }
+        >
+          {crmErrorMessage(query.error)}
+        </Notice>
+      )}
+      {open && !full && query.isPending && (
+        <p role="status" className="text-sm text-muted-foreground">
+          Loading saved document content…
+        </p>
+      )}
+      {full && (
+        <div className="space-y-4">
+          {[...full.versions].reverse().map((version) => {
+            const href = version.artifact ? artifactHref(version.artifact) : null;
+            return (
+              <article key={version.id}>
+                <p className="text-xs text-muted-foreground">
+                  Version {version.number} · {fmtDateTime(version.createdAt)}
+                </p>
+                {version.pricing && (
+                  <p className="ds-num mt-2 text-sm">
+                    {money(version.pricing.oneOffCents)} + {money(version.pricing.recurringCents)} /
+                    month · GST {version.pricing.gstTreatment} · Deal version{" "}
+                    {version.pricing.dealVersion ?? "unknown"}
+                  </p>
+                )}
+                {version.content && (
+                  <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-sans text-sm">
+                    {version.content}
+                  </pre>
+                )}
+                {href && (
+                  <a
+                    className="ds-interactive mt-2 inline-block rounded text-sm underline"
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open version result ↗
+                  </a>
+                )}
+              </article>
+            );
+          })}
+          <Button variant="outline" onClick={() => newVersion(full)}>
+            Add version
+          </Button>
+        </div>
+      )}
+    </Disclosure>
   );
 }
 function DealDetails({
@@ -980,6 +1043,30 @@ function ProjectDetails({
           ))}
         </div>
       </div>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          onClick={() =>
+            actions.edit({
+              kind: "document",
+              companyId: project.companyId,
+              projectId: project.id,
+              dealId: project.dealId ?? undefined,
+              documentKind: "deliverable",
+            })
+          }
+        >
+          Link delivery result
+        </Button>
+        {project.dealId && (
+          <Button
+            variant="ghost"
+            onClick={() => actions.open({ kind: "deal", id: project.dealId! }, "deals")}
+          >
+            Review linked deal
+          </Button>
+        )}
+      </div>
       <div className="mt-6 border-t border-border pt-5">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h4 className="text-base font-medium">Assigned delivery tasks</h4>
@@ -1016,11 +1103,16 @@ function MilestoneEditor({
   onClose: () => void;
   onSaved: (receipt: CrmReceipt) => void;
 }) {
+  const [baseProject] = useState(project);
+  project = baseProject;
   const [milestones, setMilestones] = useState(() => project.milestones.map((m) => ({ ...m }))),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const running = useRef(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -1034,6 +1126,7 @@ function MilestoneEditor({
     } catch (e) {
       setError(crmErrorMessage(e));
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }

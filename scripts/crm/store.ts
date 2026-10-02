@@ -350,10 +350,29 @@ export class CrmStore {
     if (!hasTable(this.db, "optouts")) return;
     const companies = allRecords<Company>(this.db, "crm_companies"),
       contacts = allRecords<Contact>(this.db, "crm_contacts");
+    const companiesById = new Map(companies.map((company) => [company.id, company]));
+    const canonicalIds = new Map<string, string>();
+    const canonical = (id: string): string => {
+      const cached = canonicalIds.get(id);
+      if (cached) return cached;
+      const seen = new Set<string>();
+      let current = id;
+      while (!seen.has(current)) {
+        seen.add(current);
+        const target = companiesById.get(current)?.mergedInto;
+        if (!target || !companiesById.has(target)) {
+          for (const visited of seen) canonicalIds.set(visited, current);
+          return current;
+        }
+        current = target;
+      }
+      throw new CrmError("validation", "Company merge cycle requires review.");
+    };
     const normal = (v: string) => (v.includes("@") ? v.toLowerCase() : v.replace(/\D/g, ""));
     const denied = new Set(
       (this.db.query("SELECT value FROM optouts").all() as { value: string }[]).map((r) => r.value),
     );
+    const persistedDenied = new Set(denied);
     const dirtyCompanies = new Set<string>(),
       dirtyContacts = new Set<string>();
     let expanded = true;
@@ -376,9 +395,8 @@ export class CrmStore {
             expanded = true;
           }
           add(values);
-          const canonical = canonicalCompanyId(this.db, company.id);
-          const kept =
-            canonical === company.id ? undefined : companies.find((c) => c.id === canonical);
+          const keptId = canonical(company.id);
+          const kept = keptId === company.id ? undefined : companiesById.get(keptId);
           if (kept && (!kept.doNotContact || kept.emailAllowed)) {
             kept.doNotContact = true;
             kept.emailAllowed = false;
@@ -392,7 +410,7 @@ export class CrmStore {
         const values = [contact.email, contact.phone].filter(Boolean);
         if (
           contact.doNotContact ||
-          suppressedCompanies.has(canonicalCompanyId(this.db, contact.companyId)) ||
+          suppressedCompanies.has(canonical(contact.companyId)) ||
           values.some((v) => denied.has(normal(v)))
         ) {
           if (!contact.doNotContact) {
@@ -405,7 +423,8 @@ export class CrmStore {
       }
     }
     for (const value of denied)
-      this.db.query("INSERT OR IGNORE INTO optouts(value) VALUES(?)").run(value);
+      if (!persistedDenied.has(value))
+        this.db.query("INSERT OR IGNORE INTO optouts(value) VALUES(?)").run(value);
     const persist = (table: string, record: Company | Contact, kind: "company" | "contact") => {
       const before = record.version;
       record.version++;
@@ -454,7 +473,8 @@ export class CrmStore {
       });
     }
   }
-  snapshot(): CrmSnapshot {
+  /** Listing transport omits document bodies explicitly; a record read loads the exact version. */
+  snapshot(options: { documentSummaries?: boolean } = {}): CrmSnapshot {
     return this.transaction(() => {
       this.syncLegacy();
       return {
@@ -468,12 +488,46 @@ export class CrmStore {
           b.at.localeCompare(a.at),
         ),
         projects: allRecords<Project>(this.db, "crm_projects"),
-        documents: allRecords<Document>(this.db, "crm_documents").map((d) =>
-          this.documentVersions(d),
-        ),
+        documents: this.allDocuments(options.documentSummaries ?? false),
         pipelines: allRecords<Pipeline>(this.db, "crm_pipelines"),
       };
     });
+  }
+  /** The directory snapshot loads each history table once, rather than one query per
+   * document and version. Status history remains append-only and the last status wins. */
+  directory(): Pick<CrmSnapshot, "companies" | "contacts" | "deals"> {
+    return this.transaction(() => {
+      this.syncLegacy();
+      return {
+        companies: allRecords<Company>(this.db, "crm_companies"),
+        contacts: allRecords<Contact>(this.db, "crm_contacts"),
+        deals: allRecords<Deal>(this.db, "crm_deals"),
+      };
+    });
+  }
+  private allDocuments(summaries = false): Document[] {
+    const versions = new Map<string, DocumentVersion[]>();
+    const statuses = new Map<string, Document["status"]>();
+    for (const row of this.db
+      .query("SELECT document_id,version_number,status FROM crm_document_statuses ORDER BY id")
+      .all() as { document_id: string; version_number: number; status: Document["status"] }[])
+      statuses.set(`${row.document_id}:${row.version_number}`, row.status);
+    for (const row of this.db
+      .query("SELECT data FROM crm_document_versions ORDER BY document_id,number")
+      .all() as { data: string }[]) {
+      const version: DocumentVersion = JSON.parse(row.data);
+      const group = versions.get(version.documentId) ?? [];
+      group.push({
+        ...version,
+        ...(summaries ? { content: "", contentDeferred: true } : {}),
+        status: statuses.get(`${version.documentId}:${version.number}`) ?? "draft",
+      });
+      versions.set(version.documentId, group);
+    }
+    return allRecords<Document>(this.db, "crm_documents").map((document) => ({
+      ...document,
+      versions: versions.get(document.id) ?? [],
+    }));
   }
   private get<T>(table: string, id: string): T | null {
     this.syncLegacy();

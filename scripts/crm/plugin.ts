@@ -12,6 +12,7 @@ import { readLimitedText, MB } from "../http/body";
 import { crmRuntime, closeCrmRuntime } from "./runtime";
 import { CrmError } from "./types";
 import { readCrmFinanceLinks } from "./finance";
+import { parseCrmRef } from "../../src/lib/crm-ref";
 
 export type CrmHttpService = {
   snapshot(): unknown;
@@ -71,7 +72,7 @@ export function createCrmMiddleware(options: CrmHttpOptions) {
     if (options.service) return (opened = options.service());
     const { store, operations } = crmRuntime(options.root);
     return (opened = {
-      snapshot: () => store.snapshot(),
+      snapshot: () => store.snapshot({ documentSummaries: true }),
       resolveLegacyLead: (id) => store.resolveLegacyLead(id),
       operations,
       finance(companyId) {
@@ -129,6 +130,23 @@ export function createCrmMiddleware(options: CrmHttpOptions) {
     try {
       if (method === "GET" || method === "HEAD") {
         if (path === "/__crm/snapshot") return send(200, service().snapshot());
+        if (path === "/__crm/record") {
+          const ref = parseCrmRef(url.searchParams.get("ref") ?? "");
+          if (!ref)
+            return send(400, {
+              ok: false,
+              code: "validation",
+              error: "Choose a valid CRM record reference.",
+            });
+          const result = service().operations.run("crm.record.get", { ref }, principal) as {
+            ok?: boolean;
+            code?: string;
+          };
+          return send(
+            result.ok === false ? (result.code === "not-found" ? 404 : 400) : 200,
+            result,
+          );
+        }
         if (path === "/__crm/ops") return send(200, { operations: service().operations.list() });
         if (path === "/__crm/finance") {
           const companyId = url.searchParams.get("companyId") ?? "";

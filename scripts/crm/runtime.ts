@@ -1,17 +1,19 @@
 /** One CRM runtime per hub root. Both HTTP and Claude's Jarvis/provider adapters import this. */
-import { activityFor } from "../events/plugin";
 import { jobsRuntime } from "../jobs/runtime";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { CrmAutomations } from "./automation";
 import { createCrmOperations, type CrmOperationsOptions } from "./ops";
-import { openCrmStore } from "./store";
+import { openCrmStore, type CrmChange } from "./store";
 
 /** Trusted server readers, never request-body claims or memory recall. Claude supplies these
  * from the owning Jobs/provider adapters once their recorded subjects/evidence are available. */
 export type CrmIntegrationReaders = Pick<
   CrmOperationsOptions,
   "verifyAgent" | "verifyCommunicationEvidence"
->;
+> & {
+  /** Claude connects this to the existing event publisher. It carries no business field values. */
+  publishChange?: (change: CrmChange) => void;
+};
 const readers = new Map<string, CrmIntegrationReaders>();
 export function configureCrmIntegrations(
   root: string,
@@ -42,7 +44,7 @@ function open(root: string) {
     verifyCommunicationEvidence: (evidence, principal, ref) =>
       readers.get(root)?.verifyCommunicationEvidence?.(evidence, principal, ref) === true,
   });
-  const unsubscribe = store.subscribe((change) => activityFor(root)?.crmChanged(change));
+  const unsubscribe = store.subscribe((change) => readers.get(root)?.publishChange?.(change));
   return {
     store,
     automations,

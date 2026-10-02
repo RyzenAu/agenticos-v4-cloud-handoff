@@ -9,7 +9,7 @@ import type {
 import { splitGst } from "@/lib/business-economics";
 import { SALES_STAGES } from "../../../scripts/crm/types";
 import { parseCrmRef } from "@/lib/crm-ref";
-export type CrmView = "today" | "pipeline" | "companies" | "contacts";
+export type CrmView = "today" | "pipeline" | "companies" | "contacts" | "templates";
 export type CrmTab = "overview" | "timeline" | "deals" | "delivery";
 export type CrmSearch = { ref?: string; view?: CrmView; tab?: CrmTab };
 export type DirectoryFilters = {
@@ -26,7 +26,9 @@ export const EMPTY_FILTERS: DirectoryFilters = {
 };
 export function validateCrmSearch(search: Record<string, unknown>): CrmSearch {
   const ref = typeof search.ref === "string" && parseCrmRef(search.ref) ? search.ref : undefined;
-  const view = ["today", "pipeline", "companies", "contacts"].includes(String(search.view))
+  const view = ["today", "pipeline", "companies", "contacts", "templates"].includes(
+    String(search.view),
+  )
     ? (search.view as CrmView)
     : undefined;
   const tab = ["overview", "timeline", "deals", "delivery"].includes(String(search.tab))
@@ -118,6 +120,13 @@ export function matchesSearch(values: unknown[], query: string): boolean {
     .every((word) => text.includes(word.replace(/^#/, "")));
 }
 export function filterCompanies(snapshot: CrmSnapshot, filters: DirectoryFilters): Company[] {
+  // Build once per search instead of scanning every contact for every company.
+  const contactText = new Map<string, string[]>();
+  for (const contact of snapshot.contacts) {
+    const values = contactText.get(contact.companyId) ?? [];
+    values.push(contact.name, contact.email, contact.phone);
+    contactText.set(contact.companyId, values);
+  }
   return snapshot.companies
     .filter(
       (company) =>
@@ -138,9 +147,7 @@ export function filterCompanies(snapshot: CrmSnapshot, filters: DirectoryFilters
             company.phone,
             company.emails,
             company.tags,
-            ...snapshot.contacts
-              .filter((c) => c.companyId === company.id)
-              .flatMap((c) => [c.name, c.email, c.phone]),
+            ...(contactText.get(company.id) ?? []),
           ],
           filters.search,
         ),

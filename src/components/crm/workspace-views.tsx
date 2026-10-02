@@ -27,6 +27,7 @@ import {
 } from "./selectors";
 import type { EditorTarget } from "./record-editor";
 import { AutomationRules } from "./automation-rules";
+import { BusinessNextActions } from "./workflow-journey";
 export type WorkspaceActions = {
   edit: (target: EditorTarget) => void;
   open: (ref: CrmRef, tab?: "overview" | "timeline" | "deals" | "delivery") => void;
@@ -138,6 +139,7 @@ export function TodayView({
       snapshot.companies.find((c) => c.id === task.companyId)?.timezone || "Australia/Sydney",
     );
   const due = active.filter((t) => ["today", "overdue"].includes(urgency(t)));
+  const unscheduled = active.filter((task) => urgency(task) === "unscheduled");
   const meetings = active
     .filter((t) => t.kind === "meeting" && urgency(t) === "upcoming")
     .slice(0, 6);
@@ -162,6 +164,7 @@ export function TodayView({
           </NativeSelect>
         </label>
       </div>
+      <BusinessNextActions snapshot={snapshot} actions={actions} owner={owner} />
       <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="min-w-0">
           <Section
@@ -215,7 +218,13 @@ export function TodayView({
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {ownerName(deal.owner)} ·{" "}
-                          {deal.nextActionDue ? fmtDateTime(deal.nextActionDue) : "Date not set"}
+                          {deal.nextActionDue
+                            ? fmtDateTime(deal.nextActionDue, {
+                                timeZone:
+                                  snapshot.companies.find((c) => c.id === deal.companyId)
+                                    ?.timezone || "Australia/Sydney",
+                              })
+                            : "Date not set"}
                         </p>
                       </div>
                       <Button
@@ -267,6 +276,21 @@ export function TodayView({
               />
             )}
           </Section>
+          {unscheduled.length > 0 && (
+            <Section
+              title="Set a date"
+              description={`${unscheduled.length} open commitment${unscheduled.length === 1 ? " needs" : "s need"} a due date`}
+            >
+              <Surface>
+                <TaskRows
+                  tasks={unscheduled.slice(0, 6)}
+                  snapshot={snapshot}
+                  actions={actions}
+                  compact
+                />
+              </Surface>
+            </Section>
+          )}
           <Surface padding="sm">
             <h3 className="text-sm font-medium">Shared responsibility</h3>
             <p className="mt-2 text-sm text-muted-foreground">

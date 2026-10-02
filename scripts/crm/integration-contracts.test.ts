@@ -1,36 +1,62 @@
 import { afterEach, expect, test } from "bun:test";
-import { ActivityBus, reaches } from "../events/bus";
-import { startActivitySources } from "../events/sources";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { publishPageContext, readPageContext, resetPageContext } from "../../src/lib/page-context";
 import { resolveCrmContext } from "../../src/lib/crm-ref";
+import { configureCrmIntegrations, crmRuntime, closeCrmRuntime } from "./runtime";
+import type { CrmChange } from "./store";
+
 afterEach(resetPageContext);
-test("CRM invalidations use the existing shared event stream without leaking field values", () => {
-  const bus = new ActivityBus({ epoch: "crmtest" });
-  const sources = startActivitySources({
-    bus,
-    registry: () => ({ all: () => [], isOnline: () => false }),
-    sampleMs: 100000,
+test("CRM hands committed invalidations to the owning stream adapter without field values", () => {
+  const root = mkdtempSync(join(tmpdir(), "crm-event-contract-"));
+  const changes: CrmChange[] = [];
+  const remove = configureCrmIntegrations(root, {
+    publishChange: (change) => changes.push(change),
   });
   try {
-    sources.crmChanged({
-      ref: { kind: "company", id: "company-7", name: "Sensitive title" } as never,
-      change: "updated",
-      at: "2026-10-02T00:00:00Z",
+    const store = crmRuntime(root).store;
+    const company = store.createCompany(
+      { name: "Synthetic confidential name" },
+      { personId: "usman" },
+    );
+    expect(changes).toHaveLength(1);
+    expect(changes[0]).toMatchObject({
+      ref: { kind: "company", id: company.id },
+      change: "created",
     });
-    const entries = bus.since(0)!;
-    const event = entries.find((e) => e.topic === "crm")!;
-    expect(event.scope).toBe("shared");
-    expect(reaches(event.scope, "usman")).toBe(true);
-    expect(reaches(event.scope, "mehroz")).toBe(true);
-    expect(event.frame).toContain('"ref":{"kind":"company","id":"company-7"}');
-    expect(event.frame).not.toContain("Sensitive title");
-    expect(event.frame).not.toContain("sessionId");
+    expect(Object.keys(changes[0]).sort()).toEqual(["at", "change", "ref"]);
+    expect(Date.parse(changes[0].at)).toBeGreaterThanOrEqual(Date.parse(company.createdAt));
+    expect(JSON.stringify(changes)).not.toContain(company.name);
+    expect(() =>
+      store.transaction(() => {
+        store.createCompany({ name: "Must roll back" }, { personId: "mehroz" });
+        throw new Error("Synthetic rollback");
+      }),
+    ).toThrow("Synthetic rollback");
+    expect(changes).toHaveLength(1);
+    remove();
+    store.updateCompany(company.id, { notes: "Saved after disconnect" }, company.version, {
+      personId: "usman",
+    });
+    expect(changes).toHaveLength(1);
   } finally {
-    sources.stop();
+    remove();
+    closeCrmRuntime(root);
+    rmSync(root, { recursive: true, force: true });
   }
 });
-test("an active CRM reference is withdrawn on unmount and never becomes business data", () => {
-  publishPageContext("crm", { crm: { kind: "deal", id: "deal-7" } });
+
+test("CRM uses the existing page selection contract and withdraws it on unmount", () => {
+  publishPageContext("crm", {
+    selection: {
+      kind: "client",
+      id: "company-7",
+      label: "Synthetic company",
+      to: "/crm",
+      search: { ref: "crm:deal:deal-7", tab: "deals" },
+    },
+  });
   expect(resolveCrmContext({ context: readPageContext() })).toEqual({
     ok: true,
     ref: { kind: "deal", id: "deal-7" },
@@ -38,4 +64,12 @@ test("an active CRM reference is withdrawn on unmount and never becomes business
   });
   publishPageContext("crm", null);
   expect(resolveCrmContext({ context: readPageContext() }).ok).toBe(false);
+  expect(
+    resolveCrmContext({
+      context: { selection: { to: "/finance", search: { ref: "crm:deal:deal-7" } } },
+    }).ok,
+  ).toBe(false);
 });
+
+// Claude owns the server event topic, Jobs subjects/filter, route mount and navigation.
+// These tests exercise the CRM extension boundary; they do not claim those mounts are integrated.

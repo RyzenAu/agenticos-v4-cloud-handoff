@@ -13,6 +13,8 @@ import { CRM_KINDS, isCrmRef, resolveCrmContext, type CrmRef } from "../../src/l
 import { splitGst } from "../../src/lib/business-economics";
 import { WEBSITE_OFFER, WEBSITE_EX_GST_CENTS } from "../leads/sales-backoffice";
 import { receptionistOnHold } from "./policy";
+import { CrmWorkflows } from "./workflows";
+import { workflowApplySchema, workflowTemplateUpdateSchema } from "./workflow-templates";
 
 const id = z
   .string()
@@ -257,6 +259,14 @@ const target = z
       .object({
         crm: crmRefSchema.nullable().optional(),
         candidates: z.array(crmRefSchema).max(100).optional(),
+        selection: z
+          .object({
+            to: z.string().max(200).optional(),
+            search: z.record(z.string().max(200), z.string().max(500)).optional(),
+          })
+          .strict()
+          .nullable()
+          .optional(),
       })
       .strict()
       .optional(),
@@ -334,6 +344,7 @@ export function createCrmOperations(options: CrmOperationsOptions) {
   const store = options.store,
     csv = options.csv ?? new CrmCsv(store),
     now = options.now ?? (() => new Date().toISOString());
+  const workflows = new CrmWorkflows(store, { now });
   const operations = new Map<string, CrmOperation<any>>();
   const register = <S extends z.ZodTypeAny>(
     name: string,
@@ -420,6 +431,39 @@ export function createCrmOperations(options: CrmOperationsOptions) {
     text: "Shared CRM loaded.",
     data: store.snapshot(),
   }));
+  register("crm.workflow.templates", "Read editable business workflow templates", empty, () => ({
+    ok: true,
+    href: "/crm?view=templates",
+    text: "Workflow templates loaded.",
+    data: workflows.listTemplates(),
+  }));
+  register(
+    "crm.workflow.update",
+    "Save another version of an editable workflow template",
+    workflowTemplateUpdateSchema,
+    (v, p) => ({
+      ok: true,
+      href: "/crm?view=templates",
+      text: "Template version saved. Existing tasks and documents were preserved.",
+      data: workflows.updateTemplate(v, { personId: p.personId }),
+    }),
+  );
+  register(
+    "crm.workflow.apply",
+    "Create linked open tasks and draft documents from a reviewed template",
+    workflowApplySchema,
+    (v, p) => {
+      const result = workflows.applyTemplate(v, { personId: p.personId });
+      return receipt(
+        result,
+        v.ref,
+        result.duplicate
+          ? "This workflow was already applied. The saved records were reused."
+          : "Linked tasks and draft documents saved for review.",
+        v.ref.kind === "project" ? "delivery" : "overview",
+      );
+    },
+  );
   register("crm.record.get", "Open the explicit or unambiguous active record", target, (input) => {
     const resolved = resolveCrmContext(input);
     if (!resolved.ok) throw new OperationError("ambiguous", resolved.ask);
@@ -441,7 +485,8 @@ export function createCrmOperations(options: CrmOperationsOptions) {
   });
   const query = (kind: CsvKind) =>
     register(`crm.${kind}.query`, `Find ${kind} in the shared CRM`, filters, (f) => {
-      const snapshot = store.snapshot();
+      const snapshot = store.directory();
+      const companies = new Map(snapshot.companies.map((company) => [company.id, company]));
       const rows = snapshot[kind].filter((row) => {
         if ("mergedInto" in row && row.mergedInto) return false;
         if (f.owner !== undefined && "owner" in row && row.owner !== f.owner) return false;
@@ -450,8 +495,7 @@ export function createCrmOperations(options: CrmOperationsOptions) {
         if (f.stageId && (!("stageId" in row) || row.stageId !== f.stageId)) return false;
         if (f.status && (!("status" in row) || row.status !== f.status)) return false;
         if (f.tag && (!("tags" in row) || !row.tags.includes(f.tag))) return false;
-        const company =
-          "companyId" in row ? snapshot.companies.find((c) => c.id === row.companyId) : null;
+        const company = "companyId" in row ? companies.get(row.companyId) : null;
         const restricted =
           !!company?.doNotContact ||
           !!company?.excluded ||
@@ -1169,6 +1213,9 @@ export function duplicateCompanies(
 
 /** Type-only imports of this map are browser-safe; the server registry remains the validator. */
 export type CrmOperationInputMap = {
+  "crm.workflow.templates": Record<string, never>;
+  "crm.workflow.update": z.input<typeof workflowTemplateUpdateSchema>;
+  "crm.workflow.apply": z.input<typeof workflowApplySchema>;
   "crm.snapshot": Record<string, never>;
   "crm.record.get": z.input<typeof target>;
   "crm.companies.query": z.input<typeof filters>;

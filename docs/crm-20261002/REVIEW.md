@@ -1,5 +1,7 @@
 # Independent review record
 
+> Historical first-pass evidence. Read `RESUME-ACCEPTANCE.md`, `RESUME-VERIFICATION.md` and `resume-verification.json` for the current resumed CRM-owned checkpoint. Earlier full-candidate counts are not current branch passes.
+
 The reviewer inspected implementation code read-only and reproduced issues using disposable in-memory/file-backed data. Findings addressed before publication:
 
 - Changed activity payload under the same event ID now conflicts instead of claiming a lost change was saved

@@ -1,4 +1,6 @@
 {
+  "evidenceScope": "Historical assembled local candidate including unpublished shared hooks; not current checkpoint verification",
+  "supersededBy": "resume-verification.json",
   "base": "e9ad7c2bcd2fc4ae9e4778345e90d59265eed5fa",
   "verificationDate": "2026-10-02",
   "syntheticOnly": true,

@@ -1,27 +1,27 @@
-# Published CRM progress checkpoint
+# Published CRM implementation checkpoint
 
-This branch is an implementation checkpoint for review, not a runnable or release-ready integrated build.
+Read `NEXT.md` and `RESUME-VERIFICATION.md` first. This branch contains the CRM-owned implementation and resumed business workflow package. It remains unmounted and is not release-ready.
 
-## Published
+## Current package
 
-CRM-owned records, safe migrations and rollback tooling, typed operations, imports, automation adapter, Finance reader, workspace UI, reference/link helpers, regression tests and evidence documents.
+The existing records, migrations, operations, imports, Jobs adapter, Finance reader and workspace are extended with the ordered company-to-delivery journey, next-real-action dashboard, nine editable versioned templates, explicit 13-case fake-adapter contracts, deferred document reads, measured query/search improvements and a runnable actual-app acceptance script for Claude.
 
-## Not published in this checkpoint
+Fresh safe verification: 680 passed, one explicit live Jobs integration TODO, zero failed. Final affected checks and exact typecheck outcomes are in `resume-verification.json`. The earlier 1,129-test result applies only to the first assembled local candidate with unpublished shared hooks; it is historical evidence, not a pass for this checkpoint.
 
-All nine shared integration files remain at the handoff baseline. The proposed shared patch is retained locally and is intentionally not included in this checkpoint. Publication review denied full-file uploads for:
+## Remaining owner integration
 
-- scripts/events/sources.ts: shared stream producer source
-- src/lib/activity-stream.ts: shared browser stream source
-- src/routeTree.gen.ts: generated route tree
+No shared files were changed in the resumed branch. Claude must mount the CRM API, classify the mount through existing identity policy, regenerate routing/add the agreed navigation link, and connect existing Jobs subjects, Jarvis dispatch, provider readers and event publishing. CRM uses explicit extension callbacks and the existing page selection contract, so the previous new page-context field is no longer required.
 
-No alternate path or patch is used to publish those denied contents. The other shared changes are kept separate so Claude can integrate the hooks together: vite.config.ts, scripts/identity/routes.ts, docs/IDENTITY-ROUTES.md, scripts/identity/fixtures/legacy-route-decisions.json, scripts/events/bus.ts and src/lib/page-context.ts.
+The exact setup and verification sequence is in `NEXT.md`. CRM-owned modules and scoped tests compile independently; this does not make the whole mounted application verified.
 
-Consequences: the new API is not mounted, /crm is absent from the committed generated route tree, and the event/context type extensions are missing. Building this checkpoint alone will require those integration changes; it must not be represented as runnable or deployed.
+## Earlier publication restrictions preserved
 
-## Evidence scope
+Earlier full-file uploads of `scripts/events/sources.ts`, `src/lib/activity-stream.ts` and `src/routeTree.gen.ts` were denied as broad shared-source scope. Six other shared files were held for cohesive integration: `vite.config.ts`, `scripts/identity/routes.ts`, `docs/IDENTITY-ROUTES.md`, `scripts/identity/fixtures/legacy-route-decisions.json`, `scripts/events/bus.ts` and `src/lib/page-context.ts`.
 
-The other documents in this folder describe the complete assembled local candidate. Its safe combined suite passed 1,129 tests with three Windows-only skips and zero failures; both UI and backend TypeScript checks passed. Those results do NOT apply to this partial published tree in isolation. The remaining integration contents are excluded from publication following the tool denials and remain local for authorised review.
+Those nine files remain at baseline in this PR. The old proposed shared patch remains unpublished; denied contents are not delivered through another file or path. No further retry of the denied files was made in the resume.
 
-Independent review found no unresolved reproduced issue in the assembled candidate after the migration, duplicate-event, suppression, GST and concurrency fixes. Production build attempts were killed (SIGKILL/137); browser access was blocked (ERR_BLOCKED_BY_CLIENT); the broad suite was stopped over unestablished Typesafe egress. No blocked check is a pass.
+## Blocked gates
 
-Base: e9ad7c2bcd2fc4ae9e4778345e90d59265eed5fa on handoff/claude-dev-baseline-20261002. No merge, deployment or production migration is authorised by this checkpoint.
+Actual browser access remains blocked by the prior `ERR_BLOCKED_BY_CLIENT`; no alternate port/tool/browser workaround was used and no screenshots are invented. Full UI TypeScript was killed with exit 137; scoped CRM UI and backend/tests checks passed. The production build still awaits owner integration and adequate resources; the earlier broad repository suite remains blocked over unestablished Typesafe egress. These are not passing checks.
+
+Base: `e9ad7c2bcd2fc4ae9e4778345e90d59265eed5fa`. Previous checkpoint: `d7fc93b62a55de9c77a2b5e74e73cf4cdcfff803`. Current exact head/tree and remote CI status are recorded in the draft PR body. No merge, deployment, production migration or live outreach occurred.

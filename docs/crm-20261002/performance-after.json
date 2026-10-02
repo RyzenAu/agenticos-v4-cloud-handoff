@@ -1,0 +1,142 @@
+{
+  "at": "2026-10-02T14:43:26.546Z",
+  "runtime": "Bun 1.4.2",
+  "scope": "Warm local SQLite + operations + pure selector timings. No HTTP, browser paint, network or provider measurements. queryCount counts executed prepared statements, excluding transaction BEGIN/COMMIT/PRAGMA and seeding.",
+  "results": [
+    {
+      "companies": 50,
+      "contacts": 50,
+      "deals": 50,
+      "tasks": 50,
+      "projects": 50,
+      "documents": 50,
+      "documentVersions": 100,
+      "activities": 50,
+      "snapshot": {
+        "medianMs": 1.827,
+        "p95Ms": 2.687,
+        "queryCount": 16,
+        "jsonBytes": 298611,
+        "runs": 5
+      },
+      "summarySnapshot": {
+        "medianMs": 1.269,
+        "p95Ms": 1.754,
+        "queryCount": 16,
+        "jsonBytes": 187011,
+        "runs": 5
+      },
+      "list": {
+        "medianMs": 0.69,
+        "p95Ms": 0.8,
+        "queryCount": 9,
+        "jsonBytes": 33212,
+        "runs": 5
+      },
+      "search": {
+        "medianMs": 1,
+        "p95Ms": 1.138,
+        "queryCount": 9,
+        "jsonBytes": 772,
+        "runs": 5
+      },
+      "uiSearch": {
+        "medianMs": 0.195,
+        "p95Ms": 0.261,
+        "queryCount": 0,
+        "jsonBytes": 676,
+        "runs": 5
+      }
+    },
+    {
+      "companies": 500,
+      "contacts": 500,
+      "deals": 500,
+      "tasks": 500,
+      "projects": 500,
+      "documents": 500,
+      "documentVersions": 1000,
+      "activities": 500,
+      "snapshot": {
+        "medianMs": 17.729,
+        "p95Ms": 18.635,
+        "queryCount": 16,
+        "jsonBytes": 2986211,
+        "runs": 5
+      },
+      "summarySnapshot": {
+        "medianMs": 18.584,
+        "p95Ms": 25.828,
+        "queryCount": 16,
+        "jsonBytes": 1870211,
+        "runs": 5
+      },
+      "list": {
+        "medianMs": 6.56,
+        "p95Ms": 8.172,
+        "queryCount": 9,
+        "jsonBytes": 33214,
+        "runs": 5
+      },
+      "search": {
+        "medianMs": 10.07,
+        "p95Ms": 14.132,
+        "queryCount": 9,
+        "jsonBytes": 772,
+        "runs": 5
+      },
+      "uiSearch": {
+        "medianMs": 1.984,
+        "p95Ms": 4.723,
+        "queryCount": 0,
+        "jsonBytes": 676,
+        "runs": 5
+      }
+    },
+    {
+      "companies": 2000,
+      "contacts": 2000,
+      "deals": 2000,
+      "tasks": 2000,
+      "projects": 2000,
+      "documents": 2000,
+      "documentVersions": 4000,
+      "activities": 2000,
+      "snapshot": {
+        "medianMs": 65.758,
+        "p95Ms": 69.969,
+        "queryCount": 16,
+        "jsonBytes": 11982211,
+        "runs": 5
+      },
+      "summarySnapshot": {
+        "medianMs": 64.072,
+        "p95Ms": 69.834,
+        "queryCount": 16,
+        "jsonBytes": 7518211,
+        "runs": 5
+      },
+      "list": {
+        "medianMs": 27.39,
+        "p95Ms": 31.4,
+        "queryCount": 9,
+        "jsonBytes": 33216,
+        "runs": 5
+      },
+      "search": {
+        "medianMs": 45.315,
+        "p95Ms": 63.617,
+        "queryCount": 9,
+        "jsonBytes": 772,
+        "runs": 5
+      },
+      "uiSearch": {
+        "medianMs": 6.547,
+        "p95Ms": 17.08,
+        "queryCount": 0,
+        "jsonBytes": 676,
+        "runs": 5
+      }
+    }
+  ]
+}

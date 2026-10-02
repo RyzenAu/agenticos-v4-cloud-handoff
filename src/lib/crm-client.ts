@@ -1,12 +1,12 @@
 /** Browser transport for the same typed CRM operations used by Jarvis. No mutation retry
  * after a network failure: persistence may have succeeded even if its receipt was lost. */
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CrmSnapshot } from "../../scripts/crm/types";
+import { useEffect, useRef } from "react";
+import { useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import type { CrmRef, CrmSnapshot } from "../../scripts/crm/types";
 import type { CrmOperationInputMap } from "../../scripts/crm/ops";
 export type { CrmOperationInputMap } from "../../scripts/crm/ops";
 export type CrmOperationName = keyof CrmOperationInputMap;
-import { useStreamInvalidate } from "./use-activity";
+import { useActivity } from "./use-activity";
 
 export class CrmRequestError extends Error {
   constructor(
@@ -69,6 +69,17 @@ export async function getCrmSnapshot(signal?: AbortSignal): Promise<CrmSnapshot>
   });
   return readResponse<CrmSnapshot>(response);
 }
+export async function getCrmRecord<T>(ref: CrmRef, signal?: AbortSignal): Promise<CrmReceipt<T>> {
+  const response = await fetch(
+    `/__crm/record?ref=${encodeURIComponent(`crm:${ref.kind}:${ref.id}`)}`,
+    {
+      signal,
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    },
+  );
+  return readResponse<CrmReceipt<T>>(response);
+}
 export async function crmOperation<T = unknown, N extends CrmOperationName = CrmOperationName>(
   name: N,
   input: CrmOperationInputMap[N],
@@ -105,9 +116,31 @@ export async function crmOperation<T = unknown, N extends CrmOperationName = Crm
   return readResponse<CrmReceipt<T>>(response);
 }
 export const CRM_QUERY_KEY = ["crm", "snapshot"] as const;
+export function useCrmInvalidation(queryKeys: readonly QueryKey[]) {
+  const queryClient = useQueryClient();
+  const keys = useRef(queryKeys);
+  keys.current = queryKeys;
+  const streamTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Shared stream topic registration is supplied by the integration owner. Until
+  // then, focus and the safety poll below remain the freshness guarantees.
+  useActivity((message) => {
+    if (message.kind !== "event" || String(message.event.topic) !== "crm" || streamTimer.current)
+      return;
+    streamTimer.current = setTimeout(() => {
+      streamTimer.current = undefined;
+      for (const queryKey of keys.current) void queryClient.invalidateQueries({ queryKey });
+    }, 200);
+  });
+  useEffect(
+    () => () => {
+      if (streamTimer.current) clearTimeout(streamTimer.current);
+    },
+    [],
+  );
+}
 export function useCrmSnapshot() {
   const queryClient = useQueryClient();
-  useStreamInvalidate([CRM_QUERY_KEY], ["crm"]);
+  useCrmInvalidation([CRM_QUERY_KEY]);
   const query = useQuery({
     queryKey: CRM_QUERY_KEY,
     queryFn: ({ signal }) => getCrmSnapshot(signal),

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import type {
   Company,
   Contact,
@@ -32,6 +32,7 @@ export type EditorTarget = {
   companyId?: string;
   dealId?: string;
   projectId?: string;
+  documentKind?: Document["kind"];
 };
 type Fields = Record<string, string>;
 function initialFields(target: EditorTarget, snapshot: CrmSnapshot): Fields {
@@ -84,11 +85,19 @@ function initialFields(target: EditorTarget, snapshot: CrmSnapshot): Fields {
     nextActionDue: localDateTime(val("nextActionDue")),
     closeReason: val("closeReason"),
     commercialBasis: val("commercialBasis", "catalogue"),
-    kind: val("kind", target.kind === "document" ? "brief" : "follow-up"),
+    kind: val(
+      "kind",
+      target.kind === "document"
+        ? (target.documentKind ?? "brief")
+        : target.projectId
+          ? "delivery"
+          : "follow-up",
+    ),
     description: val("description"),
     dueAt: localDateTime(val("dueAt")),
     dealId: target.dealId ?? val("dealId"),
     projectId: target.projectId ?? val("projectId"),
+    contactId: val("contactId"),
     contentRequests: Array.isArray(r.contentRequests) ? r.contentRequests.join("\n") : "",
     accessRequests: Array.isArray(r.accessRequests) ? r.accessRequests.join("\n") : "",
     previewUrls: Array.isArray(r.previewUrls) ? r.previewUrls.join("\n") : "",
@@ -185,13 +194,45 @@ export function RecordEditor({
   );
   const linkedDeal = (
     <Field label="Linked deal">
-      <NativeSelect value={fields.dealId} onChange={(e) => set("dealId", e.target.value)}>
+      <NativeSelect
+        value={fields.dealId}
+        onChange={(e) => {
+          set("dealId", e.target.value);
+          const project = snapshot.projects.find((p) => p.id === fields.projectId);
+          if (project?.dealId && project.dealId !== e.target.value) set("projectId", "");
+        }}
+      >
         <option value="">No linked deal</option>
         {snapshot.deals
           .filter((d) => d.companyId === fields.companyId)
           .map((d) => (
             <option value={d.id} key={d.id}>
               {d.title}
+            </option>
+          ))}
+      </NativeSelect>
+    </Field>
+  );
+  const linkedProject = (
+    <Field label="Linked project">
+      <NativeSelect
+        value={fields.projectId}
+        onChange={(e) => {
+          set("projectId", e.target.value);
+          const project = snapshot.projects.find((p) => p.id === e.target.value);
+          if (project?.dealId) set("dealId", project.dealId);
+        }}
+      >
+        <option value="">No linked project</option>
+        {snapshot.projects
+          .filter(
+            (p) =>
+              p.companyId === fields.companyId &&
+              (!fields.dealId || !p.dealId || p.dealId === fields.dealId),
+          )
+          .map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
             </option>
           ))}
       </NativeSelect>
@@ -205,9 +246,11 @@ export function RecordEditor({
     </Field>
   );
   const stages = snapshot.pipelines.find((p) => p.id === fields.pipelineId)?.stages ?? SALES_STAGES;
+  const running = useRef(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -278,6 +321,7 @@ export function RecordEditor({
             dueAt: dateTimeValue(fields.dueAt),
             dealId: fields.dealId || null,
             projectId: fields.projectId || null,
+            contactId: fields.contactId || null,
           };
           break;
         case "project":
@@ -308,6 +352,7 @@ export function RecordEditor({
               dealId: fields.dealId || null,
               projectId: fields.projectId || null,
               content: fields.content,
+              artifact: fields.artifact || null,
             });
           break;
       }
@@ -337,6 +382,7 @@ export function RecordEditor({
     } catch (error) {
       setError(crmErrorMessage(error));
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
@@ -369,6 +415,7 @@ export function RecordEditor({
                   set("dealId", "");
                   set("projectId", "");
                   set("contactIds", "");
+                  set("contactId", "");
                 }}
               >
                 <option value="">Choose a company</option>
@@ -533,17 +580,18 @@ export function RecordEditor({
                 hint: "Your browser's local time zone",
               })}
               {linkedDeal}
-              <Field label="Delivery project">
+              {linkedProject}
+              <Field label="Linked contact">
                 <NativeSelect
-                  value={fields.projectId}
-                  onChange={(e) => set("projectId", e.target.value)}
+                  value={fields.contactId}
+                  onChange={(e) => set("contactId", e.target.value)}
                 >
-                  <option value="">No linked project</option>
-                  {snapshot.projects
-                    .filter((p) => p.companyId === fields.companyId)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
+                  <option value="">No linked contact</option>
+                  {snapshot.contacts
+                    .filter((c) => c.companyId === fields.companyId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
                       </option>
                     ))}
                 </NativeSelect>
@@ -606,6 +654,11 @@ export function RecordEditor({
                     ].map((value) => ({ value, label: value.replaceAll("-", " ") })),
                   )}
                   {linkedDeal}
+                  {linkedProject}
+                  {text("artifact", "Saved result reference", {
+                    wide: true,
+                    hint: "Optional saved artifact: artifact:job-id or artifact:job-id/file",
+                  })}
                   {area(
                     "content",
                     "First version content",
@@ -649,9 +702,11 @@ export function ActivityEditor({
     [state, setState] = useState<CommunicationState>("unknown");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const running = useRef(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -670,6 +725,7 @@ export function ActivityEditor({
     } catch (e) {
       setError(crmErrorMessage(e));
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
@@ -753,13 +809,17 @@ export function DocumentVersionEditor({
   onClose: () => void;
   onSaved: (receipt: CrmReceipt) => void;
 }) {
+  const [baseDocument] = useState(document);
+  document = baseDocument;
   const [content, setContent] = useState(document.versions.at(-1)?.content ?? ""),
     [artifact, setArtifact] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const running = useRef(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -774,6 +834,7 @@ export function DocumentVersionEditor({
     } catch (e) {
       setError(crmErrorMessage(e));
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
@@ -814,9 +875,11 @@ export function PipelineEditor({
     [stages, setStages] = useState(() => pipeline.stages.map((s) => ({ ...s })));
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const running = useRef(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -830,6 +893,7 @@ export function PipelineEditor({
     } catch (e) {
       setError(crmErrorMessage(e));
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }

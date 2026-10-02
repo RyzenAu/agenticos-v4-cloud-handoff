@@ -29,6 +29,7 @@ import { CompanyWorkspace } from "./company-workspace";
 import { DirectoryView } from "./directory";
 import { PipelineEditor, RecordEditor, type EditorTarget } from "./record-editor";
 import { TodayView, PipelineView, type WorkspaceActions } from "./workspace-views";
+import { WorkflowTemplates } from "./workflow-templates";
 import {
   companyForRef,
   validateCrmSearch,
@@ -94,19 +95,13 @@ export function CrmWorkspace() {
   }
   const actions: WorkspaceActions = { edit: setEditor, open, run, busy };
   usePageContext("crm-workspace", {
-    crm:
-      company && selectedRef
-        ? selectedRef.kind === "company" || selectedRef.kind === "lead"
-          ? { kind: "company", id: company.id }
-          : selectedRef
-        : null,
     selection: company
       ? {
           kind: "client",
           id: company.id,
           label: company.name,
           to: "/crm",
-          search: { ref: crmRefString({ kind: "company", id: company.id }), tab },
+          search: { ref: crmRefString(selectedRef ?? { kind: "company", id: company.id }), tab },
           source: "Authoritative CRM",
         }
       : null,
@@ -259,6 +254,7 @@ export function CrmWorkspace() {
             { id: "pipeline", label: "Pipeline" },
             { id: "companies", label: "Companies" },
             { id: "contacts", label: "Contacts" },
+            { id: "templates", label: "Templates" },
           ]}
         />
         <TabPanel idBase="crm-view" id="today" active={view === "today"}>
@@ -272,6 +268,9 @@ export function CrmWorkspace() {
         </TabPanel>
         <TabPanel idBase="crm-view" id="contacts" active={view === "contacts"}>
           <DirectoryView kind="contacts" snapshot={snapshot} actions={actions} onSaved={saved} />
+        </TabPanel>
+        <TabPanel idBase="crm-view" id="templates" active={view === "templates"}>
+          <WorkflowTemplates snapshot={snapshot} onSaved={saved} />
         </TabPanel>
       </div>
       {selectedRef &&

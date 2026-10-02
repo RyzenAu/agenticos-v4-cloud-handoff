@@ -203,6 +203,8 @@ export type DocumentVersion = {
   createdAt: string;
   by: Attribution | { legacy: string };
   content: string;
+  /** Directory transport omitted this body; read crm.record.get before showing/editing it. */
+  contentDeferred?: boolean;
   artifact: string | null;
   pricing: DocumentPricing | null;
 };

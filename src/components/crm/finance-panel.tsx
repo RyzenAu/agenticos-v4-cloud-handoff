@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Button, EmptyState, Notice, Section, Surface } from "@/components/ds";
 import { crmHref } from "@/lib/crm-links";
 import { fmtDateTime, fmtMoneyCents } from "@/lib/format";
-import { useStreamInvalidate } from "@/lib/use-activity";
+import { useCrmInvalidation } from "@/lib/crm-client";
 import type {
   CrmFinanceLink,
   CrmFinanceLinks,
@@ -107,7 +107,7 @@ function InvoiceRow({ link }: { link: CrmFinanceLink }) {
 
 export function CrmFinancePanel({ companyId }: { companyId: string }) {
   const queryKey = ["crm", "finance", companyId] as const;
-  useStreamInvalidate([queryKey], ["crm"]);
+  useCrmInvalidation([queryKey]);
   const query = useQuery({
     queryKey,
     queryFn: ({ signal }) => readFinanceLinks(companyId, signal),
