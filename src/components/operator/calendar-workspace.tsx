@@ -257,9 +257,13 @@ function LiveCalendarWorkspace() {
     ? upcoming.filter((e) => Date.parse(e.start) < Date.now() + 7 * 86400000).length
     : 0;
   const nextEvent = upcoming[0];
+  // No calendar connected and nothing imported means "unknown", not "an empty day" (DESIGN-SYSTEM §5).
+  const hasSource = connected.length > 0 || Boolean(nativeCalendar.data?.enabled) || state.events.length > 0;
   const headline = !today
     ? "Your schedule, booking links and availability."
-    : todayEvents.length
+    : !hasSource
+      ? "No calendar yet. Connect one or import a file to see your day."
+      : todayEvents.length
       ? `${todayEvents.length} ${todayEvents.length === 1 ? "event" : "events"} today${nextToday ? `, next at ${clock(nextToday.start)}` : ""}.`
       : nextEvent
         ? `Nothing on today. Next up: ${nextEvent.title}.`
@@ -285,13 +289,14 @@ function LiveCalendarWorkspace() {
           </>
         }
       />
-      {view === "calendar" && (
+      {/* With no calendar connected the banner below says so once; four tiles repeating it would be clutter. */}
+      {view === "calendar" && hasSource && (
         <WidgetGrid className="mb-6 lg:mb-8" aria-label="Your schedule">
           <Widget
             icon={CalendarDays}
             title="Today"
-            value={today ? todayEvents.length : null}
-            line={nextToday ? `Next: ${clock(nextToday.start)} ${nextToday.title}` : todayEvents.length ? "All done for today" : "Nothing scheduled"}
+            value={today && hasSource ? todayEvents.length : null}
+            line={!hasSource ? "No calendar connected" : nextToday ? `Next: ${clock(nextToday.start)} ${nextToday.title}` : todayEvents.length ? "All done for today" : "Nothing scheduled"}
             action={
               <Button
                 variant="outline"
@@ -311,7 +316,7 @@ function LiveCalendarWorkspace() {
             icon={CalendarClock}
             title="Next up"
             value={nextEvent ? (nextEvent.allDay ? "All day" : clock(nextEvent.start)) : null}
-            line={nextEvent ? `${nextEvent.title} · ${fmtDay(new Date(nextEvent.allDay ? `${nextEvent.start.slice(0, 10)}T12:00:00` : nextEvent.start))}` : "No upcoming events"}
+            line={nextEvent ? `${nextEvent.title} · ${fmtDay(new Date(nextEvent.allDay ? `${nextEvent.start.slice(0, 10)}T12:00:00` : nextEvent.start))}` : hasSource ? "No upcoming events" : "No calendar connected"}
             action={
               nextEvent ? (
                 <Button variant="outline" size="sm" onClick={() => jumpToEvent(nextEvent)}>
@@ -323,8 +328,8 @@ function LiveCalendarWorkspace() {
           <Widget
             icon={CalendarRange}
             title="Next 7 days"
-            value={today ? weekCount : null}
-            line={weekCount === 1 ? "event coming up" : "events coming up"}
+            value={today && hasSource ? weekCount : null}
+            line={!hasSource ? "No calendar connected" : weekCount === 1 ? "event coming up" : "events coming up"}
             action={
               <Button variant="outline" size="sm" onClick={() => setLayout("agenda")}>
                 Open agenda
@@ -341,11 +346,7 @@ function LiveCalendarWorkspace() {
                 <Button variant="outline" size="sm" onClick={() => void syncCalendars()} disabled={syncing}>
                   {syncing ? "Syncing…" : "Sync now"}
                 </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => upload.current?.click()} disabled={busy}>
-                  Import .ics
-                </Button>
-              )
+              ) : undefined /* Import .ics is in the toolbar below; one place for it */
             }
           />
         </WidgetGrid>
@@ -537,7 +538,7 @@ function LiveCalendarWorkspace() {
               ? { count: syncable.length, busy: syncing, run: syncCalendars }
               : undefined
           }
-          onImport={() => upload.current?.click()}
+          /* Import .ics is already in the toolbar below; the banner doesn't repeat it. */
         />
       )}
       {view === "calendar" && missingAccess && (
@@ -772,11 +773,6 @@ function LiveCalendarWorkspace() {
                     state.events.length
                       ? "Choose another day to see its events."
                       : "Connect your calendar above to bring your schedule here."
-                  }
-                  action={
-                    <Button variant="outline" size="sm" onClick={newEvent}>
-                      <Plus size={13} /> Add an event
-                    </Button>
                   }
                 />
               )}

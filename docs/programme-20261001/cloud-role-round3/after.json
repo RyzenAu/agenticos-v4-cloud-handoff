@@ -1,0 +1,68 @@
+{
+  "hub": "http://127.0.0.1:8113",
+  "mode": "after",
+  "at": "2026-10-01T01:25:36.650Z",
+  "passed": 5,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "hub answers /__health with role cloud",
+      "ok": true,
+      "observed": {
+        "status": "ok",
+        "hubRole": "cloud",
+        "dataDir": "D:\\prog-scratch\\cloud-8113\\data",
+        "companions": {
+          "status": "ok",
+          "detail": "No companion is paired.",
+          "online": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "name": "the owner's browser has a confirmed human session (first navigation on a fresh hub, or the saved cookie after a restart)",
+      "ok": true,
+      "observed": {
+        "nav": 0,
+        "authorised": true,
+        "via": "loopback",
+        "actor": "human"
+      }
+    },
+    {
+      "name": "after the restart the same jobs are listed with the same states (nothing re-run, nothing lost)",
+      "ok": true,
+      "observed": {
+        "before": [
+          "failed",
+          "failed",
+          "failed"
+        ],
+        "after": [
+          "failed",
+          "failed",
+          "failed"
+        ],
+        "same_ids": true
+      }
+    },
+    {
+      "name": "the pairing code made BEFORE the restart still redeems (the hub kept it); the companion pairs",
+      "ok": true,
+      "observed": {
+        "exit": 0,
+        "said": "Paired \"round3 rehearsal\" (id) for usman. Valid until 31/10/2026, 12:25:36.\nFile"
+      }
+    },
+    {
+      "name": "the paired companion is in the device list (offline: it is not running)",
+      "ok": true,
+      "observed": {
+        "kinds": [
+          "companion:offline"
+        ]
+      }
+    }
+  ]
+}

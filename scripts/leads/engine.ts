@@ -7,6 +7,7 @@ import { MONTHLY_DETAILS_BUDGET, placeDetails, placesKey, searchPlaceIds, type V
 import { withPlaceDetails, type LiveLead } from "./places-live";
 import { scoreLead } from "./score";
 import { auditSite } from "./site-audit";
+import { normaliseFindArea, normaliseWebsitePresence, type WebsitePresence } from "./find-input";
 
 export { MONTHLY_DETAILS_BUDGET };
 
@@ -35,6 +36,13 @@ export type FindResult = {
   excluded?: number;
   /** OSM only: had no `website` tag, but discovery.ts found one before scoring ran. */
   discovered?: number;
+  /** OSM-only selection diagnostics, measured before bounded discovery/enrichment. */
+  websitePresence?: WebsitePresence;
+  matched?: number;
+  filteredOut?: number;
+  limited?: number;
+  /** OSM only: missing-site candidates whose lookup could not establish an answer. */
+  unverifiable?: number;
 };
 
 export type FindOpts = {
@@ -49,17 +57,22 @@ export type FindOpts = {
   request?: typeof fetch;
   budget?: number;
   concurrency?: number;
+  /** OSM only: select source records with no website tag, then still check for their site. */
+  websitePresence?: WebsitePresence;
 };
 
 export async function findLeads(db: Database, opts: FindOpts): Promise<FindResult> {
+  const area = normaliseFindArea(opts.area);
+  const websitePresence = normaliseWebsitePresence(opts.websitePresence);
+  if (opts.source === "google" && websitePresence === "missing") throw new Error("The no-website-listed filter is available for OpenStreetMap only.");
   if ((opts.source ?? "osm") === "osm") {
     const result = await findLeadsOsm(db, {
-      vertical: opts.vertical, area: opts.area, max: opts.max, enrichMax: opts.enrichMax,
+      vertical: opts.vertical, area, max: opts.max, enrichMax: opts.enrichMax, websitePresence,
       request: opts.request, concurrency: opts.concurrency,
     });
     return { ...result };
   }
-  return findLeadsGoogle(db, opts);
+  return findLeadsGoogle(db, { ...opts, area });
 }
 
 async function findLeadsGoogle(db: Database, opts: FindOpts): Promise<FindResult> {
@@ -68,8 +81,7 @@ async function findLeadsGoogle(db: Database, opts: FindOpts): Promise<FindResult
   const request = opts.request ?? fetch;
   const budget = opts.budget ?? MONTHLY_DETAILS_BUDGET;
   const max = Math.min(Math.max(opts.max ?? 20, 1), 60);
-  const area = opts.area.trim().slice(0, 120);
-  if (!area) throw new Error("Say where, e.g. \"Parramatta NSW\".");
+  const area = opts.area;
 
   const ids = await searchPlaceIds(opts.vertical, area, max, key, request);
   countCall(db, "text_search_ids");

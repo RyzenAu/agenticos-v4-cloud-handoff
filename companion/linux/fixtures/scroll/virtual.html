@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset=utf-8><title>Scroll fixture: virtualised list</title>
+<style>body{font:15px sans-serif;margin:24px} #list{height:420px;overflow-y:auto;border:1px solid #888;position:relative}
+#spacer{position:relative} .row{position:absolute;left:0;right:0;height:40px;line-height:40px;padding:0 12px;border-bottom:1px solid #eee}</style></head>
+<body><h1>Virtualised list</h1><div id=list><div id=spacer></div></div>
+<script>
+const N=1000,H=40,list=document.getElementById('list'),sp=document.getElementById('spacer');sp.style.height=(N*H)+'px';
+function render(){const t=list.scrollTop,s=Math.max(0,Math.floor(t/H)-3),e=Math.min(N,Math.ceil((t+list.clientHeight)/H)+3);
+sp.innerHTML='';for(let i=s;i<e;i++){const d=document.createElement('div');d.className='row';d.style.top=(i*H)+'px';d.textContent='Row '+(i+1)+' of '+N;sp.appendChild(d);}}
+list.addEventListener('scroll',render);render();
+</script></body></html>

@@ -25,7 +25,7 @@ export function MuOperations({ section: fromUrl, onSection }: { section?: Operat
   const section = fromUrl ?? local;
   const setSection = (next: OperationsSection) => { setLocal(next); onSection?.(next); };
   return (
-    <main className="mu-operations">
+    <div className="mu-operations">
       <header className="mu-operations-header">
         <div>
           <h1>{pageName("/operations")}</h1>
@@ -146,6 +146,6 @@ export function MuOperations({ section: fromUrl, onSection }: { section?: Operat
           </section>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -55,6 +55,7 @@ import {
 } from "./dream/inputs";
 import { clientSiteQa, reauditPendingLeads } from "./dream/chores";
 import { skillMiningDigest } from "./dream/skill-miner";
+import { dataDirFor } from "./cloud/data-dir";
 
 const HOME = homedir();
 const REPO = resolve(import.meta.dir, "..");
@@ -368,11 +369,11 @@ async function runClaudePipeline(cfg: any, run: LastRun) {
     ["Health checks (bun test scripts + tsc)", checks],
     ["Overnight chores", chores],
     ["Client hubs (open items, deadlines)", clientHubs(REPOS_ROOT)],
-    ["CRM: leads hunted, calls, outcomes, coaching", (() => { try { return crmDigest(join(REPO, ".operator-data", "crm.sqlite")); } catch (e) { return `CRM unreadable: ${(e as Error).message}`; } })()],
-    ["Meeting-mode coaching notes", meetingDigest(join(REPO, ".operator-data", "meeting-mode"))],
+    ["CRM: leads hunted, calls, outcomes, coaching", (() => { try { return crmDigest(join(dataDirFor(REPO), "crm.sqlite")); } catch (e) { return `CRM unreadable: ${(e as Error).message}`; } })()],
+    ["Meeting-mode coaching notes", meetingDigest(join(dataDirFor(REPO), "meeting-mode"))],
     ["Skill-candidate mining (last 30 days: Jarvis conversations, jarvis-events, Hermes session metadata, Claude Code first prompts, CRM activity, away-mode queue)", (() => {
       try {
-        return skillMiningDigest({ operatorData: join(REPO, ".operator-data"), claudeProjects: join(HOME, ".claude", "projects"), hermesHome: process.env.HERMES_HOME || join(HOME, ".hermes") });
+        return skillMiningDigest({ operatorData: join(dataDirFor(REPO)), claudeProjects: join(HOME, ".claude", "projects"), hermesHome: process.env.HERMES_HOME || join(HOME, ".hermes") });
       } catch (e) {
         return `skill mining unreadable: ${(e as Error).message}`;
       }
@@ -382,7 +383,7 @@ async function runClaudePipeline(cfg: any, run: LastRun) {
       wrapUps: sessionSummaries({ reposRoot: REPOS_ROOT, desktop: join(HOME, "Desktop"), wikiRoot: join(REPOS_ROOT, "mu-ventures-obsidian-wiki") }),
     }],
     ["AI usage and spend (AUD)", aiUsageDigest(usageSnapshot)],
-    ["Jarvis routing and capabilities", jarvisDigest(join(REPO, ".operator-data"))],
+    ["Jarvis routing and capabilities", jarvisDigest(join(dataDirFor(REPO)))],
     ["Previous dream", previousReport],
     ["Dream run history", lastRuns],
     ["Dream state (accepted/dismissed prescriptions)", prevState?.actions ?? {}],

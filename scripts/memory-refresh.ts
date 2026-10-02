@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 const DAY = 24 * 60 * 60 * 1000;
 export function memoryRefresh(root: string, run: () => Promise<unknown>, now = Date.now) {
-  const dir = join(root, ".operator-data"),
+  const dir = join(dataDirFor(root)),
     file = join(dir, "memory-refresh.json");
   let pending = false;
   function read(): { daily: boolean; lastQueuedAt?: string } {

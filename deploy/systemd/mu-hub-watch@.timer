@@ -1,0 +1,11 @@
+# Every 2 minutes. Cheap: one loopback request, one directory listing, one statfs.
+[Unit]
+Description=AgenticOS hub health watch timer (%i)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["scripts/**/*.ts", "companion/**/*.ts", "deploy/**/*.ts", "scripts/computers/ws.d.ts", "scripts/computers/env.d.ts"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "scripts/lead-sites/overlays/**"],
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["bun", "vite/client"],
+    "noEmit": true
+  }
+}

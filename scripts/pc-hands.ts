@@ -177,6 +177,12 @@ export function pcIntent(utterance: string, apps: StartApp[] = startApps()): PcR
   const m = u.match(/^(?:open|launch|start|run|bring up|pull up|boot up|fire up|load up|start up)\s+(?:up\s+)?(?:the\s+|my\s+)?(.+?)(?:\s+(?:app|application|program|folder))?$/);
   if (!m) return null;
   const name = m[1].trim();
+  // These also have website shortcuts. "Start Claude" means its installed app;
+  // ordinary "open Claude" keeps the existing website route unless he says app.
+  if (/^(?:claude|chatgpt|codex)$/.test(name) && (/^(?:start|launch|run)\s/.test(u) || /\s(?:app|application|program)$/.test(u))) {
+    const installed = apps.find((app) => norm(app.name) === name);
+    if (installed) return { action: "open_app", target: installed.name };
+  }
   const namesAPage = OS_PAGE_NAMES.has(name) && !(name === "settings" && WINDOWS_SETTINGS_APP.test(u));
   if (NOT_APPS.has(name) || namesAPage || OS_SETTINGS.has(name) || /\b(?:and|then|with|in|on|to|from|for|about)\b/.test(name) || name.split(" ").length > 4) return null;
   // A slip of an OS page or website ("youtub", "calender") is still not an app: Jev and the brain take it.

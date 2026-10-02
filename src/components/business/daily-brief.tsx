@@ -751,6 +751,14 @@ export function DailyBrief() {
     refetchOnWindowFocus: true,
     retry: 1,
   });
+  // The server may answer from its last good read ("stale") while it refreshes: show the age, and read once more shortly so the fresh one replaces it.
+  const todayStale = !!today.data?.stale;
+  const refetchToday = today.refetch;
+  useEffect(() => {
+    if (!todayStale) return;
+    const t = window.setTimeout(() => void refetchToday(), 6_000);
+    return () => window.clearTimeout(t);
+  }, [todayStale, today.dataUpdatedAt, refetchToday]);
   const status = useQuery<BriefStatus>({
     queryKey: ["business-brief-status"],
     queryFn: () => operatorRequest("/business/brief/status"),
@@ -993,6 +1001,11 @@ export function DailyBrief() {
               error={today.data?.weatherError}
               onChangeCity={changeCity}
             />
+            {todayStale && today.data?.updatedAt && (
+              <span className="morning-date" role="status">
+                Weather as of {fmtTime(new Date(today.data.updatedAt), { timeZone: profile.profile.timeZone })} (updating)
+              </span>
+            )}
             <GeneratorChip
               generated={generated}
               chosen={status.data?.model ?? null}

@@ -156,7 +156,7 @@ export function MemoryBrain({
               <button
                 key={l.id}
                 onClick={() => setLayer(l.id)}
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
                 style={active
                   ? { background: `${l.color}1f`, color: "#fff", boxShadow: `inset 0 0 0 1px ${l.color}66` }
                   : { color: "rgba(255,255,255,0.55)" }}
@@ -200,7 +200,7 @@ export function MemoryBrain({
         }}
       >
         <div className="px-4 pt-4 pb-1 shrink-0">
-          <div className="text-[12px] uppercase tracking-[0.2em] text-muted-foreground">All memories</div>
+          <div className="text-xs text-muted-foreground">All memories</div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
           {/* multi-term focuses ("a | b") come from the console — the list
@@ -311,7 +311,7 @@ function BrainNote({ node, onClose }: { node: MemNode; onClose: () => void }) {
       >
         <div className="flex items-start justify-between gap-3 p-5 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <div className="min-w-0">
-            <div className="text-[12px] uppercase tracking-[0.2em] text-muted-foreground mb-1">{kindLabel}</div>
+            <div className="text-xs text-muted-foreground mb-1">{kindLabel}</div>
             <div className="text-base font-semibold tracking-tight text-foreground truncate">{node.name}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
               {node.size ? `${node.size} · ` : ""}{node.updated ? `edited ${node.updated}` : loading ? "reading…" : "in your memory"}
@@ -350,12 +350,12 @@ function BrainNote({ node, onClose }: { node: MemNode; onClose: () => void }) {
         <div className="px-5 py-3 border-t shrink-0 flex items-center gap-2" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("oracle:activate", { detail: { voice: true } }))}
-            className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             title="Ask the Oracle about this"
           >
             <Mic className="h-3 w-3" /> ask about this
           </button>
-          <span className="ml-auto text-[12px] text-muted-foreground/60">Esc to close</span>
+          <span className="ml-auto text-xs text-muted-foreground/60">Esc to close</span>
         </div>
       </div>
     </div>

@@ -20,7 +20,7 @@ import { sha256 } from "./derived";
 import { HindsightError, createHindsightClient, type HindsightRecallHit } from "./hindsight-client";
 import type { MemorySettings } from "./settings";
 import { createStore, type IndexEntry } from "./store";
-import { assignNoteIds, extractDocs, scanVault, type Skip } from "./vault";
+import { assignNoteIds, extractDocs, scanVault, withoutCopies, type Skip } from "./vault";
 import type { HindsightState, IndexDoc, IndexState, MemoryRecord, OutboxOp, ProcessedBy, SyncStatus } from "./types";
 
 export type ConnectorOptions = {
@@ -230,16 +230,25 @@ export function createConnector(options: ConnectorOptions) {
   // ── scan (vault → desired vault documents) ───────────────────────────────────────────
   let lastRenames: { from: string; to: string; id: string }[] = [];
   function scan() {
-    const { notes, skipped } = scanVault(settings.vaultRoot, settings.sync);
+    const scanned = scanVault(settings.vaultRoot, settings.sync);
     const previous = store.readNotes();
+    const deduped = withoutCopies(scanned.notes, previous);
+    const notes = deduped.notes;
+    const skipped = [...scanned.skipped, ...deduped.skipped];
     // A vault that looks empty (unmounted drive, branch switch, sync glitch) is not "every note was
     // deleted": keep what was known and change nothing until notes are back.
     if (!notes.length && Object.values(previous).some((e) => !e.missing_since)) {
       store.writeStatus({ ...store.readStatus(), last_scan_at: iso(), last_error: "The vault looks empty (no notes found), so nothing was removed. Check MU_WIKI_ROOT or the drive." });
       return { notes: 0, docs: store.readVaultDocs().length, renames: [], skipped };
     }
-    const { map, renames } = assignNoteIds(notes, previous, now(), new Set(Object.keys(store.readIndex())));
     const stones = store.readTombstones();
+    const decided = new Set([...store.readExclusions().map((e) => e.id), ...stones.map((t) => t.id)]);
+    const assigned = assignNoteIds(notes, previous, now(), new Set(Object.keys(store.readIndex())), (id) => [...decided].some((d) => d === id || d.startsWith(`${id}#`) || d.startsWith(`${id}:`)));
+    const { map, renames } = assigned;
+    // Look-alikes of a note the owner removed from search or forgot are held out, not indexed and not given its identity.
+    const heldPaths = new Set(assigned.held.map((h) => h.path));
+    for (const h of assigned.held) skipped.push({ path: h.path, reason: `held: looks like "${h.of}", which you removed from search or forgot. Give it its own id in the note's frontmatter to index it.` });
+    if (heldPaths.size) for (let i = notes.length - 1; i >= 0; i--) if (heldPaths.has(notes[i].path)) notes.splice(i, 1);
     const docs: IndexDoc[] = [];
     const seen = new Set<string>();
     const skips: Skip[] = [...skipped];

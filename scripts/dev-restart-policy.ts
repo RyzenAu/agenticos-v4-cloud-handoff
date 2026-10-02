@@ -20,6 +20,9 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import { RELAY_HEADER } from "./identity/principal";
+import { dataDirFor } from "./cloud/data-dir";
+import { hubRole } from "./cloud/hub-role";
+import { createLocalOwnerProof, type LocalOwnerProof } from "./identity/local-owner-token";
 
 const ACTIVE_AGENT_STATUSES = new Set(["queued", "running", "needs_input"]);
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -48,6 +51,8 @@ export type RestartPolicyOptions = {
   pollMs?: number;
   env?: NodeJS.ProcessEnv;
   now?: () => number;
+  /** Server role: the local-owner proof checker (default: the hub's token file). Tests inject one. */
+  localOwnerProof?: LocalOwnerProof;
   /** Test seams. */
   liveRunsFile?: string;
   log?: (line: string) => void;
@@ -74,7 +79,7 @@ export function inFlightWork(input: {
     /* unreadable marker file: treat as no turns, never block forever */
   }
   try {
-    const file = join(input.root, ".operator-data", "agent-jobs.json");
+    const file = join(dataDirFor(input.root), "agent-jobs.json");
     if (existsSync(file)) {
       const stored = JSON.parse(readFileSync(file, "utf8"));
       let active = 0;
@@ -124,12 +129,15 @@ export function devRestartPolicy(options: RestartPolicyOptions): Plugin {
     },
     configureServer(server: ViteDevServer) {
       const open = new Set<ServerResponse>();
+      // This middleware runs BEFORE the identity gate. In the server role the restart status is the owner's only: a
+      // loopback request without the local-owner proof gets a data-free refusal here (the gate would call it nobody).
+      const proof = hubRole(env) === "server" ? (options.localOwnerProof ?? createLocalOwnerProof(options.root)) : null;
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
         const path = (req.url || "/").split("?")[0];
         if (path === "/__dev_restart" && (req.method || "GET") === "GET") {
           res.setHeader("Content-Type", "application/json");
           res.setHeader("Cache-Control", "no-store");
-          if (!devRestartStatusAllowed(req)) {
+          if (!devRestartStatusAllowed(req) || (proof && !proof.peek(req))) {
             res.statusCode = 403;
             res.end(JSON.stringify({ error: "Local access only" }));
             return;

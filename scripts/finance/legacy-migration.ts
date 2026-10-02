@@ -21,6 +21,7 @@ import { join } from "node:path";
 import { classifyNabText, labelNabRow, sanitiseLabel, sanitiseType, type ManualRow } from "./manual-nab-csv";
 import { SHARED_LEDGER, manualFinanceDbPath, openManualFinanceStore, stampOf, type ManualFinanceStore, type RowOrigin } from "./manual-store";
 import { financeDbPath } from "./store";
+import { dataDirFor } from "../cloud/data-dir";
 
 type LegacyTx = { id: string; account_id: string; amount: number; direction: string; description: string; post_date: string | null; transaction_date: string | null; status: string; class: string; source: string };
 
@@ -115,7 +116,7 @@ export function migrateLegacyFinance(options: { root: string; apply?: boolean; f
     let backupDir: string | null = null, manualBackup: string | null = null;
     if (options.apply) {
       // Backups are byte copies that are never opened (review #5), so they stay identical to the originals.
-      backupDir = join(options.root, ".operator-data", "backups", `finance-legacy-${stampOf(now())}`);
+      backupDir = join(dataDirFor(options.root), "backups", `finance-legacy-${stampOf(now())}`);
       if (existsSync(backupDir)) throw new Error("BACKUP_EXISTS");
       mkdirSync(backupDir, { recursive: true });
       for (const suffix of ["", "-wal", "-shm"]) if (existsSync(legacyFile + suffix)) copyFileSync(legacyFile + suffix, join(backupDir, `finance.sqlite${suffix}`));

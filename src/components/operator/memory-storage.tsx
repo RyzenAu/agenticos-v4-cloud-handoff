@@ -18,7 +18,7 @@ export function MemoryStorage() {
   const storage = useQuery<Storage>({
     queryKey: ["memory-storage"],
     queryFn: () => operatorRequest("/memory/storage"),
-    refetchInterval: 15000,
+    refetchInterval: 60_000,
     retry: false,
   });
   async function copyPath() {

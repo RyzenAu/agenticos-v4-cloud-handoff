@@ -19,11 +19,19 @@ export function normalisePersonId(value: unknown): PersonId | null {
   return isPersonId(id) ? id : null;
 }
 
-export type TargetKind = "hub" | "companion";
+export type TargetKind = "hub" | "companion" | "cloud-computer";
+
+/**
+ * Who owns a device. A person (a personal PC: only that person may control it) or `shared`: a cloud computer both
+ * founders may control and take over (scripts/computers). `shared` is never a PersonId, so every existing
+ * `device.owner === person` check fails closed for it; only code that means to allow it does.
+ */
+export const SHARED_OWNER = "shared" as const;
+export type DeviceOwner = PersonId | typeof SHARED_OWNER;
 
 export type TargetDevice = {
   id: string;
-  owner: PersonId;
+  owner: DeviceOwner;
   kind: TargetKind;
   /** Human label, e.g. "Usman's PC" or "Mehroz's laptop". */
   label: string;
@@ -37,7 +45,17 @@ export type TargetDevice = {
   revokedAt?: number;
 };
 
-export type Presence = { lastSeen: number; micOwned?: boolean; busy?: boolean; version?: string };
+export type Presence = {
+  lastSeen: number;
+  micOwned?: boolean;
+  busy?: boolean;
+  /** The companion worker's own version (what the running program says it is). */
+  version?: string;
+  /** Executors this companion runs (from its allow-list), as reported by its own heartbeat. */
+  capabilities?: string[];
+  /** Whether an interactive, unlocked desktop session is available right now (null: this worker can't tell). */
+  interactive?: boolean | null;
+};
 
 /** The contract other tracks code against (WAVE2-CONTRACT.md). */
 export type ResolveContext = {
@@ -48,5 +66,10 @@ export type ResolveContext = {
 };
 
 export type ResolveResult =
-  | { ok: true; deviceId: string; owner: PersonId; online: boolean }
+  | { ok: true; deviceId: string; owner: DeviceOwner; online: boolean }
   | { ok: false; reason: string; deviceId?: string };
+
+/** A shared agent cloud computer (kind cloud-computer, owner shared): both founders may use it. */
+export function isSharedComputer(device: Pick<TargetDevice, "kind" | "owner">): boolean {
+  return device.kind === "cloud-computer" && device.owner === SHARED_OWNER;
+}

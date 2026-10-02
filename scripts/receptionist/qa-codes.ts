@@ -26,6 +26,7 @@ const QA_LABEL: Record<string, string> = {
   CALLER_FRUSTRATED: "Caller frustrated",
   LOOP_OR_NO_ESCAPE: "Loop or no way out",
   URGENT_POSSIBLE: "Possibly urgent",
+  MANIPULATION_SUSPECTED: "Possible wording aimed at the AI grader",
 };
 
 const QA_CONSEQUENCE: Record<string, string> = {
@@ -41,6 +42,9 @@ const QA_CONSEQUENCE: Record<string, string> = {
   MEDICATION_MENTIONED: "may have heard medication advice",
   FEE_NOT_IN_KB: "may have been quoted a wrong fee",
 };
+
+/** Every code the receptionist QA engine can emit (src/lib/qa/rules.ts QaFlagCode; aligned 1 Oct 2026). */
+export const KNOWN_QA_CODES: readonly string[] = Object.keys(QA_LABEL);
 
 /** "TRANSFER_PROMISED_NOT_ATTEMPTED" -> "Transfer promised, not attempted"; unknown codes humanised. */
 export function qaLabel(code: string): string {

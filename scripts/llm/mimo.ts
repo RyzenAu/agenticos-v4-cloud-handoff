@@ -19,6 +19,7 @@ import { type HealthStore } from "../model-router/health";
 import { callHealth } from "../model-router/defaults";
 import { routerReceiptSink, type ReceiptSink } from "../model-router/receipts";
 import { RouteError, runRouted } from "../model-router/router";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -84,7 +85,7 @@ export type MimoCallOptions = {
   env?: NodeJS.ProcessEnv;
 };
 
-export const mimoLedgerDefault = (root: string = ROOT) => join(root, ".operator-data", "mimo", "ledger.jsonl");
+export const mimoLedgerDefault = (root: string = ROOT) => join(dataDirFor(root), "mimo", "ledger.jsonl");
 
 /** One chat completion through the router with MiMo selected. Throws a sanitised error (never the
  * key or the provider's body text) when MiMo and every eligible free fallback fail. */

@@ -1,0 +1,123 @@
+[
+  {
+    "at": "+0.6s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+1.1s",
+    "step": "two jobs started at once",
+    "data": {
+      "research": "361307a1",
+      "builder": "e2e9d601",
+      "ackA": "Started on research: research: Compare what two reliable sources say about Canberra: when it was founded and named, and ",
+      "ackB": "Started on builder: update the pricing card to show the price including GST. It runs there whether or not your PC is on;"
+    }
+  },
+  {
+    "at": "+72.8s",
+    "step": "both finished",
+    "data": {
+      "wallMs": 72209,
+      "research": "succeeded",
+      "builder": "succeeded"
+    }
+  },
+  {
+    "at": "+72.8s",
+    "step": "NO CROSS-TALK: each computer holds only its own files and tabs",
+    "data": {
+      "researchFiles": [
+        "contact.html",
+        "index.html",
+        "report-20261001T185841.md",
+        "report-20261001T190335.md",
+        "report-20261001T191526.md",
+        "report-20261001T192138.md",
+        "report-20261001T192503.md",
+        "report-20261001T192916.md",
+        "report-20261001T193018.md",
+        "report-20261001T194315.md",
+        "report-20261001T195340.md",
+        "report-20261001T195555.md",
+        "report-20261001T195834.md",
+        "report-20261001T200056.md",
+        "report-20261001T200308.md",
+        "report-20261001T200546.md",
+        "report-20261001T200731.md",
+        "report-20261001T200919.md",
+        "services.html",
+        "shot-about-phone.jpg",
+        "shot-contact-phone.jpg",
+        "shot-home-desktop.jpg",
+        "shot-home-phone.jpg",
+        "shot-services-phone.jpg"
+      ],
+      "builderFiles": [
+        "change-0f15bfb224d7.diff",
+        "change-4b4d561da742.diff",
+        "change-e2e9d60127cc.diff",
+        "comparison-starter-standard-plus.md",
+        "preview-0f15bfb224d7.html",
+        "preview-4b4d561da742.html",
+        "preview-e2e9d60127cc.html",
+        "repo",
+        "shot-preview-desktop.jpg",
+        "shot-preview-phone.jpg",
+        "wt-0f15bfb224d7",
+        "wt-4b4d561da742",
+        "wt-e2e9d60127cc"
+      ],
+      "researchTabs": "[{\"t\": \"Canberra, the Seat of Government | National Capita\", \"u\": \"https://www.nca.gov.au/education/canberras-history/canberra-seat-gover\"}, {\"t\": \"Founding of Canberra | National Museum of Australi\", \"u\": \"https://www.nma.gov.au/defining-moments/resources/founding-of-canberra\"}, {\"t\": \"Contact - Harbour Street Clinic (synthetic demo)\", \"u\": \"file:///var/lib/mu-computers/research/work/contact.html\"}, {\"t\": \"Services - Harbour Street Clinic (synthetic demo)\", \"u\": \"file:///var/lib/mu-computers/research/work/services.html\"}]",
+      "builderTabs": "[{\"t\": \"Harbour Street Clinic (synthetic fixture)\", \"u\": \"file:///var/lib/mu-computers/builder/work/preview-e2e9d60127cc.html\"}, {\"t\": \"Harbour Street Clinic (synthetic fixture)\", \"u\": \"file:///var/lib/mu-computers/builder/work/preview-4b4d561da742.html\"}, {\"t\": \"about:blank\", \"u\": \"about:blank\"}]",
+      "researchHasBuilderFiles": false,
+      "builderHasAuditFiles": false
+    }
+  },
+  {
+    "at": "+72.8s",
+    "step": "each result is its own artifact",
+    "data": {
+      "research": "Research: Compare what two reliable sources say about Canberra: when it was founded and named, and w",
+      "builder": "Builder: Pricing Card"
+    }
+  },
+  {
+    "at": "+72.8s",
+    "step": "the conversation: each job has exactly one result entry and one end entry",
+    "data": {
+      "research": {
+        "report": 1,
+        "ended": 1
+      },
+      "builder": {
+        "report": 1,
+        "ended": 1
+      }
+    }
+  },
+  {
+    "at": "+72.8s",
+    "step": "process counts on Ryzen (before / after)",
+    "data": {
+      "before": {
+        "companion": 2,
+        "xvfb": 2,
+        "x11vnc": 2,
+        "browserMain": 2,
+        "git": 0
+      },
+      "after": {
+        "companion": 2,
+        "xvfb": 2,
+        "x11vnc": 2,
+        "browserMain": 2,
+        "git": 0
+      }
+    }
+  }
+]

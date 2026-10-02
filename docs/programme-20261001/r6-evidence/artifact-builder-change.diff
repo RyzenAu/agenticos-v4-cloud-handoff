@@ -1,0 +1,35 @@
+diff --git a/components/opening-hours.css b/components/opening-hours.css
+new file mode 100644
+index 0000000..4561f76
+--- /dev/null
++++ b/components/opening-hours.css
+@@ -0,0 +1,6 @@
++.opening-hours { font-family: system-ui, sans-serif; max-width: 320px; padding: 20px; border: 1px solid #cfd8d4; border-radius: 12px; }
++.opening-hours__list { margin: 0; padding: 0; }
++.opening-hours__row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #e0e5e2; }
++.opening-hours__row:last-child { border-bottom: none; }
++.opening-hours__day { font-weight: 600; }
++.opening-hours__time { }
+diff --git a/components/opening-hours.html b/components/opening-hours.html
+new file mode 100644
+index 0000000..f7d2596
+--- /dev/null
++++ b/components/opening-hours.html
+@@ -0,0 +1,17 @@
++<section class="opening-hours" aria-labelledby="oh-title">
++  <h2 id="oh-title">Opening Hours</h2>
++  <dl class="opening-hours__list">
++    <div class="opening-hours__row">
++      <dt class="opening-hours__day">Monday – Friday</dt>
++      <dd class="opening-hours__time">8:00 am – 5:00 pm</dd>
++    </div>
++    <div class="opening-hours__row">
++      <dt class="opening-hours__day">Saturday</dt>
++      <dd class="opening-hours__time">9:00 am – 1:00 pm</dd>
++    </div>
++    <div class="opening-hours__row">
++      <dt class="opening-hours__day">Sunday</dt>
++      <dd class="opening-hours__time">Closed</dd>
++    </div>
++  </dl>
++</section>

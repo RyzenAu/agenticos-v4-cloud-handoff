@@ -1,16 +1,18 @@
 // CLI entry for "Jarvis, draft a website for <lead>" — used directly by Hermes (see the
 // mu-site-draft skill) and by the /__site-draft/draft operator endpoint (scripts/site-draft/plugin.ts).
-//   bun scripts/site-draft/cli.ts draft "St Clair Dental"              # full v2 pipeline (default)
-//   bun scripts/site-draft/cli.ts draft 1 --serve                      # v2 + open a preview
-//   bun scripts/site-draft/cli.ts draft 1 --fast                       # old instant template (v1)
+//   bun scripts/site-draft/cli.ts draft "St Clair Dental"              # selected dental flagship
+//   bun scripts/site-draft/cli.ts draft 1 --serve                      # own-origin local preview
+//   bun scripts/site-draft/cli.ts draft 1 --bespoke                    # explicit custom Claude design
+//   bun scripts/site-draft/cli.ts draft 1 --bespoke --fast             # explicit generic draft (v1)
 //   bun scripts/site-draft/cli.ts draft 1 --build-timeout 480000       # override the build time cap (ms)
 //
 // Task 6 (MINISTRY-BACKLOG-2026-09-24.md): QA for a PAID CLIENT build, before any preview goes
 // out — separate from the "draft" command above, which is for CRM-prospect drafts only.
 //   bun scripts/site-draft/cli.ts qa --dir <path> --evidence <file|auto>
 import { openCrm, crmPath } from "../leads/crm";
-import { draftSite } from "./generate";
-import { draftSiteV2, defaultDraftsRoot } from "./orchestrator";
+import { defaultDraftsRoot } from "./orchestrator";
+import { draftForLead } from "./dispatch";
+import { localPreviewUrl, startPreviewServer } from "../lead-sites/preview-server";
 import { startDraftServer } from "./serve";
 import { runClientQa, renderClientQaReport } from "./client-qa";
 import { mkdirSync, writeFileSync, existsSync } from "node:fs";
@@ -51,7 +53,7 @@ async function main() {
   }
   const [ref, ...rest] = rest0;
   if (cmd !== "draft" || !ref) {
-    console.error('Usage: bun scripts/site-draft/cli.ts draft "<lead name or id>" [--serve] [--fast] [--by <name>] [--build-timeout <ms>]');
+    console.error('Usage: bun scripts/site-draft/cli.ts draft "<lead name or id>" [--serve] [--bespoke|--flagship] [--fast] [--by <name>] [--build-timeout <ms>]');
     console.error('       bun scripts/site-draft/cli.ts qa --dir "<path>" [--evidence <file>|auto]');
     process.exit(1);
   }
@@ -65,8 +67,24 @@ async function main() {
   const db = openCrm(crmPath(root));
   const started = Date.now();
 
-  if (fast) {
-    const result = await draftSite(db, ref, { draftsRoot: defaultDraftsRoot(), by });
+  let draft: Awaited<ReturnType<typeof draftForLead>>;
+  try {
+    draft = await draftForLead(db, ref, { root, draftsRoot: defaultDraftsRoot(), by, fast,
+      mode: rest.includes("--bespoke") ? "bespoke" : rest.includes("--flagship") ? "flagship" : undefined,
+      buildOptions: buildTimeoutMs ? { timeoutMs: buildTimeoutMs } : undefined });
+  } finally { db.close(); }
+  if (draft.kind === "flagship") {
+    const { record } = draft.result;
+    console.log(`Flagship preview ready for ${record.business}: ${record.dir}`);
+    console.log(`Preview: ${localPreviewUrl(record.slug)} (local only, not deployed)`);
+    if (serve) {
+      const preview = startPreviewServer({ root, draftsRoot: defaultDraftsRoot() });
+      preview.server.ref();
+    }
+    return;
+  }
+  if (draft.kind === "fast") {
+    const result = draft.result;
     const ms = Date.now() - started;
     console.log(`[fast] Draft ready for ${result.lead.name}: ${result.indexPath} (${ms}ms)`);
     if (serve) {
@@ -76,11 +94,7 @@ async function main() {
     return;
   }
 
-  const result = await draftSiteV2(db, ref, {
-    draftsRoot: defaultDraftsRoot(),
-    by,
-    buildOptions: buildTimeoutMs ? { timeoutMs: buildTimeoutMs } : undefined,
-  });
+  const result = draft.result;
   const ms = Date.now() - started;
   const qaLine = result.qa ? (result.qa.pass ? "QA PASS" : `QA REVIEW NEEDED (${result.qa.issues.filter((i) => i.severity === "fail").length} fail issue(s))`) : "build failed — see BUILD-ERROR.md";
   console.log(`Draft ready for ${result.lead.name}: ${result.indexPath}`);

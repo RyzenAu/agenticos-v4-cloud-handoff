@@ -82,6 +82,13 @@ export function openJarvisText() {
   window.dispatchEvent(new CustomEvent("operator:voice-text"));
 }
 
+/** A submitted workspace request uses the same turn and tool routing as speech. */
+export function submitJarvisRequest(request: string) {
+  const text = request.trim();
+  if (text)
+    window.dispatchEvent(new CustomEvent("operator:voice-text", { detail: { request: text } }));
+}
+
 function elapsed(from: number | undefined, now: number) {
   if (!from || !now || now < from) return null;
   const s = Math.round((now - from) / 1000);
@@ -116,7 +123,9 @@ export function DefaultJarvisChip({ progress, onOpen, compact }: JarvisChipProps
       </span>
       {!compact && <span className="sh-jarvis-label">{progress.label}</span>}
       {!compact && (stepText || time) && (
-        <span className="sh-jarvis-meta ds-num">{[stepText, time].filter(Boolean).join(" · ")}</span>
+        <span className="sh-jarvis-meta ds-num">
+          {[stepText, time].filter(Boolean).join(" · ")}
+        </span>
       )}
     </button>
   );

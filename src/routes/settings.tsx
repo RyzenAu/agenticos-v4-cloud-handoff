@@ -1,7 +1,7 @@
 import { docTitle } from "@/components/shell/destinations";
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowUpRight, Bot, Check, Brain, Clock, Coins, Plug, Settings2, UserRound, Cpu } from "lucide-react";
+import { ArrowUpRight, Bot, Check, Brain, Plug, Settings2, UserRound, Cpu } from "lucide-react";
 import { JarvisSettings } from "@/components/operator/jarvis-settings";
 import {
   profileChanges,
@@ -12,12 +12,11 @@ import { PersonalProfileFields, ToolDiscovery } from "@/components/operator/work
 import { AccountConnectionsContent } from "@/components/operator/accounts-hub";
 import { OperatorPreferences } from "@/components/operator/preferences";
 import { setCurrency } from "@/lib/currency";
-import { PageFoot, PageHeader, Section, Button, Widget, WidgetGrid } from "@/components/ds";
+import { PageFoot, PageHeader, Section, Button } from "@/components/ds";
 import "@/components/operator/workspace-settings.css";
 import "@/components/operator/settings-readable.css";
 // W-E: the System pages share the calm reading scale (src/components/shell/calm.css).
 import { CalmPage } from "@/components/shell/calm";
-import { fmtMoney } from "@/lib/format";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -81,56 +80,23 @@ function SettingsPage() {
   }
   return (
     <CalmPage className="ws-settings">
-      <PageHeader title="Settings" description="Your profile, accounts and how the OS works for you." className="mb-6" />
-      <WidgetGrid className="mb-6 lg:mb-8" aria-label="Your setup at a glance">
-        <Widget
-          icon={UserRound}
-          title="Profile"
-          value={draft.name || null}
-          line={dirty ? "Unsaved changes" : profile.profile.updatedAt ? "Saved on this computer" : "No profile saved yet"}
-          action={
-            <Button variant="outline" size="sm" onClick={() => { setSection("personal-profile"); window.history.replaceState(null, "", "#personal-profile"); }}>
-              Edit profile
-            </Button>
-          }
-        />
-        <Widget
-          icon={Clock}
-          title="Time zone"
-          value={draft.timeZone ? draft.timeZone.split("/").pop()?.replaceAll("_", " ") : null}
-          line={draft.timeZone ? draft.timeZone.replaceAll("_", " ") : "Not set"}
-          action={
-            <Button variant="outline" size="sm" onClick={() => { setSection("personal-profile"); window.history.replaceState(null, "", "#personal-profile"); }}>
-              Change
-            </Button>
-          }
-        />
-        <Widget
-          icon={Coins}
-          title="Hour of your time"
-          value={draft.hourlyRate ? fmtMoney(draft.hourlyRate, { currency: draft.currency, trimZeros: true }) : null}
-          line={draft.hourlyRate ? "per hour, used for time saved" : "Not set, so no dollar value is shown"}
-          action={
-            <Button variant="outline" size="sm" onClick={() => { setSection("personal-profile"); window.history.replaceState(null, "", "#personal-profile"); }}>
-              Set it
-            </Button>
-          }
-        />
-        <Widget
-          icon={Cpu}
-          title="Setup"
-          value={profile.profile.onboardingCompletedAt ? "Done" : "Not done"}
-          line={profile.profile.onboardingCompletedAt ? "You can run it again any time" : "Connect your tools and choose a model"}
-          action={
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/setup">
-                {profile.profile.onboardingCompletedAt ? "Review your setup" : "Set up your Agentic OS"}
-                <ArrowUpRight size={14} />
-              </Link>
-            </Button>
-          }
-        />
-      </WidgetGrid>      <div
+      <PageHeader
+        title="Settings"
+        actions={
+          <Button variant="outline" asChild>
+            <Link to="/setup">
+              Review setup <ArrowUpRight size={14} aria-hidden="true" />
+            </Link>
+          </Button>
+        }
+        className="mb-6"
+      />
+      {dirty && section !== "personal-profile" && (
+        <p role="status" className="mb-4 text-sm text-warn">
+          Your profile has unsaved changes. Return to Personal profile to save them.
+        </p>
+      )}
+      <div
         role="tablist"
         aria-label="Settings sections"
         className="ws-settings-tabs"
@@ -236,7 +202,7 @@ function SettingsPage() {
         {section === "ai-tools" && (
           <Section
             id="ai-tools-section"
-            title="Your choice of intelligence"
+            title="AI tools"
             description="Installed tools and models are checked separately."
           >
             <ToolDiscovery />
@@ -255,7 +221,7 @@ function SettingsPage() {
         {section === "preferences" && (
           <Section
             id="preferences-section"
-            title="Room for what you use"
+            title="Workspace preferences"
             description="Your everyday tools, and advanced views when you want them."
           >
             <OperatorPreferences />
@@ -264,7 +230,7 @@ function SettingsPage() {
         {section === "jarvis" && (
           <Section
             id="jarvis-section"
-            title="Make Jarvis yours"
+            title="Jarvis preferences"
             description="His greeting, your shorthand, and who can reach him."
           >
             <JarvisSettings />

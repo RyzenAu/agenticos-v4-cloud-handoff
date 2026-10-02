@@ -56,5 +56,5 @@ let counter = 0;
 export const newKey = () => `${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
 /** The Motion library's collections (?tab= on /motion). */
-export type Tab = "styles" | "kit" | "made" | "inspiration";
-export const TABS: readonly Tab[] = ["styles", "kit", "made", "inspiration"];
+export type Tab = "styles" | "kit" | "made" | "inspiration" | "scenes";
+export const TABS: readonly Tab[] = ["styles", "kit", "made", "inspiration", "scenes"];

@@ -9,11 +9,7 @@ import {
   AlertTriangle,
   Check,
   Clock3,
-  Copy,
-  ExternalLink,
   Loader2,
-  Mail,
-  MapPin,
   Phone,
   RefreshCw,
   Search,
@@ -33,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { LeadDrawer } from "./lead-drawer";
 import {
   Table,
   TableBody,
@@ -526,104 +522,5 @@ function FindLeadsForm({ busy, error, notice, onSubmit }: { busy: boolean; error
 // ── detail drawer ────────────────────────────────────────────────────────
 
 function LeadDetailDrawer({ id, onClose, onChanged, by }: { id: number | null; onClose: () => void; onChanged: () => void; by: Owner }) {
-  const detail = useQuery<{ lead: Lead; activities: Activity[] }>({
-    queryKey: ["leads-detail", id],
-    queryFn: () => operatorRequest<{ lead: Lead; activities: Activity[] }>(`/leads/detail?id=${id}`, undefined, "GET"),
-    enabled: id !== null,
-  });
-  const [draft, setDraft] = useState<{ to: string[]; subject: string; body: string } | null>(null);
-  const [draftError, setDraftError] = useState("");
-  const [draftBusy, setDraftBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    setDraft(null);
-    setDraftError("");
-    setCopied(false);
-  }, [id]);
-
-  async function loadDraft() {
-    if (!id) return;
-    setDraftBusy(true);
-    setDraftError("");
-    try {
-      setDraft(await operatorRequest(`/leads/draft?id=${id}`, undefined, "GET"));
-    } catch (e) {
-      setDraftError((e as Error).message);
-    } finally {
-      setDraftBusy(false);
-    }
-  }
-
-  async function copyDraft() {
-    if (!draft) return;
-    try {
-      await navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
-      setCopied(true);
-    } catch { /* clipboard unavailable; the text is still selectable */ }
-  }
-
-  const lead = detail.data?.lead;
-  return (
-    <Sheet open={id !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{lead?.name || "Lead"}</SheetTitle>
-        </SheetHeader>
-        {detail.isLoading ? <Busy /> : !lead ? null : (
-          <div className="mt-4 flex flex-col gap-4 text-sm">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="neutral">{VERTICAL_LABEL[lead.vertical]}</Badge>
-              <Badge tone="neutral">Score {lead.score}</Badge>
-              <Badge tone="neutral">{STATUS_LABEL(lead.status)}</Badge>
-            </div>
-            {lead.reasons.length > 0 && (
-              <div>
-                <div className="font-medium">Why M&U could help</div>
-                <ul className="mt-1 list-disc pl-5 text-muted-foreground">
-                  {lead.reasons.map((r, i) => <li key={i}>{r}</li>)}
-                </ul>
-              </div>
-            )}
-            <div className="flex flex-col gap-1">
-              {lead.phone && <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-2 underline"><Phone size={14} /> {lead.phone}</a>}
-              {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 underline"><ExternalLink size={14} /> {lead.website}</a>}
-              {lead.mapsUrl && <a href={lead.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 underline"><MapPin size={14} /> View on Google Maps</a>}
-              {lead.emails.map((e) => <span key={e} className="inline-flex items-center gap-2"><Mail size={14} /> {e}</span>)}
-            </div>
-            <div>
-              <div className="font-medium">Activity</div>
-              {!detail.data?.activities.length ? (
-                <p className="text-muted-foreground">No activity logged yet.</p>
-              ) : (
-                <ul className="mt-1 flex flex-col gap-1 text-muted-foreground">
-                  {detail.data.activities.map((a) => (
-                    <li key={a.id}>{fmtDateTime(new Date(a.at), { year: true })} · {a.kind}{a.outcome ? ` (${STATUS_LABEL(a.outcome)})` : ""} · {a.by || "—"}{a.note ? ` — ${a.note}` : ""}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="border-t pt-4">
-              <div className="flex items-center justify-between">
-                <div className="font-medium">Draft email</div>
-                <Button size="sm" variant="outline" onClick={loadDraft} disabled={draftBusy}>
-                  {draftBusy ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />} Draft email
-                </Button>
-              </div>
-              {draftError && <Notice tone="danger">{draftError}</Notice>}
-              {draft && (
-                <div className="mt-2">
-                  <p className="text-xs text-muted-foreground">Draft only — this is never sent automatically. To: {draft.to.join(", ")}</p>
-                  <Textarea readOnly className="mt-1 h-56 font-mono text-xs" value={`Subject: ${draft.subject}\n\n${draft.body}`} />
-                  <Button size="sm" variant="outline" className="mt-2" onClick={copyDraft}>
-                    {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Copied" : "Copy"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
+  return <LeadDrawer id={id} onClose={onClose} onChanged={onChanged} by={by} />;
 }

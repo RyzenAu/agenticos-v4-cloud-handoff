@@ -34,14 +34,14 @@ describe("P1-1: the header holds at iPad-portrait width (768) and up", () => {
     expect(read("src/operator.css")).toContain("@media (min-width: 1024px) {\n  .op-icon-button.lg\\:hidden");
     expect(sidebar).not.toContain('hidden md:flex" data-rail');
   });
-  test("Share screen, Meeting and Chat show text only from xl; icons keep their accessible names", () => {
+  test("Share screen, Meeting and typed assistant entry show text only from xl; icons keep their accessible names", () => {
     const share = read("src/components/operator/screen-share-control.tsx");
     const meeting = read("src/components/operator/meeting-mode-hud.tsx");
     expect(share).toContain('aria-label="Share screen"');
     expect(share).toContain('labels === "always" ? "" : "hidden xl:inline"');
     expect(meeting).toContain('aria-label="Meeting mode"');
     expect(meeting).toContain('labels === "always" ? "" : "hidden xl:inline"');
-    expect(read("src/routes/__root.tsx")).toContain('<span className="hidden xl:inline">Chat</span>');
+    expect(read("src/routes/__root.tsx")).toContain('<span className="hidden xl:inline">Type a request</span>');
     // the drawer, which has room, keeps the words
     expect(sidebar).toContain('<ScreenShareControl labels="always" />');
     expect(sidebar).toContain('<MeetingModeControl labels="always" />');
@@ -194,7 +194,7 @@ describe("P1-4: a source that is down says so straight away", () => {
     expect(src).toContain("void query.refetch()");
   });
   test("every other page: one quick retry by default instead of 1 s + 2 s + 4 s of grey rows", () => {
-    expect(QUERY_DEFAULTS.queries).toEqual({ retry: 1, retryDelay: 400 });
+    expect(QUERY_DEFAULTS.queries).toEqual({ retry: 1, retryDelay: 400, staleTime: 5_000 });
     const router = read("src/router.tsx");
     expect(router).toContain("new QueryClient({ defaultOptions: QUERY_DEFAULTS })");
   });

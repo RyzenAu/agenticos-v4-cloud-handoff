@@ -29,7 +29,7 @@ describe("type scale", () => {
     expect(remPx("text-sm")).toBe(15);
     expect(lineHeight("text-sm")).toBeGreaterThanOrEqual(1.55);
     expect(remPx("text-xs")).toBe(13);
-    expect(remPx("text-2xs")).toBe(12);
+    expect(remPx("text-2xs")).toBe(13); // the floor: nothing in the OS reads below 13px (1 Oct 2026)
     expect(remPx("text-lg")).toBe(20);
     expect(remPx("text-xl")).toBe(24);
     expect(read("src/components/shell/shell.css")).toContain("font-size: clamp(1.75rem, 1.45rem + 1vw, 2.25rem);");
@@ -45,7 +45,7 @@ describe("type scale", () => {
     for (const step of ["text-3xl", "text-2xl", "text-xl", "text-lg", "text-base", "text-sm", "text-xs"]) {
       expect(doc).toContain(`| \`${step}\` | ${remPx(step)} / ${lineHeight(step)} |`);
     }
-    expect(doc).toContain(`| \`.ds-label\` / \`text-2xs\` | ${remPx("text-2xs")}, caps`);
+    expect(doc).toContain(`| \`.ds-label\` / \`text-2xs\` | ${remPx("text-2xs")}, sentence case`);
     expect(doc).toContain("body 15px with a 1.6 line height");
     expect(doc).not.toContain("body 13px");
   });

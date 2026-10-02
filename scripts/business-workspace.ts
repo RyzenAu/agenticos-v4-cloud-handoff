@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { currentGoalPeriod, goalPeriodState, type GoalHorizon } from "../src/lib/goal-periods";
 import { audienceMeasurementIdentity } from "../src/lib/audience-measurement";
+import { dataDirFor } from "./cloud/data-dir";
 
 const platforms = ["youtube", "instagram", "tiktok", "linkedin", "skool"];
 const metrics = ["followers", "members", "paidMembers", "views", "likes", "posts", "activeMembers", "onlineMembers", "videos"];
@@ -36,7 +37,7 @@ const sourceUrl = (v: unknown) => {
 };
 
 export function businessWorkspace(root: string, options: { now?: () => Date; timeZone?: string } = {}) {
-  const directory = join(root, ".operator-data"), file = join(directory, "business.json");
+  const directory = join(dataDirFor(root)), file = join(directory, "business.json");
   const blank = () => ({ profile: {}, snapshots: [] as any[], widgets: { ...defaultWidgets }, progress: { goals: [] as any[], updates: [] as any[] } });
   const read = (): any => {
     if (!existsSync(file)) return blank();

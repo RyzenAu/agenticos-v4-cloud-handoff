@@ -146,14 +146,14 @@ function SharePage() {
             >
               <img src={claudeLogo} alt="" className="h-7 w-7" />
             </div>
-            <div className="text-[14px] font-medium tracking-[0.2em] uppercase text-white/80">
+            <div className="text-[14px] font-medium text-white/80">
               Agentic OS
             </div>
           </div>
 
           {/* Hero numbers */}
           <div>
-            <div className="text-[18px] uppercase tracking-[0.28em] text-white/55 mb-3">
+            <div className="text-[18px] text-white/55 mb-3">
               Subscription ROI
             </div>
             <div className="flex items-baseline gap-5 flex-wrap">
@@ -217,7 +217,7 @@ function SharePage() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-[0.18em] text-white/60 mb-1">{label}</div>
+      <div className="text-xs text-white/60 mb-1">{label}</div>
       <div className="text-[26px] font-semibold tabular-nums">{value}</div>
     </div>
   );

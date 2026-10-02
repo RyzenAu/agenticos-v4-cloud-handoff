@@ -51,7 +51,8 @@ export function allowanceFromSnapshot(
   provider: string,
 ): Allowance | null {
   if (provider === "claude-sub") {
-    const cards = snapshot.subscriptions.filter((s) => s.provider === "anthropic");
+    // The claude-sub bridge runs the default ~/.claude login only; a second account's windows don't gate it.
+    const cards = snapshot.subscriptions.filter((s) => s.provider === "anthropic" && (s.id === "claude:max" || !s.id.startsWith("claude:max")));
     const readings = cards.map((c) => ({ c, p: peak(c) })).filter((x) => x.p);
     if (!readings.length) return null;
     const worst = readings.sort((a, b) => b.p!.used - a.p!.used)[0];

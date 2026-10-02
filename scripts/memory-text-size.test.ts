@@ -52,8 +52,16 @@ describe("Memory source cards and graph hint", () => {
     }
     expect(rule(".op-source-card p")).toContain("var(--text-xs)");
   });
-  test("scene-nav-info is set to 12 px", () => {
-    expect(readFileSync(join(SRC, "styles.css"), "utf8")).toMatch(/\.scene-nav-info\s*\{\s*font-size:\s*12px\s*!important/);
+  test("scene-nav-info is set to at least 12 px (now the --text-xs token under the 13 px floor)", () => {
+    const css = readFileSync(join(SRC, "styles.css"), "utf8");
+    const m = css.match(/\.scene-nav-info\s*\{\s*font-size:\s*([^;!]+?)\s*!important/);
+    expect(m).not.toBeNull();
+    const value = m![1].trim();
+    const token = value.match(/^var\(--([a-z0-9-]+)\)$/)?.[1];
+    const raw = token ? css.match(new RegExp(`--${token}:\\s*([0-9.]+)(rem|px)`)) : value.match(/^([0-9.]+)(rem|px)$/);
+    expect(raw).not.toBeNull();
+    const px = Number(raw![1]) * (raw![2] === "rem" ? 16 : 1);
+    expect(px).toBeGreaterThanOrEqual(12);
   });
   test("the card preview goes through previewSnippet", () => {
     expect(readFileSync(join(SRC, "components", "operator", "memory-workspace.tsx"), "utf8")).toContain("previewSnippet(s.text, 240, s.title)");

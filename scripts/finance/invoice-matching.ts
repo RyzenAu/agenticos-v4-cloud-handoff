@@ -5,6 +5,7 @@
 // wiring a real invoicing feature to it later only means it starts writing that file.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type OpenInvoice = { id: string; reference: string; amount: number; currency?: string; issuedAt?: string; dueAt?: string; status?: string };
 export type CreditRow = { id: string; amount: number; description: string; postDate: string | null };
@@ -64,7 +65,7 @@ export function matchInvoices(invoices: OpenInvoice[], credits: CreditRow[], opt
  *  file is an ordinary "no invoices yet" state, never an error. */
 export function loadOpenInvoices(root: string): OpenInvoice[] {
   try {
-    const raw = JSON.parse(readFileSync(join(root, ".operator-data", "invoices.json"), "utf8"));
+    const raw = JSON.parse(readFileSync(join(dataDirFor(root), "invoices.json"), "utf8"));
     if (!Array.isArray(raw)) return [];
     return raw
       .filter((item): item is Record<string, unknown> => !!item && typeof item === "object" && typeof (item as any).id === "string" && typeof (item as any).amount === "number")

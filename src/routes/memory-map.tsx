@@ -573,7 +573,7 @@ function Inspector({ node, onClose }: { node: MemNode; onClose: () => void }) {
       >
         <div className="flex items-start justify-between p-5 border-b border-border">
           <div>
-            <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+            <div className="text-xs text-muted-foreground mb-1">
               {node.kind === "hub"
                 ? "Shared core"
                 : node.kind === "workspace"
@@ -625,7 +625,7 @@ function Inspector({ node, onClose }: { node: MemNode; onClose: () => void }) {
 
         {node.kind === "file" && node.preview && (
           <div className="px-5 py-4 border-b border-border">
-            <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+            <div className="text-xs text-muted-foreground mb-1.5">
               Preview
             </div>
             <p className="text-sm italic text-foreground/80 leading-relaxed">"{node.preview}"</p>
@@ -634,7 +634,7 @@ function Inspector({ node, onClose }: { node: MemNode; onClose: () => void }) {
 
         {node.kind === "vector_store" && (
           <div className="p-5 space-y-3">
-            <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Index details
             </div>
             <ul className="space-y-1.5 text-xs">
@@ -655,7 +655,7 @@ function Inspector({ node, onClose }: { node: MemNode; onClose: () => void }) {
             </ul>
             {Array.isArray(node.namespaces) && node.namespaces.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border">
-                <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Namespace breakdown</div>
+                <div className="text-xs text-muted-foreground mb-2">Namespace breakdown</div>
                 <ul className="space-y-1">
                   {node.namespaces.map((ns: any) => (
                     <li key={ns.name} className="flex justify-between text-xs">
@@ -671,7 +671,7 @@ function Inspector({ node, onClose }: { node: MemNode; onClose: () => void }) {
 
         {ws && node.kind === "workspace" && (
           <div className="p-5 space-y-3">
-            <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Notes
             </div>
             <ul className="space-y-1.5">
@@ -763,7 +763,7 @@ function ActivitySearch({
           onChange={(e) => onChange(e.target.value)}
           placeholder="Filter activity"
           aria-label="Filter recent memory activity"
-          className="w-32 focus:w-40 transition-[width] rounded-full border border-border/70 bg-card/40 pl-7 pr-6 py-1 text-[12px] text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground/30"
+          className="w-32 focus:w-40 transition-[width] rounded-full border border-border/70 bg-card/40 pl-7 pr-6 py-1 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground/30"
         />
         {q && (
           <button

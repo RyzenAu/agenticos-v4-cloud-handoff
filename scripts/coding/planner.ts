@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ReceiptSink } from "../model-router/receipts";
-import type { AgentBinding, CommandId, DoneCriterion, PersonId, UsageReceipt, Uuid } from "./contracts";
+import type { AgentBinding, ClaudeAccountSlot, CommandId, DoneCriterion, PersonId, UsageReceipt, Uuid } from "./contracts";
 import { buildReceipt, writeFleetReceipt } from "./receipts";
 import { redactText } from "./redact";
 import { createPolicy } from "./runners/policy";
@@ -65,11 +65,15 @@ export type AgentPlannerDeps = {
   receipts?: Map<string, UsageReceipt>;
   wallMs?: number;
   liveRoot?: string | null;
+  /** The Claude account the planner turn runs on (the automatic pick) and its profile. Absent = the original login. */
+  /** `utterance` so a Claude account the owner NAMED ("assign this fix to Claude Max 2") is the one the planner turn runs on. */
+  claudeSlot?: (utterance: string) => { slot: ClaudeAccountSlot; configDir: string | null } | null;
 };
 
 export function agentPlanner(deps: AgentPlannerDeps): PlannerFn {
   return async ({ entry, objective, utterance, specId }) => {
-    const binding = deps.model ?? claudeBinding("claude-opus-5-5", deps.cliVersion());
+    const account = deps.model ? null : deps.claudeSlot?.(utterance) ?? null;
+    const binding = deps.model ?? claudeBinding("claude-opus-5-5", deps.cliVersion(), account?.slot ?? "claude:max");
     const baseSha = resolveBaseSha(entry);
     const id6 = specId.replace(/-/g, "").slice(0, 6);
     const path = worktreePathFor(entry, id6, "planner");
@@ -90,6 +94,7 @@ export function agentPlanner(deps: AgentPlannerDeps): PlannerFn {
       policy: createPolicy({ role: "planner", access: "read-only", worktree: path, owns: { globs: [], newFiles: [] }, commands: [], nodeModules: entry.nodeModules, mayChangeDependencies: false, allowWeb: false, denyRead: entry.denyRead, protectedRoots: [entry.canonicalPath, ...(deps.liveRoot ? [deps.liveRoot] : [])] }),
       signal: new AbortController().signal, onEvent: () => {},
       limits: { wallMs: deps.wallMs ?? 8 * 60_000, maxTurns: 40, inputTimeoutMs: 30_000 }, stopAtWindowPercent: 95, creditsAllowed: false, jsonSchema: PLAN_SCHEMA,
+      claudeConfigDir: account?.configDir ?? null,
     });
     const outcome = await handle.done;
     const receipt = buildReceipt({ requestId: randomUUID() as Uuid, parentRequestId: specId, jobId: specId, roleId: "planner" as never, role: "planner", turn: 1, person: deps.person(), binding, dataClass: "business-internal", outcome, allowanceStart: null, queueMs: 0 });

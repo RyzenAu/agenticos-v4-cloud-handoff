@@ -5,10 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { childEnv, needsCommandShell, realExecutable, type PlatformOptions } from "../../assistant-runtime";
 import { cliHomeGuard } from "../../cli-home-guard";
+import { claudeSlotEnv } from "../claude-status";
 import type { AllowanceSnapshot, InputRequest, IsoTime, RunErrorCode } from "../contracts";
 import { redactText } from "../redact";
 import { runCapture } from "../../nonblocking-exec";
 import { decider, detailOf, inputQueue, isoIn, jsonLines, textCoalescer, verifiedKill, type Spawn } from "./proc";
+import { contextModeLaunch, contextModePolicy, isContextModeTool, resolveContextMode, type ContextHelperLaunch } from "./context-helper";
 import { NO_USAGE, type RoleRunner, type RunnerEvent, type RunnerHandle, type RunnerOutcome, type RunnerStart, type RunnerStatus, type TurnUsage } from "./types";
 
 /**
@@ -35,6 +37,8 @@ export type ClaudeRunnerOptions = PlatformOptions & {
   initializeTimeoutMs?: number;
   /** Where the per-run system-prompt file goes (default os.tmpdir()). */
   tempDir?: string;
+  /** The JavaScript runtime that starts the opt-in context helper's MCP server (default: this process's own runtime, bun). */
+  contextRuntime?: string;
 };
 
 const MAX_PROMPT = 200_000;
@@ -57,8 +61,12 @@ function cliVersion(binary: string): string | null {
       const home = cliHomeGuard("claude", process.env);
       if (!home.ok) { versionCache.set(binary, null); return null; }
       const r = spawnSync(binary, ["--version"], { encoding: "utf8", windowsHide: true, timeout: 20_000, env: home.env });
-      versionCache.set(binary, VERSION_RE.exec(`${r.stdout}`)?.[0] ?? null);
-    } catch { versionCache.set(binary, null); }
+      const v = VERSION_RE.exec(`${r.stdout}`)?.[0] ?? null;
+      // A timeout or failed start is not cached (like cliVersionAsync): a cached null made the older CLI win for
+      // the whole process and Opus 5.5 was refused (30 Sep 2026, live).
+      if (v === null && (r.error || r.status !== 0)) return null;
+      versionCache.set(binary, v);
+    } catch { return null; }
   }
   return versionCache.get(binary) ?? null;
 }
@@ -93,6 +101,10 @@ export function claudeCodingBinary(options: PlatformOptions = {}): string | unde
   const pinned = platform === "win32" && localAppData ? join(localAppData, "claude-bridge", "node_modules", "@anthropic-ai", "claude-code", "bin", "claude.exe") : null;
   const candidates = [onPath, pinned && existsSync(pinned) ? pinned : null].filter((x): x is string => !!x);
   if (candidates.length < 2) return candidates[0];
+  // An unreadable version (a --version that timed out under load) never downgrades to the older PATH copy:
+  // the pinned bridge copy is the known-good one (30 Sep 2026, live: Opus 5.5 was refused by 2.1.278).
+  const versions = candidates.map((c) => cliVersion(c));
+  if (versions.some((v) => v === null) && pinned && candidates.includes(pinned)) return pinned;
   return candidates.reduce((best, c) => (newer(cliVersion(c), cliVersion(best)) ? c : best));
 }
 
@@ -109,20 +121,20 @@ export async function primeClaudeCodingBinary(options: PlatformOptions = {}): Pr
 }
 
 /** The exact argv for a run (exported for tests and the live smoke's record). */
-export function claudeArgs(input: Pick<RunnerStart, "binding" | "readOnly" | "session" | "limits" | "jsonSchema">, systemFile: string): string[] {
+export function claudeArgs(input: Pick<RunnerStart, "binding" | "readOnly" | "session" | "limits" | "jsonSchema">, systemFile: string, helper?: ContextHelperLaunch | null): string[] {
   if (input.binding.route !== "claude-code-cli") throw new Error("Not a Claude binding.");
   const args = [
     "--print", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
     "--permission-prompt-tool", "stdio",
     "--permission-mode", input.readOnly ? "plan" : "manual",
     "--model", input.binding.model,
-    "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
+    "--strict-mcp-config", "--mcp-config", helper ? helper.mcpConfig : '{"mcpServers":{}}',
     "--restricted",
     "--settings", CLAUDE_SETTINGS,
     "--tools", (input.readOnly ? CLAUDE_TOOLS_READ : CLAUDE_TOOLS_WRITE).join(","),
     "--max-turns", String(Math.max(1, Math.floor(input.limits.maxTurns))),
     "--append-system-prompt-file", systemFile,
-    "--disallowedTools", ...CLAUDE_DISALLOWED,
+    "--disallowedTools", ...CLAUDE_DISALLOWED, ...(helper ? helper.disallowed : []),
   ];
   if (input.session.mode === "new") args.push("--session-id", input.session.id);
   else args.push("--resume", input.session.id);
@@ -172,11 +184,15 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
       let completeText = "";
       let tempFolder: string | null = null;
       let lastAllowance: AllowanceSnapshot | null = null;
+      let ranVersion: string | null = null;
       let resolveDone!: (o: RunnerOutcome) => void;
       const done = new Promise<RunnerOutcome>((r) => { resolveDone = r; });
       const timers: ReturnType<typeof setTimeout>[] = [];
       const text = textCoalescer(emit);
-      const policy = decider(input.policy, emit);
+      // Opt-in context helper (context-helper.ts). Off = nothing below changes: same argv, same policy.
+      const helperCheck = input.contextHelper ? resolveContextMode(input.contextHelper, options.env ?? process.env) : null;
+      let helper: ContextHelperLaunch | null = null;
+      const policy = decider(helperCheck?.ok ? contextModePolicy(input.policy, input.cwd) : input.policy, emit);
       const queue = inputQueue(emit, input.limits.inputTimeoutMs);
       const initId = `coding-init-${randomUUID()}`;
 
@@ -186,7 +202,7 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
       };
       const outcome = (status: RunnerStatus, error: RunnerOutcome["error"]): RunnerOutcome => ({
         status, error, finalText: redactText(completeText, 32_000), sessionId, providerModel, usage, valueUsdEquivalent: value,
-        turns, startedAt, endedAt: Date.now(), allowanceEnd: lastAllowance, accountPlan: null,
+        turns, startedAt, endedAt: Date.now(), allowanceEnd: lastAllowance, accountPlan: null, cliVersion: ranVersion,
       });
       async function finish(status: RunnerStatus, error: RunnerOutcome["error"] = null) {
         if (settled) return;
@@ -232,7 +248,7 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
           ? Object.entries(unified).filter(([, w]) => record(w)).map(([k, w]: [string, any]) => ({ label: LABEL[k] ?? k.replace(/_/g, " "), usedPercent: pct(w.utilization), resetsAt: toIso(w.resetsAt) }))
           : [{ label: String(info.rateLimitType ?? "window").replace(/_/g, " "), usedPercent: pct(info.utilization), resetsAt: toIso(info.resetsAt) }];
         return {
-          accountSlot: "claude:max",
+          accountSlot: input.binding.route === "claude-code-cli" ? input.binding.accountSlot : "claude:max",
           windows,
           creditsWouldBeUsed: false,
           limitReached: info.status === "rejected",
@@ -250,6 +266,8 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
           : [];
         const req = isQuestion
           ? { kind: "question" as const, questions }
+          : helper && isContextModeTool(tool)
+            ? { kind: "tool" as const, tool, input: toolInput }
           : /^mcp__/.test(tool) || tool === "ListMcpResourcesTool" || tool === "ReadMcpResourceTool"
             ? { kind: "mcp" as const, server: tool.split("__")[1] ?? null, tool }
             : { kind: "tool" as const, tool, input: toolInput };
@@ -357,6 +375,7 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
         const binary = options.binary ?? claudeCodingBinary({ platform, env: options.env });
         if (!binary) return void finish("failed", { code: "not_installed", message: "Claude Code is not installed." });
         if (needsCommandShell(binary, platform)) return void finish("failed", { code: "not_installed", message: "Only the real claude.exe is started, never its npm shim." });
+        ranVersion = versionCache.get(binary) ?? null; // already read by the pick; never a new spawn here
         if (!input.prompt.trim() || input.prompt.length > MAX_PROMPT || input.prompt.includes("\0")) return void finish("failed", { code: "spawn_failed", message: "The role prompt is empty or too long." });
         let args: string[];
         try {
@@ -364,13 +383,21 @@ export function claudeRunner(options: ClaudeRunnerOptions = {}): RoleRunner {
           mkdirSync(base, { recursive: true });
           tempFolder = mkdtempSync(join(base, "coding-claude-"));
           const systemFile = join(tempFolder, "system.md");
-          writeFileSync(systemFile, input.system, { mode: 0o600 });
-          args = claudeArgs(input, systemFile);
+          if (input.contextHelper && helperCheck?.ok)
+            helper = contextModeLaunch({ request: input.contextHelper, resolution: helperCheck, runtime: options.contextRuntime ?? process.execPath, worktree: input.cwd, sessionId: input.session.id });
+          else if (input.contextHelper && helperCheck && !helperCheck.ok) emit({ type: "step", label: "Context helper not used", detail: helperCheck.reason });
+          writeFileSync(systemFile, helper ? `${input.system}
+
+${helper.guidance}` : input.system, { mode: 0o600 });
+          args = claudeArgs(input, systemFile, helper);
         } catch (e) { return void finish("failed", { code: "spawn_failed", message: (e as Error).message }); }
         // F3-26: a preview or quiet copy runs Claude on ITS home (CLAUDE_CONFIG_DIR), never the owner's.
         const home = cliHomeGuard("claude", options.env ?? process.env);
         if (!home.ok) return void finish("failed", { code: "signed_out", message: home.reason });
-        const env = childEnv({ env: home.env, extra: { CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1" } });
+        // The live server runs each account on its OWN profile (30 Sep 2026): the binding's slot picks the
+        // login, nothing is copied between profiles, and a copy keeps its own home whatever the slot says.
+        const profile = home.copy ? home.env : claudeSlotEnv({ configDir: input.claudeConfigDir ?? null }, home.env);
+        const env = childEnv({ env: profile, extra: { CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1" } });
         try {
           child = (options.spawn ?? spawn)(binary, args, { cwd: input.cwd, env, stdio: ["pipe", "pipe", "pipe"], windowsHide: true, windowsVerbatimArguments: false }) as ChildProcessWithoutNullStreams;
         } catch { return void finish("failed", { code: "spawn_failed", message: "Claude Code could not be started." }); }

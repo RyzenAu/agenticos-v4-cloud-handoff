@@ -5,7 +5,7 @@ import { operatorRequest } from "@/lib/operator";
 import { useBusinessWorkspace, type AudiencePlatform } from "@/lib/business-workspace";
 import { AudienceLogo } from "./audience-panel";
 import "./connections-polish.css";
-import { fmtDay } from "@/lib/format";
+import { fmtDay, fmtTime } from "@/lib/format";
 
 type Provider = "mercury" | "stripe" | AudiencePlatform;
 export function BusinessLogo({ provider }: { provider: Provider }) {
@@ -234,7 +234,7 @@ export function ConnectionsPanel() {
               <span>
                 {native.isPending ? "Checking Codex…" : native.isError ? "Codex access couldn’t be checked" : native.data?.mercury.available
                   ? workspace.data?.finances ? `Balances saved · ${stamp(workspace.data.finances.recordedAt)}` : "Read your current account balances"
-                  : "Connect Mercury in Codex, then recheck"}
+                  : `Connect Mercury in Codex, then recheck${native.dataUpdatedAt ? ` · checked ${fmtTime(native.dataUpdatedAt)}` : ""}`}
               </span>
             </div>
             <span className="biz-provider-status is-snapshot">{native.data?.mercury.available ? "Via Codex" : workspace.data?.finances ? "Saved snapshot" : "Not connected"}</span>
@@ -399,8 +399,11 @@ export function ConnectionsPanel() {
                         disabled={status.isFetching}
                         onClick={() => void status.refetch()}
                       >
-                        Check connections again
+                        {status.isFetching ? "Checking…" : "Check connections again"}
                       </button>
+                    )}
+                    {!youtube?.keyConfigured && status.dataUpdatedAt > 0 && !status.isFetching && (
+                      <span className="text-xs text-muted-foreground" role="status">Still not connected · checked {fmtTime(status.dataUpdatedAt)}</span>
                     )}
                     {previous && (
                       <a className="biz-youtube-history" href={audienceLink(source.id)}>

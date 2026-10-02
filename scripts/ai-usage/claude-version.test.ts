@@ -20,7 +20,8 @@ describe("readClaudeCodeVersion", () => {
   });
 
   test("no CLI, a path that can't start, or a failed run answers the fallback, never an error", async () => {
-    expect(await readClaudeCodeVersion(undefined)).toBe("2.1.278");
+    // "No CLI resolved" is an empty path: `undefined` would trigger the default and find the real installed CLI.
+    expect(await readClaudeCodeVersion("")).toBe("2.1.278");
     expect(await readClaudeCodeVersion(join(dir, "missing", "claude.exe"))).toBe("2.1.278");
     expect(await readClaudeCodeVersion(process.execPath, { args: ["-e", "console.log('9.9.9'); process.exit(3)"] })).toBe("2.1.278");
   });

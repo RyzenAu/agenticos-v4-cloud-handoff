@@ -1,0 +1,1074 @@
+{
+  "run": "4d4277",
+  "bank": "syn-stage-d-4d4277",
+  "port": 8187,
+  "work": "D:\\prog-scratch\\tmp\\mu-stage-d-QNqxLq",
+  "at": "2026-09-30T18:54:54.523Z",
+  "passed": 38,
+  "failed": 0,
+  "results": [
+    {
+      "step": "setup",
+      "check": "this script's own proxy (writer port = this OS port, capability on) healthy on the dedicated stage-d Hindsight",
+      "ok": true,
+      "observed": {
+        "proxy": "http://127.0.0.1:8884",
+        "bank": "syn-stage-d-4d4277",
+        "work": "D:\\prog-scratch\\tmp\\mu-stage-d-QNqxLq",
+        "delete_secret": "stage-d-docdelete.key"
+      }
+    },
+    {
+      "step": "setup",
+      "check": "quiet preview up; ONE switch on; Hindsight via the proxy (relay); no key in the OS",
+      "ok": true,
+      "observed": {
+        "port": 8187,
+        "settings": {
+          "mode": "on",
+          "retired": [],
+          "writer": null,
+          "writes": true,
+          "hindsight_enabled": true,
+          "hindsight_url": "http://127.0.0.1:8884",
+          "bank": "syn-stage-d-4d4277",
+          "api_key": "missing",
+          "reason": null
+        },
+        "principal": {
+          "name": "Usman",
+          "via": "local"
+        }
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "initial sync of the synthetic vault: nothing pending",
+      "ok": true,
+      "observed": {
+        "pending": 0,
+        "counts": {
+          "notes": 8,
+          "docs": 8,
+          "memories": 0,
+          "indexed": 8,
+          "excluded": 0,
+          "tombstones": 0
+        },
+        "errors": []
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "Jarvis 'remember that…' → Hindsight memory (rules, no model)",
+      "ok": true,
+      "observed": {
+        "content": "Remembered in Hindsight memory (\"The synthetic Kittiwake4d4277 clinic opens at 7:15am on Mondays\"): indexed in Hindsight. Not written to the vault.",
+        "model": "rules",
+        "route": {
+          "intent": "memory"
+        }
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "Jarvis 'save this to the vault…' → Obsidian note + Hindsight index",
+      "ok": true,
+      "observed": {
+        "content": "Saved to your \"Business shared\" note as your \"Business shared\" note. It is indexed in Hindsight.",
+        "model": "rules",
+        "route": {
+          "intent": "memory"
+        }
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "the vault note holds the fact block",
+      "ok": true,
+      "observed": {
+        "factId": "mf-b1efb543e8",
+        "excerpt": ",\"superseded_by\":null} -->\nThe synthetic demo line answers from 7am to 9pm Sydney time. ^mf-00000000a1\n\n*Saved 2026-09-20 by Usman · ui · fixture*\n<!-- memory:end mf-00000000a1 -->\n\n<!-- memory:begin mf-b1efb543e8 -->\n##"
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "Jarvis recall answers with the source cited",
+      "ok": true,
+      "observed": {
+        "content": "Here's what's saved: The synthetic Kittiwake4d4277 clinic opens at 7:15am on Mondays. (from your memory) Also: The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month. (from your \"Business shared\" note) Also: The synthetic Kestrel clinic answers calls from 8am to 6pm on weekdays. (from your \"Receptionist playbook\" note)",
+        "model": "rules",
+        "route": {
+          "intent": "memory"
+        }
+      }
+    },
+    {
+      "step": "1 save+recall",
+      "check": "HTTP recall: the memory comes back via Hindsight with its source",
+      "ok": true,
+      "observed": {
+        "hindsight": "ok",
+        "facts": [
+          {
+            "id": "mem-5df255d411",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "source": {
+              "kind": "memory",
+              "id": "mem-5df255d411"
+            },
+            "text": "The synthetic Kittiwake4d4277 clinic opens at 7:15am on Mondays.",
+            "hindsight_text": [
+              "The synthetic Kittiwake4d4277 clinic opens at 7:15am on Mondays. | When: Mondays at 7:15am"
+            ]
+          },
+          {
+            "id": "mf-b1efb543e8",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "source": {
+              "kind": "vault",
+              "path": "wiki/topics/business/memory-business-shared.md",
+              "note_id": "n-293c86e540",
+              "link": "[[memory-business-shared#^mf-b1efb543e8]]",
+              "uri": "obsidian://open?vault=stage-d-synthetic&file=wiki%2Ftopics%2Fbusiness%2Fmemory-business-shared",
+              "block": "mf-b1efb543e8"
+            },
+            "text": "The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month.",
+            "hindsight_text": [
+              "The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month. | When: 2nd of each month | Involving: Kittiwake4d4277 clinic"
+            ]
+          },
+          {
+            "id": "n-949fcb5dc2",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "source": {
+              "kind": "vault",
+              "path": "wiki/entities/harbourview-dental.md",
+              "note_id": "n-949fcb5dc2",
+              "link": "[[harbourview-dental]]",
+              "uri": "obsidian://open?vault=stage-d-synthetic&file=wiki%2Fentities%2Fharbourview-dental"
+            },
+            "text": "A synthetic demo clinic used in tests. Two chairs, opens at 8am weekdays.",
+            "hindsight_text": [
+              "Harbourview Dental is a synthetic demo clinic used in tests, with two chairs and opens at 8am weekdays.",
+              "Harbourview Dental started a trial of the booking receptionist on the synthetic calendar and uses the Essential package."
+            ]
+          },
+          {
+            "id": "n-3de5c26113",
+            "via": [
+              "hindsight"
+            ],
+            "source": {
+              "kind": "vault",
+              "path": "wiki/topics/personal/usman/usman.md",
+              "note_id": "n-3de5c26113",
+              "link": "[[usman]]",
+              "uri": "obsidian://open?vault=stage-d-synthetic&file=wiki%2Ftopics%2Fpersonal%2Fusman%2Fusman"
+            },
+            "text": "Synthetic private note: prefers the quiet study room on Thursdays. Favourite synthetic colour is teal.",
+            "hindsight_text": [
+              "Usman prefers the quiet study room on Thursdays. | When: Thursdays | Involving: Usman",
+              "Usman's favourite synthetic colour is teal. | Involving: Usman",
+              "Usman is a synthetic person. | Involving: Usman"
+            ]
+          },
+          {
+            "id": "n-1fb9c4f83b",
+            "via": [
+              "hindsight"
+            ],
+            "source": {
+              "kind": "vault",
+              "path": "wiki/topics/business/receptionist-playbook.md",
+              "note_id": "n-1fb9c4f83b",
+              "link": "[[receptionist-playbook]]",
+              "uri": "obsidian://open?vault=stage-d-synthetic&file=wiki%2Ftopics%2Fbusiness%2Freceptionist-playbook"
+            },
+            "text": "The synthetic Kestrel clinic answers calls from 8am to 6pm on weekdays.",
+            "hindsight_text": [
+              "The synthetic Kestrel clinic answers calls from 8am to 6pm on weekdays. | Involving: Kestrel clinic",
+              "Urgent synthetic callers are offered a callback from the duty dentist within 15 minutes. | Involving: duty dentist"
+            ]
+          },
+          {
+            "id": "n-de2b887d00",
+            "via": [
+              "hindsight"
+            ],
+            "source": {
+              "kind": "vault",
+              "path": "wiki/topics/personal/mehroz/mehroz.md",
+              "note_id": "n-de2b887d00",
+              "link": "[[mehroz]]",
+              "uri": "obsidian://open?vault=stage-d-synthetic&file=wiki%2Ftopics%2Fpersonal%2Fmehroz%2Fmehroz"
+            },
+            "text": "Synthetic private note: practises archery on Saturdays. Favourite synthetic colour is amber.",
+            "hindsight_text": [
+              "Mehroz's favourite synthetic colour is amber. | Involving: Mehroz",
+              "Mehroz practises archery on Saturdays. | Involving: Mehroz"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "step": "10 model record",
+      "check": "the save records which model processed it (Hindsight receipts via the proxy)",
+      "ok": true,
+      "observed": {
+        "item_processed_by": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3508,
+          "at": "2026-09-30T18:53:39.643230+00:00"
+        },
+        "models": {
+          "openrouter/deepseek/deepseek-v4.1-flash": 10
+        },
+        "recent": [
+          {
+            "at": "2026-09-30T18:53:45.030Z",
+            "doc_id": "mf-b1efb543e8",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3601,
+              "at": "2026-09-30T18:53:41.499901+00:00"
+            },
+            "latency_ms": 3541
+          },
+          {
+            "at": "2026-09-30T18:53:41.452Z",
+            "doc_id": "mem-5df255d411",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3508,
+              "at": "2026-09-30T18:53:39.643230+00:00"
+            },
+            "latency_ms": 1819
+          },
+          {
+            "at": "2026-09-30T18:53:39.587Z",
+            "doc_id": "n-proposal-terms",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3534,
+              "at": "2026-09-30T18:53:38.612434+00:00"
+            },
+            "latency_ms": 985
+          },
+          {
+            "at": "2026-09-30T18:53:38.596Z",
+            "doc_id": "n-dece0a1429",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3506,
+              "at": "2026-09-30T18:53:36.889362+00:00"
+            },
+            "latency_ms": 1719
+          }
+        ]
+      }
+    },
+    {
+      "step": "2 restart",
+      "check": "after an OS restart, recall still finds it via Hindsight; nothing pending",
+      "ok": true,
+      "observed": {
+        "facts": [
+          {
+            "id": "mem-5df255d411",
+            "via": [
+              "hindsight",
+              "local"
+            ]
+          },
+          {
+            "id": "mf-b1efb543e8",
+            "via": [
+              "hindsight",
+              "local"
+            ]
+          },
+          {
+            "id": "n-949fcb5dc2",
+            "via": [
+              "hindsight",
+              "local"
+            ]
+          },
+          {
+            "id": "n-3de5c26113",
+            "via": [
+              "hindsight"
+            ]
+          },
+          {
+            "id": "n-1fb9c4f83b",
+            "via": [
+              "hindsight"
+            ]
+          },
+          {
+            "id": "n-de2b887d00",
+            "via": [
+              "hindsight"
+            ]
+          }
+        ],
+        "pending": 0,
+        "counts": {
+          "notes": 8,
+          "docs": 10,
+          "memories": 1,
+          "indexed": 10,
+          "excluded": 0,
+          "tombstones": 0
+        }
+      }
+    },
+    {
+      "step": "3 Obsidian edit",
+      "check": "the edit is in recall and in Hindsight; the old wording is gone",
+      "ok": true,
+      "observed": {
+        "recall": {
+          "id": "n-proposal-terms",
+          "via": [
+            "hindsight",
+            "local"
+          ],
+          "text": "Synthetic proposals for the Osprey demo account are valid for 45 days from the send date."
+        },
+        "hindsight_doc": {
+          "status": 200,
+          "has45": true
+        }
+      }
+    },
+    {
+      "step": "4 rename",
+      "check": "a rename keeps the note id: same document set in Hindsight, new path, no duplicate",
+      "ok": true,
+      "observed": {
+        "note_id": "n-1fb9c4f83b",
+        "renames": [
+          {
+            "from": "wiki/topics/business/receptionist-playbook.md",
+            "to": "wiki/topics/business/receptionist-playbook-2026.md",
+            "id": "n-1fb9c4f83b"
+          }
+        ],
+        "hindsight_docs_before": 10,
+        "hindsight_docs_after": 10,
+        "new_path": "wiki/topics/business/receptionist-playbook-2026.md"
+      }
+    },
+    {
+      "step": "5 correction",
+      "check": "the corrected version is recalled; the old one is retracted from Hindsight and never shown",
+      "ok": true,
+      "observed": {
+        "correct": "Corrected: mem-189a1bfa17 replaces mem-5df255d411, which is kept here marked superseded and retracted from Hindsight. The new version is indexed in Hindsight.",
+        "recalled": [
+          {
+            "id": "mem-189a1bfa17",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "text": "The synthetic Kittiwake4d4277 clinic opens at 7:45am on Mondays."
+          },
+          {
+            "id": "mf-b1efb543e8",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "text": "The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month."
+          },
+          {
+            "id": "n-1fb9c4f83b",
+            "via": [
+              "hindsight"
+            ],
+            "text": "The synthetic Kestrel clinic answers calls from 8am to 6pm on weekdays."
+          },
+          {
+            "id": "n-949fcb5dc2",
+            "via": [
+              "hindsight"
+            ],
+            "text": "A synthetic demo clinic used in tests. Two chairs, opens at 8am weekdays."
+          },
+          {
+            "id": "n-3de5c26113",
+            "via": [
+              "hindsight"
+            ],
+            "text": "Synthetic private note: prefers the quiet study room on Thursdays. Favourite synthetic colour is teal."
+          },
+          {
+            "id": "n-de2b887d00",
+            "via": [
+              "hindsight"
+            ],
+            "text": "Synthetic private note: practises archery on Saturdays. Favourite synthetic colour is amber."
+          }
+        ],
+        "suppressed": 0,
+        "old_doc_in_hindsight": 404
+      }
+    },
+    {
+      "step": "5 correction",
+      "check": "Jarvis 'correct that…' reads the change back; only the yes supersedes",
+      "ok": true,
+      "observed": {
+        "ask": {
+          "content": "Update \"The synthetic Kittiwake4d4277 clinic opens at 7:45am on Mondays\" from \"The synthetic Kittiwake4d4277 clinic opens at 7:45am on Mondays.\" to \"The synthetic Kittiwake4d4277 clinic opens at 8am on Mondays.\"? Say yes to update it, or no to leave it.",
+          "model": "rules",
+          "route": {
+            "intent": "memory"
+          }
+        },
+        "status_before_yes": "current",
+        "after_yes": {
+          "content": "Corrected: that memory replaces that memory, which is kept here marked superseded and retracted from Hindsight. The new version is indexed in Hindsight.",
+          "model": "rules",
+          "route": {
+            "intent": "memory"
+          }
+        }
+      }
+    },
+    {
+      "step": "5 correction",
+      "check": "'Actually, …' in ordinary speech is not a correction (it goes to the brain)",
+      "ok": true,
+      "observed": {
+        "model": "openai/gpt-oss-120b",
+        "content": ""
+      }
+    },
+    {
+      "step": "6 forget a (unindex)",
+      "check": "kind a: no approval; out of Hindsight; the note stays in the vault",
+      "ok": true,
+      "observed": {
+        "message": "Removed \"Proposal Terms\" from the index. The note stays in the vault at wiki/topics/business/proposal-terms.md; it won't be re-indexed until you re-include it (Re-include in index, on its page in Memory).",
+        "hindsight_doc": 404
+      }
+    },
+    {
+      "step": "6 forget b (voice)",
+      "check": "'forget that' reads the plan back and asks for a yes",
+      "ok": true,
+      "observed": {
+        "content": "Delete Hindsight memory \"The synthetic Skua4d4277 account renews in July\" (1 version(s)). This needs approval first. Say yes to approve.",
+        "model": "rules",
+        "route": {
+          "intent": "memory"
+        }
+      }
+    },
+    {
+      "step": "6 forget b (voice)",
+      "check": "a typed yes (no spoken-yes event) cannot approve; nothing removed",
+      "ok": true,
+      "observed": {
+        "content": "Forgetting needs your spoken yes, said out loud after my question (a typed yes can't approve it). Say yes now, or approve it on the Memory page. Nothing was removed yet.",
+        "model": "rules",
+        "route": {
+          "intent": "memory"
+        }
+      }
+    },
+    {
+      "step": "6 forget b (voice)",
+      "check": "the voice pipeline's STT heard a clear yes and recorded a server-side event",
+      "ok": true,
+      "observed": {
+        "status": 200,
+        "text": "Yes.",
+        "spokenYes": "recorded"
+      }
+    },
+    {
+      "step": "6 forget b (voice)",
+      "check": "the spoken yes approves once: memory deleted from Hindsight and the app",
+      "ok": true,
+      "observed": {
+        "reply": "Deleted the memory \"The synthetic Skua4d4277 account renews in July\" (1 version(s)): removed from this app's store and the local index; 1 Hindsight document(s) deleted. A tombstone stops it coming back. Hindsight's database backups and Postgres write-ahead log keep deleted bytes until they are rotated or vacuumed; if Hindsight's LLM tracing is on, its request log can hold the text for up to a day.",
+        "hindsight_doc": 404
+      }
+    },
+    {
+      "step": "6 forget b (voice)",
+      "check": "the same spoken-yes event can't be replayed",
+      "ok": true,
+      "observed": {
+        "model": "openai/gpt-oss-120b",
+        "content": ""
+      }
+    },
+    {
+      "step": "6 forget c (full)",
+      "check": "kind c: approval-required with the plan (source + derived copies)",
+      "ok": true,
+      "observed": {
+        "plan": {
+          "kind": "full",
+          "target": "mf-b1efb543e8",
+          "title": "The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month",
+          "source": {
+            "path": "wiki/topics/business/memory-business-shared.md",
+            "note_id": "n-293c86e540",
+            "section": {
+              "kind": "block",
+              "ref": "mf-b1efb543e8"
+            },
+            "note_hash": "0e259e118a8fc331b94b0e71954a73baad84ae296398ad2579af8c94639e61c6"
+          },
+          "derived": {
+            "hindsight_docs": [
+              "mf-b1efb543e8"
+            ],
+            "memories": [],
+            "local_index": [
+              "mf-b1efb543e8"
+            ]
+          },
+          "digest": "4fe5a732c138ecb202f46c9da2dd2208699964dc091078248f7bc9b4b260bc52"
+        },
+        "approval": {
+          "id": "81b03525-101f-4aae-a1ef-8c030efb9044",
+          "expires_at": "2026-09-30T19:04:08.983Z"
+        }
+      }
+    },
+    {
+      "step": "6 forget c (full)",
+      "check": "granting without the page token, or with it but without the card's nonce, is refused",
+      "ok": true,
+      "observed": {
+        "no_token": {
+          "error": "Refresh this page and try again."
+        },
+        "no_card": {
+          "ok": false,
+          "code": "no-card",
+          "reason": "Confirm on the approval card shown in your session."
+        }
+      }
+    },
+    {
+      "step": "6 forget c (full)",
+      "check": "a forged approval id removes nothing",
+      "ok": true,
+      "observed": {
+        "ok": false,
+        "code": "approval-denied",
+        "message": "That approval isn't known to this server. Nothing was removed.",
+        "plan": {
+          "kind": "full",
+          "target": "mf-b1efb543e8",
+          "title": "The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month",
+          "source": {
+            "path": "wiki/topics/business/memory-business-shared.md",
+            "note_id": "n-293c86e540",
+            "section": {
+              "kind": "block",
+              "ref": "mf-b1efb543e8"
+            },
+            "note_hash": "0e259e118a8fc331b94b0e71954a73baad84ae296398ad2579af8c94639e61c6"
+          },
+          "derived": {
+            "hindsight_docs": [
+              "mf-b1efb543e8"
+            ],
+            "memories": [],
+            "local_index": [
+              "mf-b1efb543e8"
+            ]
+          },
+          "digest": "4fe5a732c138ecb202f46c9da2dd2208699964dc091078248f7bc9b4b260bc52"
+        }
+      }
+    },
+    {
+      "step": "6 forget c (full)",
+      "check": "approved: the vault block is gone, Hindsight doc deleted, recall never shows it",
+      "ok": true,
+      "observed": {
+        "message": "Forgot \"The synthetic Kittiwake4d4277 clinic invoices on the 2nd of each month\": the section was removed from wiki/topics/business/memory-business-shared.md, 0 derived memory copy(ies) deleted, the local index updated; 1 Hindsight document(s) deleted. Tombstones stop a sync or a restored file bringing it back.",
+        "limits": [
+          "The wiki is a Git repository: earlier commits still contain the removed text until that history is rewritten (for example with git filter-repo) and every clone and remote is updated. This app does not rewrite Git history.",
+          "Copies outside this PC's vault folder are not touched: Obsidian Sync, cloud drives, other clones, and backups of the vault.",
+          "Hindsight's database backups and Postgres write-ahead log keep deleted bytes until they are rotated or vacuumed; if Hindsight's LLM tracing is on, its request log can hold the text for up to a day."
+        ],
+        "hindsight_doc": 404
+      }
+    },
+    {
+      "step": "6 forget c (full)",
+      "check": "the approval and its card are single use",
+      "ok": true,
+      "observed": {
+        "forget": {
+          "status": 422,
+          "code": "not-found"
+        },
+        "card_again": 422
+      }
+    },
+    {
+      "step": "6 bulk",
+      "check": "bank delete, clear and an unsigned document delete are refused by the proxy",
+      "ok": true,
+      "observed": {
+        "bank_delete": {
+          "error": "route not allowed through the proxy"
+        },
+        "clear": {
+          "error": "route not allowed through the proxy"
+        },
+        "unsigned": {
+          "error": "refused: writes go through AgenticOS (http://127.0.0.1:8081/__memory/mcp); this process isn't the registered writer",
+          "code": "writer-refused"
+        }
+      }
+    },
+    {
+      "step": "7 unauthenticated",
+      "check": "another localhost port can't read the token or memory, save or unindex (even with a valid token); the own page needs its token",
+      "ok": true,
+      "observed": {
+        "token_from_other_origin": 403,
+        "items_from_other_origin": 403,
+        "save_from_other_origin": 403,
+        "unindex_from_other_origin": 403,
+        "own_page_without_token": 403
+      }
+    },
+    {
+      "step": "7 unauthenticated",
+      "check": "foreign Host refused (the dev server's host check, 403, before memory); relayed without tailnet identity → 401; no page token → 403; direct Hindsight without key → 401; cross-site → 403",
+      "ok": true,
+      "observed": {
+        "foreign_host": 403,
+        "relayed": 401,
+        "voice_turn_without_token": 403,
+        "direct_api_without_key": 401,
+        "cross_site": 403
+      }
+    },
+    {
+      "step": "secrets",
+      "check": "a password, a BSB/account and a card are refused by voice, save and vault; an ordinary phone number is stored",
+      "ok": true,
+      "observed": {
+        "voice_password": "That looks like a password, key or token. Secrets are never stored in memory.",
+        "bsb": "That looks like bank account or card details, or a statement. Those are never stored.",
+        "card": "That looks like bank account or card details, or a statement. Those are never stored.",
+        "phone": "Remembered in Hindsight memory as mem-fe29d2c597 (\"The synthetic Kittiwake4d4277 front desk mobile is 0412 345 678\"): indexed in Hindsight. Not written to the vault."
+      }
+    },
+    {
+      "step": "agents",
+      "check": "an agent saves through /__memory/mcp: screened, visible in the OS, model recorded; forget only asks",
+      "ok": true,
+      "observed": {
+        "tools": [
+          "remember",
+          "save_to_vault",
+          "recall",
+          "forget",
+          "search_knowledge_base",
+          "list_memories",
+          "get_memory",
+          "list_documents",
+          "get_document",
+          "get_knowledge_page",
+          "get_knowledge_base_tree",
+          "list_tags",
+          "get_bank",
+          "list_operations",
+          "get_operation",
+          "list_mental_models",
+          "get_mental_model",
+          "list_directives"
+        ],
+        "save": {
+          "ok": true,
+          "id": "mem-ec9e21e09b",
+          "message": "Remembered in Hindsight memory as mem-ec9e21e09b (\"The synthetic Kittiwake4d4277 courier comes at 3pm\"): indexed in Hindsight. Not written to the vault."
+        },
+        "processed_by": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3492,
+          "at": "2026-09-30T18:54:10.915715+00:00"
+        },
+        "forget": {
+          "ok": false,
+          "code": "approval-required",
+          "message": "Delete Hindsight memory \"The synthetic Kittiwake4d4277 courier comes at 3pm\" (1 version(s)). This needs approval first. A program asked for this, so a click can't approve it: either founder can say yes to Jarvis (\"approve the pending forget\"); the Telegram code couldn't be sent. It runs as soon as it's approved. You can't approve it, and a click on the Memory page can't either. Don't ask again: it is already waiting."
+        }
+      }
+    },
+    {
+      "step": "agents",
+      "check": "R2-1: an agent can't approve its own forget (token or not), and a click can't answer a program's request; nothing removed",
+      "ok": true,
+      "observed": {
+        "requested_actor": "process",
+        "agent_grant": 403,
+        "owner_click_grant": {
+          "status": 403,
+          "reason": "A program asked for this, so it needs your spoken yes to the question, or the code sent to your Telegram DM; a click can't answer it."
+        },
+        "re_forget": "Delete Hindsight memory \"The synthetic Kittiwake4d4277 courier comes at 3pm\" (1 version(s)). This needs approval first. A program asked for this, so a click can't approve it: either founder can say yes to Jarvis (\"approve the pending forget\"); the Telegram code couldn't be sent. It runs as soon as it's approved."
+      }
+    },
+    {
+      "step": "secrets",
+      "check": "R2-2: 'the Xero password is now sunflowerfield' is refused through the agent route",
+      "ok": true,
+      "observed": {
+        "ok": false,
+        "code": "prohibited-content",
+        "message": "That looks like a password, key or token. Secrets are never stored in memory."
+      }
+    },
+    {
+      "step": "8 outage",
+      "check": "Hindsight cut off mid-sync: what didn't land stays queued with the reason; nothing lost",
+      "ok": true,
+      "observed": {
+        "landed_before_cut": 1,
+        "sync_during_outage": 200,
+        "pending": 5,
+        "errors": [
+          {
+            "doc_id": "n-21c6042e93",
+            "error": "Hindsight is unreachable (connection failed).",
+            "attempts": 1
+          }
+        ],
+        "hindsight": "unavailable"
+      }
+    },
+    {
+      "step": "8 outage",
+      "check": "after recovery: everything landed exactly once (no duplicate ids; the bank matches the desired set)",
+      "ok": true,
+      "observed": {
+        "pending": 0,
+        "hindsight_docs": 16,
+        "desired_docs": 16,
+        "duplicates": [],
+        "retried": [
+          {
+            "at": "2026-09-30T18:54:20.473Z",
+            "doc_id": "n-21c6042e93",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 3,
+            "error": null,
+            "processed_by": null,
+            "latency_ms": 1306
+          },
+          {
+            "at": "2026-09-30T18:54:16.139Z",
+            "doc_id": "n-21c6042e93",
+            "op": "retain",
+            "outcome": "failed",
+            "attempt": 2,
+            "error": "Hindsight is unreachable (connection failed).",
+            "processed_by": null,
+            "latency_ms": 3
+          }
+        ],
+        "recall": [
+          {
+            "id": "n-377b1f1b7e",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "text": "The synthetic Petrel4d4277 depot number 3 opens at 9am."
+          },
+          {
+            "id": "n-21c6042e93",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "text": "The synthetic Petrel4d4277 depot number 5 opens at 11am."
+          }
+        ]
+      }
+    },
+    {
+      "step": "clients",
+      "check": "Claude Code and Hermes MCP shapes save and recall through the OS; the skill's curl recall works",
+      "ok": true,
+      "observed": {
+        "os": "127.0.0.1:8187",
+        "at": "2026-09-30T18:54:37.237Z",
+        "results": [
+          {
+            "client": "claude",
+            "entry": {
+              "type": "http",
+              "url": "http://127.0.0.1:8187/__memory/mcp"
+            },
+            "initialize": 200,
+            "server": "agentic-os-memory",
+            "tools_present": true,
+            "rewrite_or_delete_tools_exposed": [],
+            "save": {
+              "ok": true,
+              "id": "mem-f7889ec7e4"
+            },
+            "visible_in_os": true,
+            "processed_by": "openrouter/deepseek/deepseek-v4.1-flash",
+            "recall_found_canary": true,
+            "recall_source": "mem-f7889ec7e4",
+            "password_refused": true,
+            "canary": "Kestrelbd9d9e"
+          },
+          {
+            "client": "hermes",
+            "entry": {
+              "url": "http://127.0.0.1:8187/__memory/mcp",
+              "tools": {
+                "include": [
+                  "recall",
+                  "remember",
+                  "save_to_vault",
+                  "forget"
+                ]
+              }
+            },
+            "initialize": 200,
+            "server": "agentic-os-memory",
+            "tools_present": true,
+            "rewrite_or_delete_tools_exposed": [],
+            "save": {
+              "ok": true,
+              "id": "mem-0657fee376"
+            },
+            "visible_in_os": true,
+            "processed_by": "openrouter/deepseek/deepseek-v4.1-flash",
+            "recall_found_canary": true,
+            "recall_source": "mem-0657fee376",
+            "password_refused": true,
+            "canary": "Kestrel405b78"
+          },
+          {
+            "client": "skill",
+            "form": "curl, no key, no header",
+            "health_http": "200",
+            "recall_results": 6,
+            "recall_found_canary": true
+          }
+        ]
+      }
+    },
+    {
+      "step": "switch-on verify",
+      "check": "the switch-on verification script (save, recall, correction, single delete, model per save) passes against this copy",
+      "ok": true,
+      "observed": {
+        "exit": 0,
+        "output": [
+          "PASS  owner's browser session and page token at this PC",
+          "      {\"session\":\"yes\",\"token\":\"yes\"}",
+          "PASS  the memory switch is on and this is the one writer",
+          "      {\"mode\":\"on\",\"writes\":true,\"writer_refusal\":null,\"hindsight\":\"ok\",\"url\":\"http://127.0.0.1:8884\",\"bank\":\"syn-stage-d-4d4277\",\"api_key\":\"missing\"}",
+          "PASS  Hindsight through the proxy, shared pool, no key in the OS",
+          "      {\"url\":\"http://127.0.0.1:8884\",\"bank\":\"syn-stage-d-4d4277\",\"api_key\":\"missing\"}",
+          "INFO  sync backlog before the test save: 0 pending, 0 with errors",
+          "PASS  save (\"remember\") through the live OS",
+          "      Remembered in Hindsight memory as mem-a93e2ebbdb (\"Stage D switch-on check 718304: the synthetic Verifier clinic opens at 7am…\"): indexed in Hindsight. Not written to the vault.",
+          "PASS  indexed in Hindsight",
+          "      {\"id\":\"mem-a93e2ebbdb\",\"processed_by\":\"openrouter/deepseek/deepseek-v4.1-flash (metered, 3575 tokens)\"}",
+          "PASS  the document is in the pilot's shared pool",
+          "      {\"id\":\"mem-a93e2ebbdb\"}",
+          "PASS  recall finds it through Hindsight, with its source",
+          "      {\"id\":\"mem-a93e2ebbdb\",\"via\":[\"hindsight\",\"local\"],\"source\":{\"kind\":\"memory\",\"id\":\"mem-a93e2ebbdb\"}}",
+          "PASS  correction",
+          "      Corrected: mem-5422f105a7 replaces mem-a93e2ebbdb, which is kept here marked superseded and retracted from Hindsight. The new version is indexed in Hindsight.",
+          "PASS  the correction replaced the old version (old document gone, never recalled)",
+          "      {\"new_id\":\"mem-5422f105a7\",\"processed_by\":\"openrouter/deepseek/deepseek-v4.1-flash (metered, 3519 tokens)\",\"old_document\":404}",
+          "PASS  forget asks for approval first",
+          "      Delete Hindsight memory \"Stage D switch-on check 718304: the synthetic Verifier clinic opens at 8am…\" (2 version(s)). This needs approval first. A program asked for this, so a click can't approve it: either founder can say yes to Jarvis (\"approve the pending forget\"); the Telegram code couldn't be sent. It runs as soon as it's approved.",
+          "SKIP  approval and delete (this process didn't load the page; stage-d-acceptance.ts covers the approved delete)",
+          "All checks passed."
+        ]
+      }
+    },
+    {
+      "step": "10 model record",
+      "check": "per-save model record present across the run (saves per model)",
+      "ok": true,
+      "observed": {
+        "models": {
+          "openrouter/deepseek/deepseek-v4.1-flash": 25
+        },
+        "recent": [
+          {
+            "at": "2026-09-30T18:54:53.273Z",
+            "doc_id": "mem-5422f105a7",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3519,
+              "at": "2026-09-30T18:54:41.569630+00:00"
+            },
+            "latency_ms": 11712
+          },
+          {
+            "at": "2026-09-30T18:54:41.560Z",
+            "doc_id": "mem-a93e2ebbdb",
+            "op": "retract",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": null,
+            "authority": "routine",
+            "latency_ms": 21
+          },
+          {
+            "at": "2026-09-30T18:54:41.139Z",
+            "doc_id": "mem-a93e2ebbdb",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3575,
+              "at": "2026-09-30T18:54:37.961882+00:00"
+            },
+            "latency_ms": 3191
+          },
+          {
+            "at": "2026-09-30T18:54:36.973Z",
+            "doc_id": "mem-0657fee376",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3472,
+              "at": "2026-09-30T18:54:35.593479+00:00"
+            },
+            "latency_ms": 1389
+          },
+          {
+            "at": "2026-09-30T18:54:35.267Z",
+            "doc_id": "mem-f7889ec7e4",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3496,
+              "at": "2026-09-30T18:54:34.071708+00:00"
+            },
+            "latency_ms": 1206
+          },
+          {
+            "at": "2026-09-30T18:54:33.670Z",
+            "doc_id": "n-9cac16b04f",
+            "op": "retain",
+            "outcome": "ok",
+            "attempt": 1,
+            "error": null,
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3543,
+              "at": "2026-09-30T18:54:29.556689+00:00"
+            },
+            "latency_ms": 4123
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { dataDirFor } from "./cloud/data-dir";
 
 type Provider = "google" | "outlook";
 type Identity = { connected: boolean; email?: string; grantedScopes?: string[] };
@@ -17,9 +18,9 @@ export function calendarWriter(options: {
   request: (provider: Provider, path: string, method: "GET" | "POST", payload?: unknown) => Promise<any>;
   now?: () => number;
 }) {
-  const now = options.now || Date.now, file = join(options.root, ".operator-data", "calendar-reviews.json");
+  const now = options.now || Date.now, file = join(dataDirFor(options.root), "calendar-reviews.json");
   const read = (): Review[] => existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
-  const write = (rows: Review[]) => { mkdirSync(join(options.root, ".operator-data"), { recursive: true, mode: 0o700 }); writeFileSync(file + ".tmp", JSON.stringify(rows.slice(-100)), { mode: 0o600 }); renameSync(file + ".tmp", file); };
+  const write = (rows: Review[]) => { mkdirSync(join(dataDirFor(options.root)), { recursive: true, mode: 0o700 }); writeFileSync(file + ".tmp", JSON.stringify(rows.slice(-100)), { mode: 0o600 }); renameSync(file + ".tmp", file); };
   const identity = (provider: Provider) => {
     if (!["google", "outlook"].includes(provider)) throw new Error("Choose Google or Outlook.");
     const account = options.identity(provider);

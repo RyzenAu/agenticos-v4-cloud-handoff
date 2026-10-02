@@ -42,7 +42,7 @@
   gap: 10px;
   min-height: 36px;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 .ws-calm-shell {
@@ -108,7 +108,7 @@ html:not(.dark) .ws-calm-art::after {
   padding: 9px 24px;
   border-radius: 100px;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -163,7 +163,7 @@ html:not(.dark) .ws-calm-art::after {
   min-width: 0;
 }
 .ws-calm-field > span {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
 }
 .ws-calm-field :is(input, textarea),
@@ -212,7 +212,7 @@ html:not(.dark) .ws-calm-art::after {
   gap: 16px;
 }
 .ws-calm-goals label > span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
 }
 .ws-calm-goals input {
@@ -230,7 +230,7 @@ html:not(.dark) .ws-calm-art::after {
   gap: 6px;
   align-items: center;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   min-height: 44px;
   cursor: pointer;
 }
@@ -248,7 +248,7 @@ html:not(.dark) .ws-calm-art::after {
 }
 .ws-calm .ws-error {
   margin: 12px 0 0;
-  font-size: 11px;
+  font-size: var(--text-xs);
   max-height: 50px;
   overflow: auto;
 }
@@ -281,7 +281,7 @@ html:not(.dark) .ws-calm-art::after {
   border-radius: 10px;
   color: var(--brand);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ws-setup-agent-list {
   display: grid;
@@ -304,14 +304,14 @@ html:not(.dark) .ws-calm-art::after {
 }
 .ws-setup-agent header small {
   color: var(--op-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .ws-setup-agent dl {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 7px 15px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ws-setup-agent dt {
   color: var(--op-muted);
@@ -323,7 +323,7 @@ html:not(.dark) .ws-calm-art::after {
 .ws-setup-agent p,
 .ws-setup-agents p {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   margin: 12px 0;
 }
@@ -385,7 +385,7 @@ html:not(.dark) .ws-calm-art::after {
     font-size: 15px;
   }
   .ws-calm-exit {
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
   .ws-calm-shell {
     height: min(690px, calc(100svh - 74px));
@@ -405,7 +405,7 @@ html:not(.dark) .ws-calm-art::after {
   }
   .ws-calm-tabs button {
     padding: 9px 13px;
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
   .ws-calm-body {
     padding: 23px 23px 6px;
@@ -417,7 +417,7 @@ html:not(.dark) .ws-calm-art::after {
     font-size: 30px;
   }
   .ws-calm-question p {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .ws-calm-name-row {
     gap: 10px;
@@ -434,10 +434,10 @@ html:not(.dark) .ws-calm-art::after {
     gap: 10px;
   }
   .ws-calm-goals label > span {
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
   .ws-calm-goals input {
-    font-size: 12px;
+    font-size: var(--text-xs);
     padding: 10px;
   }
   .ws-calm-footer {
@@ -462,7 +462,7 @@ html:not(.dark) .ws-calm-art::after {
   gap: 20px;
 }
 .ws-calm-preferences {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   cursor: pointer;
 }
@@ -486,7 +486,7 @@ html:not(.dark) .ws-calm-art::after {
   border: 1px solid var(--border);
 }
 .ws-direct-photo span {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--brand);
 }
 .ws-direct-photo input {
@@ -525,7 +525,7 @@ html:not(.dark) .ws-calm-art::after {
   align-items: center;
   gap: 2px;
   color: var(--brand);
-  font-size: 11px;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 .ws-about-pair textarea {
@@ -601,18 +601,18 @@ html:not(.dark) .ws-calm-art::after {
   .ws-calm[data-setup-step="1"] .ws-calm-body { padding-top:9px; }
   .ws-calm[data-setup-step="1"] .ws-calm-question { margin-bottom:10px; }
   .ws-calm[data-setup-step="1"] .ws-calm-question h1 { font-size:27px; }
-  .ws-calm[data-setup-step="1"] .ws-calm-question p { font-size:11px; margin-top:6px; }
+  .ws-calm[data-setup-step="1"] .ws-calm-question p { font-size: var(--text-xs); margin-top:6px; }
   .ws-calm[data-setup-step="1"] .ws-calm-tabs { padding-top:10px; }
 }
 
 /* Connected world: one full scene, compact account choices, no repeated instructions. */
 .ws-social-profiles.is-compact { padding:0; border:0; background:none; margin:12px 0; }
 .ws-social-profiles.is-compact header { display:flex; align-items:center; margin:0 0 4px; }
-.ws-social-profiles.is-compact h2 { font-size:11px; margin:0; font-weight:500; }
-.ws-social-profiles.is-compact > p { font-size: 11px; margin:0 0 9px; color: var(--muted-foreground); }
+.ws-social-profiles.is-compact h2 { font-size: var(--text-xs); margin:0; font-weight:500; }
+.ws-social-profiles.is-compact > p { font-size: var(--text-xs); margin:0 0 9px; color: var(--muted-foreground); }
 .ws-social-profiles.is-compact .ws-field-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
-.ws-social-profiles.is-compact label > span { font-size: 11px; }
-.ws-social-profiles.is-compact input { font-size: 11px; padding:9px; min-height:34px; margin-top:4px; width:100%; }
+.ws-social-profiles.is-compact label > span { font-size: var(--text-xs); }
+.ws-social-profiles.is-compact input { font-size: var(--text-xs); padding:9px; min-height:34px; margin-top:4px; width:100%; }
 .ws-calm[data-setup-step="1"] .ws-calm-shell { width:min(900px,100%); }
 .ws-calm[data-setup-step="1"] .ws-calm-art { flex-basis:170px; min-height:110px; max-height:235px; }
 .ws-calm[data-setup-step="1"] .ws-calm-body { padding-top:18px; }

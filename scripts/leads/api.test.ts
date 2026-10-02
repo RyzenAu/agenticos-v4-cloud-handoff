@@ -13,11 +13,11 @@ describe("leads API input validation", () => {
     expect(() => validateLogBody({ lead: 1, kind: "text" })).toThrow("Unknown activity kind.");
     expect(() => validateLogBody({ lead: 1, by: "someone-else" })).toThrow("by must be usman or mehroz.");
     expect(() => validateLogBody({ lead: 1, next: "not-a-date" })).toThrow("That follow-up date isn't valid.");
-    const ok = validateLogBody({ lead: 5, outcome: "interested", kind: "call", by: "Usman", note: "keen", next: "2026-10-01" });
+    const ok = validateLogBody({ lead: 5, outcome: "interested", kind: "call", by: "Usman", note: "keen", next: "2026-10-01" }, new Date("2026-09-30T00:00:00Z"));
     expect(ok).toEqual({ lead: 5, outcome: "interested", kind: "call", by: "Usman", note: "keen", next: new Date("2026-10-01").toISOString() });
     // Audit F1-16: a call back with no date would never come due, so the server refuses it as the drawer does.
     for (const next of [undefined, null, ""]) expect(() => validateLogBody({ lead: 5, outcome: "call_back", next })).toThrow("A call back needs a date.");
-    expect(validateLogBody({ lead: 5, outcome: "call_back", next: "2026-10-01" }).next).toBe(new Date("2026-10-01").toISOString());
+    expect(validateLogBody({ lead: 5, outcome: "call_back", next: "2026-10-01" }, new Date("2026-09-30T00:00:00Z")).next).toBe(new Date("2026-10-01").toISOString());
   });
   test("validateGoalBody", () => {
     expect(() => validateGoalBody({ by: "someone", calls: 10 })).toThrow("by must be usman or mehroz.");
@@ -29,10 +29,10 @@ describe("leads API input validation", () => {
     expect(() => validateFindBody({ vertical: "florist", area: "Sydney" })).toThrow(/vertical must be one of/);
     expect(() => validateFindBody({ vertical: "dental", area: "" })).toThrow(/Say where/);
     expect(() => validateFindBody({ vertical: "dental", area: "Sydney", source: "bing" })).toThrow(/source must be/);
-    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW", max: 999 })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 30, source: "osm" });
+    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW", max: 999 })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 30, source: "osm", websitePresence: "all" });
     // osm (free, no key) is the default when source isn't given
-    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW" })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 20, source: "osm" });
-    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW", source: "google" })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 20, source: "google" });
+    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW" })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 20, source: "osm", websitePresence: "all" });
+    expect(validateFindBody({ vertical: "dental", area: "Parramatta NSW", source: "google" })).toEqual({ vertical: "dental", area: "Parramatta NSW", max: 20, source: "google", websitePresence: "all" });
   });
 });
 

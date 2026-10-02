@@ -39,7 +39,7 @@
 .ar-page-chat-label p {
   margin: 4px 0 0;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
 }
 .ar-page-chat-label > small {
@@ -75,7 +75,7 @@
   border: 1px solid var(--op-border);
   border-radius: 999px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   text-align: left;
 }

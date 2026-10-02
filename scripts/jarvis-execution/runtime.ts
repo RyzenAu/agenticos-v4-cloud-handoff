@@ -12,6 +12,7 @@ import { ChildTerminationUnverified } from "./child";
 import { captureTree, systemProcessTable, treeStillPresent, type ProcessAccounting, type TreeMember } from "./process-accounting";
 import { jarvisTaskPrompt } from "../../src/lib/jarvis-control";
 import { controlPolicyPermits } from "./control-policy";
+import { dataDirFor } from "../cloud/data-dir";
 
 // One authenticated local operator per installation. The principal is supplied by
 // the host, never a request body. Remote access is refused by the registered routes.
@@ -342,7 +343,7 @@ export function controlExecution(root: string): ControlExecutionRuntime {
   // cannot take the execution lease from the live server. Callers already map a throw to
   // "worker unavailable" (403/400), which is the correct fail-closed answer here.
   if (backgroundJobsDisabled()) throw new Error("Execution worker disabled in a quiet copy");
-  const directory = resolve(root, ".operator-data", "control-execution");
+  const directory = resolve(dataDirFor(root), "control-execution");
   const runtimes = registry[key] ?? (registry[key] = new Map());
   let runtime = runtimes.get(directory);
   if (!runtime) { runtime = new ControlExecutionRuntime(directory); runtimes.set(directory, runtime); }

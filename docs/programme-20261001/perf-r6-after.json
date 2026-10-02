@@ -1,0 +1,311 @@
+{
+ "label": "after",
+ "at": "2026-10-01T20:22:28.940Z",
+ "url": "http://127.0.0.1:8154",
+ "mode": "dev",
+ "browser": "chrome headless",
+ "firstLoad": {
+  "route": "/business",
+  "requests": 627,
+  "scriptRequests": 557,
+  "scriptTransferredKB": 10768,
+  "scriptUncompressedKB": 10644,
+  "cssTransferredKB": 966,
+  "cssUncompressedKB": 965,
+  "totalTransferredKB": 14503,
+  "apiCallsIn6s": 48,
+  "dclMs": 749,
+  "loadMs": 789,
+  "usableMs": 1133,
+  "slowestApi": [
+   {
+    "path": "/__operator/models",
+    "ms": 40,
+    "status": 200
+   },
+   {
+    "path": "/__operator/conversations",
+    "ms": 37,
+    "status": 200
+   },
+   {
+    "path": "/__operator/jarvis/settings",
+    "ms": 35,
+    "status": 200
+   },
+   {
+    "path": "/__operator/private-advisor",
+    "ms": 35,
+    "status": 200
+   },
+   {
+    "path": "/__operator/jarvis/settings",
+    "ms": 31,
+    "status": 200
+   }
+  ],
+  "apiByPath": {
+   "/__operator/models": 3,
+   "/__operator/conversations": 2,
+   "/__operator/jarvis/settings": 2,
+   "/__operator/private-advisor": 2,
+   "/__design_jobs": 2,
+   "/__design_index_status": 2,
+   "/__finance_manual/summary": 2,
+   "/__workspace/needs-you": 1,
+   "/__workspace/pipeline": 1,
+   "/__workspace/receptionist": 1,
+   "/@id/__x00__%23tanstack-start-plugin-adapters": 1,
+   "/__workspace/call-queue": 1,
+   "/@id/__x00__agentic-lucide-subset": 1,
+   "/__jobs/events": 1,
+   "/__workspace/websites": 1,
+   "/__workspace/enquiries": 1,
+   "/__workspace/today": 1,
+   "/__workspace/email": 1,
+   "/__jobs": 1,
+   "/__operator/quick-actions": 1,
+   "/__operator/business/integrations": 1,
+   "/__websites/overview": 1,
+   "/__operator/business/demo": 1,
+   "/__operator/business": 1,
+   "/__operator/leads/overview": 1,
+   "/__operator/business/today": 1,
+   "/__operator/business/brief/status": 1,
+   "/__operator/calendar/health": 1,
+   "/__operator/jarvis/events": 1,
+   "/__operator/jarvis/timers": 1,
+   "/__operator/away": 1,
+   "/src/routes/__root.tsx": 1,
+   "/__operator/profile": 1,
+   "/__operator/state": 1,
+   "/__operator/business/finance/stripe/summary": 1,
+   "/__operator/jarvis/status": 1,
+   "/__devices/me": 1,
+   "/__operator/business/wiki-facts": 1,
+   "/__operator/business/brief": 1,
+   "/__operator/search": 1
+  },
+  "biggestScripts": [
+   "/node_modules/.vite/deps/recharts.js 1086 KB",
+   "/node_modules/.vite/deps/react-dom_client.js 982 KB",
+   "/node_modules/seroval/dist/esm/development/index.mjs 436 KB",
+   "/node_modules/@tanstack/router-core/dist/esm/router.js 221 KB",
+   "/src/components/floating-oracle.tsx 194 KB",
+   "/src/components/operator/voice-companion.tsx 192 KB",
+   "/@vite/client 175 KB",
+   "/node_modules/.vite/deps/chunk-73MMD3HD.js 143 KB",
+   "/scripts/receptionist/dashboard.ts 121 KB",
+   "/@id/__x00__agentic-lucide-subset 118 KB",
+   "/src/routes/business.tsx 118 KB",
+   "/node_modules/.vite/deps/@tanstack_react-query.js 112 KB"
+  ]
+ },
+ "firstLoadWarm": {
+  "route": "/business",
+  "requests": 627,
+  "scriptRequests": 557,
+  "scriptTransferredKB": 10768,
+  "scriptUncompressedKB": 10644,
+  "cssTransferredKB": 966,
+  "cssUncompressedKB": 965,
+  "totalTransferredKB": 14503,
+  "apiCallsIn6s": 48,
+  "dclMs": 204,
+  "loadMs": 238,
+  "usableMs": 488,
+  "slowestApi": [
+   {
+    "path": "/src/routes/__root.tsx",
+    "ms": 13,
+    "status": 200
+   },
+   {
+    "path": "/__workspace/receptionist",
+    "ms": 13,
+    "status": 200
+   },
+   {
+    "path": "/@id/__x00__%23tanstack-start-plugin-adapters",
+    "ms": 11,
+    "status": 200
+   },
+   {
+    "path": "/__workspace/needs-you",
+    "ms": 11,
+    "status": 200
+   },
+   {
+    "path": "/__workspace/pipeline",
+    "ms": 10,
+    "status": 200
+   }
+  ],
+  "apiByPath": {
+   "/__operator/models": 3,
+   "/__finance_manual/summary": 2,
+   "/__design_index_status": 2,
+   "/__design_jobs": 2,
+   "/__operator/jarvis/settings": 2,
+   "/__operator/private-advisor": 2,
+   "/__operator/conversations": 2,
+   "/src/routes/__root.tsx": 1,
+   "/__workspace/receptionist": 1,
+   "/@id/__x00__%23tanstack-start-plugin-adapters": 1,
+   "/__workspace/needs-you": 1,
+   "/__workspace/pipeline": 1,
+   "/@id/__x00__agentic-lucide-subset": 1,
+   "/__operator/leads/overview": 1,
+   "/__websites/overview": 1,
+   "/__operator/business": 1,
+   "/__operator/business/demo": 1,
+   "/__operator/quick-actions": 1,
+   "/__operator/business/integrations": 1,
+   "/__workspace/enquiries": 1,
+   "/__operator/business/finance/stripe/summary": 1,
+   "/__workspace/call-queue": 1,
+   "/__workspace/websites": 1,
+   "/__workspace/email": 1,
+   "/__operator/calendar/health": 1,
+   "/__jobs": 1,
+   "/__operator/business/wiki-facts": 1,
+   "/__workspace/today": 1,
+   "/__operator/search": 1,
+   "/__operator/jarvis/events": 1,
+   "/__operator/jarvis/timers": 1,
+   "/__operator/away": 1,
+   "/__devices/me": 1,
+   "/__jobs/events": 1,
+   "/__operator/profile": 1,
+   "/__operator/state": 1,
+   "/__operator/business/brief": 1,
+   "/__operator/business/today": 1,
+   "/__operator/business/brief/status": 1,
+   "/__operator/jarvis/status": 1
+  },
+  "biggestScripts": [
+   "/node_modules/.vite/deps/recharts.js 1086 KB",
+   "/node_modules/.vite/deps/react-dom_client.js 982 KB",
+   "/node_modules/seroval/dist/esm/development/index.mjs 436 KB",
+   "/node_modules/@tanstack/router-core/dist/esm/router.js 221 KB",
+   "/src/components/floating-oracle.tsx 194 KB",
+   "/src/components/operator/voice-companion.tsx 192 KB",
+   "/@vite/client 175 KB",
+   "/node_modules/.vite/deps/chunk-73MMD3HD.js 143 KB",
+   "/scripts/receptionist/dashboard.ts 121 KB",
+   "/@id/__x00__agentic-lucide-subset 118 KB",
+   "/src/routes/business.tsx 118 KB",
+   "/node_modules/.vite/deps/@tanstack_react-query.js 112 KB"
+  ]
+ },
+ "idle": [
+  {
+   "route": "/business",
+   "seconds": 60,
+   "requests": 13,
+   "perMinute": 13,
+   "byPath": {
+    "/__operator/state": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__operator/agent-jobs": 1,
+    "/__workspace/needs-you": 1,
+    "/__workspace/receptionist": 1,
+    "/__workspace/enquiries": 1,
+    "/__operator/calendar/health": 1,
+    "/__operator/away": 1
+   }
+  },
+  {
+   "route": "/leads",
+   "seconds": 60,
+   "requests": 17,
+   "perMinute": 17,
+   "byPath": {
+    "/__operator/state": 2,
+    "/__operator/leads/summary": 2,
+    "/__operator/leads/calls": 2,
+    "/__operator/leads/list": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__workspace/needs-you": 1,
+    "/__operator/leads/overview": 1,
+    "/__lead-sites/status": 1,
+    "/__operator/away": 1
+   }
+  },
+  {
+   "route": "/computers",
+   "seconds": 60,
+   "requests": 11,
+   "perMinute": 11,
+   "byPath": {
+    "/__operator/state": 2,
+    "/__computers": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__workspace/needs-you": 1,
+    "/__operator/away": 1
+   }
+  },
+  {
+   "route": "/coding",
+   "seconds": 60,
+   "requests": 13,
+   "perMinute": 13,
+   "byPath": {
+    "/__operator/coding/jobs": 4,
+    "/__operator/state": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__workspace/needs-you": 1,
+    "/__operator/away": 1
+   }
+  },
+  {
+   "route": "/memory",
+   "seconds": 60,
+   "requests": 10,
+   "perMinute": 10,
+   "byPath": {
+    "/__operator/state": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__workspace/needs-you": 1,
+    "/__operator/memory/storage": 1,
+    "/__operator/away": 1
+   }
+  },
+  {
+   "route": "/operations",
+   "seconds": 60,
+   "requests": 9,
+   "perMinute": 9,
+   "byPath": {
+    "/__operator/state": 2,
+    "/__design_jobs": 2,
+    "/__design_index_status": 2,
+    "/__events/snapshot": 1,
+    "/__workspace/needs-you": 1,
+    "/__operator/away": 1
+   }
+  }
+ ],
+ "memory": {
+  "navigations": 30,
+  "viaSidebarLinks": 15,
+  "heapStartMB": 20.3,
+  "heapEndMB": 24.7,
+  "growthMB": 4.4,
+  "every10": [
+   22.8,
+   22.6,
+   25.4
+  ]
+ }
+}

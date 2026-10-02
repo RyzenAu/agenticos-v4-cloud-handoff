@@ -630,7 +630,7 @@ function DreamEngineSwitcher() {
                           <div className="text-xs text-muted-foreground">{e.description}</div>
                         </div>
                         <div
-                          className={`text-xs uppercase tracking-[0.12em] shrink-0 ${statusTone}`}
+                          className={`text-xs shrink-0 ${statusTone}`}
                         >
                           {statusLabel}
                         </div>
@@ -638,7 +638,7 @@ function DreamEngineSwitcher() {
                     </button>
                     {e.id === "openrouter" && e.installed && orModels.length > 0 && (
                       <div className="flex items-center gap-2 pl-3 pr-1">
-                        <span className="text-xs uppercase tracking-[0.12em] text-muted-foreground shrink-0">
+                        <span className="text-xs text-muted-foreground shrink-0">
                           Model
                         </span>
                         <select
@@ -781,7 +781,7 @@ function DreamConnectCard({ headline }: { headline: string }) {
                   <div className="text-xs text-muted-foreground">{e.description}</div>
                 </div>
                 <div
-                  className={`text-xs uppercase tracking-[0.12em] shrink-0 ${statusTone}`}
+                  className={`text-xs shrink-0 ${statusTone}`}
                 >
                   {statusLabel}
                 </div>
@@ -2486,7 +2486,7 @@ function SkillsSavedExpansion({
                   onClick={() => {
                     navigator.clipboard.writeText(askAiCommand);
                   }}
-                  className="absolute top-2 right-2 text-xs uppercase tracking-wider px-2 py-1 rounded border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground hover:border-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 text-xs px-2 py-1 rounded border border-border/60 bg-background/80 text-muted-foreground hover:text-foreground hover:border-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   Copy
                 </button>
@@ -2544,7 +2544,7 @@ function SkillsSavedExpansion({
       {/* Skills table */}
       <div className="max-h-[320px] overflow-y-auto">
         <table className="w-full text-xs">
-          <thead className="bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground sticky top-0 backdrop-blur">
+          <thead className="bg-muted/20 text-xs text-muted-foreground sticky top-0 backdrop-blur">
             <tr>
               <th className="text-left font-medium px-4 py-2">Skill</th>
               <th className="text-right font-medium px-4 py-2">Uses</th>
@@ -2568,7 +2568,7 @@ function SkillsSavedExpansion({
                       {s.estimateSource === "ai" && (
                         <span
                           title="AI-estimated"
-                          className="inline-flex items-center gap-0.5 text-xs uppercase tracking-wider text-brand"
+                          className="inline-flex items-center gap-0.5 text-xs text-brand"
                         >
                           <Sparkles className="h-2.5 w-2.5" /> ai
                         </span>
@@ -2595,7 +2595,7 @@ function SkillsSavedExpansion({
                         onClick={() =>
                           setUnits((u) => ({ ...u, [s.name]: unit === "min" ? "hr" : "min" }))
                         }
-                        className="text-xs uppercase tracking-wider px-1.5 py-1 rounded border border-border/60 text-muted-foreground hover:text-foreground hover:border-foreground/40 w-8 text-center"
+                        className="text-xs px-1.5 py-1 rounded border border-border/60 text-muted-foreground hover:text-foreground hover:border-foreground/40 w-8 text-center"
                         title="Toggle between minutes and hours"
                       >
                         {unit}
@@ -2754,7 +2754,7 @@ function DreamCarousel({
                 )}
               </div>
             )}
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs uppercase tracking-wider text-muted-foreground">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs text-muted-foreground">
               <Clock className="h-2.5 w-2.5" />
               Refreshed {updatedLabel}
             </div>
@@ -2770,7 +2770,7 @@ function DreamCarousel({
                 Recurring · {cur.ageDays}d
               </Badge>
             )}
-            <span className="text-xs uppercase tracking-wider text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {index + 1} / {total}
             </span>
           </div>
@@ -2788,7 +2788,7 @@ function DreamCarousel({
                 type="button"
                 onClick={() => setShowWhy((v) => !v)}
                 aria-expanded={showWhy}
-                className="flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-muted-foreground transition-colors"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-muted-foreground transition-colors"
               >
                 <ChevronRight
                   className={`h-3 w-3 transition-transform ${showWhy ? "rotate-90" : ""}`}
@@ -2818,12 +2818,12 @@ function DreamCarousel({
             </div>
             {cur.command && (
               <div>
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1.5 flex items-center justify-between gap-2">
+                <div className="text-xs text-muted-foreground mb-1.5 flex items-center justify-between gap-2">
                   <span>Try it now — copy this and paste into Claude Code</span>
                   <button
                     onClick={runFix}
                     disabled={stream.kind === "streaming"}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-inset hover:bg-accent transition-colors text-xs uppercase tracking-wider text-muted-foreground disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-inset hover:bg-accent transition-colors text-xs text-muted-foreground disabled:opacity-60"
                     title={
                       stream.kind === "streaming"
                         ? "Running…"
@@ -2866,7 +2866,7 @@ function DreamCarousel({
 
                 {stream.kind !== "idle" && (
                   <div className="mt-3 rounded-md border border-border bg-inset overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border text-xs uppercase tracking-wider">
+                    <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border text-xs">
                       <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                         <TerminalIcon className="h-3 w-3" />
                         {stream.kind === "streaming" && "Streaming…"}
@@ -3054,7 +3054,7 @@ function SkillRecommenderCard({ rec }: { rec: SkillRecommendation }) {
           </code>
           <button
             onClick={onCopy}
-            className="text-xs uppercase tracking-wider px-2 py-1 rounded border border-border bg-inset hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            className="text-xs px-2 py-1 rounded border border-border bg-inset hover:bg-accent transition-colors text-muted-foreground hover:text-foreground shrink-0"
             title="Copy"
           >
             {copied ? "Copied" : "Copy"}

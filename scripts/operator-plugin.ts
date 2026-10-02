@@ -11,7 +11,8 @@ import { workspaceProfile } from "./workspace-profile";
 import { privacyPaneAction, setupDiscovery } from "./setup-discovery";
 import { openAIVoice } from "./openai-voice";
 import { freeVoice as freeVoiceEngine } from "./free-voice";
-import { codingVoiceFor } from "./coding/plugin";
+import { codingVoiceFor, codingRuntime } from "./coding/plugin";
+import { createCodingCommandEntry } from "./coding/command-entry";
 import { claudeBridge } from "./claude-bridge";
 import { clineBridge } from "./cline-bridge";
 import { pageTokenMatches, requestPrincipal } from "./identity/gate";
@@ -22,9 +23,16 @@ import { createClaudeVision, createPointEyes } from "./claude-vision";
 import { refreshCapabilities } from "./capability-registry";
 import { serialRefresher } from "./serial-refresh";
 import { tailnetPerson } from "./remote-access";
+import { hubRole } from "./cloud/hub-role";
+import { operatorRemoteRefusal, operatorSiteClass, serverWorkAllowed } from "./identity/operator-sites";
 import type { MemoryVoiceTurn } from "./memory/voice-turn";
 import type { Principal as MemoryPrincipal } from "./memory/types";
 import { createDevicesService } from "./devices/service";
+import { mountComputers } from "./computers/plugin";
+import { mountActivityStream } from "./events/plugin";
+import { computerCommand } from "./computers/jarvis";
+import { withComputerResolution } from "./jarvis-command/computer-target";
+import { wireThreadNotices } from "./jarvis-command/thread-notify";
 import { readShorthand } from "./shorthand";
 import { readJarvisSettings, writeJarvisSettings } from "./jarvis-settings";
 import { connectedGranolaNotes } from "./granola-connected";
@@ -38,9 +46,11 @@ import { voiceImages } from "./voice-images";
 import { voiceRecentCreations } from "./voice-recent-creations";
 import { voiceRecentEmails } from "./voice-recent-emails";
 import { voiceMemory } from "./voice-memory";
-import { conversationStore, ConversationConflict } from "./conversations";
+import { conversationStore, ConversationConflict, ConversationForbidden } from "./conversations";
 import { createAutomationsApi } from "./automations";
+import { mountTriggers } from "./triggers/mount";
 import { createLeadsApi, LocalOnly } from "./leads/api";
+import { saveDecision } from "./workspace/decisions";
 import { meetingService } from "./meeting-mode/service";
 import { createJarvisEvents } from "./jarvis-events";
 import { createInboxTriage } from "./inbox-triage/service";
@@ -107,6 +117,8 @@ import { createScreenHands, parseScreenRequest } from "./screen-hands";
 import { entryFor, lessonRoute } from "./screen-hands/routes";
 import { commandRoute } from "./jarvis-command/route";
 import { createLiveCommandService } from "./jarvis-command/live";
+import { createJobThreads } from "./jarvis-command/threads";
+import { codingSnapshotOf } from "./jarvis-command/coding-snapshot";
 import { receptionistSnapshot } from "./receptionist/plugin";
 import { awayVoiceIntent } from "./away-mode/policy";
 import { createAwayService } from "./away-mode/service";
@@ -154,6 +166,7 @@ import ical from "node-ical";
 import type { OperatorState, MemorySource, InboxItem, CalendarEvent } from "../src/lib/operator";
 import { auditDir, createAuditLog } from "./control-audit";
 import { operatorErrorStatus, operatorSettingsError, PayloadTooLarge } from "./http/operator-checks";
+import { dataDirFor } from "./cloud/data-dir";
 
 const runFile = promisify(execFile);
 const LIMIT = 8 * 1024 * 1024;
@@ -473,7 +486,7 @@ export function operatorPlugin({
    */
   sharedMemory?: { voiceTurn: MemoryVoiceTurn; principalFor: (req: IncomingMessage) => MemoryPrincipal | null };
 }): Plugin {
-  const directory = resolve(root, ".operator-data");
+  const directory = resolve(dataDirFor(root));
   const file = join(directory, "workspace.json");
   const blank = (): OperatorState => ({
     version: 1,
@@ -514,6 +527,8 @@ export function operatorPlugin({
   const skool = createSkoolMessages(root, { homeDir: memoryHome });
   const leadsApi = createLeadsApi(root);
   const automations = createAutomationsApi();
+  // Triggers and routines (scripts/triggers): app events and schedules become deduplicated durable jobs.
+  const triggers = mountTriggers({ root, origin: () => ownOrigin });
   const inboxAsk = inboxQuestions({
     load,
     archive: (question) => {
@@ -560,7 +575,9 @@ export function operatorPlugin({
   // Movie-Jarvis layer: the interjection gate, the cached status snapshot and named protocols.
   // All read-only or reversible OS flags; nothing here sends, dials, deploys, pays or deletes.
   // A line that would have been spoken while no voice client is listening becomes a Windows toast.
-  const jarvisEvents = createJarvisEvents(root, { onFallbackToast: (e) => showWindowsToast(e.source, e.text) });
+  // S-stream: the live activity stream, once mounted, is told when the Jarvis layer changes (a timer fired, an event posted).
+  let activityHint: (() => void) | undefined;
+  const jarvisEvents = createJarvisEvents(root, { onFallbackToast: (e) => showWindowsToast(e.source, e.text), onChange: () => activityHint?.() });
   // Inbox triage (scripts/inbox-triage): logs and labels every new email, DMs/speaks alerts to the
   // owner only (armed-but-off until he switches them on). It never replies, sends, archives or deletes mail.
   const inboxTriage = createInboxTriage(root, {
@@ -574,7 +591,7 @@ export function operatorPlugin({
   let jarvisSkills: JarvisSkills | undefined;
   const readJson = (name: string) => {
     try {
-      return JSON.parse(readFileSync(join(root, ".operator-data", name), "utf8"));
+      return JSON.parse(readFileSync(join(dataDirFor(root), name), "utf8"));
     } catch {
       return null;
     }
@@ -629,14 +646,15 @@ export function operatorPlugin({
   // Narrate my workflow (scripts/meeting-mode/narrate.ts): "I'm going to walk you through how I do
   // X" -> local-Whisper mic-only capture -> a DRAFT skill via the Claude bridge. Never installs
   // anything on its own; see /skill-drafts (narrate-api.ts) for approve/edit/discard.
-  const narrate = narrateFullService(root, join(root, ".operator-data"));
+  const narrate = narrateFullService(root, join(dataDirFor(root)));
   // The port this server actually got (set once it listens), for the voice rule that reads the workspace panels over loopback.
   let ownOrigin = "http://127.0.0.1:8081";
+  const jarvisChromeInFront = async () => {
+    const [front, chrome] = await Promise.all([screenHands.frontPid(), jarvisChromePid()]);
+    return !!front && !!chrome && front === chrome;
+  };
   const freeVoice = freeVoiceEngine(root, {
-    jarvisChromeInFront: async () => {
-      const [front, chrome] = await Promise.all([screenHands.frontPid(), jarvisChromePid()]);
-      return !!front && !!chrome && front === chrome;
-    },
+    jarvisChromeInFront,
     elevenVoice: () => companionVoice.status().voiceId,
     capabilities: () => capabilityVoiceLine,
     shorthand: () => readShorthand(root),
@@ -1017,6 +1035,10 @@ export function operatorPlugin({
           /* the job store is unavailable: runs keep their in-memory log */
         }
       }
+      if (background) {
+        triggers.start();
+        server.httpServer?.once("close", () => triggers.close());
+      }
       // Legacy NAB background refresh: creates no timer unless the code-owned reviewed live
       // authorisation covers "schedule" (scripts/finance/legacy-admission.ts).
       financeSync.schedule();
@@ -1118,12 +1140,38 @@ export function operatorPlugin({
       const devices = createDevicesService({ root, token, install: true });
       server.middlewares.use("/__devices", (req, res, next) => void devices.handle(req, res, next));
       server.httpServer?.once("close", () => devices.close());
+      // Agent F: shared agent cloud computers (list, provision, agent jobs, control lease, viewer). Idle until a host is configured.
+      const computers = mountComputers(server, { root, devices, jobs: () => jobsRuntime(root).jobs, conversations });
+      // S-stream: the ONE authenticated live activity stream (/__events): jobs, approvals, computers, leases, devices, Jarvis hints.
+      const activity = mountActivityStream(server, { root, computers: computers as never });
+      activityHint = () => activity.jarvisChanged("events");
       // Track 2: the ONE Jarvis command entry (typed and spoken), job-backed, routed to the requester's own device.
+      // Open Dot V: job results are appended to the person's durable Jarvis conversation by the server (scripts/jarvis-command/threads.ts).
+      const jarvisThreads = createJobThreads({
+        conversations,
+        localFile: join(dataDirFor(root), "jarvis-thread-local.json"),
+        jobs: () => jobsRuntime(root).jobs,
+        coding: async (id) => {
+          const rt = await codingRuntime(root);
+          const job = rt.store.getJob(id);
+          if (!job) return null;
+          return codingSnapshotOf(job, rt.store.events(id, 0, 5000));
+        },
+      });
+      // The short spoken line goes through the ONE interjection gate (dedupe by job+state, daily budget, quiet mode/hours, one claim, toast fallback);
+      // the voice client says it at a conversational pause. Only for the person at this PC; everyone's full result is in their conversation.
+      // Every entry appended to a person's conversation (the acknowledgement, a progress line, the returned research report, a job's end) is pushed
+      // live to THAT person's /__events stream; the stable id (conversation + entry key) lets a replay or second tab apply it once. Notifications only.
+      wireThreadNotices({ threads: jarvisThreads, activity, events: jarvisEvents });
+      if (background) void jarvisThreads.start().catch(() => undefined);
+      server.httpServer?.once("close", () => jarvisThreads.stop());
       const commands = createLiveCommandService({
+        threads: jarvisThreads,
         screen: screenHands,
         entry: () => (process.platform === "win32" ? entryFor(screenHands) : null),
         devices,
         jobs: () => jobsRuntime(root).jobs,
+        computers: withComputerResolution(() => computers.list().map((c) => ({ name: c.name, label: c.label })), (utterance, principal) => computerCommand(computers, utterance, principal)),
         memoryTurn: sharedMemory
           ? async (caller, utterance, spokenYes) => {
               const r = await sharedMemory.voiceTurn(caller as MemoryPrincipal, utterance, { spokenYes });
@@ -1133,6 +1181,8 @@ export function operatorPlugin({
         receptionist: () => receptionistSnapshot(),
         leads: () => leadsApi,
         skills: () => jarvisSkills,
+        jarvisChromeInFront,
+        coding: async () => createCodingCommandEntry({ voice: await codingVoiceFor(root), store: (await codingRuntime(root)).store }),
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());
@@ -1152,6 +1202,11 @@ export function operatorPlugin({
           const principal = requestPrincipal(req, { root });
           if (!isBrowserPrincipal(principal))
             return send({ error: "Sign in first: use Agentic OS at this PC, or open it through your own Tailscale address." }, 401);
+          // A changed Jarvis layer (a posted event, a claim, quiet mode, a protocol run, a timer set) is a hint for every open stream.
+          if (req.method !== "GET" && String(req.url ?? "").startsWith("/jarvis/"))
+            res.once("finish", () => {
+              if (res.statusCode < 300) activity.jarvisChanged(String(req.url).startsWith("/jarvis/protocol") ? "protocol" : String(req.url).startsWith("/jarvis/events") ? "events" : "status");
+            });
           // Not at this PC in person. Shared business work is open to both founders (V7); the hub's own
           // screen, mic and settings act only for the person sitting at it.
           // role comes from the verified person (the hub's owner is Usman), never from the request.
@@ -1168,6 +1223,11 @@ export function operatorPlugin({
             send({ error: decision.reason }, decision.status);
             return true;
           };
+          // MU_HUB_ROLE=server: `remote` keeps its DEVICE meaning (the requester's own companion, or an honest refusal). The
+          // "only at this PC" refusals for SERVER-SIDE WORK are decided by scripts/identity/operator-sites.ts instead: a
+          // confirmed human founder session may do that work (serverWork); `permRemote` is what those sites test. Outside the
+          // server role both are exactly `remote`.
+          const serverWork = serverWorkAllowed(principal, hubRole());
           const ownOrigin = `${remote ? "https" : "http"}://${host}`;
           const callbackUrl = new URL(req.url || "/", ownOrigin);
           if (
@@ -1201,9 +1261,19 @@ export function operatorPlugin({
             }
             body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
           }
+          // Server role, a remote founder: classify the site once (device / work / publish / console). Console sites stay at the
+          // server's console; work sites need a confirmed human session, with a clear line when it is missing; after this
+          // `permRemote` is null for a work site, so the site's own "only at this PC" check passes.
+          const siteRefusal = remote ? operatorRemoteRefusal(hubRole(), method, path, serverWork) : null;
+          if (siteRefusal) return send({ error: siteRefusal.error }, siteRefusal.status);
+          const siteClass = remote && hubRole() === "server" ? operatorSiteClass(method, path) : null;
+          const permRemote = siteClass === "work" || siteClass === "publish" ? null : remote;
+          const workAuthed = (raw: boolean) => raw || permRemote === null && remote !== null;
           // AUDIT-A1-4: connector syncs, imports and settings that read this PC's own app data, spawn its
           // CLIs or run the hub's own sign-ins act AS the hub, so only the owner at this PC runs them (a
           // device rule, like screen and voice; what they bring in stays shared with both founders).
+          // (Server role, a confirmed founder on a server-side-work connector site skips this device-style refusal.)
+          if (siteClass !== "work")
           if (remote && method === "POST" && HUB_CONNECTOR_WRITE.test(path))
             return send({ error: "That runs this PC's own apps and sign-ins, so it runs only for Usman at the PC. What it brings in is shared with you once it has run." }, 403);
           // Voice "open YouTube": open the link in this PC's default browser. A page can't
@@ -1289,13 +1359,14 @@ export function operatorPlugin({
             return send({ stopped: remote ? jobs.length > 0 : screenHands.stopAll() || jobs.length > 0, jobs });
           }
           // Lessons: Jarvis teaches a task with his own cursor (he clicks), or takes over (Jarvis acts).
-          if (await lessonRoute({ path, method, url, body, remote, req, res, screen: screenHands, send })) return;
+          // Server role: Jarvis's lessons drive the screen, and the server has none: refused for every caller, honestly.
+          if (await lessonRoute({ path, method, url, body, remote: remote ?? (hubRole() === "server" ? { name: "server" } : null), req, res, screen: screenHands, send: hubRole() === "server" ? (value, status) => send(status === 403 ? { error: "That drives a desktop; on the server use your own PC's companion." } : value, status) : send })) return;
           // Away mode: the OS card (status, on/off, stop, queue a task).
           if (await awayMode.route({ path, method, body, remote, send })) return;
           // Quick actions on /business (pins + run log) and the HUD's read-only feeds.
           if (await quickActionsRoute({ root, path, method, body, url, remote, send })) return;
           // Narrated-workflow skill drafts: review, edit, approve (installs the SKILL.md) or discard.
-          if (await skillDraftsRoute({ root, path, method, body, remote, send })) return;
+          if (await skillDraftsRoute({ root, path, method, body, remote: permRemote, send })) return;
           // Narrate my workflow: the voice client calls these once it gets a `narrate` tool_call
           // from free-voice.ts (start/stop), or polls status for a HUD "recording" indicator.
           // This PC only — a narration can hold a real transcript of what he or Mehroz said.
@@ -1358,12 +1429,12 @@ export function operatorPlugin({
           const receiptReply = controlReceiptRoute({ path, method, url, remote: !!remote,
             authenticated: req.headers["x-claude-os-token"] === token, body }, () => controlExecution(root));
           if (receiptReply) return send(receiptReply.body, receiptReply.status);
-          const fleetReceiptReply = modelFleetReceiptRoute({ path, method, url, remote: !!remote,
-            authenticated: req.headers["x-claude-os-token"] === token }, root);
+          const fleetReceiptReply = modelFleetReceiptRoute({ path, method, url, remote: !!permRemote,
+            authenticated: workAuthed(req.headers["x-claude-os-token"] === token) }, root);
           if (fleetReceiptReply) return send(fleetReceiptReply.body, fleetReceiptReply.status);
           // System > Models: catalogue, health and receipt totals (metadata only; scripts/model-router/api.ts).
-          const routerReply = await modelRouterRoute({ path, method, remote: !!remote,
-            authenticated: req.headers["x-claude-os-token"] === token }, root);
+          const routerReply = await modelRouterRoute({ path, method, remote: !!permRemote,
+            authenticated: workAuthed(req.headers["x-claude-os-token"] === token) }, root);
           if (routerReply) return send(routerReply.body, routerReply.status);
           // Page-token-authenticated local endpoint. The model does not get it as a tool, and the
           // CLI consumes the task-bound nonce once. It is not proof a person said yes (audit A-M3).
@@ -1382,12 +1453,13 @@ export function operatorPlugin({
           // clipboard, notes, typing, windows. Someone signed in remotely gets only the pure answers.
           if (path === "/jarvis/skill" && method === "POST") {
             if (!jarvisSkills) return send({ ok: false, said: "Skills aren't running yet, sir." }, 503);
-            return send(await jarvisSkills.run(body, { remote: !!remote }));
+            // Server role: the hub's own desktop (clipboard, typing, windows) is not for anyone, so even the owner at the console gets the pure answers only.
+            return send(await jarvisSkills.run(body, { remote: !!remote || hubRole() === "server" }));
           }
           if (path === "/jarvis/timers" && method === "GET") return send(jarvisSkills ? jarvisSkills.timers() : { now: new Date().toISOString(), items: [] });
           if (path === "/jarvis/settings" && method === "GET") return send(readJarvisSettings(root));
           if (path === "/jarvis/settings" && method === "POST") {
-            if (remote) return send({ error: "Jarvis settings can only be changed at this PC." }, 403);
+            if (permRemote) return send({ error: "Jarvis settings can only be changed at this PC." }, 403);
             try {
               const result = writeJarvisSettings(root, body ?? {});
               scheduleRegistry();
@@ -1399,11 +1471,11 @@ export function operatorPlugin({
           // Jarvis interjections, status and protocols (scripts/jarvis-*.ts). Cron scripts post
           // events with the page token from GET /__token; only someone at this PC may post,
           // claim speech, change quiet mode or run a protocol.
-          if (path === "/jarvis/events" && method === "GET") return send(jarvisEvents.list(url.searchParams.get("since")));
+          if (path === "/jarvis/events" && method === "GET") return send(jarvisEvents.list(url.searchParams.get("since"), { person: principal?.personId, local: !remote }));
           if (path === "/jarvis/status" && method === "GET") return send(await jarvisStatus.snapshot());
           if (path === "/jarvis/protocols" && method === "GET") return send({ runs: jarvisProtocols.runs() });
           if (path.startsWith("/jarvis/") && ["/jarvis/events", "/jarvis/events/claim", "/jarvis/quiet", "/jarvis/protocol", "/jarvis/protocol/step"].includes(path) && method === "POST") {
-            if (remote) return send({ error: "Jarvis alerts and protocols are for this PC only." }, 403);
+            if (permRemote) return send({ error: "Jarvis alerts and protocols are for this PC only." }, 403);
             try {
               if (path === "/jarvis/events") return send(jarvisEvents.submit(body));
               if (path === "/jarvis/events/claim") return send(jarvisEvents.claim(body));
@@ -1424,7 +1496,7 @@ export function operatorPlugin({
           }
           if (path === "/capabilities" && method === "GET") {
             try {
-              return send(JSON.parse(readFileSync(join(root, ".operator-data", "capabilities.json"), "utf8")));
+              return send(JSON.parse(readFileSync(join(dataDirFor(root), "capabilities.json"), "utf8")));
             } catch {
               return send({ generatedAt: null, capabilities: [], firstBuildAfterMs: background ? 20_000 : null });
             }
@@ -1437,7 +1509,9 @@ export function operatorPlugin({
               path,
               method,
               body,
-              remote: !!remote,
+              remote: !!permRemote,
+              // Server role: the gate-admitted founder's relay headers (Tailscale Serve) are expected, not a reason to refuse.
+              serverWork: remote !== null && permRemote === null,
               headers: req.headers,
               service: nativeTasks!,
               send,
@@ -1568,13 +1642,13 @@ export function operatorPlugin({
             return send(await build);
           }
           if (path === "/conversations" && method === "GET")
-            return send({ conversations: conversations.list() });
+            return send({ conversations: conversations.list({ personId: principal.personId, hub: isAtHub(principal) }) });
           if (path === "/conversations" && method === "POST")
-            return send({ conversation: conversations.save(body) });
+            return send({ conversation: conversations.save(body, { personId: principal.personId, hub: isAtHub(principal) }) });
           const conversationMatch = path.match(/^\/conversations\/([\w-]+)$/);
           if (conversationMatch && method === "POST" && body.action === "delete")
-            return send(conversations.remove(conversationMatch[1]));
-          if (path === "/memory/apps" && method === "GET") return send(await apps.list(!remote && url.searchParams.get("refresh") === "1"));
+            return send(conversations.remove(conversationMatch[1], { personId: principal.personId, hub: isAtHub(principal) }));
+          if (path === "/memory/apps" && method === "GET") return send(await apps.list(!permRemote && url.searchParams.get("refresh") === "1"));
           if (path === "/memory/apps/sync-all" && method === "POST") return send(await apps.syncAll(), 202);
           if (path === "/memory/apps/refresh-settings" && method === "POST") return send(apps.configureRefresh(body));
           const appMatch = path.match(/^\/memory\/apps\/([a-z]+)(?:\/(sync|import))?$/);
@@ -1738,7 +1812,7 @@ export function operatorPlugin({
             return send(profile);
           }
           if (path.startsWith("/inbox/triage")) {
-            const handled = await inboxTriage.handle(method, path, body, !!remote);
+            const handled = await inboxTriage.handle(method, path, body, !!permRemote);
             if (handled) return send(handled.value, handled.status);
           }
           if (method === "GET" && path === "/mail-archive/status") { getMailSync(); return send(archive.stats()); }
@@ -2542,37 +2616,53 @@ export function operatorPlugin({
                 : "Calendar snapshot saved; re-import to refresh.",
             });
           }
+          if (path === "/workspace/decision" && method === "POST") {
+            return send(saveDecision(root, body, principal.personId));
+          }
           if (path.startsWith("/leads/")) {
             // Activity history shows who did it, from the verified principal. At this PC the owner's
             // own "log as" choice stands (one shared machine); remotely, `by` is always the signer.
             if (remote && method === "POST" && body && typeof body === "object" && !Array.isArray(body)) body.by = principal.personId;
-            return send(await leadsApi.handle(path, method, body, url.searchParams, !!remote));
+            return send(await leadsApi.handle(path, method, body, url.searchParams, !!permRemote));
+          }
+          if (path === "/triggers" || path.startsWith("/triggers/")) {
+            const service = triggers.get();
+            if (!service) return send(method === "GET" ? { triggers: [], poll: null } : { error: "This is a quiet read-only copy." }, method === "GET" ? 200 : 409);
+            const result = await service.handle(path, method, body as Record<string, unknown> | undefined, !permRemote);
+            return send(result.body, result.status);
           }
           if (path === "/automations" && method === "GET")
             return send({ automations: await automations.list(url.searchParams.get("refresh") === "1"), ...automations.state() });
           if (path === "/automations/run" && method === "POST") {
-            if (remote) return send({ error: "Automations can only be run from this PC." }, 403);
+            if (permRemote) return send({ error: "Automations can only be run from this PC." }, 403);
             return send(await automations.runNow(String(body?.name ?? "")));
           }
           if (path === "/automations/pause" && method === "POST") {
-            if (remote) return send({ error: "Automations can only be changed from this PC." }, 403);
+            if (permRemote) return send({ error: "Automations can only be changed from this PC." }, 403);
             return send(await automations.pause(String(body?.name ?? "")));
           }
           if (path === "/automations/resume" && method === "POST") {
-            if (remote) return send({ error: "Automations can only be changed from this PC." }, 403);
+            if (permRemote) return send({ error: "Automations can only be changed from this PC." }, 403);
             return send(await automations.resume(String(body?.name ?? "")));
           }
           return send({ error: "Unknown workspace endpoint" }, 404);
         } catch (error) {
           // 413 for an oversize body, 503 when Hermes or a worker isn't running, 409/403 as before;
           // everything else is the caller's input (Audit F5 P3).
-          const status = operatorErrorStatus(error, { conflict: ConversationConflict, localOnly: LocalOnly });
+          const status = operatorErrorStatus(error, { conflict: ConversationConflict, localOnly: LocalOnly, forbidden: ConversationForbidden });
           if (status === 413) req.resume();
           return send({ error: (error as Error).message || "The request failed." }, status);
         }
       });
     },
-    closeBundle() { apps.stop(); vault.stop(); photoIndex.close(); mailSync?.close(); existingConnections.close(); nativeTasks?.close(); archive.close(); leadsApi.close(); },
+    closeBundle() {
+      // Each store closes on its own: one that is still locked (mail archive on a busy or shared file) is reported, and never
+      // skips the rest or turns a finished build into exit 1.
+      const steps: Array<[string, () => void]> = [["apps", () => apps.stop()], ["vault", () => vault.stop()], ["photo index", () => photoIndex.close()], ["mail sync", () => mailSync?.close()], ["existing connections", () => existingConnections.close()], ["native tasks", () => nativeTasks?.close()], ["mail archive", () => archive.close()], ["leads", () => leadsApi.close()]];
+      for (const [name, close] of steps) {
+        try { close(); } catch (e) { console.warn(`[closeBundle] ${name} did not close cleanly: ${(e as Error).message}`); }
+      }
+    },
   };
 }
 
@@ -2594,7 +2684,7 @@ function hiddenMemoryTitles(file: string): Set<string> {
 
 // Exclusions belong to this workspace, never to the original vault files.
 export function filterWorkspaceMemory(raw: string, root: string) {
-  const file = resolve(root, ".operator-data/workspace.json");
+  const file = resolve(dataDirFor(root), "workspace.json");
   if (!existsSync(file)) return raw;
   const hidden = hiddenMemoryTitles(file);
   if (!hidden.size) return raw;

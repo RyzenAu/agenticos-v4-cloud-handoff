@@ -12,7 +12,7 @@
 }
 .photo-index-folder-details > summary {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
   padding: 5px 0;
 }
@@ -37,7 +37,7 @@
 .photo-index-hint {
   margin: 0;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
 }
 .photo-index-folders {
@@ -54,7 +54,7 @@
   border-radius: 9px;
   padding: 9px 12px;
   background: var(--op-panel);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .photo-index-folders button[aria-pressed="true"] {
   background: var(--op-accent-soft);
@@ -68,7 +68,7 @@
 }
 .photo-index-path > span,
 .photo-index-settings label > span {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .photo-index-path input,
@@ -126,7 +126,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--op-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .photo-index-preview small {
   color: var(--op-muted);
@@ -141,7 +141,7 @@
   align-items: flex-start;
   gap: 10px;
   line-height: 1.6;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .photo-index-consent input {
   accent-color: #ba9bdd;
@@ -168,7 +168,7 @@
 }
 .photo-index-progress span,
 .photo-index-progress p {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin: 0;
   line-height: 1.6;
@@ -183,14 +183,14 @@
   justify-self: start;
 }
 .photo-index-progress details {
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .photo-index-progress summary {
   cursor: pointer;
 }
 .photo-index-error {
   color: #d65f65;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   margin: 0;
 }

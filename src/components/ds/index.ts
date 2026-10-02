@@ -20,6 +20,7 @@ export { fmtCount, fmtCompact, fmtPercent, fmtDate, fmtRelative } from "./format
 export { PageSkeleton } from "./page-skeleton";
 export { ProgressRing, type RingTone } from "./progress-ring";
 export { Disclosure } from "./disclosure";
+export { DetailSection } from "./detail-section";
 export { ChecklistRow, type ChecklistStatus } from "./checklist-row";
 export { VerdictCard, type VerdictTone } from "./verdict-card";
 export { AttentionCard, type AttentionSeverity } from "./attention-card";
@@ -28,5 +29,7 @@ export { SummaryTile, type SummaryTone } from "./summary-tile";
 export { Tabs, TabPanel, type TabItem } from "./tabs";
 export { NextStep } from "./next-step";
 export { WidgetGrid, Widget, WidgetList, WidgetRow, WidgetEmpty, PageFoot, type WidgetSpan, type WidgetTone } from "./widget-grid";
+export { SaveStatus, TaskPhase, TaskWord, TaskBar, ConnectionState, DeviceStatusSlot, deviceSlotView, deviceFromRecord, type TaskPhaseName, type ConnectionPhase, type DeviceSlotInput, type DeviceSlotView } from "./motion-state";
+export { RouteText, splitRoutes, LINKABLE_ROUTES } from "./route-text";
 export { Skeleton } from "@/components/ui/skeleton";
 export { Button, buttonVariants } from "@/components/ui/button";

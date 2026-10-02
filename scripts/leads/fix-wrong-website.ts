@@ -112,7 +112,7 @@ export function applyWrongWebsiteFix(
     for (const fix of plan.fixes) {
       const row = db.query("SELECT emails FROM leads WHERE id = ?").get(fix.leadId) as Row;
       const emails = parse(row.emails).filter((e) => !fix.emailsDropped.includes(e));
-      db.query(`UPDATE leads SET website = '', website_source = $source, website_confidence = NULL, website_checked_at = NULL,
+      db.query(`UPDATE leads SET website = '', website_source = $source, website_confidence = NULL, website_checked_at = NULL, website_check = 'not-checked',
           reasons = $reasons, pitch = 'audit_pending', score = 0, emails = $emails,
           email_ok = CASE WHEN $hasEmails THEN email_ok ELSE 0 END WHERE id = $id`).run({
         $source: NOT_VERIFIED_SOURCE, $reasons: JSON.stringify([NOT_VERIFIED_REASON]), $emails: JSON.stringify(emails),

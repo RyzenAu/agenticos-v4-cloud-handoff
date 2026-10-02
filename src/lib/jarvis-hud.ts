@@ -44,6 +44,8 @@ export type JarvisEvent = {
   delivery: "speak" | "hud" | "flash";
   reason: string;
   spokenAt?: string;
+  /** The stable event id (for a job's end: `job:<jobId>:<state>`): this browser never speaks the same one twice, across reloads and tabs. */
+  dedupeKey?: string;
 };
 export type EventsResponse = JarvisMode & { seq: number; events: JarvisEvent[] };
 export type ProtocolRun = {
@@ -109,6 +111,33 @@ export function healthTone(snapshot: StatusSnapshot | null, offline: boolean): "
   return "good";
 }
 
-export const HUD_POLL_MS = 5000;
+/** Idle cost: 3 reads per poll, 4 requests a minute, none while the tab is hidden (was 36 a minute). Protocol runs and timer changes refetch straight away. */
+export const HUD_POLL_MS = 45_000;
 /** The HUD calls its own data stale once the OS hasn't answered for this long. */
-export const HUD_OFFLINE_AFTER_MS = 15_000;
+export const HUD_OFFLINE_AFTER_MS = 120_000;
+
+/**
+ * With the live stream healthy the HUD refetches on a hint (a Jarvis change, an approval, a finished job), so the
+ * timer is only a safety net: 3 reads every 90 s (2 a minute, was 4). With no stream it is HUD_POLL_MS as before.
+ */
+export const HUD_SAFETY_POLL_MS = 90_000;
+/** A stream that was open and then lost shows the HUD offline after this long without a word from the hub. */
+export const HUD_STREAM_LOST_AFTER_MS = 12_000;
+
+/**
+ * Pure: is the HUD offline? Same rules as before (no data, a failed read, nothing heard for HUD_OFFLINE_AFTER_MS),
+ * where "heard" now includes the stream's heartbeat, plus one faster rule: a stream that had connected and then
+ * dropped means the hub is gone, shown after HUD_STREAM_LOST_AFTER_MS instead of waiting for the next poll.
+ */
+export function hudOffline(input: {
+  hasData: boolean;
+  isError: boolean;
+  dataUpdatedAt: number;
+  now: number;
+  stream: { state: string; everOpened: boolean; lastSignalAt: number; lostAt: number };
+}): boolean {
+  if (!input.hasData || input.isError) return true;
+  const heard = Math.max(input.dataUpdatedAt || 0, input.stream.lastSignalAt || 0);
+  if (input.now - heard > HUD_OFFLINE_AFTER_MS) return true;
+  return input.stream.everOpened && input.stream.state === "retrying" && input.stream.lostAt > 0 && input.now - input.stream.lostAt > HUD_STREAM_LOST_AFTER_MS;
+}

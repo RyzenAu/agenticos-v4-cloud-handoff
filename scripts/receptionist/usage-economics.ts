@@ -207,6 +207,7 @@ function clientEconomics(c: FeedClient, pkg: ReceptionistPackage | null, input: 
   let revenueCents: number | null = null;
   const revenueNotes: string[] = [];
   if (isInternalClient(c)) revenueNotes.push("Demo tenant: never billed.");
+  else if (c.usage?.periodBillingBlocked) revenueNotes.push(`Billing blocked (${c.usage.periodBillingBlocked.reason}): ${c.usage.periodBillingBlocked.message} No revenue, overage or margin is shown for this period; it is not zero.`);
   else if (!pkg) revenueNotes.push("No package assigned locally: nothing to bill against.");
   else {
     const overage = Math.max(0, billable - pkg.pricing.includedMinutes);

@@ -91,6 +91,17 @@ const go = (goal: string, hands: Hands, minds: Minds, extra: Partial<Parameters<
   runScreenAct({ goal, ...req }, { hands, minds, flags: JEV_ON, signal: new AbortController().signal, sleep: async () => undefined, ...extra });
 
 describe("jev-control: the request", () => {
+  test("repeated row buttons stay addressable; duplicate accessibility nodes collapse", () => {
+    const first = el("Button", "Open", 120);
+    const duplicate = { ...first, id: id++ };
+    const second = el("Button", "Open", 200);
+    const snap = { browser: false, window: { x: 0, y: 0, w: 800, h: 600 }, elements: [first, duplicate, second], focused: null };
+    const { list } = controlCandidates(snap, goalSlots("open the second item"));
+    expect(list).toHaveLength(2);
+    expect(list[0].text).toContain("1 of 2 with this label");
+    expect(list[1].text).toContain("2 of 2 with this label");
+    expect(list[1].element.id).toBe(second.id);
+  });
   test("his dictated text and file names never reach Jev; placeholders do", () => {
     const slots = goalSlots("type Dear Brooke, the invoice is attached into the Notes field then save it as D:\\tmp\\jarvis-acceptance\\brooke-notes.txt");
     expect(slots.texts).toHaveLength(1);
@@ -152,7 +163,7 @@ describe("jev-control: the request", () => {
     expect(await none({ model: "m", state: {}, questions: {} }, new AbortController().signal)).toBeNull();
     expect(calls).toBe(0);
     const good = createControlAsk({ key: () => "k", request: (async () => ok({ answers: { action: { choice: "done", confidence: 0.9 } }, usage: { input_tokens: 812, output_tokens: 31 }, model: "jev-latest" })) as unknown as typeof fetch });
-    expect(await good({ model: "m", state: {}, questions: {} }, new AbortController().signal)).toMatchObject({ inputTokens: 812, outputTokens: 31, model: "jev-latest" });
+    expect(await good({ model: "m", state: {}, questions: { action: { type: "choice", criteria: { done: "Complete" } } } }, new AbortController().signal)).toMatchObject({ inputTokens: 812, outputTokens: 31, model: "jev-latest" });
     const bad = createControlAsk({ key: () => "k", request: (async () => new Response("nope", { status: 500 })) as unknown as typeof fetch });
     expect(await bad({ model: "m", state: {}, questions: {} }, new AbortController().signal)).toBeNull();
   });
@@ -217,6 +228,45 @@ describe("jev-control: the loop on a fake Windows", () => {
     expect(log).toEqual(["click Refresh feed"]);
     expect(done).toMatchObject({ ok: false, outcome: "unverified", ask: true });
     expect(done.said).toMatch(/haven't pressed it again/);
+  });
+
+  test("a delayed page is observed before another Jev decision; the click is never replayed", async () => {
+    let elapsed = 0;
+    let pressed = false;
+    const page: Page = { elements: [el("Button", "Open project", 100)] };
+    page.onClick = () => { pressed = true; };
+    const { hands, log } = fakeWindows(page);
+    const jev = fakeJev([
+      b => ({ action: sure("click"), target: sure(keyFor(b, "Open project")) }),
+      b => {
+        expect(b.state.done_so_far).toContain("the window changed");
+        expect(b.state.screen_texts).toContain("Project opened");
+        return { action: sure("done"), complete: { noul: 0.98 } };
+      },
+    ]);
+    const done = await go("show the project", hands, { control: jev.control }, {
+      sleep: async ms => {
+        elapsed += ms;
+        if (pressed && elapsed >= 1000 && page.elements.length === 1) page.elements.push(el("Text", "Project opened", 200));
+      },
+    });
+    expect(done.ok).toBe(true);
+    expect(jev.calls).toBe(2);
+    expect(log).toEqual(["click Open project"]);
+  });
+
+  test("stop during a slow page's observation prevents a second decision or click", async () => {
+    const controller = new AbortController();
+    const { hands, log } = fakeWindows({ elements: [el("Button", "Open project", 100)] });
+    const jev = fakeJev([b => ({ action: sure("click"), target: sure(keyFor(b, "Open project")) })]);
+    let elapsed = 0;
+    const done = await go("show the project", hands, { control: jev.control }, {
+      signal: controller.signal,
+      sleep: async ms => { elapsed += ms; if (elapsed >= 600) controller.abort(); },
+    });
+    expect(done.stopped).toBe(true);
+    expect(jev.calls).toBe(1);
+    expect(log).toEqual(["click Open project"]);
   });
 
   test("Jev saying done after an unconfirmed press is not a success (outcome unverified)", async () => {
@@ -327,8 +377,9 @@ describe("A-M3 on screen_act: a confirm over HTTP needs his spoken yes to THIS s
     const pressed = await screen.act(parseScreenRequest({ goal: "click Send", confirm: "Send", spokenYes: yes.id }), signal);
     expect(fake.log).toEqual(["click Send"]);
     expect(pressed.confirm).toBeUndefined();
-    // Replaying the same event: dropped; it asks again and nothing more is pressed.
+    // A used event cannot press again. A fresh question is assessed without acting.
     const replay = await screen.act(parseScreenRequest({ goal: "click Send", confirm: "Send", spokenYes: yes.id }), signal);
+    expect(replay).toMatchObject({ ok: false, steps: 0 });
     expect(replay.confirm).toBe("Send");
     expect(fake.log).toEqual(["click Send"]);
     // The step log holds the runs, newest first, with the checks.
@@ -350,6 +401,14 @@ describe("A-M3 on screen_act: a confirm over HTTP needs his spoken yes to THIS s
     expect(done).toMatchObject({ ok: false, refused: true });
     expect(fake.log).toEqual([]);
   });
+});
+
+test("an invalid confirm on a harmless single click is read-only, not permission to click", async () => {
+  const fake = fakeWindows({ elements: [el("Button", "Next", 100)] });
+  const screen = createScreenHands({ key: () => "", hands: fake.hands, flags: () => ({ ...FLAGS_OFF }), audit: null, jarvisChrome: null });
+  const done = await screen.act(parseScreenRequest({ goal: "click Next", confirm: "Next" }), new AbortController().signal);
+  expect(done).toMatchObject({ ok: false, ask: true, steps: 0 });
+  expect(fake.log).toEqual([]);
 });
 
 describe("step log", () => {

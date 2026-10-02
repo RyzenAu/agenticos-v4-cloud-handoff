@@ -1,0 +1,113 @@
+{
+  "hub": "http://127.0.0.1:8113",
+  "mode": "check",
+  "at": "2026-10-01T01:25:06.883Z",
+  "passed": 10,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "hub answers /__health with role cloud",
+      "ok": true,
+      "observed": {
+        "status": "ok",
+        "hubRole": "cloud",
+        "dataDir": "D:\\prog-scratch\\cloud-8113\\data",
+        "companions": {
+          "status": "ok",
+          "detail": "No companion is paired.",
+          "online": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "name": "the owner's browser has a confirmed human session (first navigation on a fresh hub, or the saved cookie after a restart)",
+      "ok": true,
+      "observed": {
+        "nav": 200,
+        "authorised": true,
+        "via": "loopback",
+        "actor": "human"
+      }
+    },
+    {
+      "name": "the device list has no hub device and nothing called Usman's PC",
+      "ok": true,
+      "observed": {
+        "count": 0,
+        "kinds": []
+      }
+    },
+    {
+      "name": "the hub reports 0 companions online (a PC being asleep is normal, not a failure)",
+      "ok": true,
+      "observed": {
+        "status": "ok",
+        "detail": "No companion is paired.",
+        "online": 0,
+        "total": 0
+      }
+    },
+    {
+      "name": "'open Chrome' with no companion fails: not ok, nothing ran, says the PC is not connected, never the hub",
+      "ok": true,
+      "observed": {
+        "status": 200,
+        "ok": false,
+        "said": "Not done: no device registered for usman. Nothing ran on any other machine.",
+        "targetDeviceId": "none",
+        "outcome": null
+      }
+    },
+    {
+      "name": "the native PC-control route answers 501 needs-companion",
+      "ok": true,
+      "observed": {
+        "status": 501,
+        "body": {
+          "ok": false,
+          "status": "needs-companion",
+          "capability": "windows-control",
+          "hubRole": "cloud",
+          "error": "This runs on your PC and needs the companion. It isn't available on the cloud hub."
+        }
+      }
+    },
+    {
+      "name": "the agent-browser route answers 501 needs-companion",
+      "ok": true,
+      "observed": {
+        "status": 501
+      }
+    },
+    {
+      "name": "a shared computer called 'research' that does not exist is refused by name; the list is empty",
+      "ok": true,
+      "observed": {
+        "status": 404,
+        "body": {
+          "error": "No computer called \"research\"."
+        },
+        "computers": 0
+      }
+    },
+    {
+      "name": "the same words through Jarvis: not ok, nothing ran, and never routed to a PC",
+      "ok": true,
+      "observed": {
+        "ok": false,
+        "said": "Not done: no device registered for usman. Nothing ran on any other machine."
+      }
+    },
+    {
+      "name": "provisioning with no computer host configured says so plainly",
+      "ok": true,
+      "observed": {
+        "status": 409,
+        "body": {
+          "error": "No computer host is configured on this hub."
+        }
+      }
+    }
+  ]
+}

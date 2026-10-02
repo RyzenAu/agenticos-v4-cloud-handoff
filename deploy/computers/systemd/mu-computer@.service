@@ -1,0 +1,26 @@
+# One shared cloud computer on a Sydney VPS: `systemctl --user enable --now mu-computer@research`.
+# NOT INSTALLED ANYWHERE. A template for the VPS runbook (deploy/computers/README.md); nothing in this repo loads it.
+#
+# It runs deploy/computers/linux/computer-ctl.sh for the named computer under a dedicated unprivileged user (one user for all
+# computers is the minimum; one user PER computer is better: a browser that is compromised can then read only its own profile).
+# `Type=oneshot` + `RemainAfterExit` because computer-ctl.sh starts detached processes and exits; `stop` stops them again.
+[Unit]
+Description=MU shared cloud computer %i
+After=network-online.target mu-hub@production.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=MU_COMPUTERS_HOME=%h/mu-computers
+ExecStart=/usr/bin/env bash %h/mu-computers/computer-ctl.sh start %i
+ExecStop=/usr/bin/env bash %h/mu-computers/computer-ctl.sh stop %i
+# Limits that hold even if a browser misbehaves (a real VM is the boundary; these keep one computer from starving the hub).
+MemoryMax=1500M
+CPUQuota=150%
+TasksMax=512
+NoNewPrivileges=yes
+PrivateTmp=no
+
+[Install]
+WantedBy=default.target

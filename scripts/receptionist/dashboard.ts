@@ -51,6 +51,14 @@ function isoOrNull(ms: number | null | undefined): string | null {
   return typeof ms === "number" && Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 /** Stale when there is no usable timestamp, or it is older than `staleMs` at `now`. */
+/**
+ * Setup fees are NOT approved (owner brief 1 Oct 2026): a proposed setup fee is never a total, quote or invoice
+ * line. Unknown / not approved is null, never zero and never the proposed figure.
+ */
+export function approvedSetupCents(pkg: { pricing: { setup: { cents: number }; setupStatus?: string; status: string } }): number | null {
+  return (pkg.pricing.setupStatus ?? pkg.pricing.status) === "approved" ? pkg.pricing.setup.cents : null;
+}
+
 export function isStaleAt(asOf: string | null, now: number, staleMs: number): boolean {
   if (asOf === null) return true;
   const t = Date.parse(asOf);
@@ -191,7 +199,7 @@ export type ClientRow = {
   handoffs: { pendingAlerts: number | null; failedAlerts: number | null; callbackRequests: number | null; alertsByReason: Record<string, number> | null } | null;
   sms: { enabled: boolean };
   costs: { estimatedMonthlyCents: number | null; measuredMonthlyCents: number | null; reconciledMonthlyCents: number | null; reason: string | null };
-  commercial: { setupFeeCents: number | null; mrrCents: number | null; marginCents: number | null; marginPct: number | null; caveat: string };
+  commercial: { setupFeeCents: number | null; mrrCents: number | null; marginCents: number | null; marginPct: number | null; caveat: string; /** Set when the receptionist app could not compute this period's charge: shown as blocked, never zero. */ billingBlocked?: { reason: string; message: string } | null };
 };
 
 export type ExceptionItem = {
@@ -343,7 +351,7 @@ function buildClientRow(
   } else if (pkg && !m) {
     // RX-2: the fees are known; cost and margin would be computed from made-up zeros, so they stay unknown.
     costs = { estimatedMonthlyCents: null, measuredMonthlyCents: null, reconciledMonthlyCents: null, reason: "Usage unknown: the feed didn't report this client's minutes, so no cost or margin is estimated." };
-    commercial = { setupFeeCents: pkg.pricing.setup.cents, mrrCents: pkg.pricing.monthly.cents, marginCents: null, marginPct: null, caveat: "Margin unknown: usage missing." };
+    commercial = { setupFeeCents: approvedSetupCents(pkg), mrrCents: pkg.pricing.monthly.cents, marginCents: null, marginPct: null, caveat: "Margin unknown: usage missing." };
   } else if (pkg && m) {
     // A single averaged call bucket from this month's aggregate minutes — the feed carries no
     // per-call duration list for a client, only the monthly total (docs/AGENCY-FEED-CONTRACT.md).
@@ -370,12 +378,17 @@ function buildClientRow(
       ].filter(Boolean).join(" "),
     };
     commercial = {
-      setupFeeCents: pkg.pricing.setup.cents,
+      setupFeeCents: approvedSetupCents(pkg),
       mrrCents: pkg.pricing.monthly.cents,
       marginCents: estimate.contributionCents,
       marginPct: estimate.contributionMarginBps === null ? null : estimate.contributionMarginBps / 100,
       caveat: "Estimated contribution margin (list rates × this month's aggregate minutes), before support and the shared platform. Not measured or reconciled.",
     };
+  }
+  const blocked = pkg && !isInternalClient(c) ? (c.usage?.periodBillingBlocked ?? null) : null;
+  if (blocked) {
+    // Billing blocked: no charge can be computed, so no margin either. Never a zero.
+    commercial = { ...commercial, marginCents: null, marginPct: null, billingBlocked: blocked, caveat: `Billing blocked (${blocked.reason}): ${blocked.message} No margin is shown for this period.` };
   }
   const b = c.bookings, h = c.handoffs;
   return {
@@ -578,7 +591,8 @@ export function buildDashboard(input: DashboardInput): DashboardViewModel {
   // R3: billed clients only; a demo tenant or M&U's own line is never MRR or a setup fee.
   const billed = withPackage.filter((r) => !isInternalClient(r));
   const mrrTotal = billed.length ? billed.reduce((s, r) => s + (r.commercial.mrrCents ?? 0), 0) : null;
-  const setupTotal = billed.length ? billed.reduce((s, r) => s + (r.commercial.setupFeeCents ?? 0), 0) : null;
+  const setupKnown = billed.filter((r) => r.commercial.setupFeeCents !== null);
+  const setupTotal = setupKnown.length ? setupKnown.reduce((s, r) => s + (r.commercial.setupFeeCents ?? 0), 0) : null;
   // F2 RX-3: support is assumed from each ASSIGNED client's package scenario at its reported usage.
   // A client without a package or usage isn't in the figure (it's then "at least"); with no client
   // countable there is nothing to assume from: null, never 0.

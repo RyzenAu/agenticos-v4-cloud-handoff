@@ -1,5 +1,23 @@
 # "Jarvis, make a website for `<prospect>`" — v1 and v2
 
+## Current dental default — 30 September 2026
+
+Dental requests from the lead drawer, quick actions, the voice draft endpoint and Hermes's
+CLI use the selected daylit-room flagship (the Dental Care Plus local preview). They all
+generate into the registered `flagship-preview` folder. The dental default does not start a
+Claude build or silently fall back to a generic design if its template is missing.
+
+A fresh custom design remains available explicitly: `--bespoke` on the CLI or
+`mode: "bespoke"` on the draft endpoint. The quick-action picker calls this
+"Create a new design with Claude". Existing non-dental custom workflows remain available.
+
+Deploy uses the generated preview, explicitly links its Vercel project, adds the custom
+production domain, then assigns the exact returned deployment URL as its alias. Each CLI
+failure stops the deploy. Live verification compares its built asset paths as well as the
+business disclosure and noindex header; an unverified address is reported as failed.
+
+The history below documents the earlier generic/custom generator.
+
 Draft a first-cut, local, static website for one CRM lead, for internal review only. Never
 publishes, never deploys, never emails or messages the prospect. v1 built 24 Sep 2026 (below); v2
 (art-directed, evidence-checked, built on the Claude subscription, with motion) added the same

@@ -5,7 +5,8 @@
 //! fallback on its own. This module tries to skip it: it hooks
 //! `ICoreWebView2::PermissionRequested` and calls `SetState(ALLOW)` only when
 //! the requested kind is `Microphone` *and* the requesting `Uri` starts with
-//! our server's origin (`http://localhost:<port>`, 8081 by default). Every other request (wrong
+//! our server's origin (`http://localhost:<port>`, 8081 by default; in remote-hub
+//! mode, the hub's origin and nothing local). Every other request (wrong
 //! kind, wrong origin, or a failure reaching the WebView2 core) is left
 //! alone, so WebView2 falls back to its normal one-time prompt.
 //!
@@ -20,8 +21,7 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
 use webview2_com::PermissionRequestedEventHandler;
 use windows::core::{Result as WinResult, PWSTR};
 
-use crate::config::app_port;
-use crate::supervisor;
+use crate::config;
 
 pub fn allow_microphone_for_localhost(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window
@@ -44,10 +44,7 @@ pub fn allow_microphone_for_localhost(window: &tauri::WebviewWindow) -> tauri::R
                      (falling back to WebView2's own prompt): {err}"
                 );
             } else {
-                log::info!(
-                    "Jarvis: microphone auto-grant installed for http://localhost:{}",
-                    app_port()
-                );
+                log::info!("Jarvis: microphone auto-grant installed for {}", config::app_origin_label());
             }
         })
         .map_err(Into::into)
@@ -69,7 +66,7 @@ fn install_handler(webview: &ICoreWebView2) -> WinResult<()> {
         unsafe { args.Uri(&mut uri_raw) }?;
         let uri = CoTaskMemPWSTR::from(uri_raw).to_string();
 
-        if supervisor::is_app_url(&uri, app_port()) {
+        if config::is_app_url(&uri) {
             log::info!("Jarvis: auto-granting microphone to {uri}");
             unsafe { args.SetState(COREWEBVIEW2_PERMISSION_STATE_ALLOW) }?;
         } else {

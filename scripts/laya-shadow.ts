@@ -10,6 +10,7 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dataDirFor } from "./cloud/data-dir";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const LAYA_TIMEOUT_MS = 1500; // same budget as the Jev call it shadows
@@ -57,7 +58,7 @@ const dirsReady = new Map<string, Promise<string>>();
 function dataDir(root: string) {
   let ready = dirsReady.get(root);
   if (!ready) {
-    ready = mkdir(join(root, ".operator-data"), { recursive: true }).then(() => join(root, ".operator-data"));
+    ready = mkdir(join(dataDirFor(root)), { recursive: true }).then(() => join(dataDirFor(root)));
     dirsReady.set(root, ready);
   }
   return ready;

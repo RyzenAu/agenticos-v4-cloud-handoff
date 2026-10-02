@@ -9,6 +9,8 @@ import { transactionViews } from "./manual-plugin";
 import { resolvePeriod } from "./manual-summary";
 import { NAB_CSV_ISSUE_TEXT, NabCsvRejected } from "./manual-nab-csv";
 import { basiqLiveStatus } from "../nab/basiq-live";
+import { receptionistPaymentCandidates } from "./manual-receptionist";
+import { getReceptionistPackage } from "../../src/lib/receptionist-packages";
 import { buildNabCsv, SYNTHETIC_SEPTEMBER, syntheticSeptemberCsv } from "./manual-fixtures";
 
 const saved: Record<string, PropertyDescriptor | undefined> = {};
@@ -197,4 +199,30 @@ test("review and correct: a founder marks a row personal; the change shows who m
   await settle();
   expect(host.textContent).toContain("scope set by Mehroz");
   await act(async () => root.unmount());
+});
+
+test("package payment candidates: sourced, dated, 'possible match' wording, and UNKNOWN (not zero) when no import covers the period", async () => {
+  const { api, store } = fakeApi("2026-09-27");
+  const withPayments: ManualFinanceApi = { ...api, receptionistPayments: async (p: PeriodKey) => receptionistPaymentCandidates(p, { store, today: "2026-09-27" }) };
+  // No import yet: the panel is not shown at all (nothing to reconcile), and never claims a payment.
+  let m = await mount(withPayments);
+  expect(m.host.textContent ?? "").not.toContain("Possible receptionist package payments");
+  await act(async () => m.root.unmount());
+
+  const essentialInc = (getReceptionistPackage("receptionist-essential").pricing.monthly.cents * 110) / 100;
+  store.importCsv(L, buildNabCsv([{ date: "02 Sep 26", amount: (essentialInc / 100).toFixed(2), type: "MISCELLANEOUS CREDIT", details: "SYNTHETIC CLIENT A MONTHLY" }]), "picker", { actor: "usman" });
+  m = await mount(withPayments);
+  const text = m.host.textContent ?? "";
+  expect(text).toContain("Possible receptionist package payments");
+  expect(text).toContain("possible match");
+  expect(text).toContain("NAB CSV imported, as of");
+  expect(text).toContain("not a live bank feed");
+  expect(text).toContain("check it against the invoice before treating it as a client payment");
+  expect(text).not.toMatch(/\bpaid\b|has paid|confirmed payment/i);
+  await act(async () => m.root.unmount());
+
+  // A failed read says so and implies no match.
+  m = await mount({ ...api, receptionistPayments: async () => { throw new Error("down"); } });
+  expect(m.host.textContent ?? "").toContain("Package payment matches unavailable");
+  await act(async () => m.root.unmount());
 });

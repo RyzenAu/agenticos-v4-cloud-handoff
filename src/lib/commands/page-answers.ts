@@ -44,7 +44,10 @@ export function setupNeededAnswer(caps: Capabilities): PageAnswer {
 }
 
 /** Browser: read the page's own source and answer. Never throws; a failed read says so. */
-export async function answerFromPage(query: PageAnswerQuery, request: typeof fetch = (...a) => fetch(...a)): Promise<PageAnswer> {
+/** Just the call shape this module uses; `typeof fetch` also carries runtime extras (Bun's `preconnect`) a test double need not fake. */
+export type PageFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+export async function answerFromPage(query: PageAnswerQuery, request: PageFetch = (input, init) => fetch(input, init)): Promise<PageAnswer> {
   const token = await request("/__token").then((r) => (r.ok ? r.json() : null)).then((t) => (typeof t?.token === "string" ? t.token : "")).catch(() => "");
   const get = async (path: string) => {
     const r = await request(path, { headers: { Accept: "application/json", ...(token ? { "X-Claude-OS-Token": token } : {}) }, cache: "no-store" });

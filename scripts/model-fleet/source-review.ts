@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { providerModelId } from "../model-router/catalogue";
 import { clineBridgeName, freeAvailability } from "./policy";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 /** Bridge name + Cline provider id for a catalogue id (ids live in the catalogue only). */
 const fleetModel=(id:string)=>({model:clineBridgeName(id),id:providerModelId(id)});
@@ -27,7 +28,7 @@ if(import.meta.main) {
   const fact=await freeAvailability(item.id);
   if(!fact.listedFree) throw new Error("Not verified free");
   const start=Date.now();
-  const response=await fetch("http://127.0.0.1:8081/__cline/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","X-MU-Data-Class":"public"},signal:AbortSignal.timeout(320_000),body:JSON.stringify({model:item.model,messages:[{role:"user",content:item.instruction+"\nSOURCE ONLY:\n"+item.source}]})});
+  const response=await fetch("http://127.0.0.1:8081/__cline/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","X-MU-Data-Class":"public",...localOwnerHeaders()},signal:AbortSignal.timeout(320_000),body:JSON.stringify({model:item.model,messages:[{role:"user",content:item.instruction+"\nSOURCE ONLY:\n"+item.source}]})});
   const body=await response.json() as any;
   return {topic:item.topic,model:item.model,providerId:item.id,sourceSha256:createHash("sha256").update(item.source).digest("hex"),sourceChars:item.source.length,elapsedMs:Date.now()-start,status:response.status,usage:body.usage ?? null,receipt:body.fleet_receipt ?? null, routerReceipt:body.router_receipt ?? null,review:response.ok?body.choices?.[0]?.message?.content:null,error:response.ok?null:"Review failed; no fallback"};
  }));

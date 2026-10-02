@@ -33,6 +33,7 @@ import {
   type CostBasis,
   type Route,
 } from "./catalogue";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type SelectedBy = "jev" | "rule" | "owner";
 export type ReceiptOutcome =
@@ -194,7 +195,7 @@ export function projectReceipt(r: RouterReceipt): RouterReceipt {
 }
 
 export const receiptsFile = (root: string) =>
-  join(root, ".operator-data", "model-router", "receipts.jsonl");
+  join(dataDirFor(root), "model-router", "receipts.jsonl");
 
 const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 type ClaimLine = {
@@ -347,7 +348,7 @@ export function catalogueCost(
 
 /** The MiMo ledger lives under the REPO (scripts/llm/mimo.ts mimoLedgerDefault), not the home folder. */
 export const mimoLedgerFile = (root: string) =>
-  join(root, ".operator-data", "mimo", "ledger.jsonl");
+  join(dataDirFor(root), "mimo", "ledger.jsonl");
 
 export function legacyMimoReceipts(file: string): RouterReceipt[] {
   if (!existsSync(file)) return [];
@@ -410,7 +411,7 @@ const FLEET_MODEL: Record<string, string> = {
 };
 
 export function legacyFleetReceipts(root: string): RouterReceipt[] {
-  const file = join(root, ".operator-data", "model-fleet", "receipts.sqlite");
+  const file = join(dataDirFor(root), "model-fleet", "receipts.sqlite");
   if (!existsSync(file)) return [];
   let db: Database | undefined;
   try {

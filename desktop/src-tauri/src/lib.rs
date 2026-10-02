@@ -1,4 +1,5 @@
 mod config;
+mod remote;
 mod server_log;
 mod starting_page;
 mod supervisor;
@@ -139,6 +140,9 @@ impl Ui for TauriUi {
 pub fn run() {
     let config = config::load();
     config::set_app_port(config.port);
+    // Links, the microphone grant and the navigation watch scope to the hub origin (remote), localhost (local) or nothing (invalid hub).
+    config::set_app_scope(config.app_scope());
+    let plan = remote::startup_plan(&config);
     let test_instance = config.is_test_instance();
 
     let mut builder = tauri::Builder::default();
@@ -159,20 +163,28 @@ pub fn run() {
 
             let prefix: &'static str = if test_instance { "[test] " } else { "" };
             let port = config.port;
-            log::info!(
-                "Jarvis: shell {SHELL_VERSION} ({SHELL_BUILD}); OS checkout {} on port {port} (from {}){}",
-                config.repo_root.display(),
-                config.source,
-                if test_instance { "; TEST instance" } else { "" }
-            );
-            match config::check_repo(&config) {
-                config::RepoCheck::Ok => {}
-                config::RepoCheck::Warning(w) => log::warn!("Jarvis: {w}"),
-                config::RepoCheck::Invalid(e) => log::error!("Jarvis: can't spawn from here: {e}"),
-            }
-            match config::resolve_bun(&config) {
-                Ok(bun) => log::info!("Jarvis: bun = {}", bun.display()),
-                Err(e) => log::error!("Jarvis: {e}"),
+            if plan.runs_local_server() {
+                log::info!(
+                    "Jarvis: shell {SHELL_VERSION} ({SHELL_BUILD}); OS checkout {} on port {port} (from {}){}",
+                    config.repo_root.display(),
+                    config.source,
+                    if test_instance { "; TEST instance" } else { "" }
+                );
+                match config::check_repo(&config) {
+                    config::RepoCheck::Ok => {}
+                    config::RepoCheck::Warning(w) => log::warn!("Jarvis: {w}"),
+                    config::RepoCheck::Invalid(e) => log::error!("Jarvis: can't spawn from here: {e}"),
+                }
+                match config::resolve_bun(&config) {
+                    Ok(bun) => log::info!("Jarvis: bun = {}", bun.display()),
+                    Err(e) => log::error!("Jarvis: {e}"),
+                }
+            } else {
+                // Remote mode: no branch check, no bun lookup, no local server.
+                log::info!(
+                    "Jarvis: shell {SHELL_VERSION} ({SHELL_BUILD}); REMOTE HUB mode, plan {plan:?} (from {})",
+                    config.source
+                );
             }
 
             let log_dir = app
@@ -210,13 +222,29 @@ pub fn run() {
                 let _ = nav_watch::report_navigation_outcomes(&window, supervisor.clone());
             }
 
-            let label = format!("{prefix}Jarvis \u{b7} shell {SHELL_VERSION}");
+            let label = match config.remote_hub() {
+                Some(hub) => format!("{prefix}Jarvis \u{b7} hub {} \u{b7} shell {SHELL_VERSION}", hub.host),
+                None => format!("{prefix}Jarvis \u{b7} shell {SHELL_VERSION}"),
+            };
             let _ = window.set_title(&label);
+            let first_status = match &plan {
+                remote::StartupPlan::Local => supervisor::Status {
+                    phase: supervisor::Phase::Starting,
+                    headline: "Starting Jarvis\u{2026}".to_string(),
+                    detail: format!("Checking the local server on 127.0.0.1:{port}."),
+                },
+                remote::StartupPlan::OpenHub { origin } => supervisor::Status {
+                    phase: supervisor::Phase::Starting,
+                    headline: "Opening Jarvis\u{2026}".to_string(),
+                    detail: format!("Connecting to the hub at {origin}."),
+                },
+                remote::StartupPlan::RejectHubUrl { reason } => remote::rejected_status(reason),
+            };
             let first = starting_page::starting_page_url(
                 &label,
-                "Starting Jarvis\u{2026}",
-                &format!("Checking the local server on 127.0.0.1:{port}."),
-                "starting",
+                &first_status.headline,
+                &first_status.detail,
+                first_status.phase.as_str(),
             );
             if let Err(err) = window.navigate(first) {
                 log::error!("Jarvis: couldn't navigate to the starting page: {err}");
@@ -246,7 +274,11 @@ pub fn run() {
 
             // Tray icon + menu.
             let show_item = MenuItemBuilder::with_id("show", "Show Jarvis").build(app)?;
-            let restart_item = MenuItemBuilder::with_id("restart", "Restart OS server").build(app)?;
+            let restart_item = MenuItemBuilder::with_id(
+                "restart",
+                if config.is_local() { "Restart OS server" } else { "Reload hub" },
+            )
+            .build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
             let menu = MenuBuilder::new(app)
                 .items(&[&show_item, &restart_item, &quit_item])
@@ -260,6 +292,7 @@ pub fn run() {
                     .show_menu_on_left_click(false)
                     .on_menu_event(move |app, event| match event.id().as_ref() {
                         "show" => show_and_focus_main(app),
+                        "restart" if !supervisor_for_menu.config.is_local() => supervisor_for_menu.request_reload(),
                         "restart" => {
                             if !supervisor_for_menu.request_restart() {
                                 notify_not_ours(supervisor_for_menu.config.port);
@@ -303,7 +336,17 @@ pub fn run() {
                 label: Mutex::new(label),
                 shown_app_once: AtomicBool::new(false),
             };
-            std::thread::spawn(move || supervisor.run(&ui));
+            match plan {
+                remote::StartupPlan::Local => {
+                    std::thread::spawn(move || supervisor.run(&ui));
+                }
+                remote::StartupPlan::OpenHub { .. } => {
+                    let hub = config.remote_hub().cloned().expect("OpenHub plan has a hub");
+                    std::thread::spawn(move || remote::run(&supervisor, &hub, &ui));
+                }
+                // Bad hub URL: the window already shows why; nothing runs, and nothing falls back to local.
+                remote::StartupPlan::RejectHubUrl { reason } => log::error!("Jarvis: {reason}"),
+            }
 
             Ok(())
         })

@@ -5,7 +5,7 @@
 //                      its own bearer token, never reachable through Tailscale Serve)
 import { spawn } from "node:child_process";
 import { randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { homedir } from "node:os";
@@ -31,13 +31,19 @@ import { answerTelegramCode } from "../approvals/telegram-codes";
 import type { ApprovalService } from "../approvals/service";
 import { listedTelegramIds, personNotifier, type PersonNotifier } from "../approvals/notify";
 import { jobsRuntime } from "../jobs/runtime";
+import { dataDirFor, dataDirOverride } from "../cloud/data-dir";
+import { hubRole } from "../cloud/hub-role";
+import { tightenSecret, writeProtectedSecret } from "../identity/local-owner-token";
+
+/** The honest line in the server role: away mode drives a desktop, and the server has none. */
+export const SERVER_AWAY_LINE = "Away mode drives a desktop; on the server use your own PC's companion.";
 
 export const DEFAULT_DATA_DIR = "D:\\AgenticOS\\away-mode";
 
 type AwaySettings = Partial<AwayConfig> & { dataDir?: string };
 function settings(root: string): AwaySettings {
   try {
-    const raw = JSON.parse(readFileSync(join(root, ".operator-data", "away-mode", "config.json"), "utf8"));
+    const raw = JSON.parse(readFileSync(join(dataDirFor(root), "away-mode", "config.json"), "utf8"));
     const out: AwaySettings = {};
     for (const k of ["approvalTtlMs", "armIdleMs", "tickMs", "launchWaitMs"] as const) if (Number.isFinite(raw?.[k]) && raw[k] > 0) out[k] = raw[k];
     if (typeof raw?.dataDir === "string" && /^[a-z]:\\/i.test(raw.dataDir)) out.dataDir = raw.dataDir;
@@ -110,9 +116,11 @@ const filePort = {
 
 export function createAwayService(root: string, screen: ScreenHands) {
   const conf = settings(root);
-  const dataDir = conf.dataDir ?? DEFAULT_DATA_DIR;
+  // MU_DATA_DIR set (the cloud hub): the audit trail lives inside it, not on the PC's D: drive.
+  const dataDir = conf.dataDir ?? (dataDirOverride() ? join(dataDirOverride()!, "away-audit") : DEFAULT_DATA_DIR);
   const away = createAwayMode({
-    store: stateStore(join(root, ".operator-data", "away-mode")),
+    ...(hubRole() === "server" ? { disabled: SERVER_AWAY_LINE } : {}),
+    store: stateStore(join(dataDirFor(root), "away-mode")),
     audit: auditLog(dataDir),
     sentinel: nativeSentinel(join(dataDir, "bin")),
     notify: hermesNotifier(() => ownerTelegram(root)),
@@ -168,6 +176,11 @@ export async function awayRoute({ path, method, body, remote, send }: RouteInput
     send({ text: away.logText(20) });
     return true;
   }
+  // The server drives no desktop: refuse every arming or queueing request for every caller, whoever and wherever (honest, not a 200).
+  if (hubRole() === "server" && method === "POST" && path === "/away" && ["on", "resume", "task"].includes(String(body?.action ?? ""))) {
+    send({ error: SERVER_AWAY_LINE, said: SERVER_AWAY_LINE }, 501);
+    return true;
+  }
   // Changes: at this PC, or Usman himself over Tailscale (not anyone else on the tailnet).
   if (remote && !/\bowner\b/i.test(remote.role ?? "")) {
     send({ error: "Only Usman can change away mode." }, 403);
@@ -198,18 +211,39 @@ export async function awayRoute({ path, method, body, remote, send }: RouteInput
 
 // --- the Hermes plugin's relay: /__away/telegram --------------------------------------------------------
 export function relayTokenFile(root: string) {
-  return join(root, ".operator-data", "away-mode", "relay.token");
+  return join(dataDirFor(root), "away-mode", "relay.token");
 }
+/** file -> "mtime:ctime:size" of the version whose permissions were last checked (server role). */
+const relayTightened = new Map<string, string>();
 /** The relay's own bearer token, made once; the Hermes plugin reads the same file. */
 export function relayToken(root: string) {
   const file = relayTokenFile(root);
   if (existsSync(file)) {
     const saved = readFileSync(file, "utf8").trim();
-    if (/^[a-f0-9]{64}$/.test(saved)) return saved;
+    if (/^[a-f0-9]{64}$/.test(saved)) {
+      // Server role: a relay bearer written by an older start may carry the folder's ACL on Windows; tighten it in place (same value,
+      // so Hermes' plugin keeps working) and never refuse to serve over it.
+      // The check runs icacls/PowerShell (~0.7 s, synchronous), so it runs once per version of the file, never per request: an
+      // untokened local caller looping on /__away must not be able to stall the hub (final review, 2 Oct 2026).
+      if (hubRole() === "server") {
+        const st = statSync(file);
+        const stamp = `${st.mtimeMs}:${st.ctimeMs}:${st.size}`;
+        if (relayTightened.get(file) !== stamp) {
+          try {
+            if (tightenSecret(file)) console.warn("relay token: permissions were wrong and have been tightened");
+          } catch {
+            /* the relay still works; the warning is the best we can do */
+          }
+          const after = statSync(file);
+          relayTightened.set(file, `${after.mtimeMs}:${after.ctimeMs}:${after.size}`);
+        }
+      }
+      return saved;
+    }
   }
-  mkdirSync(dirname(file), { recursive: true });
+  // Protected from its first byte (Windows ignores mode 0o600): see writeProtectedSecret.
   const token = randomBytes(32).toString("hex");
-  writeFileSync(file, token, { mode: 0o600 });
+  writeProtectedSecret(file, token);
   return token;
 }
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));

@@ -83,7 +83,7 @@ High usage includes overage revenue and **double** the support time. Support hou
 
 ## 3. What moves the margin (ranked)
 1. **Our own time.** Support and onboarding are the biggest costs after go-live. Automated booking alerts and the weekly report replace manual summaries.
-2. **Cover mode.** After-hours and overflow only (not all calls) keeps Essential clients inside 400 minutes. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.] If business hours are included, re-cost Essential first.
+2. **Cover mode.** Owner decision 1 Oct 2026: every package covers business hours, alongside staff, after hours and overflow. Essential clients who put all calls through the receptionist will exceed 400 minutes sooner and pay the A$0.80 extra-minute rate; model that case, not only after-hours and overflow.
 3. **Voice tier.** If `retell-Leland` bills as a platform voice, cost drops US$0.025/min (about A$0.037). Confirm in the Retell dashboard (owner).
 4. **Call length caps.** Max call duration 8 minutes and 15 s silence end-call (prompt v3 recommendation, owner yes).
 5. **Unknowns to scope next:** Neon compute hours, the alert email provider, a second Vercel seat, Retell concurrency above 20 once there are 10+ clients.

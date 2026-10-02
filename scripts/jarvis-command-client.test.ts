@@ -144,7 +144,7 @@ describe("runJarvisCommand", () => {
     expect(events.map((e) => e.type)).toEqual(["job", "decision", "narrate", "step", "done"]);
     expect(t.calls).toHaveLength(1);
     expect(t.calls[0].path).toBe(COMMAND_PATH);
-    expect(t.calls[0].body).toEqual({ utterance: "open PowerPoint", source: "voice", pageContext: { page: "/operations" }, spokenYes: "yes-1" });
+    expect(t.calls[0].body).toEqual({ utterance: "open PowerPoint", source: "voice", pageContext: { page: "/operations" }, spokenYes: "yes-1", eventId: expect.stringMatching(/^cmd-[a-z0-9]+-[a-z0-9]+$/) });
   });
 
   test("a done without jobId inherits the job event's id and device", async () => {

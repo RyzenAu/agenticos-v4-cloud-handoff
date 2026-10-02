@@ -8,6 +8,7 @@ import { askJev, combine, type JevTriage } from "./jev";
 import { dispatchAlerts, type Channels, type TriageSettings } from "./alerts";
 import { FREE_MAIL, KNOWN_PROVIDERS, POLICY_VERSION, RANK, classifyByRules, domainMatches, emptyContacts, isOtpEmail, oneLineSummary, parseSender, safeSubject, type Contacts, type Importance, type TriageEmail } from "./rules";
 import type { TriageRow, TriageStore } from "./store";
+import { dataDirFor } from "../cloud/data-dir";
 
 const require = createRequire(import.meta.url);
 type Row = Record<string, unknown>;
@@ -66,7 +67,7 @@ export function loadContacts(root: string, options: { home?: string; crmPath?: s
       addClient(parsed.name, parsed.addresses, parsed.domains, parsed.threads);
     } catch { /* an unreadable hub is skipped, never fatal */ }
   }
-  const crm = (() => { try { return openReadonly(options.crmPath ?? join(root, ".operator-data", "crm.sqlite")); } catch { return null; } })();
+  const crm = (() => { try { return openReadonly(options.crmPath ?? join(dataDirFor(root), "crm.sqlite")); } catch { return null; } })();
   if (crm) {
     try {
       for (const lead of crm.prepare("SELECT name,status,emails,website,excluded,merged_into FROM leads").all()) {
@@ -89,7 +90,7 @@ export function loadContacts(root: string, options: { home?: string; crmPath?: s
 }
 
 /** The newest archived emails as triage input: inbound only, never drafts or his own sent mail. */
-export function archivedEmails(root: string, limit = 200, path = join(root, ".operator-data", "mail-archive.sqlite")): TriageEmail[] {
+export function archivedEmails(root: string, limit = 200, path = join(dataDirFor(root), "mail-archive.sqlite")): TriageEmail[] {
   const db = openReadonly(path);
   if (!db) return [];
   try {

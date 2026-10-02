@@ -305,3 +305,37 @@ test.skipIf(process.platform !== "darwin")(
     expect(f.imported[0].image?.mimeType).toBe("image/png");
   },
 );
+
+test("with MU_DATA_DIR outside the repo root the index saves and reopens there", async () => {
+  // The data directory does not exist yet: the index must create it rather than fail on a missing folder.
+  const parent = realpathSync(mkdtempSync(join(tmpdir(), "photo-index-data-")));
+  const data = join(parent, "not", "yet");
+  const before = process.env.MU_DATA_DIR;
+  process.env.MU_DATA_DIR = data;
+  const mine: Array<ReturnType<typeof createPhotoIndex>> = [];
+  let root = "";
+  try {
+    const f = fixture();
+    root = f.root;
+    mine.push(fixtures.pop()!.index);
+    f.image("one.png");
+    const preview = await f.index.preview({ folders: [f.folder] });
+    await f.start(preview.id);
+    await until(f.index.idle);
+    expect(statSync(join(data, "photo-index", "state.json")).isFile()).toBe(true);
+    f.index.close();
+    const reopened = createPhotoIndex(f.options);
+    mine.push(reopened);
+    expect((await reopened.status()).jobs.length).toBe(1);
+  } finally {
+    // Close while the override is still set: close() saves, and the save is checked against the data directory.
+    for (const index of mine) {
+      index.close();
+      await until(() => index.idle());
+    }
+    if (before === undefined) delete process.env.MU_DATA_DIR;
+    else process.env.MU_DATA_DIR = before;
+    rmSync(parent, { recursive: true, force: true });
+    if (root) rmSync(root, { recursive: true, force: true });
+  }
+});

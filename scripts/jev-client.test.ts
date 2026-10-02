@@ -68,6 +68,13 @@ describe("the one Jev client", () => {
     expect(calls).toHaveLength(1);
   });
 
+  test("TypeSafe 529 overload recovers within the existing retry budget", async () => {
+    const { calls, request } = scripted([() => new Response("{}", { status: 529 }), () => answer()]);
+    const out = await jevDecide({ ...base(), surface: "voice.router", request });
+    expect(out.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
   test("a retry never runs past the surface budget", async () => {
     let now = 0;
     const { calls, request } = scripted([
@@ -100,5 +107,15 @@ describe("the one Jev client", () => {
   test("an unreadable reply is a failure, not an empty decision", async () => {
     const out = await jevDecide({ ...base(), surface: "bench", request: scripted([() => new Response("{\"nope\":1}", { status: 200 })]).request });
     expect(out).toMatchObject({ ok: false, reason: "unreadable" });
+  });
+
+  test("an invalid decision is receipted as failed without retry or exposed content", async () => {
+    const b = base();
+    const { calls, request } = scripted([() => Response.json({ answers: { lane: { choice: "unasked-secret-value", confidence: 5 } } })]);
+    const out = await jevDecide({ ...b, surface: "voice.router", request });
+    expect(out).toMatchObject({ ok: false, reason: "unreadable", httpStatus: 200 });
+    expect(calls).toHaveLength(1);
+    expect(b.sink.receipts.some((r) => r.outcome === "succeeded")).toBe(false);
+    expect(JSON.stringify(b.sink.receipts)).not.toContain("unasked-secret-value");
   });
 });

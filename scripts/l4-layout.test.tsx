@@ -94,9 +94,11 @@ describe("Calendar page", () => {
 
 describe("Settings page", () => {
   const src = read("src/routes/settings.tsx");
-  test("four widgets summarise the setup above the section tabs, filling the width", () => {
-    for (const t of ['title="Profile"', 'title="Time zone"', 'title="Hour of your time"', 'title="Setup"']) expect(src).toContain(t);
-    expect(src.indexOf('title="Profile"')).toBeLessThan(src.indexOf('aria-label="Settings sections"'));
+  test("settings leads with its sections, with setup reachable and unsaved changes visible", () => {
+    expect(src).toContain('to="/setup"');
+    expect(src).toContain('Review setup');
+    expect(src).toContain('Unsaved changes');
+    expect(src.indexOf('title="Settings"')).toBeLessThan(src.indexOf('aria-label="Settings sections"'));
     const css = read("src/components/operator/workspace-settings.css");
     expect(css).toContain("max-width: 1680px");
     expect(css).not.toContain("max-width: 950px");

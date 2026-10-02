@@ -65,7 +65,7 @@ export function MemoryChat() {
       return false;
     }
     if (!hasSources) {
-      setError("Switch on a source in the panel above to ask about it.");
+      setError("Choose a source under Sources & visual map, then ask again.");
       return false;
     }
     setError("");
@@ -77,7 +77,8 @@ export function MemoryChat() {
         <div className="memory-chat-heading">
           <h2 id="memory-chat-heading">Ask your memory</h2>
         </div>
-        {(active || updating || !hasSources) && <div className="memory-chat-scope">
+        {(active || updating || !hasSources) && (
+          <div className="memory-chat-scope">
           <span className="memory-chat-scope-dot" />
           <span>
             {updating
@@ -100,7 +101,8 @@ export function MemoryChat() {
               <X size={12} />
             </button>
           )}
-        </div>}
+        </div>
+        )}
         <PromptInput
           placeholder={
             active ? `Ask about ${selection.title}…` : "Ask about your memory…"
@@ -112,8 +114,14 @@ export function MemoryChat() {
           modelLabels={Object.fromEntries(models.map(model => [model.key, model.label]))}
           modelGroups={Object.fromEntries(models.map(model => [model.key, modelPickerGroup(model)]))}
           unavailableModels={models.filter(model => model.available === false).map(model => model.key)}
-          renderModelIcon={key => <ChatModelLogo model={models.find(model => model.key === key)} />}
-          renderGroupIcon={group => group === "All" ? null : <ContextLogo origin={group.toLowerCase().replace(" code", "")} />}
+          renderModelIcon={(key) => (
+            <ChatModelLogo model={models.find(model => model.key === key)} />
+          )}
+          renderGroupIcon={(group) =>
+            group === "All" ? null : (
+              <ContextLogo origin={group.toLowerCase().replace(" code", "")} />
+            )
+          }
           onModelChange={key => { setChosenModel(key); const model = models.find(model => model.key === key); if (model) rememberAskModel(model); }}
           modelPickerFooter={<button type="button" className="ar-prompt-provider" onClick={async () => { const catalog = await loadAskCatalog({refresh:true}); setModels(catalog.models); }}>Refresh models</button>}
           efforts={["Auto"]}

@@ -14,6 +14,7 @@
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type VoiceLatencyEntry = {
   id: string;
@@ -25,7 +26,7 @@ export type VoiceLatencyEntry = {
 };
 
 export function voiceLatencyFile(root: string): string {
-  return join(root, ".operator-data", "voice-latency.jsonl");
+  return join(dataDirFor(root), "voice-latency.jsonl");
 }
 
 const MAX_ID = 80;
@@ -65,7 +66,7 @@ export function parseVoiceLatencyEntry(raw: unknown): VoiceLatencyEntry {
 export function recordVoiceLatency(root: string, raw: unknown): VoiceLatencyEntry | null {
   try {
     const entry = parseVoiceLatencyEntry(raw);
-    const dir = join(root, ".operator-data");
+    const dir = join(dataDirFor(root));
     mkdirSync(dir, { recursive: true });
     appendFileSync(voiceLatencyFile(root), `${JSON.stringify(entry)}\n`, "utf8");
     return entry;

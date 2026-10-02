@@ -9,7 +9,8 @@ import type { PersonId, TargetDevice } from "./types";
  *              projects, workspace, receptionist, leads, finance and every memory scope
  *              (owner decisions V5 "one shared memory pool" and V7 "full workspace access for both";
  *              no separate business-data permissions). policy.financeGrants no longer gates anything.
- *  - devices:  control of a device — only its owner. Usman's PC belongs to Usman.
+ *  - devices:  control of a device — only its owner. Usman's PC belongs to Usman. A shared cloud computer (owner "shared")
+ *              belongs to neither: both founders may control and take it over, each through a control lease.
  *
  * A principal is who the request is *authorised* as (loopback at this PC, a paired session, a
  * Serve-verified Tailscale login, or a companion whose Tailscale login matches), resolved by the one
@@ -66,6 +67,8 @@ export function authorise(principal: Principal | null, resource: Resource, polic
       return principal.sharedOnly ? DENY("Sign in as yourself to see finance.") : shared(principal);
     case "device":
       if (principal.sharedOnly) return DENY("Device control needs the owner's own paired device.");
+      // A shared cloud computer belongs to the business: both founders may control and take it over (scripts/computers).
+      if (resource.device.owner === "shared") return ALLOW;
       return resource.device.owner === me ? ALLOW : DENY(`That device belongs to ${resource.device.owner}.`);
     case "devices-admin":
       // Managing sessions/devices: your own, or anyone's if you are Usman at full rights.

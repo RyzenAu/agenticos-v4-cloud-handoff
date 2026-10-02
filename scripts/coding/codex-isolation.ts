@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCapture } from "../nonblocking-exec";
+import { dataDirFor } from "../cloud/data-dir";
 
 /**
  * Codex sandbox isolation for coding jobs (security finding A1-6, AUDIT-A1-SECURITY.md, 28 Sep 2026).
@@ -71,7 +72,7 @@ export function protectedPaths(options: { home?: string; env?: NodeJS.ProcessEnv
     [join(home, ".vercel"), "Vercel CLI token"],
   ];
   if (options.liveRoot) {
-    candidates.push([join(options.liveRoot, ".operator-data"), "the OS's operator data (people, sessions, stores)"]);
+    candidates.push([join(dataDirFor(options.liveRoot)), "the OS's operator data (people, sessions, stores)"]);
     try {
       for (const name of readdirSync(options.liveRoot)) if (/^\.env(?:\..+)?$/i.test(name) && !/\.(?:example|sample|template)$/i.test(name)) candidates.push([join(options.liveRoot, name), "the OS's env file"]);
     } catch { /* no live root */ }

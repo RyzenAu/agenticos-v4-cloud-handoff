@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { runCapture } from "../nonblocking-exec";
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type SiteKind = "client" | "flagship";
 export type OurSite = {
@@ -187,7 +188,7 @@ const VERCEL_TTL = 15 * 60_000;
 const G = globalThis as { __muWebsitesVercel?: { refreshing: Promise<void> | null } };
 
 export function vercelCachePath(root: string) {
-  return join(root, ".operator-data", "websites-vercel.json");
+  return join(dataDirFor(root), "websites-vercel.json");
 }
 
 export function readVercelCache(root: string): VercelCache {

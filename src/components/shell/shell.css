@@ -54,7 +54,7 @@
   display: block;
   margin: 0 0 4px !important;
   font-family: var(--font-sans);
-  font-size: 12px !important;
+  font-size: var(--text-xs) !important;
   font-weight: 600 !important;
   letter-spacing: 0.16em !important;
   text-transform: uppercase;
@@ -183,6 +183,7 @@
   border-radius: 50%;
   background: var(--brand);
   box-shadow: 0 0 0 3px var(--sidebar);
+  animation: mo-pop var(--dur-base) var(--ease-out-quart) both;
 }
 /* Icon rail */
 .sh-sidebar[data-rail] .sh-rail-hide {
@@ -359,6 +360,25 @@
   .sh-jarvis-chip:not(.is-idle) {
     padding: 0 10px;
   }
+}
+/* Small phones (390): the page name needs the room, so the idle chip is its bars alone and the palette
+   trigger steps aside (the navigation drawer carries every destination). */
+@media (max-width: 479px) {
+  .sh-jarvis-chip.is-idle .sh-jarvis-label {
+    display: none;
+  }
+  .sh-jarvis-chip {
+    padding: 0 10px;
+  }
+  .sh-header .cp-trigger {
+    display: none;
+  }
+}
+/* The header gives way to the page name, never the reverse: a long job label shrinks (ellipsis) instead of pushing the breadcrumb under it. */
+.sh-header .sh-jarvis-chip {
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 .sh-jarvis-chip:hover {
   border-color: var(--border-strong);

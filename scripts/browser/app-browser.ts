@@ -23,9 +23,10 @@ import { isOwnerProfile } from "../screen-hands/browser-exec";
 import { moneyHost, moneySurfaceRefusal } from "../../src/lib/control-risk";
 import { taskChain } from "../model-router/catalogue";
 import { ipLike, SHORTENER } from "../../src/lib/money-policy";
+import { dataDirFor } from "../cloud/data-dir";
 const isIpLiteral = (h: string) => /^\d+\.\d+\.\d+\.\d+$|^\[/.test(h);
 
-export const APP_BROWSER_DIR = (root: string) => join(root, ".operator-data", "jarvis-app-browser", "profile");
+export const APP_BROWSER_DIR = (root: string) => join(dataDirFor(root), "jarvis-app-browser", "profile");
 
 /** Sign-in and account hosts the app browser never opens. Money hosts come from the shared policy. */
 const REFUSED_HOST = /(?:^|\.)(?:accounts\.google\.com|myaccount\.google\.com|login\.[a-z.]+|signin\.[a-z.]+|auth\.[a-z.]+|id\.[a-z.]+)$/i;

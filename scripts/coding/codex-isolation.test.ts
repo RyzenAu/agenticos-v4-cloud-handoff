@@ -165,7 +165,8 @@ describe("REVIEW-T3 R2: one --apply run, a complete --rollback (real icacls, SYN
     expect(rolled.ok).toBe(true);
     for (const p of [join(synthetic, ".ssh"), join(synthetic, ".git-credentials")]) {
       const acl = spawnSync("icacls", [p, "/T"], { encoding: "utf8", windowsHide: true }).stdout;
-      expect([p, /CodexSandboxUsers/i.test(acl)]).toEqual([p, false]);
+      // Rollback removes Deny entries, not legitimate inherited Allow entries.
+      expect([p, /CodexSandboxUsers:[^\r\n]*\(DENY\)/i.test(acl)]).toEqual([p, false]);
     }
     expect((await checkCodexIsolation(opts)).ok).toBe(false);
   }, 120_000);

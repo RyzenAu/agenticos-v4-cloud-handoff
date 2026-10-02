@@ -126,8 +126,8 @@
   padding: 8px 10px 4px;
   font-size: var(--text-2xs);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--muted-foreground);
 }
 .cp-item {
@@ -153,6 +153,20 @@
   border-radius: 2px;
   background: var(--brand);
 }
+.cp-target-line {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cp-target-line[data-target="device"] {
+  color: var(--brand);
+}
+.cp-target-line[data-ok="false"] {
+  color: var(--danger);
+}
 .cp-kind {
   flex-shrink: 0;
   font-size: var(--text-2xs);
@@ -173,8 +187,8 @@
 .cp-eyebrow {
   font-size: var(--text-2xs);
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--brand);
 }
 .cp-detail-title {

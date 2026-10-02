@@ -1,14 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { Dispatcher, isRisky } from "./dispatch";
-import { identify, identifyCompanion, knownPeople, NAME_COOKIE, SESSION_COOKIE, type RequestIdentity } from "./identity";
+import { Dispatcher, isRisky, type Observation } from "./dispatch";
+import { identify, identifyCompanion, viaBridge, knownPeople, NAME_COOKIE, SESSION_COOKIE, type RequestIdentity } from "./identity";
 import { authorise, permissionSummary, withDisplayName, type Principal, type Resource } from "./permissions";
 import { defaultHub, DeviceRegistry, HEARTBEAT_INTERVAL_MS, PRESENCE_TTL_MS, setActiveRegistry } from "./registry";
-import { DeviceStore, SESSION_TTL_MS, type SessionRow } from "./store";
+import { CODE_TTL_MS, DeviceStore, SESSION_TTL_MS, type SessionRow } from "./store";
 import { normalisePersonId, type PersonId, type TargetDevice } from "./types";
 import { pageTokenMatches } from "../identity/gate";
 import { pageTokenFor, pairingTokenFor, safeEqual } from "../identity/principal";
 import type { ServePeerCheck } from "../identity/serve-peer";
-import { serveSourceNode, type TailnetSource } from "../remote-access";
+import { serveSourceAddress, serveSourceNode, type TailnetSource } from "../remote-access";
+import { hubIsDeviceFor, hubRole, type HubRole } from "../cloud/hub-role";
 
 /**
  * /__devices — pairing, sessions, the name picker, paired devices, who's online, companion
@@ -40,25 +41,52 @@ export type DevicesServiceOptions = {
   install?: boolean;
   /** Maximum long-poll wait for companions. */
   maxWaitMs?: number;
+  /** How long the hub waits for a companion to say what happened to a command whose ack was lost (tests shorten it). */
+  observeWaitMs?: number;
+  /**
+   * Where this hub runs (default: MU_HUB_ROLE). In the "cloud" and "server" roles the hub is a server, not anyone's PC: it is NOT
+   * a device at all (not listed, not online, not a target, not a fallback), so Usman's PC is his paired companion,
+   * exactly like Mehroz's, and "here" resolves to the requester's own companion or fails honestly as offline.
+   */
+  hubRole?: HubRole;
 };
 
 const LIMIT = 16 * 1024;
 /** REVIEW-S1 F1: session and device administration; a human session only. */
-const ADMIN_WRITES = new Set(["/pair/code", "/sessions/revoke", "/devices/revoke", "/policy/self-pair", "/policy/finance", "/sessions/confirm-code"]);
+const ADMIN_WRITES = new Set(["/pair/code", "/sessions/revoke", "/devices/revoke", "/policy/self-pair", "/policy/finance", "/sessions/confirm-code", "/sessions/approve"]);
 const SEEN_WINDOW_MS = 2 * 60 * 1000;
+
+/** Where a Serve request came from, for the person who will approve it: the tailnet address and the node the hub resolved ("100.64.0.12#nABC"). */
+function pairSource(req: IncomingMessage, tailnet: TailnetSource | undefined): string {
+  const address = serveSourceAddress(req as never) ?? "unknown";
+  const node = serveSourceNode(req as never, tailnet);
+  return node.ok ? `${address}#${node.nodeId}` : address;
+}
 
 export function createDevicesService(options: DevicesServiceOptions) {
   const now = options.now ?? Date.now;
   const store = options.store ?? new DeviceStore(options.root, { now });
   const hub = options.hub ?? defaultHub();
-  const registry = new DeviceRegistry(() => [hub, ...store.companions()], now, PRESENCE_TTL_MS);
-  const dispatcher = new Dispatcher(registry, now);
+  const role: HubRole = options.hubRole ?? hubRole();
+  // Only the PC role lists the hub as a device. A cloud or server hub is nobody's PC, so it is never a target or a fallback.
+  const registry = new DeviceRegistry(() => (hubIsDeviceFor(role) ? [hub, ...store.companions()] : store.companions()), now, PRESENCE_TTL_MS);
+  const dispatcher = new Dispatcher(registry, now, options.observeWaitMs);
   const seen = new Map<PersonId, number>();
   const maxWait = options.maxWaitMs ?? 25_000;
   dispatcher.start();
   if (options.install) setActiveRegistry(registry);
   const idOpts = { root: options.root, store, tailnetName: options.tailnetName, servePeer: options.servePeer, tailnet: options.tailnet };
   const pageToken = () => (typeof options.token === "function" ? options.token() : options.token);
+
+  /**
+   * Who may administer a person's devices and sessions (codes, approve, revoke, policy). In the server role the founders are equal:
+   * each controls his OWN devices only (Usman is not a super-admin); the console code CLI is the cross-person route. Elsewhere
+   * permissions.ts decides as it always did.
+   */
+  function adminAuth(principal: Principal, person: PersonId) {
+    if (role === "server" && principal.personId !== person) return { allowed: false as const, reason: "You manage only your own devices. For someone else's, make a one-time code at the server console." };
+    return authorise(principal, { kind: "devices-admin", person });
+  }
 
   function principalOf(req: IncomingMessage): Principal | null {
     const id = identify(req, idOpts);
@@ -123,16 +151,28 @@ export function createDevicesService(options: DevicesServiceOptions) {
   }
 
   function sessionView(row: SessionRow, current?: string) {
-    return { id: row.id, personId: row.personId, label: row.label, via: row.via, createdAt: row.createdAt, expiresAt: row.expiresAt, lastSeen: row.lastSeen, revoked: !!row.revokedAt, expired: row.expiresAt <= now(), current: row.id === current, pending: !!row.pending };
+    return { id: row.id, personId: row.personId, label: row.label, via: row.via, createdAt: row.createdAt, expiresAt: row.expiresAt, lastSeen: row.lastSeen, revoked: !!row.revokedAt, expired: row.expiresAt <= now(), current: row.id === current, pending: !!row.pending, ...(row.via === "tailnet" && row.source ? { source: row.source } : {}) };
   }
 
-  function deviceView(d: TargetDevice) {
+  /**
+   * `viewer`: who is looking. The UI wording hook is `displayLabel`: "Offline" when the device is not online, else
+   * "This PC" for the viewer's own device (`mine`), else its label. Data only; the pages decide how to show it.
+   */
+  function deviceView(d: TargetDevice, viewer?: PersonId) {
     const p = registry.presenceOf(d.id);
+    const online = registry.isOnline(d);
+    const mine = viewer !== undefined && d.owner === viewer;
     return {
       id: d.id, owner: d.owner, kind: d.kind, label: d.label, aliases: d.aliases, primary: !!d.primary,
-      online: registry.isOnline(d), lastSeen: d.kind === "hub" ? now() : p?.lastSeen ?? null,
+      online, lastSeen: d.kind === "hub" ? now() : p?.lastSeen ?? null,
       micOwned: d.kind === "hub" ? null : p?.micOwned ?? null, busy: p?.busy ?? false,
       pairedAt: d.pairedAt ?? null, expiresAt: d.expiresAt ?? null, revoked: !!d.revokedAt,
+      // Worker facts, as the companion itself reported them (null before its first heartbeat, or for the hub).
+      workerVersion: d.kind === "hub" ? null : p?.version || null,
+      capabilities: d.kind === "hub" ? null : p?.capabilities ?? null,
+      interactive: d.kind === "hub" ? null : p?.interactive ?? null,
+      mine,
+      displayLabel: !online ? "Offline" : mine ? "This PC" : d.label,
     };
   }
 
@@ -176,7 +216,8 @@ export function createDevicesService(options: DevicesServiceOptions) {
           hubSession: id.local && id.session?.via === "hub" ? { pending: !!id.session.pending } : null,
           // A verified Tailscale login can always ask for a remembered (30-day, revocable) session.
           canSelfPair: !id.session && !!id.tailnet && policy.selfPair[id.tailnet] !== false,
-          people: people(options.root),
+          // Server role: a caller who is nobody (an unproven local process) is not shown who the founders are.
+          people: role === "server" && !principal && !id.tailnet ? [] : people(options.root),
           permissions: permissionSummary(principal, policy),
         });
       }
@@ -185,8 +226,18 @@ export function createDevicesService(options: DevicesServiceOptions) {
         if (id.session) return send(res, 409, { error: "This device is already paired." });
         if (policy.selfPair[id.tailnet] === false) return send(res, 403, { error: "This account needs a pairing code from one of its paired devices." });
         const b = await body(req);
-        const { cookie: value, session } = store.mintSession(id.tailnet, String(b.label ?? ""), "tailnet");
-        return send(res, 200, { paired: true, session: sessionView(session, session.id) }, [cookie(SESSION_COOKIE, value, id.secure)]);
+        // Server role: a bare Tailscale login is a PROCESS (a script on that person's machine can call this route), so the
+        // session it earns is PENDING: shared access as before, but not a confirmed human session, so it does not open the
+        // server's local-owner routes. A confirmed session approves it (POST /sessions/approve), or a one-time code does
+        // (made by a confirmed session at /pair/code, or on the server console with scripts/identity/pair-code.ts).
+        const pending = role === "server";
+        if (pending) {
+          // A script can call this route in a loop: keep at most a few unconfirmed browsers per person (oldest out).
+          const open = store.sessions(id.tailnet).filter((x) => x.via === "tailnet" && x.pending && !x.revokedAt && x.expiresAt > now()).sort((a, b) => a.createdAt - b.createdAt);
+          for (const old of open.slice(0, Math.max(0, open.length - 4))) store.revokeSession(old.id);
+        }
+        const { cookie: value, session } = store.mintSession(id.tailnet, String(b.label ?? ""), "tailnet", pending ? { pending: true, source: pairSource(req, options.tailnet) } : {});
+        return send(res, 200, { paired: true, ...(pending ? { pending: true, needsApproval: true } : {}), session: sessionView(session, session.id) }, [cookie(SESSION_COOKIE, value, id.secure)]);
       }
       if (method === "POST" && path === "/pair/redeem") {
         if (!id.tailnet) return send(res, 403, { error: "Open the OS through your Tailscale address to pair." });
@@ -226,12 +277,13 @@ export function createDevicesService(options: DevicesServiceOptions) {
         const purpose = b.purpose === "companion" ? "companion" : "browser";
         const forPerson = b.personId ? normalisePersonId(b.personId) : principal.personId;
         if (!forPerson) return send(res, 400, { error: "Unknown person." });
-        const d = authorise(principal, { kind: "devices-admin", person: forPerson });
+        const d = adminAuth(principal, forPerson);
         if (!d.allowed) return send(res, 403, { error: d.reason });
         return send(res, 200, { ...store.createCode(forPerson, purpose, principal.personId), personId: forPerson, purpose });
       }
       if (method === "GET" && path === "/sessions") {
-        const all = principal.personId === "usman" && !principal.sharedOnly;
+        // Server role: your own sessions only (the other founder's online status is in /devices, his session details are not yours to see).
+        const all = role !== "server" && principal.personId === "usman" && !principal.sharedOnly;
         const rows = store.sessions(all ? undefined : principal.personId);
         return send(res, 200, { sessions: rows.map((r) => sessionView(r, principal.sessionId)) });
       }
@@ -252,11 +304,29 @@ export function createDevicesService(options: DevicesServiceOptions) {
         const r = store.confirmHubSession(id.session.id, String(b.code ?? ""));
         return r.ok ? send(res, 200, { confirmed: sessionView(r.session, id.session.id) }) : send(res, 403, { error: r.reason });
       }
+      if (method === "POST" && path === "/sessions/approve") {
+        // Server role: a confirmed human session (either founder's) approves a new browser that paired with a bare Tailscale
+        // login. The ADMIN_WRITES gate above has already required an actor-human principal.
+        const b = await body(req);
+        const approved = store.approveSession(String(b.sessionId ?? ""), principal.personId);
+        return approved.ok ? send(res, 200, { approved: sessionView(approved.session) }) : send(res, approved.status, { error: approved.reason });
+      }
+      if (method === "POST" && path === "/pair/console-code") {
+        // Server role: a one-time code minted at the server's own console. Only the loopback owner WITH the local-owner
+        // proof reaches this as a principal (an unproven loopback request is nobody), so reading the token file is the proof.
+        // The founder types the code into his new browser (/pair/redeem), which earns a CONFIRMED session.
+        if (role !== "server" || id.verified?.via !== "loopback-owner" || !id.local)
+          return send(res, 403, { error: "Console codes are made at the server itself, with the local-owner token (scripts/identity/pair-code.ts)." });
+        const b = await body(req);
+        const who = normalisePersonId(b.personId);
+        if (!who || !people(options.root).some((p) => p.id === who)) return send(res, 400, { error: "Unknown person." });
+        return send(res, 200, { ...store.createCode(who, "browser", "usman"), personId: who, purpose: "browser", ttlMs: CODE_TTL_MS });
+      }
       if (method === "POST" && path === "/sessions/revoke") {
         const b = await body(req);
         const row = store.sessions().find((s) => s.id === String(b.sessionId ?? ""));
         if (!row) return send(res, 404, { error: "No such session." });
-        const d = authorise(principal, { kind: "devices-admin", person: row.personId });
+        const d = adminAuth(principal, row.personId);
         if (!d.allowed) return send(res, 403, { error: d.reason });
         store.revokeSession(row.id);
         if (b.requireCode === true) store.setSelfPair(row.personId, false);
@@ -270,13 +340,14 @@ export function createDevicesService(options: DevicesServiceOptions) {
           online: registry.targets().some((d) => d.owner === p.id && d.kind === "companion" && registry.isOnline(d)) || t - (seen.get(p.id) ?? 0) <= SEEN_WINDOW_MS,
           lastSeen: seen.get(p.id) ?? null,
         }));
-        return send(res, 200, { devices: registry.all().map(deviceView), people: online, heartbeatMs: HEARTBEAT_INTERVAL_MS, ttlMs: PRESENCE_TTL_MS });
+        return send(res, 200, { devices: registry.all().map((d) => deviceView(d, principal.personId)), people: online, heartbeatMs: HEARTBEAT_INTERVAL_MS, ttlMs: PRESENCE_TTL_MS });
       }
       if (method === "POST" && path === "/devices/revoke") {
         const b = await body(req);
         const device = store.companions().find((c) => c.id === String(b.deviceId ?? ""));
         if (!device) return send(res, 404, { error: "No such paired companion." });
-        const d = authorise(principal, { kind: "devices-admin", person: device.owner });
+        // Either founder may retire a shared cloud computer; a personal PC stays its owner's (Usman manages all).
+        const d = device.owner === "shared" ? ({ allowed: true } as const) : adminAuth(principal, device.owner);
         if (!d.allowed) return send(res, 403, { error: d.reason });
         store.revokeCompanion(device.id);
         dispatcher.deviceOffline(device.id);
@@ -286,7 +357,7 @@ export function createDevicesService(options: DevicesServiceOptions) {
         const b = await body(req);
         const person = normalisePersonId(b.personId);
         if (!person) return send(res, 400, { error: "Unknown person." });
-        const d = authorise(principal, { kind: "devices-admin", person });
+        const d = adminAuth(principal, person);
         if (!d.allowed) return send(res, 403, { error: d.reason });
         store.setSelfPair(person, b.allowed === true);
         return send(res, 200, { selfPair: store.policy().selfPair });
@@ -334,8 +405,29 @@ export function createDevicesService(options: DevicesServiceOptions) {
       return send(res, 403, { error: "Not available to web pages" });
     if (method === "POST" && path === "/companion/pair") {
       const id = identify(req, idOpts);
-      if (!id.loopbackSocket || (!id.local && !id.tailnet)) return send(res, 403, { error: "Connect through the tailnet to pair." });
+      if (!id.loopbackSocket) return send(res, 403, { error: "Connect through the tailnet to pair." });
       const b = await body(req);
+      // Through the computers bridge (it stamps x-mu-bridge) the caller can be any process on another host's loopback: it may redeem ONLY a
+      // cloud computer's one-time code, in the bridge's own lockout bucket, never a person's code and never the shared "hub" bucket.
+      const bridged = viaBridge(req);
+      // A shared cloud computer pairs with a one-time code the hub itself made for its provisioning (scripts/computers):
+      // the code names the computer and who provisioned it; the redeeming program claims nothing. It connects from the
+      // same host or the allow-listed bridge, so no Tailscale login is involved, only the code.
+      if (b && typeof b.code === "string" && store.read().codes.some((c) => c.purpose === "computer")) {
+        const origin = bridged || !id.local ? "bridge" : "hub";
+        const computer = store.redeemCode(String(b.code), "computer", undefined, origin);
+        if (computer.ok && computer.computer) {
+          const { device, token } = store.registerComputer(computer.computer, { label: String(b.label ?? "") });
+          return send(res, 200, { deviceId: device.id, owner: device.owner, kind: device.kind, label: device.label, token, expiresAt: device.expiresAt, heartbeatMs: HEARTBEAT_INTERVAL_MS });
+        }
+        // Not a computer code: fall through (the person flow below gives its own refusal, and its own lockout).
+        if (!computer.ok && /Too many/.test(computer.reason)) return send(res, 403, { error: computer.reason });
+      }
+      if (bridged) return send(res, 403, { error: "That code isn't valid here." });
+      // Server role: a loopback request maps to Usman only WITH the local-owner token (an unproven local process, or a WSL user over
+      // mirrored networking, is nobody). Pairing over Serve (a tailnet login) and the bridge paths above are unchanged.
+      if (role === "server" && id.local && id.verified?.via !== "loopback-owner") return send(res, 403, { error: "Pairing a companion from this machine needs the local-owner token (scripts/identity/local-owner-token.ts path)." });
+      if (!id.local && !id.tailnet) return send(res, 403, { error: "Connect through the tailnet to pair." });
       const who = id.local ? "usman" : id.tailnet!;
       // REVIEW-S1 N2: the lockout is per origin too. Every local program shares "hub"; a remote device is
       // its tailnet node, so a local program's wrong codes never lock the owner's other PC out.
@@ -353,7 +445,18 @@ export function createDevicesService(options: DevicesServiceOptions) {
     const deviceId = who.device.id;
     if (method === "POST" && path === "/companion/heartbeat") {
       const b = await body(req);
-      registry.heartbeat(deviceId, { micOwned: b.micOwned === true, busy: b.busy === true, version: String(b.version ?? "").slice(0, 32) });
+      const wasOnline = registry.isOnline(who.device);
+      registry.heartbeat(deviceId, {
+        micOwned: b.micOwned === true,
+        busy: b.busy === true,
+        version: String(b.version ?? "").slice(0, 32),
+        ...(Array.isArray(b.capabilities) ? { capabilities: b.capabilities.map((c: unknown) => String(c).slice(0, 40)).slice(0, 40) } : {}),
+        ...("interactive" in b ? { interactive: typeof b.interactive === "boolean" ? b.interactive : null } : {}),
+      });
+      // Back after a drop: learn what became of anything it was holding (annotates only; nothing is ever re-sent).
+      if (!wasOnline) dispatcher.reconcile(deviceId);
+      // Idle yet holding a command it was sent a while ago: its process was restarted. Ask it (observe), don't wait out the whole timeout.
+      if (b.busy !== true) dispatcher.reviewIdle(deviceId);
       return send(res, 200, { ok: true, deviceId, owner: who.device.owner, serverTime: now(), expiresAt: who.device.expiresAt });
     }
     if (method === "GET" && path === "/companion/next") {
@@ -371,6 +474,23 @@ export function createDevicesService(options: DevicesServiceOptions) {
       const accepted = dispatcher.complete(deviceId, String(b.commandId ?? ""), { ok: b.ok === true, output: b.output, error: typeof b.error === "string" ? b.error.slice(0, 500) : undefined });
       return send(res, accepted ? 200 : 409, { accepted });
     }
+    if (method === "POST" && path === "/companion/progress") {
+      const b = await body(req);
+      return send(res, 200, { accepted: dispatcher.progress(deviceId, String(b.commandId ?? ""), b.step) });
+    }
+    if (method === "POST" && path === "/companion/observation") {
+      // The companion's answer to "what happened to that command?": done (with its result), running,
+      // interrupted (it started before a restart), cancelled, or unknown (no record: it never received it).
+      const b = await body(req);
+      const o = b.observation && typeof b.observation === "object" ? (b.observation as Record<string, unknown>) : {};
+      const state = String(o.state ?? "");
+      const observation: Observation | null =
+        state === "done" ? { state: "done", ok: o.ok === true, output: o.output, error: typeof o.error === "string" ? o.error.slice(0, 500) : undefined }
+        : state === "running" || state === "interrupted" || state === "cancelled" || state === "unknown" ? { state }
+        : null;
+      if (!observation) return send(res, 400, { error: "Unknown observation." });
+      return send(res, 200, { accepted: dispatcher.reportObservation(deviceId, String(b.commandId ?? ""), observation) });
+    }
     if (method === "POST" && path === "/companion/goodbye") {
       dispatcher.deviceOffline(deviceId);
       return send(res, 200, { ok: true });
@@ -383,7 +503,7 @@ export function createDevicesService(options: DevicesServiceOptions) {
     if (options.install) setActiveRegistry(undefined);
   }
 
-  return { handle, close, registry, dispatcher, store, principalOf, authoriseRequest };
+  return { handle, close, registry, dispatcher, store, principalOf, authoriseRequest, /** The verified identity behind a request (scripts/computers mounts its own routes on it). */ identify: (req: IncomingMessage) => identify(req, idOpts), /** Browser-write guard (origin, cross-site, page token) shared with other routes. */ browserWriteBlocked, hubRole: role, /** whether the hub's own PC is a controllable device (false in the cloud and server roles) */ hubIsDevice: hubIsDeviceFor(role) };
 }
 
 function resourceFromQuery(q: URLSearchParams, registry: DeviceRegistry): Resource | null {

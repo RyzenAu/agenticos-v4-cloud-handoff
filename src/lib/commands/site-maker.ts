@@ -6,6 +6,22 @@
 import { buildSiteRequest, parseSiteAsk, PRESET_SKILLS, type SiteTarget } from "../site-maker";
 import type { CommandEntry } from "./types";
 
+/** Turn spoken or typed site words into the same coding brief as the Websites page. */
+export function siteRequestFromWords(text: string): string | null {
+  const ask = parseSiteAsk(text);
+  if (!ask) return null;
+  const vertical = ask.vertical ?? "other";
+  const target: SiteTarget = ask.name ? { kind: "named", name: ask.name } : { kind: "brief" };
+  const built = buildSiteRequest({
+    target,
+    vertical,
+    otherVertical: ask.otherVertical ?? undefined,
+    brief: target.kind === "brief" ? "A site that makes local customers book" : "",
+    skills: PRESET_SKILLS,
+  });
+  return built.ok ? built.request : null;
+}
+
 /** The registry entry for a "make a site" request, or null when the words aren't one. */
 export function siteMakerCommandEntry(text: string): CommandEntry | null {
   const ask = parseSiteAsk(text);

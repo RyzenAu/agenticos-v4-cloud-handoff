@@ -1,7 +1,8 @@
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { isPersonId, type PersonId, type TargetDevice } from "./types";
+import { isPersonId, SHARED_OWNER, type PersonId, type TargetDevice } from "./types";
+import { dataDirFor } from "../cloud/data-dir";
 
 /**
  * Paired devices and sessions, persisted in `.operator-data/devices.json`.
@@ -72,7 +73,7 @@ export type SessionRow = {
   source?: string;
 };
 /** "hub": a one-time code that confirms a pending browser at this PC (REVIEW-S1 F2b). */
-export type CodePurpose = "browser" | "companion" | "hub";
+export type CodePurpose = "browser" | "companion" | "hub" | "computer";
 export type PairCodeRow = {
   hash: string;
   personId: PersonId;
@@ -81,8 +82,12 @@ export type PairCodeRow = {
   createdAt: number;
   expiresAt: number;
   usedAt?: number;
+  /** A "computer" code names the shared cloud computer it pairs (set by the hub, never by the redeeming program). */
+  computer?: ComputerMeta;
 };
-export type CompanionRow = TargetDevice & { kind: "companion"; tokenHash: string; pairedAt: number; expiresAt: number };
+/** What a shared cloud computer is (scripts/computers): its unique name, the adapter that hosts it, and who provisioned it. */
+export type ComputerMeta = { name: string; adapter: string; createdBy: PersonId };
+export type CompanionRow = TargetDevice & { kind: "companion" | "cloud-computer"; tokenHash: string; pairedAt: number; expiresAt: number; computer?: ComputerMeta };
 export type DevicePolicy = {
   /** May this person pair a new browser with their Tailscale login alone (no code)? */
   selfPair: Record<PersonId, boolean>;
@@ -136,8 +141,8 @@ export class DeviceStore {
   private secret?: Buffer;
 
   constructor(root: string, options: StoreOptions = {}) {
-    this.file = options.file ?? join(root, ".operator-data", "devices.json");
-    this.secretFile = options.secretFile ?? join(root, ".operator-data", "devices-secret");
+    this.file = options.file ?? join(dataDirFor(root), "devices.json");
+    this.secretFile = options.secretFile ?? join(dataDirFor(root), "devices-secret");
     this.now = options.now ?? Date.now;
   }
 
@@ -150,7 +155,7 @@ export class DeviceStore {
         version: 1,
         sessions: Array.isArray(raw?.sessions) ? raw.sessions.filter((s: SessionRow) => isPersonId(s?.personId)) : [],
         codes: Array.isArray(raw?.codes) ? raw.codes.filter((c: PairCodeRow) => isPersonId(c?.personId)) : [],
-        companions: Array.isArray(raw?.companions) ? raw.companions.filter((c: CompanionRow) => isPersonId(c?.owner)) : [],
+        companions: Array.isArray(raw?.companions) ? raw.companions.filter((c: CompanionRow) => isPersonId(c?.owner) || (c?.kind === "cloud-computer" && c?.owner === SHARED_OWNER)) : [],
         policy: {
           selfPair: { ...base.policy.selfPair, ...(raw?.policy?.selfPair ?? {}) },
           financeGrants: Array.isArray(raw?.policy?.financeGrants) ? raw.policy.financeGrants.filter(isPersonId) : [],
@@ -203,8 +208,9 @@ export class DeviceStore {
 
   // ---------- browser sessions ----------
   /** Returns the cookie value (secret) once; only its hash is stored. */
-  mintSession(personId: PersonId, label: string, via: PairVia, options: { pending?: boolean } = {}): { cookie: string; session: SessionRow } {
+  mintSession(personId: PersonId, label: string, via: PairVia, options: { pending?: boolean; /** Where it was paired from, as the hub saw it (tailnet address and node), shown to whoever approves it. Never an identity. */ source?: string } = {}): { cookie: string; session: SessionRow } {
     const minted = this.newSession(personId, label, via, options.pending === true);
+    if (options.source) minted.session.source = cleanSource(options.source);
     this.update((s) => {
       s.sessions.push(minted.session);
       if (via === "hub" && !minted.session.pending) s.hubTrustedAt ??= minted.session.createdAt;
@@ -374,6 +380,24 @@ export class DeviceStore {
     return this.read().sessions.filter((s) => !personId || s.personId === personId);
   }
 
+  /**
+   * Server role: confirm a session a bare Tailscale login paired (it was minted PENDING). Only a live, pending, tailnet-paired
+   * session can be approved; hub sessions have their own code confirmation (confirmHubSession).
+   */
+  approveSession(rowId: string, byPerson?: PersonId): { ok: true; session: SessionRow } | { ok: false; status: number; reason: string } {
+    return this.update((s) => {
+      const t = this.now();
+      const row = s.sessions.find((x) => x.id === rowId && !x.revokedAt && x.expiresAt > t);
+      if (!row) return { ok: false as const, status: 404, reason: "No such session." };
+      // Manage only your own devices: a confirmed session approves a new browser of the SAME person (the console code is the other route).
+      if (byPerson !== undefined && row.personId !== byPerson) return { ok: false as const, status: 403, reason: "You can approve only your own browsers. For someone else's, make a one-time code at the server console." };
+      if (row.via !== "tailnet") return { ok: false as const, status: 409, reason: "Only a browser paired with a Tailscale login needs this." };
+      if (!row.pending) return { ok: false as const, status: 409, reason: "This browser is already confirmed." };
+      delete row.pending;
+      return { ok: true as const, session: row };
+    });
+  }
+
   revokeSession(id: string): SessionRow | null {
     return this.update((s) => {
       const row = s.sessions.find((x) => x.id === id);
@@ -402,7 +426,7 @@ export class DeviceStore {
    * program, or the tailnet node ID of a remote device, so local programs can't lock the owner's other
    * PC out of pairing a companion.
    */
-  redeemCode(code: string, purpose: CodePurpose, requester?: PersonId, origin?: string): { ok: true; personId: PersonId } | { ok: false; reason: string } {
+  redeemCode(code: string, purpose: CodePurpose, requester?: PersonId, origin?: string): { ok: true; personId: PersonId; computer?: ComputerMeta } | { ok: false; reason: string } {
     return this.update((s) => {
       const t = this.now();
       const where = origin ? `@${String(origin).replace(/[^\w.:-]/g, "").slice(0, 64)}` : "";
@@ -417,7 +441,7 @@ export class DeviceStore {
         return { ok: false as const, reason: "That code is wrong, used or expired. Make a new one on a paired device." };
       }
       row.usedAt = t;
-      return { ok: true as const, personId: row.personId };
+      return { ok: true as const, personId: row.personId, ...(row.computer ? { computer: row.computer } : {}) };
     });
   }
 
@@ -439,6 +463,43 @@ export class DeviceStore {
         tokenHash: sha256(token),
         pairedAt: t,
         expiresAt: t + SESSION_TTL_MS,
+      };
+      s.companions.push(device);
+      return { device, token };
+    });
+  }
+
+  /**
+   * A one-time code that pairs a SHARED CLOUD COMPUTER (scripts/computers): made by the hub for a founder's provisioning
+   * request, bound to a unique computer name. Refuses a name already held by a live (not revoked/expired) computer.
+   */
+  createComputerCode(createdBy: PersonId, computer: { name: string; adapter: string }): { code: string; expiresAt: number } | { error: string } {
+    const name = computer.name;
+    const t = this.now();
+    if (this.read().companions.some((c) => c.kind === "cloud-computer" && c.computer?.name === name && !c.revokedAt && c.expiresAt > t))
+      return { error: `A computer called "${name}" already exists.` };
+    let raw = "";
+    for (let i = 0; i < 8; i++) raw += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+    const row: PairCodeRow = { hash: sha256(raw), personId: createdBy, purpose: "computer", createdBy, createdAt: t, expiresAt: t + CODE_TTL_MS, computer: { name, adapter: computer.adapter, createdBy } };
+    this.update((s) => void s.codes.push(row));
+    return { code: `${raw.slice(0, 4)}-${raw.slice(4)}`, expiresAt: row.expiresAt };
+  }
+
+  /** Register the computer a redeemed "computer" code named. Owner is "shared": both founders control it, neither owns it. */
+  registerComputer(meta: ComputerMeta, input: { label?: string } = {}): { device: CompanionRow; token: string } {
+    const token = b64url(randomBytes(32));
+    const t = this.now();
+    return this.update((s) => {
+      const device: CompanionRow = {
+        id: `computer-${meta.name}-${b64url(randomBytes(4)).toLowerCase().replace(/[^a-z0-9]/g, "x")}`,
+        owner: SHARED_OWNER,
+        kind: "cloud-computer",
+        label: cleanLabel(input.label ?? "") || `${meta.name} computer`,
+        aliases: [meta.name],
+        tokenHash: sha256(token),
+        pairedAt: t,
+        expiresAt: t + SESSION_TTL_MS,
+        computer: meta,
       };
       s.companions.push(device);
       return { device, token };

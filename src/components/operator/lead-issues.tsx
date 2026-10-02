@@ -3,7 +3,7 @@ import { honestWebsiteText } from "@/lib/call-queue";
 // on the business's own site, each linked to the page it was seen on, plus the opener hook built
 // from them. Read-only — nothing here fetches, sends or dials.
 import { ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ds";
+import { Badge, DetailSection } from "@/components/ds";
 import type { LeadIssues } from "@/lib/leads";
 import { fmtDay } from "@/lib/format";
 
@@ -18,11 +18,7 @@ export function LeadIssuesBlock({ issues }: { issues: LeadIssues | null }) {
   if (!issues) return null;
   const checked = fmtDay(new Date(issues.checkedAt), { year: true });
   return (
-    <section className="border-t border-border pt-4" aria-labelledby="lead-issues-title">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 id="lead-issues-title" className="ds-label text-muted-foreground">Evidenced issues</h3>
-        <span className="text-xs text-muted-foreground">Checked {checked}</span>
-      </div>
+    <DetailSection title="Evidenced issues" actions={<span className="text-sm text-muted-foreground">Checked {checked}</span>}>
       {issues.top.length === 0 ? (
         <p className="text-sm text-muted-foreground">{honestWebsiteText(issues.statusNote) || "Nothing evidenced to fix on their site."}</p>
       ) : (
@@ -48,6 +44,6 @@ export function LeadIssuesBlock({ issues }: { issues: LeadIssues | null }) {
         </ol>
       )}
       {issues.hook && <p className="mt-2 rounded bg-inset p-2 text-sm italic">Opener hook: “I noticed {issues.hook}.”</p>}
-    </section>
+    </DetailSection>
   );
 }

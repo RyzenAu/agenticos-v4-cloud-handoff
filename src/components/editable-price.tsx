@@ -57,7 +57,7 @@ export function EditablePrice({
           className="w-16 bg-transparent border-b border-foreground/30 text-base font-semibold tabular-nums outline-none text-foreground"
           style={{ caretColor: accent }}
         />
-        <span className="text-[11px] text-muted-foreground tabular-nums">USD / month</span>
+        <span className="text-xs text-muted-foreground tabular-nums">USD / month</span>
       </span>
     );
   }
@@ -67,7 +67,7 @@ export function EditablePrice({
       <span className="text-base font-semibold tabular-nums">
         {value !== null ? fmtMoney(value) : "—"}
       </span>
-      <span className="text-[11px] text-muted-foreground tabular-nums">
+      <span className="text-xs text-muted-foreground tabular-nums">
         {value !== null ? "/ month" : "credit"}
       </span>
       <Pencil className="h-2.5 w-2.5 text-muted-foreground/40 opacity-0 group-hover/price:opacity-100 transition-opacity ml-1" />

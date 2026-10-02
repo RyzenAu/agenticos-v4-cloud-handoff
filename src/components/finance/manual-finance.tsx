@@ -14,6 +14,7 @@ import { NAB_ONE_STEP } from "./signals";
 import { cn } from "@/lib/utils";
 import { formatAud } from "@/lib/receptionist-packages";
 import type { ManualSummary, VendorLine } from "../../../scripts/finance/manual-summary";
+import type { ReceptionistPaymentCandidates } from "../../../scripts/finance/manual-receptionist";
 import type { AuditEntry, ImportResult, PreviewResult, Scope, TxField } from "../../../scripts/finance/manual-store";
 import type { TxFilter, TxView } from "../../../scripts/finance/manual-plugin";
 import type { ManualKind, NabCsvIssue } from "../../../scripts/finance/manual-nab-csv";
@@ -37,6 +38,8 @@ export type TxList = { filter: TxFilter; total: number; rows: TxView[] };
 export type ManualFinanceApi = {
   status(): Promise<ManualFinanceStatus>;
   summary(period: PeriodKey): Promise<ManualSummary>;
+  /** Credits equal to an approved receptionist package price: possible matches only, never a confirmed payment. Optional. */
+  receptionistPayments?(period: PeriodKey): Promise<ReceptionistPaymentCandidates>;
   preview(text: string, via: "drop" | "picker"): Promise<Omit<PreviewResult, "issues"> & { issues: IssueView[] }>;
   importCsv(text: string, via: "drop" | "picker", acceptWarnings?: boolean): Promise<ImportResult>;
   clear(): Promise<{ deleted: number; backup?: string | null }>;
@@ -77,6 +80,7 @@ export function httpManualFinanceApi(base = "/__finance_manual"): ManualFinanceA
   return {
     status: () => fetch(`${base}/status`, { cache: "no-store" }).then(read),
     summary: (period) => fetch(`${base}/summary?period=${encodeURIComponent(period)}`, { cache: "no-store" }).then(read),
+    receptionistPayments: (period) => fetch(`${base}/receptionist-payments?period=${encodeURIComponent(period)}`, { cache: "no-store" }).then(read),
     preview: (text, via) => post(`/preview?via=${via}`, text, "text/csv; charset=utf-8"),
     importCsv: (text, via, accept) => changed(post(`/import?via=${via}${accept ? "&accept=warnings" : ""}`, text, "text/csv; charset=utf-8")),
     clear: () => changed(post("/clear", JSON.stringify({ confirm: "clear-all-imported-data" }), "application/json")),
@@ -141,6 +145,7 @@ export function FinanceDestination({ api: injected, embedded = false }: { api?: 
   const [status, setStatus] = useState<ManualFinanceStatus | null>(null);
   const [data, setData] = useState<ManualSummary | null>(null);
   const [txs, setTxs] = useState<TxList | null>(null);
+  const [payments, setPayments] = useState<ReceptionistPaymentCandidates | null | "failed">(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
@@ -149,6 +154,8 @@ export function FinanceDestination({ api: injected, embedded = false }: { api?: 
     try {
       const [s, d, t] = await Promise.all([api.status(), api.summary(p), api.transactions ? api.transactions(p, f) : Promise.resolve(null)]);
       setStatus(s); setData(d); setTxs(t); setLoadError(null);
+      // A separate, optional read: if it fails the panel says so; it never changes the figures above.
+      if (api.receptionistPayments) setPayments(await api.receptionistPayments(p).catch(() => "failed" as const)); else setPayments(null);
     } catch (e) { setLoadError(e instanceof Error ? e.message : "Finance data unavailable"); }
   }, [api]);
   useEffect(() => { void load(period, filter); }, [load, period, filter]);
@@ -205,7 +212,7 @@ export function FinanceDestination({ api: injected, embedded = false }: { api?: 
   };
   return <ManualFinanceView embedded={embedded} period={period} onPeriod={setPeriod} status={status} data={data} loadError={loadError} busy={busy} message={message}
     pending={pending} onFile={chooseFile} onConfirm={() => void confirmImport()} onCancel={() => setPending(null)} onClear={clearAll} onRetry={() => void reload()}
-    txs={txs} filter={filter} onFilter={setFilter}
+    txs={txs} filter={filter} onFilter={setFilter} payments={payments}
     onCorrect={api.correct ? (id, patch) => correct(() => api.correct!(id, patch)) : undefined}
     onVendorRule={api.vendorRule ? (id, patch) => correct(() => api.vendorRule!(id, patch)) : undefined}
     onMigrate={api.migrateLegacy ? () => void migrate() : undefined} />;
@@ -215,13 +222,14 @@ type Correct = (txId: string, patch: Partial<Record<TxField, string | null>>) =>
 type VendorRule = (vendorId: string, patch: Partial<Record<"label" | "category" | "scope" | "kind", string | null>>) => Promise<boolean>;
 
 export function ManualFinanceView({ period, onPeriod, status, data, loadError, busy, message, pending, onFile, onConfirm, onCancel, onClear, onRetry, embedded = false,
-  txs, filter = "review", onFilter, onCorrect, onVendorRule, onMigrate }: {
+  txs, filter = "review", onFilter, onCorrect, onVendorRule, onMigrate, payments = null }: {
   period: PeriodKey; onPeriod: (p: PeriodKey) => void; status: ManualFinanceStatus | null; data: ManualSummary | null; loadError: string | null;
   busy: boolean; message: Message | null; pending?: Pending | null;
   onFile: (file: File, via: "drop" | "picker") => void; onConfirm?: () => void; onCancel?: () => void; onClear: () => void; onRetry?: () => void;
   /** Inside the /finance destination: no second page header (the shell page owns the title). */
   embedded?: boolean;
   txs?: TxList | null; filter?: TxFilter; onFilter?: (f: TxFilter) => void; onCorrect?: Correct; onVendorRule?: VendorRule; onMigrate?: () => void;
+  payments?: ReceptionistPaymentCandidates | null | "failed";
 }) {
   const hasData = !!status && status.rowCount > 0;
   const loading = !status && !loadError;
@@ -266,6 +274,7 @@ export function ManualFinanceView({ period, onPeriod, status, data, loadError, b
         compact={hasData} first={!!status && !hasData} />
       {loading && <p className="mb-10 text-sm text-muted-foreground" role="status">Loading your imported NAB data…</p>}
       {hasData && data && <Aggregates data={data} failed={!!loadError} />}
+      {hasData && payments && <PackagePayments payments={payments} />}
       {hasData && txs && onFilter && <Review txs={txs} filter={filter} onFilter={onFilter} busy={busy} onCorrect={onCorrect} onVendorRule={onVendorRule} />}
       <FoldCard id="finance-sources" summary="Where the numbers come from"
         meta={`${status?.audit?.length ? `${status.audit.length} ${status.audit.length === 1 ? "import" : "imports"}` : "No imports yet"} · live bank feed not connected`}>
@@ -402,6 +411,37 @@ function Aggregates({ data, failed = false }: { data: ManualSummary; failed?: bo
       <CategoryBars rows={data.byCategory} />
     </FoldCard>}
   </>);
+}
+
+/**
+ * Credits in the period whose amount equals an approved receptionist package price (ex GST or plus 10%). A hint to reconcile
+ * against invoices: the ledger keeps no payer name, so an amount match is a POSSIBLE match and never says a client paid.
+ */
+function PackagePayments({ payments }: { payments: ReceptionistPaymentCandidates | "failed" }) {
+  if (payments === "failed") return <Notice tone="warn" className="mb-6" title="Package payment matches unavailable">Couldn't read the package match. Nothing above changed, and no match is implied.</Notice>;
+  const c = payments.candidates;
+  const source = `${payments.source.statement} · not a live bank feed${payments.source.lastImportAt ? ` · last import ${when(payments.source.lastImportAt)}` : ""}`;
+  const meta = c ? `${c.count} possible ${c.count === 1 ? "match" : "matches"}` : "UNKNOWN";
+  return (
+    <FoldCard id="finance-package-payments" summary="Possible receptionist package payments" meta={meta} className="mb-6">
+      <div data-package-payments data-state={c ? "possible" : "unknown"}>
+        <p className="mb-2 text-xs text-muted-foreground">Source: {source}. Period: {payments.period.label}. Approved monthly prices only (catalogue {payments.catalogue.version}); setup fees are not approved and are never matched.</p>
+        {!c ? (
+          <p className="text-sm"><strong className="font-semibold">UNKNOWN.</strong> No NAB CSV import covers {payments.period.label.toLowerCase()}, so this is not zero: import an export that covers it.</p>
+        ) : c.count === 0 ? (
+          <p className="text-sm">No credit in this period has the same amount as an approved package price.{payments.coverage === "partial" && payments.note ? ` Partial: ${payments.note}` : ""}</p>
+        ) : (
+          <>
+            <ul className="mb-2 space-y-1 text-sm">
+              {c.byPackage.map((p) => <li key={p.packageId}>{p.count} × {p.shortName}: possible match ({p.exGst ? `${p.exGst} ex GST` : ""}{p.exGst && p.incGst ? ", " : ""}{p.incGst ? `${p.incGst} incl. GST` : ""}), {aud(p.cents)}</li>)}
+            </ul>
+            {payments.coverage === "partial" && payments.note && <p className="text-xs text-warn">Partial: {payments.note}</p>}
+          </>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">{payments.caveat}</p>
+      </div>
+    </FoldCard>
+  );
 }
 
 /** A secondary figure in the cash-flow grid: a widget whose figure is a short phrase, not one number. */

@@ -23,19 +23,19 @@
 }
 .ar-calendar-sync-copy strong {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 .ar-calendar-sync-copy small {
   display: block;
   color: var(--op-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   margin-top: 4px;
 }
 .ar-calendar-sync > button {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .ar-agenda-heading {
   display: flex;
@@ -50,7 +50,7 @@
 }
 .ar-agenda-heading .op-select {
   width: 155px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 @media (max-width: 600px) {
   .ar-calendar-sync {
@@ -73,7 +73,7 @@
   }
   .ar-calendar-layout .op-calendar-toolbar .op-button {
     padding: 7px;
-    font-size: 10px;
+    font-size: var(--text-xs);
   }
 }
 .ar-calendar-coverage {
@@ -81,7 +81,7 @@
   border: 1px solid var(--op-border);
   border-radius: 10px;
   color: var(--op-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.7;
 }
 .ar-calendar-coverage summary {

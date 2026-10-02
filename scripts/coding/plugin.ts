@@ -13,26 +13,36 @@ import type { MemoryService } from "../memory/plugin";
 import { defaultReceiptSink } from "../model-router/defaults";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { providerKey } from "../provider-config";
-import { loadAccounts, type AccountsConfig } from "./accounts";
+import { labelOf, loadAccounts, pickClaudeSlot, type AccountsConfig } from "./accounts";
+import { claudeStatusService } from "./claude-status";
+import { loadSharedContext } from "./shared-context";
+import { latestSubscriptionCards } from "../model-router/allowance";
+import { aiUsageSnapshot } from "../ai-usage/plugin";
+import type { ClaudeAccountSlot } from "./contracts";
+import { readApproval } from "./codex-isolation";
+import { loadCodingPrefs } from "./role-choice";
 import type { CodingJob, RepoRegistry, RepoRegistryEntry, UsageReceipt } from "./contracts";
 import { createOrchestrator } from "./orchestrator";
 import { agentPlanner } from "./planner";
-import { loadRegistry } from "./registry";
+import { defaultRegistryFile, loadRegistryLayered } from "./registry";
 import { codingRoute, sseFrames, type CodingRuntime } from "./routes";
+import { withGuidance } from "./guidance";
 import { claudeRunner, primeClaudeCodingBinary } from "./runners/claude";
 import { runCapture } from "../nonblocking-exec";
 import { codexRunner } from "./runners/codex";
 import { routerRunner } from "./runners/router";
+import { contextDataRootFor } from "./runners/context-helper";
 import { clineBridge } from "../cline-bridge";
 import { clineBridgeName } from "../model-fleet/policy";
 import type { RoutedChatDeps } from "../model-router/chat";
 import { ProviderError } from "../model-router/router";
 import { redactText } from "./redact";
-import { createShaper } from "./shaper";
+import { claudeSlotFromWords, createShaper } from "./shaper";
 import { createCodingVoice, type CodingVoice } from "./voice";
 import { spokenConfirmations } from "../jarvis-execution/voice-confirmation";
 import { CodingStore, LeaseHeld, type WorktreeSnapshot } from "./store";
 import { worktreePathFor } from "./worktree";
+import { dataDirFor } from "../cloud/data-dir";
 
 /**
  * The coding harness in the server (task C4): ONE runtime per process (store, orchestrator, shaper),
@@ -70,14 +80,18 @@ async function version(binary: string | undefined, cli: "claude" | "codex"): Pro
  * timeout, review T8b-F1) is never cached: the versions show as "unknown" and are asked again, at
  * most once a minute. ready() never rejects.
  */
-export function createCliVersions(options: { probe: () => Promise<[VersionProbe, VersionProbe]>; now?: () => number; retryMs?: number }) {
+export function createCliVersions(options: { probe: () => Promise<[VersionProbe, VersionProbe]>; now?: () => number; retryMs?: number; maxAgeMs?: number }) {
   const now = options.now ?? Date.now;
   const retryMs = options.retryMs ?? 60_000;
   let versions: CliVersions | null = null;
   let done = false;
+  // A CLI can be installed or updated while the server runs (30 Sep 2026: the bridge copy was added); re-read now and then.
+  let doneAt = -Infinity;
+  const maxAgeMs = options.maxAgeMs ?? 30 * 60_000;
   let failedAt = -Infinity;
   let pending: Promise<void> | null = null;
   const ready = (): Promise<void> => {
+    if (done && now() - doneAt > maxAgeMs && !pending) { done = false; void ready(); return Promise.resolve(); } // keep answering the last value meanwhile
     if (done) return Promise.resolve();
     if (pending) return pending;
     if (now() - failedAt < retryMs) return Promise.resolve(); // failed just now: answer "unknown", don't wait again
@@ -86,7 +100,7 @@ export function createCliVersions(options: { probe: () => Promise<[VersionProbe,
         const [claude, codex] = await options.probe();
         versions = { claude: claude.value, codex: codex.value };
         if (claude.failed || codex.failed) failedAt = now();
-        else done = true;
+        else { done = true; doneAt = now(); }
       } catch {
         versions ??= { claude: null, codex: null };
         failedAt = now();
@@ -99,13 +113,14 @@ export function createCliVersions(options: { probe: () => Promise<[VersionProbe,
   return {
     ready,
     current(): CliVersions {
-      if (!done) void ready();
+      void ready(); // cheap when fresh; starts a re-read when unknown or older than maxAgeMs
       return versions ?? { claude: null, codex: null };
     },
   };
 }
 
-const CLI_VERSIONS_KEY = Symbol.for("mu.coding.cli-versions.v1");
+// v3 (30 Sep 2026): the global survives dev-server restarts, so a stale choice of the older CLI stuck; re-read.
+const CLI_VERSIONS_KEY = Symbol.for("mu.coding.cli-versions.v3");
 const cliVersionsGlobal = globalThis as typeof globalThis & { [CLI_VERSIONS_KEY]?: ReturnType<typeof createCliVersions> };
 /** The process-wide versions (shared by every coding runtime; survives a dev-server reload). */
 export function codingCliVersions() {
@@ -118,7 +133,7 @@ export function codingCliVersions() {
 }
 
 export function codingDataDir(root: string, env: NodeJS.ProcessEnv = process.env) {
-  return env.CODING_DATA_DIR ? resolve(env.CODING_DATA_DIR) : join(root, ".operator-data", "coding");
+  return env.CODING_DATA_DIR ? resolve(env.CODING_DATA_DIR) : join(dataDirFor(root), "coding");
 }
 
 /** One git read in a role worktree, as an async child. A git that can't start or hangs gives no evidence. */
@@ -172,8 +187,14 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
   const env = options.env ?? process.env;
   const dataDir = codingDataDir(root, env);
   const readOnly = backgroundJobsDisabled(env);
+  const defaultsFile = defaultRegistryFile(root, env);
+  const warned = new Set<string>();
   function safeRegistry(): RepoRegistry {
-    try { return loadRegistry(join(dataDir, "repos.json")); } catch { return { version: 1, repos: [] }; }
+    const layered = loadRegistryLayered(join(dataDir, "repos.json"), defaultsFile);
+    for (const problem of [layered.liveError, layered.defaultsError]) {
+      if (problem && !warned.has(problem)) { warned.add(problem); console.warn(`[coding] registry: ${problem.slice(0, 300)}`); }
+    }
+    return layered.registry;
   }
   let store: CodingStore;
   try {
@@ -190,6 +211,14 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     throw new Error("The coding workspace was closed while it was starting.");
   }
   const accounts = (): AccountsConfig => loadAccounts(join(dataDir, "accounts.json"));
+  // The owner's paid/free preferences (.operator-data/coding-prefs.json). Missing or invalid = the safe default.
+  const prefsFile = join(dataDirFor(root), "coding-prefs.json");
+  let prefsWarned = "";
+  const codingPrefs = () => {
+    const r = loadCodingPrefs(prefsFile);
+    if (r.problem && r.problem !== prefsWarned) { prefsWarned = r.problem; console.warn(`[coding] ${r.problem}`); }
+    return r;
+  };
   // Read async, once per process, and primed at server start (codingPlugin); codingRoute awaits
   // ready() so a route doesn't answer with "not read yet" nulls while the first read runs.
   const cliVersionsReady = () => codingCliVersions().ready();
@@ -207,19 +236,51 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     : null;
   const liveRoot = resolve(root);
   const plannerReceipts = new Map<string, UsageReceipt>();
+  // Each Claude login's real sign-in state, from `claude auth status` on its own profile (30 Sep 2026).
+  // The primed (async) pick: a blocking --version at start-up could time out and poison the version cache.
+  const claudeStatus = claudeStatusService({ accounts, binary: () => primeClaudeCodingBinary() });
+  // After a restart no /usage reading exists until something asks; build one so the first pick sees real limits.
+  const usageReady = async () => { if (!latestSubscriptionCards()) await aiUsageSnapshot().then(() => undefined, () => undefined); };
+  let warm: ReturnType<typeof setInterval> | null = null;
+  if (!readOnly) {
+    void claudeStatus.refresh().catch(() => undefined);
+    void usageReady();
+    // Keep both fresh for voice drafts too (the usage service caches provider reads 15 min; this adds no extra calls).
+    warm = setInterval(() => { void claudeStatus.refresh().catch(() => undefined); void usageReady(); }, 10 * 60_000);
+    (warm as { unref?: () => void }).unref?.();
+  }
+  const claudeConnected = (slot: ClaudeAccountSlot) => {
+    const s = claudeStatus.current().find((x) => x.slot === slot);
+    return { connected: s?.connected ?? null, reason: s?.reason ?? null };
+  };
+  /** The account a NEW Claude role goes to: first connected account below its stop threshold (preferred first). */
+  const claudeSlot = (preferred?: ClaudeAccountSlot) => {
+    const config = accounts();
+    const choice = pickClaudeSlot(config, claudeStatus.current(), latestSubscriptionCards(), 95, preferred);
+    return choice.ok ? { slot: choice.slot.slot, label: choice.slot.label, reason: choice.reason, configDir: choice.slot.configDir } : { slot: null, label: labelOf(config, preferred ?? "claude:max"), reason: choice.reason, configDir: null };
+  };
   const orch = createOrchestrator({
     store,
     registry: safeRegistry,
     accounts,
     runners: {
-      claude: claudeRunner(),
-      codex: codexRunner(),
-      router: routerRunner({ root, owns: (jobId, roleId) => store.getJob(jobId)?.spec.roles.find((r) => r.roleId === roleId)?.owns ?? null, deps: { cline: clineInvoke(root) } }),
+      // Each runner is wrapped so every role it starts carries the role's engineering guidance (guidance.ts).
+      claude: withGuidance(claudeRunner()),
+      codex: withGuidance(codexRunner()),
+      router: withGuidance(routerRunner({ root, prefs: () => codingPrefs().prefs, owns: (jobId, roleId) => store.getJob(jobId)?.spec.roles.find((r) => r.roleId === roleId)?.owns ?? null, deps: { cline: clineInvoke(root) } })),
     },
     approvals,
     liveRoot,
     memory,
     fleetSink,
+    claudeConnected,
+    // The same brief for every account and model; the job records what went in (shared-context.ts).
+    sharedContext: () => loadSharedContext(join(dataDir, "shared-context.json")),
+    // The owner's configured fallback between accounts and models at a limit (coding-prefs.json "fallback"); off unless auto.
+    fallback: () => codingPrefs().prefs.fallback ?? null,
+    codexAvailable: () => readApproval() !== null,
+    // Opt-in per-run context helper for Claude roles (coding-prefs.json "contextHelper": "context-mode"); off unless set.
+    contextHelper: () => (codingPrefs().prefs.contextHelper ? { dataRoot: env.AGENTICOS_CONTEXT_MODE_DATA ?? contextDataRootFor(dataDir) } : null),
   });
   if (!readOnly) orch.attachApprovals();
   const jevKey = () => providerKey(root, "TYPESAFE_API_KEY") || providerKey(root, "JEV_API_KEY") || "";
@@ -227,12 +288,21 @@ async function openCodingRuntime(root: string, options: { memory?: MemoryService
     registry: safeRegistry,
     accounts,
     cliVersions: () => ({ claude: cliVersions().claude ?? "unknown", codex: cliVersions().codex ?? "unknown" }),
-    jev: async (call) => jevDecide({ surface: "voice.router", key: jevKey(), state: call.state, questions: call.questions, caller: "scripts/coding/shaper", root, timeoutMs: 2500 }),
-    planner: env.CODING_PLANNER === "off" ? null : agentPlanner({ runner: claudeRunner(), cliVersion: () => cliVersions().claude ?? "unknown", person: () => "usman" as never, fleetSink, receipts: plannerReceipts, liveRoot }),
+    prefs: () => codingPrefs().prefs,
+    // Nothing read yet (both null) = unknown, assumed available as before; a read that found one CLI absent says so.
+    choice: () => {
+      const v = cliVersions();
+      const known = v.claude !== null || v.codex !== null;
+      return { ...(known ? { claudeAvailable: v.claude !== null, codexAvailable: v.codex !== null } : {}), codexReady: readApproval() !== null };
+    },
+    claudeSlot: (preferred) => { const c = claudeSlot(preferred); return { slot: c.slot, label: c.label, reason: c.reason }; },
+    // CODING_JEV=off: no hosted decision call (a throwaway test hub drafts by the shaper's own rules); unset = the product's normal path.
+    jev: env.CODING_JEV === "off" ? null : async (call) => jevDecide({ surface: "voice.router", key: jevKey(), state: call.state, questions: call.questions, caller: "scripts/coding/shaper", root, timeoutMs: 2500 }),
+    planner: env.CODING_PLANNER === "off" ? null : agentPlanner({ runner: withGuidance(claudeRunner()), cliVersion: () => cliVersions().claude ?? "unknown", person: () => "usman" as never, fleetSink, receipts: plannerReceipts, liveRoot, claudeSlot: (utterance) => { const c = claudeSlot(claudeSlotFromWords(utterance, accounts()) ?? undefined); return c.slot ? { slot: c.slot, configDir: c.configDir } : null; } }),
   });
   const runtime: CodingRuntimeFull = {
-    store, orch, shaper, registry: safeRegistry, accounts, approvals, cliVersions, cliVersionsReady, focus: null, plannerReceipts, dataDir, readOnly,
-    close() { orch.close(); try { store.close(); } catch { /* closed */ } all.delete(root); voiceGlobal[VOICE_KEY]?.delete(root); },
+    store, orch, shaper, registry: safeRegistry, accounts, approvals, cliVersions, cliVersionsReady, focus: null, plannerReceipts, dataDir, readOnly, claudeStatus, usageReady,
+    close() { if (warm) clearInterval(warm); orch.close(); try { store.close(); } catch { /* closed */ } all.delete(root); voiceGlobal[VOICE_KEY]?.delete(root); },
   };
   all.set(root, runtime);
   return runtime;
@@ -398,6 +468,7 @@ export async function codingVoiceFor(root: string, options: { memory?: MemorySer
     cliVersions: () => ({ claude: rt.cliVersions().claude ?? "unknown", codex: rt.cliVersions().codex ?? "unknown" }),
     setFocus: (jobId, tab) => { rt.focus = { jobId, tab, at: Date.now() }; },
     repoIds: () => rt.registry().repos.map((r) => r.id),
+    accounts: rt.accounts,
   });
   all.set(root, voice);
   return voice;

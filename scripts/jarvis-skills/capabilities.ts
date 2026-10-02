@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { norm } from "./text";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type CapabilitiesRequest = { skill: "capabilities"; action: "say" | "show" };
 export type SuiteRow = { id: string; say: string; ok: boolean; skipped?: string; ms: number };
@@ -39,7 +40,7 @@ export function capabilitiesIntent(utterance: string): CapabilitiesRequest | nul
 /** The last suite run, by task id (or null when there's none). */
 export function lastSuite(root: string): { at: string; rows: Map<string, SuiteRow> } | null {
   try {
-    const data = JSON.parse(readFileSync(join(root, ".operator-data", "jarvis-e2e-last.json"), "utf8")) as { at?: string; rows?: SuiteRow[] };
+    const data = JSON.parse(readFileSync(join(dataDirFor(root), "jarvis-e2e-last.json"), "utf8")) as { at?: string; rows?: SuiteRow[] };
     return { at: String(data.at ?? ""), rows: new Map((data.rows ?? []).map((r) => [r.id, r])) };
   } catch {
     return null;
@@ -98,7 +99,7 @@ ${skills ? `<details><summary>Every instant skill</summary><ul>${skills}</ul></d
 export async function answerCapabilities(req: CapabilitiesRequest, deps: { root: string; skills?: Record<string, string>; open?: (file: string) => void }): Promise<string> {
   const suite = lastSuite(deps.root);
   if (req.action === "show") {
-    const dir = join(deps.root, ".operator-data");
+    const dir = join(dataDirFor(deps.root));
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const file = join(dir, "jarvis-capabilities.html");
     writeFileSync(file, capabilitiesPage(suite, deps.skills));

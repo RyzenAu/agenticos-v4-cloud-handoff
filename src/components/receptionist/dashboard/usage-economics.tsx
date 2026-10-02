@@ -1,4 +1,5 @@
-import { InfoTip, Section } from "@/components/ds";
+import { fmtProse } from "@/lib/format";
+import { InfoTip, Notice, Section } from "@/components/ds";
 import { catalogueLabels } from "@/lib/price-status";
 import type { DashboardViewModel } from "@/lib/receptionist-dashboard";
 import { CLIENT_UNREPORTED_HINT, NOT_ATTRIBUTED_HINT } from "../../../../scripts/receptionist/dashboard";
@@ -7,7 +8,16 @@ import { aud, BlockState, DashTile } from "./shared";
 import { asOfText } from "./economics-by-basis";
 
 /** Each tile names its own basis's source, date and scope: the three are never one figure. */
-const basisHint = (b: { source: string; asOf: string | null; note: string }) => `${b.note} Source: ${b.source}, as of ${asOfText(b.asOf)}.`;
+const basisHint = (b: { source: string; asOf: string | null; note: string }) => `${b.note} Source: ${fmtProse(b.source)}, as of ${asOfText(b.asOf)}.`;
+
+/** A null setup fee means "not approved" (owner brief 1 Oct 2026), never "no package assigned". */
+export const SETUP_NOT_APPROVED_HINT = "Setup fees are not approved yet";
+
+/** One line per client whose charge the receptionist app could not compute: blocked, never zero revenue or margin. */
+export function blockedBilling(data: DashboardViewModel): string[] {
+  if (!data.clients.ok) return [];
+  return data.clients.rows.flatMap((r) => (r.commercial.billingBlocked ? [`Billing blocked — ${r.commercial.billingBlocked.reason}: ${r.commercial.billingBlocked.message}`] : []));
+}
 
 const NOT_REPORTED = "The feed didn't report this month's minutes";
 
@@ -64,10 +74,11 @@ export function UsageAndEconomics({ data, sell }: { data: DashboardViewModel; se
         </div>
         <div>
           <h3 className="mb-3 text-base font-medium text-foreground">Commercial</h3>
+          {blockedBilling(data).map((b) => <Notice key={b} tone="warn" title={b} />)}
           <BlockState block={data.commercial} render={(c) => (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <DashTile label="MRR" block={data.commercial} value={c.mrrCents} display={aud(c.mrrCents)} hint={`${catalogueLabels().monthly}${c.unassignedClients ? ` · ${c.unassignedClients} unassigned` : ""}`} unknownHint="No client has a package assigned" unknownCause={packageCause} />
-              <DashTile label="Setup fees" block={data.commercial} value={c.setupFeesCents} display={aud(c.setupFeesCents)} hint={catalogueLabels().setup} unknownHint="No client has a package assigned" unknownCause={packageCause} />
+              <DashTile label="Setup fees" block={data.commercial} value={c.setupFeesCents} display={aud(c.setupFeesCents)} hint={catalogueLabels().setup} unknownHint={SETUP_NOT_APPROVED_HINT} />
               <DashTile label="Unassigned clients" block={data.commercial} value={c.unassignedClients} tone={c.unassignedClients ? "warn" : undefined} />
             </div>
           )} />

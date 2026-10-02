@@ -190,7 +190,7 @@ export function EconomicsWorkbench() {
       .economics-workbench h2{font-size:24px;font-weight:500;letter-spacing:-.025em;margin:0}
       .economics-workbench h3{font-size:17px;font-weight:600;margin:28px 0 12px}
       .economics-workbench p{line-height:1.6;max-width:75ch;margin:12px 0}
-      .economics-workbench small{font-size:12px;line-height:1.5;display:block}
+      .economics-workbench small{font-size:var(--text-xs);line-height:1.5;display:block}
       .economics-workbench input,.economics-workbench select{font:inherit;color:inherit;background:var(--op-panel,transparent);border:1px solid var(--op-border,#aaa);border-radius:8px;padding:10px;min-height:44px;min-width:0;width:100%;box-sizing:border-box}
       .economics-workbench textarea{font:inherit;font-size:14px;line-height:1.5;color:inherit;background:var(--op-panel,transparent);border:1px solid var(--op-border,#aaa);border-radius:8px;padding:12px;width:100%;box-sizing:border-box;resize:vertical}
       .economics-workbench select option{color:#171717;background:#fff}

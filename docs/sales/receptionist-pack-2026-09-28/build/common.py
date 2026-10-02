@@ -49,16 +49,15 @@ ACCEPTANCE_SHORT = ("Acceptance = the go-live tests pass on your own setup (a bo
                     "calls through your cover and forwarding, and a text if SMS is set up) and you confirm them in writing.")
 
 # ----------------------------------------------------------------------------- owner decisions
-# Two open owner decisions (audit A3 #1 and #5). Documents carry these placeholders verbatim until the
+# One open owner decision (audit A3 #5; #1 settled 1 Oct 2026). Documents carry these placeholders verbatim until the
 # owner decides; check_catalogue.py reports them and fails if one is altered or silently dropped.
-# DECISION_A must match OWNER_DECISION_A in src/lib/receptionist-packages.ts character for character.
-DECISION_A = ("[OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, "
-              "or business hours alongside the team too? Not decided.]")
+# Decision (a) (Essential cover) was settled 1 Oct 2026 (owner brief 1 Oct 2026): every tier covers business hours,
+# alongside staff, after hours and overflow. The placeholder is gone; check_catalogue.py fails if it reappears.
 DECISION_B = ("[OWNER DECISION (b) PENDING: is the monthly fee billed in advance from Acceptance, "
               "or in arrears after each billing period? Not decided.]")
 BILLING_TERMS = "Billing terms are confirmed in your agreement."
 BILLING_PENDING = f"{DECISION_B} {BILLING_TERMS}"
-OWNER_DECISIONS = {"a": DECISION_A, "b": DECISION_B}
+OWNER_DECISIONS = {"b": DECISION_B}
 
 # Palette: deep ink, clinical teal, one warm accent. No cream backgrounds.
 INK = "14213D"; TEAL = "0F766E"; TEAL_LIGHT = "CCFBF1"; SLATE = "475569"; MIST = "F1F5F9"; LINE = "CBD5E1"; AMBER = "B45309"; WHITE = "FFFFFF"
@@ -157,9 +156,8 @@ def invoice_example_rows():
 
 
 def cover_text(p, sep="; "):
-    """A package's cover modes, with the decision (a) placeholder on Essential while it is open."""
-    text = sep.join(p["inclusions"]["coverModes"])
-    return f"{text} {DECISION_A}" if p["shortName"] == "Essential" and DECISION_A in p["audience"] else text
+    """A package's cover modes, straight from the catalogue."""
+    return sep.join(p["inclusions"]["coverModes"])
 
 
 def settle_in(p):

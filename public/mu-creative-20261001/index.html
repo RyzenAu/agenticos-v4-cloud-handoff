@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M&amp;U creative production — 1 October 2026</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --ink: #08090b;
+    --ink-2: #121418;
+    --ink-3: #1b1e24;
+    --line: #2a2e36;
+    --ivory: #f4f0e7;
+    --muted: #b9b3a6;
+    --gold: #c7a35a;
+    --gold-soft: rgba(199, 163, 90, .16);
+    --ok: #9cc9a0;
+    --warn: #e2b86b;
+    --bad: #e59a8f;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: "Segoe UI", "SF Pro Text", -apple-system, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", "SF Mono", Consolas, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--ivory);
+    font: 17px/1.6 var(--sans);
+  }
+  a { color: var(--gold); }
+  code { font-family: var(--mono); font-size: .88em; overflow-wrap: anywhere; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--gold); color: var(--ink); padding: 8px 14px; border-radius: 6px; z-index: 10; }
+  .skip:focus { left: 8px; }
+
+  /* Header */
+  header.top { border-bottom: 1px solid var(--line); padding: 36px 0 0; }
+  .brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .mark { font: 600 30px/1 var(--serif); color: var(--gold); letter-spacing: .02em; }
+  .kicker { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  h1 { font: 500 clamp(32px, 5vw, 52px)/1.1 var(--serif); margin: 18px 0 12px; max-width: 18ch; }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0 0 22px; }
+  .status-row { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 15px; color: var(--muted); margin-bottom: 26px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+
+  /* Tabs */
+  [role="tablist"] { display: flex; gap: 4px; overflow-x: auto; }
+  [role="tab"] {
+    appearance: none; background: none; border: 0; color: var(--muted);
+    font: 500 16px/1 var(--sans); padding: 14px 18px 16px; cursor: pointer;
+    border-bottom: 2px solid transparent; white-space: nowrap;
+  }
+  [role="tab"][aria-selected="true"] { color: var(--ivory); border-bottom-color: var(--gold); }
+  [role="tab"]:hover { color: var(--ivory); }
+  [role="tabpanel"] { padding: 40px 0 72px; }
+  [role="tabpanel"][hidden] { display: none; }
+  h2 { font: 500 clamp(26px, 3.4vw, 36px)/1.2 var(--serif); margin: 0 0 8px; }
+  h3 { font: 600 19px/1.35 var(--sans); margin: 0 0 6px; }
+  .section-note { color: var(--muted); max-width: 70ch; margin: 0 0 28px; }
+
+  /* Buttons */
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--ink-2); color: var(--ivory);
+    font: 500 15px/1 var(--sans); padding: 11px 16px; border-radius: 999px; cursor: pointer;
+  }
+  .btn:hover { border-color: var(--gold); }
+  .btn[aria-pressed="true"] { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  /* Film view */
+  .film { border-top: 1px solid var(--line); padding-top: 36px; margin-top: 40px; }
+  .film:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .film-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; align-items: flex-end; margin-bottom: 22px; }
+  .film-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 15px; color: var(--muted); }
+  .film-meta strong { color: var(--ivory); font-weight: 600; }
+  .story { max-width: 70ch; margin: 4px 0 0; }
+
+  .handoff { margin: 8px 0 28px; padding: 22px 0 6px; }
+  .handoff ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; position: relative; }
+  .handoff ol::before, .handoff ol::after {
+    content: ""; position: absolute; top: 11px; left: 10%; right: 10%; height: 2px; background: var(--line);
+  }
+  .handoff ol::after { background: var(--gold); transform-origin: left; transform: scaleX(0); animation: trace 9s linear infinite; }
+  .handoff li { position: relative; z-index: 1; text-align: center; font-size: 14px; line-height: 1.35; color: var(--muted); padding: 0 4px; }
+  .handoff li::before {
+    content: ""; display: block; width: 24px; height: 24px; margin: 0 auto 10px; border-radius: 50%;
+    background: var(--ink); border: 2px solid var(--line); animation: node 9s linear infinite;
+  }
+  .handoff li:nth-child(1)::before { animation-delay: 0s; }
+  .handoff li:nth-child(2)::before { animation-delay: 1.6s; }
+  .handoff li:nth-child(3)::before { animation-delay: 3.2s; }
+  .handoff li:nth-child(4)::before { animation-delay: 4.8s; }
+  .handoff li:nth-child(5)::before { animation-delay: 6.4s; }
+  .handoff li b { display: block; color: var(--ivory); font-weight: 600; }
+  .handoff li.gate b { color: var(--gold); }
+  @keyframes trace { 0% { transform: scaleX(0); } 80% { transform: scaleX(1); } 100% { transform: scaleX(1); opacity: 0; } }
+  @keyframes node {
+    0%, 100% { background: var(--ink); border-color: var(--line); }
+    3%, 85% { background: var(--gold); border-color: var(--gold); }
+    95% { background: var(--ink); border-color: var(--line); }
+  }
+  .motion-paused .handoff ol::after, .motion-paused .handoff li::before { animation-play-state: paused; }
+
+  .timeline { display: flex; height: 44px; gap: 3px; margin: 0 0 8px; }
+  .timeline a {
+    display: flex; align-items: center; justify-content: center; text-decoration: none;
+    background: var(--ink-3); color: var(--muted); font-size: 13px; border-radius: 4px; min-width: 0;
+    border-bottom: 2px solid var(--line);
+  }
+  .timeline a:hover, .timeline a:focus-visible { color: var(--ivory); border-bottom-color: var(--gold); }
+  .timeline a.cta { border-bottom-color: var(--gold); }
+  .scale { display: flex; justify-content: space-between; font: 13px/1 var(--mono); color: var(--muted); margin-bottom: 26px; }
+
+  .scenes { list-style: none; margin: 0; padding: 0; }
+  .scene {
+    display: grid; grid-template-columns: 112px minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px 32px;
+    padding: 22px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px;
+  }
+  .scene:target { background: var(--gold-soft); }
+  .tc { font: 14px/1.5 var(--mono); color: var(--muted); }
+  .tc b { display: block; color: var(--ivory); font: 600 16px/1.4 var(--mono); }
+  .narr { font: 400 20px/1.55 var(--serif); margin: 0; }
+  .label { display: block; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .visual { margin: 0 0 10px; color: #ddd7ca; font-size: 16px; }
+  .badge {
+    display: inline-block; font-size: 13px; line-height: 1.3; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .badge.gate { border-color: var(--gold); color: var(--gold); }
+  .rate { font-size: 13px; color: var(--muted); display: block; margin-top: 6px; }
+  .rate.hot { color: var(--bad); }
+
+  /* Media (shared by previews and assets) */
+  .media { position: relative; aspect-ratio: 16 / 9; background: #1a1c20; overflow: hidden; }
+  .media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .6s; }
+  .media.ready video { opacity: 1; }
+  .media-state {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    gap: 6px; text-align: center; padding: 16px; font-size: 15px; line-height: 1.4;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 12px, transparent 12px 24px);
+  }
+  .media-state strong { font-weight: 600; }
+  .media.ready .media-state { display: none; }
+  .media-ctl {
+    position: absolute; right: 12px; bottom: 12px; z-index: 2; display: none;
+    appearance: none; border: 0; border-radius: 999px; padding: 8px 14px; font: 600 13px/1 var(--sans);
+    background: rgba(8, 9, 11, .72); color: #fff; cursor: pointer;
+  }
+  .media.ready .media-ctl { display: block; }
+
+  /* Preview shell */
+  .preview-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+  .stage { background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .frame {
+    container-type: inline-size; margin: 0 auto; width: 100%; max-width: 1080px; border-radius: 10px; overflow: hidden;
+    transition: max-width .35s ease;
+  }
+  .frame.phone { max-width: 390px; }
+  .concept {
+    display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: space-between; align-items: center;
+    background: var(--ivory); color: var(--ink); font-size: 13px; line-height: 1.35; padding: 9px 14px;
+  }
+  .concept b { font-weight: 700; }
+  .concept span { opacity: .75; }
+  .frame-caption { color: var(--muted); font-size: 14px; text-align: center; margin: 14px 0 0; }
+
+  /* Practice templates: shared bones */
+  .site { --p-bg: #fff; --p-ink: #111; --p-muted: #555; --p-accent: #333; --p-soft: #eee; background: var(--p-bg); color: var(--p-ink); font: 16px/1.6 var(--p-font, var(--sans)); }
+  .site nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 28px; }
+  .site .logo { font-weight: 700; font-size: 18px; letter-spacing: .01em; }
+  .site .logo small { display: block; font-weight: 500; font-size: 12px; color: var(--p-muted); letter-spacing: .06em; text-transform: uppercase; }
+  .site .navlinks { display: flex; gap: 22px; font-size: 15px; color: var(--p-muted); }
+  .site .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 36px; padding: 18px 28px 48px; }
+  .site .hero h4 { font: var(--p-h-weight, 600) clamp(30px, 4.6cqi, 50px)/1.1 var(--p-h-font, var(--sans)); margin: 0 0 16px; letter-spacing: var(--p-h-track, -.01em); text-transform: var(--p-h-case, none); }
+  .site .hero p { color: var(--p-muted); margin: 0 0 24px; max-width: 42ch; }
+  .site .media { border-radius: var(--p-radius, 8px); }
+  .site .media-state { color: var(--p-muted); background-color: var(--p-soft); }
+  .site .cta {
+    display: inline-block; appearance: none; border: 0; cursor: pointer; text-decoration: none;
+    background: var(--p-accent); color: var(--p-on-accent, #fff); font: 600 16px/1 var(--sans);
+    padding: 15px 22px; border-radius: var(--p-radius, 8px);
+  }
+  .site .band { padding: 44px 28px; border-top: 1px solid var(--p-soft); }
+  .site .band h5 { font: var(--p-h-weight, 600) 26px/1.25 var(--p-h-font, var(--sans)); margin: 0 0 18px; text-transform: var(--p-h-case, none); letter-spacing: var(--p-h-track, 0); }
+  .site .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; }
+  .site .grid h6 { font: 600 17px/1.35 var(--sans); margin: 0 0 4px; }
+  .site .grid p { margin: 0; color: var(--p-muted); font-size: 15px; }
+  .site .steps { counter-reset: s; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; list-style: none; margin: 0; padding: 0; }
+  .site .steps li { counter-increment: s; }
+  .site .steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--p-accent); color: var(--p-on-accent, #fff); font: 700 14px/1 var(--sans); margin-bottom: 10px; }
+  .site .steps b { display: block; }
+  .site .steps span { color: var(--p-muted); font-size: 15px; }
+  .site form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; max-width: 760px; }
+  .site label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+  .site input, .site select, .site textarea {
+    font: 16px/1.4 var(--sans); padding: 11px 12px; border: 1px solid var(--p-line, #c9c9c9); border-radius: var(--p-radius, 8px);
+    background: var(--p-field, #fff); color: var(--p-ink); width: 100%;
+  }
+  .site .wide { grid-column: 1 / -1; }
+  .site .fine { font-size: 14px; color: var(--p-muted); margin: 0; }
+  .site .result { grid-column: 1 / -1; margin: 0; padding: 12px 14px; border-radius: var(--p-radius, 8px); background: var(--p-soft); font-size: 15px; }
+  .site .result[hidden] { display: none; }
+  .site footer { padding: 22px 28px; font-size: 14px; color: var(--p-muted); border-top: 1px solid var(--p-soft); }
+
+  @container (max-width: 700px) {
+    .site nav { padding: 16px 18px; }
+    .site .navlinks { display: none; }
+    .site .hero { grid-template-columns: 1fr; padding: 4px 18px 36px; gap: 22px; }
+    .site .hero .media { order: -1; }
+    .site .hero h4 { font-size: 32px; }
+    .site .band { padding: 34px 18px; }
+    .site .grid { grid-template-columns: 1fr 1fr; }
+    .site .steps { grid-template-columns: 1fr; }
+    .site form { grid-template-columns: 1fr; }
+    .site footer { padding: 20px 18px; }
+  }
+  @container (max-width: 420px) {
+    .site .grid { grid-template-columns: 1fr; }
+  }
+
+  /* Dental: contemporary daylit */
+  .site.dental {
+    --p-bg: #fbfaf6; --p-ink: #1d2a2c; --p-muted: #56666a; --p-accent: #2d6a66; --p-soft: #e9efec;
+    --p-line: #cfd9d6; --p-radius: 14px; --p-h-font: var(--sans); --p-h-weight: 500; --p-h-track: -.02em;
+  }
+  /* Property: composed, editorial */
+  .site.property {
+    --p-bg: #f1ede6; --p-ink: #25221e; --p-muted: #625a50; --p-accent: #2f3a2c; --p-soft: #e2dbd0;
+    --p-line: #c8bfb2; --p-radius: 2px; --p-h-font: var(--serif); --p-h-weight: 500; --p-field: #faf8f4;
+  }
+  .site.property .logo { font-family: var(--serif); font-weight: 500; font-size: 20px; letter-spacing: .08em; text-transform: uppercase; }
+  /* Trades: clean workshop, practical */
+  .site.trades {
+    --p-bg: #f4f6f7; --p-ink: #18222b; --p-muted: #4f5d68; --p-accent: #b9500e; --p-soft: #e2e7ea;
+    --p-line: #bfc8ce; --p-radius: 4px; --p-h-weight: 800; --p-h-case: uppercase; --p-h-track: .01em;
+  }
+  .site.trades nav { background: #18222b; color: #fff; }
+  .site.trades nav .logo small, .site.trades .navlinks { color: #b7c2ca; }
+
+  /* Assets */
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 32px; margin-bottom: 52px; }
+  .shot .media { border-radius: 8px; margin-bottom: 14px; }
+  .shot .media-state { color: var(--muted); }
+  .shot dl { margin: 10px 0 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 6px 14px; font-size: 15px; }
+  .shot dt { color: var(--muted); }
+  .shot dd { margin: 0; }
+  .shot ul { margin: 0; padding-left: 18px; }
+  .reuse { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .reuse th, .reuse td { text-align: left; vertical-align: top; padding: 14px 16px 14px 0; border-top: 1px solid var(--line); }
+  .reuse th { color: var(--muted); font-weight: 500; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
+  .limits { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); max-width: 78ch; }
+  .limits ul { padding-left: 20px; }
+
+  footer.page { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 820px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 18px; }
+    .scene { grid-template-columns: 1fr; gap: 10px; }
+    .tc b { display: inline; margin-right: 10px; }
+    .shots { grid-template-columns: 1fr; }
+    .handoff ol { grid-template-columns: 1fr; gap: 14px; }
+    .handoff ol::before, .handoff ol::after { display: none; }
+    .handoff li { display: flex; align-items: center; gap: 12px; text-align: left; }
+    .handoff li::before { margin: 0; flex: none; }
+    .stage { padding: 10px; border-radius: 10px; }
+    .timeline a span { display: none; }
+    .reuse thead { display: none; }
+    .reuse tr, .reuse td { display: block; }
+    .reuse td { border-top: 0; padding: 2px 0; }
+    .reuse tr { border-top: 1px solid var(--line); padding: 12px 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .handoff ol::after { transform: scaleX(1); }
+    .handoff li::before { background: var(--gold); border-color: var(--gold); }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark" aria-label="M and U Ventures">M&amp;U</span>
+      <span class="kicker">Creative production · 1 October 2026</span>
+    </div>
+    <h1>Two films, three practice templates, one set of footage</h1>
+    <p class="lede">Proposed scripts for a main receptionist cut and a lead-capture cut, three concept websites for dental, property and trades, and the four five-second shots that support them.</p>
+    <div class="status-row" aria-label="Production status">
+      <span class="pill"><span class="dot"></span>Status: prepared, not rendered</span>
+      <span class="pill"><span class="dot" id="footage-dot"></span><span id="footage-summary">Footage: checking…</span></span>
+      <span class="pill">Narration: Scotty (ElevenLabs professional voice), not yet recorded</span>
+      <span class="pill">Known generation spend: US$0 of US$25 (API ledger unverified)</span>
+    </div>
+    <div role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-scripts" aria-controls="panel-scripts" aria-selected="true">Film scripts</button>
+      <button role="tab" id="tab-previews" aria-controls="panel-previews" aria-selected="false" tabindex="-1">Website previews</button>
+      <button role="tab" id="tab-assets" aria-controls="panel-assets" aria-selected="false" tabindex="-1">Assets</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+
+  <section role="tabpanel" id="panel-scripts" aria-labelledby="tab-scripts" tabindex="0">
+    <h2>Film scripts</h2>
+    <p class="section-note">New proposed cuts, scene by scene. Earlier approved films stay as they are. Durations keep speech calm, with no scene above 155 words a minute and room to pause. Each scene shows its speech rate.</p>
+    <div class="btn-row" style="margin-bottom:8px">
+      <button class="btn" id="motion-toggle" aria-pressed="false">Pause motion</button>
+    </div>
+    <div id="films"></div>
+  </section>
+
+  <section role="tabpanel" id="panel-previews" aria-labelledby="tab-previews" tabindex="0" hidden>
+    <h2>Website previews</h2>
+    <p class="section-note">Concept templates for each sector, in their own styles. They are not deployed client sites and show no real premises, staff or reviews. Text in square brackets is replaced for each client. Enquiry forms work only on this page and send nothing.</p>
+
+    <div class="preview-bar">
+      <div class="btn-row" role="group" aria-label="Sector">
+        <button class="btn" data-sector="dental" aria-pressed="true">Dental</button>
+        <button class="btn" data-sector="property" aria-pressed="false">Property</button>
+        <button class="btn" data-sector="trades" aria-pressed="false">Trades</button>
+      </div>
+      <div class="btn-row" role="group" aria-label="Viewport">
+        <button class="btn" data-view="desktop" aria-pressed="true">Desktop</button>
+        <button class="btn" data-view="phone" aria-pressed="false">Phone · 390px</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="frame" id="frame">
+
+        <!-- Dental -->
+        <div class="practice" data-practice="dental">
+          <div class="concept"><b>Concept template: not a deployed client site</b><span>Illustrative demonstration</span></div>
+          <div class="site dental">
+            <nav><div class="logo">[Practice name]<small>Dental · [Suburb]</small></div><div class="navlinks" aria-hidden="true"><span>Treatments</span><span>New patients</span><span>Contact</span></div></nav>
+            <div class="hero">
+              <div>
+                <h4>Calm, modern dental care in [Suburb]</h4>
+                <p>Check-ups, urgent care and cosmetic consultations, with enquiries answered and handled properly.</p>
+                <a class="cta" href="#enquire-dental">Request an appointment</a>
+              </div>
+              <div class="media" data-src="assets/dental-hero.mp4" data-label="Daylit dental corridor"></div>
+            </div>
+            <div class="band">
+              <h5>When you call</h5>
+              <ol class="steps">
+                <li><b>Answered in the practice's name</b><span>At the hours the practice chooses: all calls, after hours or overflow.</span></li>
+                <li><b>A few quick questions</b><span>New or existing patient, the reason for the visit and times that suit.</span></li>
+                <li><b>Booked only when confirmed</b><span>If the calendar confirms a time, it is booked. If not, your request goes to the team.</span></li>
+              </ol>
+            </div>
+            <div class="band">
+              <h5>Treatments</h5>
+              <div class="grid">
+                <div><h6>Check-ups and cleans</h6><p>[Practice's description]</p></div>
+                <div><h6>Urgent appointments</h6><p>[Availability as configured]</p></div>
+                <div><h6>Cosmetic consultations</h6><p>[Practice's description]</p></div>
+                <div><h6>Children's dentistry</h6><p>[Practice's description]</p></div>
+              </div>
+            </div>
+            <div class="band" id="enquire-dental">
+              <h5>Request an appointment</h5>
+              <form class="demo-form" novalidate>
+                <label>Name<input name="name" autocomplete="off"></label>
+                <label>Phone<input name="phone" inputmode="tel" autocomplete="off"></label>
+                <label>Patient<select name="patient"><option>New patient</option><option>Existing patient</option></select></label>
+                <label>Preferred time<select name="time"><option>Mornings</option><option>Afternoons</option><option>Any time</option></select></label>
+                <label class="wide">Reason for visit<textarea name="reason" rows="3"></textarea></label>
+                <p class="fine wide">This sends a request. It is not a booked appointment until the practice confirms a time.</p>
+                <div class="wide"><button class="cta" type="submit">Send request</button></div>
+                <p class="result" role="status" hidden></p>
+              </form>
+            </div>
+            <footer>[Practice name] · [Address] · [Phone]</footer>
+          </div>
+        </div>
+
+        <!-- Property -->
+        <div class="practice" data-practice="property" hidden>
+          <div class="concept"><b>Concept template: not a deployed client site</b><span>Illustrative demonstration</span></div>
+          <div class="site property">
+            <nav><div class="logo">[Agency name]<small>Real estate · [Suburb]</small></div><div class="navlinks" aria-hidden="true"><span>Sell</span><span>Buy</span><span>Rent</span><span>Contact</span></div></nav>
+            <div class="hero">
+              <div>
+                <h4>Thinking of selling in [Suburb]? Start with a conversation.</h4>
+                <p>Tell us about your property and your timing. Your enquiry reaches the right agent with the details they need.</p>
+                <a class="cta" href="#enquire-property">Make a selling enquiry</a>
+              </div>
+              <div class="media" data-src="assets/property-hero.mp4" data-label="Residential interior"></div>
+            </div>
+            <div class="band">
+              <h5>What happens after you call</h5>
+              <ol class="steps">
+                <li><b>Answered in the agency's name</b><span>Evenings and weekends included, as the agency chooses.</span></li>
+                <li><b>Your details, captured properly</b><span>Suburb, property type, timing and how you prefer to be contacted.</span></li>
+                <li><b>Recorded, then handed to an agent</b><span>Your request is recorded. Nothing is booked and no price is quoted until an agent confirms.</span></li>
+              </ol>
+            </div>
+            <div class="band">
+              <h5>How we help</h5>
+              <div class="grid">
+                <div><h6>Selling</h6><p>[Agency's approach]</p></div>
+                <div><h6>Appraisal requests</h6><p>Arranged with an agent directly.</p></div>
+                <div><h6>Buying</h6><p>[Agency's description]</p></div>
+                <div><h6>Property management</h6><p>[Agency's description]</p></div>
+              </div>
+            </div>
+            <div class="band" id="enquire-property">
+              <h5>Selling enquiry</h5>
+              <form class="demo-form" novalidate>
+                <label>Name<input name="name" autocomplete="off"></label>
+                <label>Phone or email<input name="contact" autocomplete="off"></label>
+                <label>Suburb<input name="suburb" autocomplete="off"></label>
+                <label>Property type<select name="type"><option>House</option><option>Apartment</option><option>Townhouse</option><option>Land</option></select></label>
+                <label class="wide">Timing<select name="timing"><option>Within 3 months</option><option>3–6 months</option><option>Just exploring</option></select></label>
+                <p class="fine wide">This records a request. It is not an appointment, and no valuation or callback time is promised.</p>
+                <div class="wide"><button class="cta" type="submit">Record my enquiry</button></div>
+                <p class="result" role="status" hidden></p>
+              </form>
+            </div>
+            <footer>[Agency name] · [Licence details] · [Phone]</footer>
+          </div>
+        </div>
+
+        <!-- Trades -->
+        <div class="practice" data-practice="trades" hidden>
+          <div class="concept"><b>Concept template: not a deployed client site</b><span>Illustrative demonstration</span></div>
+          <div class="site trades">
+            <nav><div class="logo">[Business name]<small>Electrical · [Service area]</small></div><div class="navlinks" aria-hidden="true"><span>Services</span><span>Areas</span><span>Contact</span></div></nav>
+            <div class="hero">
+              <div>
+                <h4>Electrical work across [Service area]</h4>
+                <p>Switchboards, faults, lighting and power. Even while we're on a job, your call is answered and your enquiry captured.</p>
+                <a class="cta" href="#enquire-trades">Request a quote</a>
+              </div>
+              <div class="media" data-src="assets/trades-hero.mp4" data-label="Clean electrical workshop"></div>
+            </div>
+            <div class="band">
+              <h5>Every call handled</h5>
+              <ol class="steps">
+                <li><b>Answered, even mid-job</b><span>All calls, overflow or after hours, as the business sets it.</span></li>
+                <li><b>The job, described clearly</b><span>Location, the problem, urgency and access notes.</span></li>
+                <li><b>Straight to the team</b><span>Booked only if the calendar confirms. Otherwise, a clear request is sent to the team.</span></li>
+              </ol>
+            </div>
+            <div class="band">
+              <h5>Services</h5>
+              <div class="grid">
+                <div><h6>Switchboard upgrades</h6><p>[Business's description]</p></div>
+                <div><h6>Fault finding</h6><p>[Business's description]</p></div>
+                <div><h6>Lighting and power</h6><p>[Business's description]</p></div>
+                <div><h6>Urgent call-outs</h6><p>[Only where offered]</p></div>
+              </div>
+            </div>
+            <div class="band" id="enquire-trades">
+              <h5>Request a quote</h5>
+              <form class="demo-form" novalidate>
+                <label>Name<input name="name" autocomplete="off"></label>
+                <label>Phone<input name="phone" inputmode="tel" autocomplete="off"></label>
+                <label>Suburb<input name="suburb" autocomplete="off"></label>
+                <label>Urgency<select name="urgency"><option>This week</option><option>Within a month</option><option>Planning ahead</option></select></label>
+                <label class="wide">What needs doing?<textarea name="job" rows="3"></textarea></label>
+                <p class="fine wide">This sends a request. A job is not booked until the business confirms a time.</p>
+                <div class="wide"><button class="cta" type="submit">Send request</button></div>
+                <p class="result" role="status" hidden></p>
+              </form>
+            </div>
+            <footer>[Business name] · [Licence no.] · [Phone]</footer>
+          </div>
+        </div>
+
+      </div>
+      <p class="frame-caption" id="frame-caption">Desktop view</p>
+    </div>
+  </section>
+
+  <section role="tabpanel" id="panel-assets" aria-labelledby="tab-assets" tabindex="0" hidden>
+    <h2>Assets</h2>
+    <p class="section-note">Four five-second 16:9 clips support both films and the website loops. Codex supplies the files; each one shows its real status here. No generation has been run in this build.</p>
+    <div class="shots" id="shots"></div>
+
+    <h3>Reusable pieces</h3>
+    <table class="reuse">
+      <thead><tr><th scope="col">Asset</th><th scope="col">Use</th><th scope="col">State</th></tr></thead>
+      <tbody>
+        <tr><td><b>M&amp;U palette</b><br><span class="swatch" style="background:#08090b"></span>#08090b <span class="swatch" style="background:#f4f0e7"></span>#f4f0e7 <span class="swatch" style="background:#c7a35a"></span>#c7a35a</td><td>M&amp;U films, end cards and this presentation. Not forced onto client templates.</td><td>Ready</td></tr>
+        <tr><td><b>M&amp;U logo and brand fonts</b></td><td>End cards in both films. This page uses a typeset placeholder and system fonts because it is self-contained.</td><td>Use the real files during the edit</td></tr>
+        <tr><td><b>Handoff line and status badges</b></td><td>Vector motion for calls: Answered, Checking calendar, Confirmed by calendar, Request recorded, Not booked.</td><td>Specified in scripts; to be built in the edit</td></tr>
+        <tr><td><b>Coverage bar</b></td><td>One 24-hour bar with All calls, Alongside staff, After hours and Overflow settings (main film, scene 6).</td><td>Specified; to be built in the edit</td></tr>
+        <tr><td><b>Setup checklist</b></td><td>Booking tested, Routing tested, Texts tested, plus the single booking-system line (main film, scene 7).</td><td>Specified; to be built in the edit</td></tr>
+        <tr><td><b>Practice templates</b></td><td>Dental, property and trades page structures with bracketed placeholders and local-only enquiry forms.</td><td>Concept on this page; not deployed</td></tr>
+        <tr><td><b>Narration voice</b></td><td>Scotty (&ldquo;the friendly Australian male conversational narrator&rdquo;), ElevenLabs professional voice <code>hIreuBly94QFepU63yel</code> (category professional, not a stock voice), <code>eleven_multilingual_v2</code>. Existing Scotty lines can be reused where they match. Jarvis's runtime voice is unchanged.</td><td>Recorded 2 Oct 2026 (15 scenes)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Finished films (2 Oct 2026)</h3>
+    <p class="section-note">Both films are assembled with footage, Scotty narration and captions re-timed to the recorded audio. They still need a watch-through with sound by Usman or Mehroz before external use. There is no music bed, and the end cards use a typeset wordmark, not the logo file.</p>
+    <video controls preload="metadata" playsinline style="width:100%;max-width:960px;display:block;margin:0 0 12px" src="assets/films/main-receptionist.mp4"></video>
+    <video controls preload="metadata" playsinline style="width:100%;max-width:960px;display:block;margin:0 0 12px" src="assets/films/lead-capture.mp4"></video>
+    <ul>
+      <li><a href="assets/films/main-receptionist.mp4">The front desk that always answers</a> (90 s, 1920&times;1080, captions as a selectable track)</li>
+      <li><a href="assets/films/lead-capture.mp4">From enquiry to a useful handoff</a> (78 s, 1920&times;1080, captions as a selectable track)</li>
+      <li>Captions burned in: <a href="assets/films/main-receptionist-captioned.mp4">main</a>, <a href="assets/films/lead-capture-captioned.mp4">lead capture</a></li>
+    </ul>
+
+    <h3>Prepared motion graphics</h3>
+    <p class="section-note">Silent vector graphics tracks and caption files, built locally for free. These are the graphics layers used in the films above. Edit list, commands and prompts: <code>docs/creative-20261001/PRODUCTION-PREP.md</code>.</p>
+    <ul>
+      <li><a href="assets/prepared/main-receptionist-graphics.mp4">Main receptionist graphics track</a> (90 s, 1920&times;1080, silent)</li>
+      <li><a href="assets/prepared/lead-capture-graphics.mp4">Lead-capture graphics track</a> (78 s, 1920&times;1080, silent)</li>
+      <li><a href="assets/prepared/main-receptionist.en-AU.srt">Main captions (SRT, timed to the narration)</a></li>
+      <li><a href="assets/prepared/lead-capture.en-AU.srt">Lead-capture captions (SRT, timed to the narration)</a></li>
+      <li>Reduced-motion stills: <code>assets/prepared/stills/</code> (one end-state frame per scene)</li>
+    </ul>
+
+    <div class="limits">
+      <h3>What this build does not show</h3>
+      <ul>
+        <li>An owner watch-through with sound, a music bed, or the real logo file on the end cards.</li>
+        <li>That any provider has accepted or produced these prompts. No model is called best without a comparison.</li>
+        <li>Deployed practice sites or live product captures. Every demonstration here is illustrative.</li>
+        <li>A verified API spend figure: the four clips came from Higgsfield API requests on 1 Oct 2026, and their cost can only be read in the Higgsfield API console.</li><li>API pricing or cashback. These stay pending until real receipts arrive. Higgsfield API credits and subscription or MCP credits are billed separately.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="page">
+  <div class="wrap">Campaign <code>mu-creative-20261001</code> · prepared by Claude Opus 5.5 (Claude Max 2) · Book a 15-minute demo</div>
+</footer>
+
+<script type="application/json" id="manifest">
+{
+  "films": [
+    {
+      "id": "main-receptionist",
+      "title": "The front desk that always answers",
+      "targetSeconds": 90,
+      "allowedRangeSeconds": [75, 95],
+      "story": "One weekday call to a busy dental practice: answered, qualified, booked only after the calendar confirms, and visible to the team.",
+      "handoff": [["Call", "answered"], ["Questions", "asked and checked"], ["Calendar", "checks the slot"], ["Booked", "only once confirmed"], ["Team", "sees the summary"]],
+      "gateStep": 3,
+      "scenes": [
+        {"id": "main-01", "durationSeconds": 7, "narration": "It's Tuesday morning. The front desk is with a patient, and the phone rings again.", "visual": "Shot dental-hero: slow forward dolly down an empty daylit dental corridor. Small ivory time stamp fades in: Tue 10:40 am. Small corner label: Illustrative demonstration.", "claimEvidenceStatus": "scene-setting"},
+        {"id": "main-02", "durationSeconds": 10, "narration": "This time, it's answered straight away. The receptionist greets the caller in the practice's name, listens, and works out what they need.", "visual": "Clean vector call card slides in over the corridor: Incoming call, then Answered. A thin gold line traces from the card towards the right of frame, starting the handoff path.", "claimEvidenceStatus": "illustrative-demonstration"},
+        {"id": "main-03", "durationSeconds": 14, "narration": "A new patient, a chipped tooth, mornings only. It asks what your team would ask: the kind of visit, how soon, which times suit, and checks the answers against the practice's rules.", "visual": "Three answers settle into the card one at a time as short typeset rows: New patient. Chipped tooth. Mornings. A small tag, Practice rules applied, ticks on after the third row.", "claimEvidenceStatus": "illustrative-demonstration"},
+        {"id": "main-04", "durationSeconds": 12, "narration": "Then it checks the calendar. Only when the calendar confirms the slot does it say booked. Thursday, nine fifteen. Confirmed.", "visual": "Gold line runs to a minimal week calendar. Status reads Checking calendar, pauses, then the Thursday 9:15 slot fills and the badge changes to Confirmed by calendar. The word Booked appears only after the badge.", "claimEvidenceStatus": "confirmed-only-after-calendar"},
+        {"id": "main-05", "durationSeconds": 11, "narration": "At the desk, the team can see it all: who called, why, what was booked, and a short summary, without stopping what they're doing.", "visual": "Line continues to a simple team view: caller, reason, confirmed booking and a two-line summary. Generous spacing, no invented metrics or staff names.", "claimEvidenceStatus": "illustrative-demonstration"},
+        {"id": "main-06", "durationSeconds": 12, "narration": "And it works the way your practice does. Every call, or just overflow. Business hours, after hours, or alongside your staff. You choose.", "visual": "A single 24-hour bar with four labelled settings lighting in turn: All calls, Alongside staff, After hours, Overflow. Each setting holds long enough to read.", "claimEvidenceStatus": "approved-positioning"},
+        {"id": "main-07", "durationSeconds": 14, "narration": "Before anything goes live, we set up and test your booking, your call routing and your texts. Booking systems vary, so we confirm yours first.", "visual": "Three-line checklist ticks in sequence: Booking tested, Routing tested, Texts tested. Beneath, one short readable line: Booking-system compatibility varies; we confirm yours during setup.", "claimEvidenceStatus": "approved-public-promise"},
+        {"id": "main-08", "durationSeconds": 10, "narration": "M&U Ventures. An all-hours front desk for your business. Book a fifteen-minute demo.", "visual": "Shot mu-brand-loop: gold light moving across black architectural material. M&U logo and Book a 15-minute demo typeset in the negative space during editing.", "claimEvidenceStatus": "call-to-action"}
+      ]
+    },
+    {
+      "id": "lead-capture",
+      "title": "From enquiry to a useful handoff",
+      "targetSeconds": 78,
+      "allowedRangeSeconds": [65, 85],
+      "story": "A homeowner's selling enquiry on a Sunday evening becomes one structured handoff for an estate agent, with the request clearly recorded and nothing falsely booked.",
+      "handoff": [["Call", "answered"], ["Details", "captured"], ["Request", "recorded, not booked"], ["Handoff", "one tidy card"], ["Agent", "follows up"]],
+      "gateStep": 3,
+      "scenes": [
+        {"id": "lead-01", "durationSeconds": 8, "narration": "It's Sunday evening. A homeowner is thinking about selling, and they ring the agency they drove past this morning.", "visual": "Shot property-hero: restrained lateral glide across an unbranded residential interior. Small time stamp: Sun 7:20 pm. Small corner label: Illustrative demonstration.", "claimEvidenceStatus": "scene-setting"},
+        {"id": "lead-02", "durationSeconds": 11, "narration": "The receptionist answers in the agency's name. It's friendly, it listens, and it keeps the conversation on track.", "visual": "Vector call card appears over the interior: Incoming call, then Answered. Card styling follows the agency concept palette, not M&U black and gold.", "claimEvidenceStatus": "illustrative-demonstration"},
+        {"id": "lead-03", "durationSeconds": 15, "narration": "It gathers what an agent actually needs: the suburb, the kind of home, when they're hoping to sell, and the best way to get back to them.", "visual": "A structured form fills field by field: Suburb, Property type, Timing, Preferred contact. Values are generic placeholders, never a real address.", "claimEvidenceStatus": "illustrative-demonstration"},
+        {"id": "lead-04", "durationSeconds": 12, "narration": "Then it's straight with the caller. Their request is recorded. Nothing is booked yet, and no one has promised a price or a time.", "visual": "Two status rows side by side. Request recorded: lit with a tick. Appointment booked: visibly empty and labelled Not booked. No valuation figure appears anywhere.", "claimEvidenceStatus": "request-not-booking"},
+        {"id": "lead-05", "durationSeconds": 13, "narration": "When the agent next checks in, there's one tidy handoff waiting, not a vague voicemail: who called, about which property, how soon, and what they asked.", "visual": "The form collapses into a single handoff card that travels along a line into the agency team view. Card fields: caller, suburb, timing, questions asked, status Request recorded.", "claimEvidenceStatus": "request-not-booking"},
+        {"id": "lead-06", "durationSeconds": 10, "narration": "If your calendar is connected and tested, it can book the meeting too. If not, it records the request, and says so.", "visual": "Split frame. Left: Calendar connected and tested, then Confirmed by calendar. Right: No calendar connected, then Request recorded. Equal visual weight.", "claimEvidenceStatus": "confirmed-only-after-calendar"},
+        {"id": "lead-07", "durationSeconds": 9, "narration": "Every enquiry, turned into a useful next step. Book a fifteen-minute demo with M&U Ventures.", "visual": "Shot mu-brand-loop with M&U logo and Book a 15-minute demo typeset in the negative space during editing.", "claimEvidenceStatus": "call-to-action"}
+      ]
+    }
+  ],
+  "claimEvidenceStatusKey": {
+    "scene-setting": "Story context only; makes no product claim.",
+    "illustrative-demonstration": "Shows how a configured client could work. Carries the Illustrative demonstration label; not a live product capture.",
+    "approved-positioning": "Matches the approved all-hours front desk positioning.",
+    "confirmed-only-after-calendar": "The word booked is used only after the calendar confirms. Needs per-client calendar integration tested during setup.",
+    "request-not-booking": "Shows a recorded request, clearly separate from a confirmed appointment.",
+    "approved-public-promise": "Matches the approved promise: booking, routing and texts are set up and tested before going live.",
+    "call-to-action": "Approved call to action: Book a 15-minute demo."
+  },
+  "shots": [
+    {"id": "shot-dental", "filename": "assets/dental-hero.mp4", "purpose": "Opening shot of the main receptionist film and hero loop of the dental website preview.", "prompt": "Empty contemporary dental practice, reception opening into a treatment corridor. Eye-level framing, centred one-point perspective, corridor leading towards soft window light. Materials: pale oak joinery, matte white walls, warm limestone floor, brushed stainless details, one green plant. Light: clear Australian morning daylight through large windows, soft natural shadows, neutral white balance. Camera: one slow, steady forward dolly of about one metre, no cuts, no shake. Realistic photographic look, 35mm lens, readable depth of field.", "negativeRequirements": ["No people, patients or staff", "No dental treatment, instruments in use or clinical procedures", "No logos, brand marks, readable signage or text", "No lens flare, glow effects or particles", "No warped or distorted architecture"]},
+    {"id": "shot-property", "filename": "assets/property-hero.mp4", "purpose": "Opening shot of the lead-capture film and hero loop of the property website preview.", "prompt": "Unbranded contemporary Australian residential living room opening to a covered deck and garden. Composed architectural framing at chest height, level horizon, true verticals. Materials: light timber floor, off-white rendered walls, linen sofa, stone benchtop in the background, large sliding glass doors. Light: late-afternoon warm natural light with gentle falloff. Camera: one restrained lateral glide left to right of about half a metre, no cuts, no shake. Realistic architectural photography look, 24mm lens.", "negativeRequirements": ["No people", "No for-sale signs, agency boards, logos or readable text", "No recognisable real address, street or landmark", "No exaggerated HDR, glow or particles", "No warped furniture or bending lines"]},
+    {"id": "shot-trades", "filename": "assets/trades-hero.mp4", "purpose": "Hero loop of the trades website preview; available as a cutaway for later trades films.", "prompt": "Clean, organised electrical trades workshop. Waist-height framing along a workbench with neatly coiled cable, unlabelled storage drawers, a pegboard of hand tools, a closed switchboard enclosure, and a ute tray just visible through an open roller door. Materials: galvanised steel, plywood benchtop, matte grey concrete floor. Light: bright, even daylight from the roller door with soft fill. Camera: one slow lateral move of about half a metre, no cuts, no shake. Realistic documentary look, 35mm lens.", "negativeRequirements": ["No people", "No unsafe work, exposed live wiring, sparks or smoke", "No logos, brand marks, readable signage or text", "No clutter, mess or damaged equipment", "No glow effects or particles"]},
+    {"id": "shot-brand", "filename": "assets/mu-brand-loop.mp4", "purpose": "M&U end card and brand background; typography is added during editing.", "prompt": "Abstract architectural close-up: warm metallic gold light slowly sweeping across a near-black surface of fluted stone or brushed black metal. The left two-thirds of the frame stay dark and calm as negative space for typography. Colour: deep black near #08090b with restrained gold highlights near #c7a35a. Camera: locked off or an almost imperceptible drift; the motion comes from the light. Photographic material realism.", "negativeRequirements": ["No baked-in text, letters, numbers or logos", "No robot heads, faces, figures or generic AI imagery", "No particle clouds, bokeh, sparks or lens flares", "No saturated or rainbow colour", "No fast motion or cuts"]}
+  ]
+}
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var data = JSON.parse(document.getElementById("manifest").textContent);
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  var MAX_WPM = 155;
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "text") node.textContent = attrs[k];
+      else if (k === "class") node.className = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) node.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return node;
+  }
+  function tc(s) { return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  function words(t) { return t.trim().split(/\s+/).length; }
+  var GATES = { "confirmed-only-after-calendar": 1, "request-not-booking": 1, "approved-public-promise": 1 };
+
+  /* ---------- Tabs ---------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function selectTab(tab, focus) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+    });
+    if (focus) tab.focus();
+    var hash = "#" + tab.id.replace("tab-", "");
+    if (location.hash !== hash) history.replaceState(null, "", hash);
+    syncPlayback();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener("click", function () { selectTab(t); });
+    t.addEventListener("keydown", function (e) {
+      var n = null;
+      if (e.key === "ArrowRight") n = tabs[(i + 1) % tabs.length];
+      else if (e.key === "ArrowLeft") n = tabs[(i - 1 + tabs.length) % tabs.length];
+      else if (e.key === "Home") n = tabs[0];
+      else if (e.key === "End") n = tabs[tabs.length - 1];
+      if (n) { e.preventDefault(); selectTab(n, true); }
+    });
+  });
+
+  /* ---------- Film scripts ---------- */
+  var filmsRoot = document.getElementById("films");
+  data.films.forEach(function (film) {
+    var total = 0, totalWords = 0;
+    film.scenes.forEach(function (s) { total += s.durationSeconds; totalWords += words(s.narration); });
+    var inRange = total >= film.allowedRangeSeconds[0] && total <= film.allowedRangeSeconds[1];
+
+    var meta = el("div", { class: "film-meta" }, [
+      el("span", null, ["Running time ", el("strong", { text: tc(total) + " (" + total + "s)" })]),
+      el("span", null, ["Allowed ", el("strong", { text: film.allowedRangeSeconds[0] + "–" + film.allowedRangeSeconds[1] + "s" })]),
+      el("span", null, ["Narration ", el("strong", { text: totalWords + " words" })]),
+      el("span", null, ["Average ", el("strong", { text: Math.round(totalWords / total * 60) + " wpm" })]),
+      el("span", { class: "pill" }, [el("span", { class: "dot" + (inRange ? " ok" : " bad") }), inRange ? "Within range" : "Outside range"])
+    ]);
+
+    var steps = el("ol");
+    film.handoff.forEach(function (h, i) {
+      steps.appendChild(el("li", { class: i === film.gateStep ? "gate" : "" }, [el("b", { text: h[0] }), h[1]]));
+    });
+
+    var bar = el("div", { class: "timeline", "aria-label": "Scene timeline" });
+    var list = el("ol", { class: "scenes" });
+    var t = 0;
+    film.scenes.forEach(function (s, i) {
+      var start = t, end = t + s.durationSeconds; t = end;
+      var n = words(s.narration), wpm = Math.round(n / s.durationSeconds * 60);
+      bar.appendChild(el("a", {
+        href: "#" + s.id, style: "flex:" + s.durationSeconds,
+        class: s.claimEvidenceStatus === "call-to-action" ? "cta" : "",
+        "aria-label": "Scene " + (i + 1) + ", " + tc(start) + " to " + tc(end)
+      }, [el("span", { text: String(i + 1) })]));
+      list.appendChild(el("li", { class: "scene", id: s.id }, [
+        el("div", { class: "tc" }, [el("b", { text: "Scene " + (i + 1) }), tc(start) + "–" + tc(end), el("br"), s.durationSeconds + " seconds"]),
+        el("div", null, [
+          el("span", { class: "label", text: "Narration" }),
+          el("p", { class: "narr", text: s.narration }),
+          el("span", { class: "rate" + (wpm > MAX_WPM ? " hot" : ""), text: n + " words · " + wpm + " wpm" + (wpm > MAX_WPM ? " (too fast)" : "") })
+        ]),
+        el("div", null, [
+          el("span", { class: "label", text: "Visual" }),
+          el("p", { class: "visual", text: s.visual }),
+          el("span", { class: "badge" + (GATES[s.claimEvidenceStatus] ? " gate" : ""), title: data.claimEvidenceStatusKey[s.claimEvidenceStatus] || "", text: s.claimEvidenceStatus.replace(/-/g, " ") })
+        ])
+      ]));
+    });
+
+    filmsRoot.appendChild(el("article", { class: "film", "aria-labelledby": film.id + "-title" }, [
+      el("div", { class: "film-head" }, [
+        el("div", null, [el("h3", { id: film.id + "-title", text: film.title }), el("p", { class: "story", text: film.story })]),
+        meta
+      ]),
+      el("div", { class: "handoff", "aria-label": "Handoff shown in this film" }, [steps]),
+      bar,
+      el("div", { class: "scale", "aria-hidden": "true" }, [el("span", { text: "0:00" }), el("span", { text: tc(total) })]),
+      list
+    ]));
+  });
+
+  var motionBtn = document.getElementById("motion-toggle");
+  motionBtn.addEventListener("click", function () {
+    var paused = document.body.classList.toggle("motion-paused");
+    motionBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+    motionBtn.textContent = paused ? "Resume motion" : "Pause motion";
+  });
+  if (reduceMotion.matches) motionBtn.hidden = true;
+
+  /* ---------- Media: honest pending, missing and ready states ---------- */
+  var status = {};
+  var mediaEls = [];
+  function setupMedia(box, opts) {
+    var src = box.getAttribute("data-src");
+    var state = el("div", { class: "media-state" }, [
+      el("strong", { text: "Footage pending" }),
+      el("span", { text: box.getAttribute("data-label") || "" }),
+      el("code", { text: src })
+    ]);
+    var video = el("video", { muted: "", loop: "", playsinline: "", preload: "metadata", "aria-label": box.getAttribute("data-label") || src });
+    video.muted = true;
+    var ctl = el("button", { class: "media-ctl", type: "button" });
+    box.appendChild(video); box.appendChild(state); box.appendChild(ctl);
+    var item = { box: box, video: video, ctl: ctl, auto: !!opts.autoplay, userPaused: false, src: src };
+    mediaEls.push(item);
+
+    video.addEventListener("loadeddata", function () {
+      box.classList.add("ready");
+      report(src, "ready");
+      syncPlayback();
+    });
+    video.addEventListener("error", function () {
+      box.classList.remove("ready");
+      state.firstChild.textContent = "Footage not supplied yet";
+      report(src, "missing");
+    });
+    video.addEventListener("play", updateCtl.bind(null, item));
+    video.addEventListener("pause", updateCtl.bind(null, item));
+    ctl.addEventListener("click", function () {
+      if (video.paused) { item.userPaused = false; video.play().catch(function () {}); }
+      else { item.userPaused = true; video.pause(); }
+    });
+    updateCtl(item);
+    video.src = src;
+  }
+  function updateCtl(item) {
+    item.ctl.textContent = item.video.paused ? "Play" : "Pause";
+    item.ctl.setAttribute("aria-label", (item.video.paused ? "Play " : "Pause ") + (item.box.getAttribute("data-label") || "video"));
+  }
+  function visible(node) { return node.offsetParent !== null; }
+  function syncPlayback() {
+    mediaEls.forEach(function (m) {
+      if (!m.box.classList.contains("ready")) return;
+      var shouldPlay = m.auto && !reduceMotion.matches && !m.userPaused && visible(m.box) && !document.hidden;
+      if (shouldPlay && m.video.paused) m.video.play().catch(function () {});
+      else if (!shouldPlay && !m.video.paused && (m.auto || !visible(m.box))) m.video.pause();
+    });
+  }
+  function report(src, s) {
+    status[src] = s;
+    var row = document.querySelector('[data-status-for="' + src + '"]');
+    if (row) {
+      row.textContent = s === "ready" ? "Supplied and playable" : "Not supplied yet";
+      row.previousSibling.className = "dot" + (s === "ready" ? " ok" : "");
+    }
+    var total = data.shots.length, ready = 0, known = 0;
+    data.shots.forEach(function (sh) { if (status[sh.filename]) known++; if (status[sh.filename] === "ready") ready++; });
+    document.getElementById("footage-summary").textContent =
+      "Footage: " + ready + " of " + total + " clips supplied" + (known < total ? " (checking…)" : "");
+    document.getElementById("footage-dot").className = "dot" + (ready === total ? " ok" : "");
+  }
+  document.addEventListener("visibilitychange", syncPlayback);
+  if (reduceMotion.addEventListener) reduceMotion.addEventListener("change", syncPlayback);
+
+  /* ---------- Assets ---------- */
+  var shotsRoot = document.getElementById("shots");
+  data.shots.forEach(function (sh) {
+    var media = el("div", { class: "media", "data-src": sh.filename, "data-label": sh.purpose.split(";")[0] });
+    var neg = el("ul");
+    sh.negativeRequirements.forEach(function (n) { neg.appendChild(el("li", { text: n })); });
+    shotsRoot.appendChild(el("article", { class: "shot" }, [
+      media,
+      el("h3", null, [el("code", { text: sh.filename })]),
+      el("span", { class: "pill" }, [el("span", { class: "dot" }), el("span", { "data-status-for": sh.filename, text: "Checking…" })]),
+      el("dl", null, [
+        el("dt", { text: "Purpose" }), el("dd", { text: sh.purpose }),
+        el("dt", { text: "Format" }), el("dd", { text: "16:9 · 5 seconds" }),
+        el("dt", { text: "Prompt" }), el("dd", { text: sh.prompt }),
+        el("dt", { text: "Exclude" }), el("dd", null, [neg])
+      ])
+    ]));
+    setupMedia(media, { autoplay: false });
+  });
+
+  /* ---------- Website previews ---------- */
+  document.querySelectorAll(".site .media").forEach(function (m) { setupMedia(m, { autoplay: true }); });
+
+  function pressOnly(group, btn) {
+    group.forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+  }
+  var sectorBtns = Array.prototype.slice.call(document.querySelectorAll("[data-sector]"));
+  sectorBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      pressOnly(sectorBtns, b);
+      document.querySelectorAll(".practice").forEach(function (p) {
+        p.hidden = p.getAttribute("data-practice") !== b.getAttribute("data-sector");
+      });
+      syncPlayback();
+    });
+  });
+  var viewBtns = Array.prototype.slice.call(document.querySelectorAll("[data-view]"));
+  viewBtns.forEach(function (b) {
+    b.addEventListener("click", function () {
+      pressOnly(viewBtns, b);
+      var phone = b.getAttribute("data-view") === "phone";
+      document.getElementById("frame").classList.toggle("phone", phone);
+      document.getElementById("frame-caption").textContent = phone ? "Phone view · 390px wide" : "Desktop view";
+    });
+  });
+
+  // In-template anchor links scroll within the preview without changing the page tab.
+  document.querySelectorAll('.site a.cta[href^="#"]').forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      e.preventDefault();
+      var target = document.getElementById(a.getAttribute("href").slice(1));
+      target.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
+      var first = target.querySelector("input, select, textarea");
+      if (first) first.focus({ preventScroll: true });
+    });
+  });
+
+  document.querySelectorAll(".demo-form").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var out = form.querySelector(".result");
+      out.textContent = "Demonstration only: nothing was sent or stored. On a live site this would record a request, not a booked appointment.";
+      out.hidden = false;
+    });
+  });
+
+  /* ---------- Initial tab from the address ---------- */
+  var initial = document.getElementById("tab-" + (location.hash || "#scripts").slice(1));
+  selectTab(initial && initial.getAttribute("role") === "tab" ? initial : tabs[0]);
+  window.addEventListener("hashchange", function () {
+    var t = document.getElementById("tab-" + location.hash.slice(1));
+    if (t && t.getAttribute("role") === "tab") selectTab(t);
+  });
+})();
+</script>
+</body>
+</html>

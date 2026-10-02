@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import type { MemorySource } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 type Entry = { path: string; hash: string; signature: string; trashed: boolean };
 type Conflict = { id: string; path: string; reason: string };
@@ -52,7 +53,7 @@ export function memoryMarkdown(source: MemorySource) {
 /** A portable, one-way copy. workspace.json remains authoritative. */
 export function memoryVault(root: string) {
   const base = resolve(root),
-    dataDir = join(base, ".operator-data"),
+    dataDir = join(dataDirFor(base)),
     path = join(dataDir, "vault"),
     manifestPath = join(dataDir, "memory-vault.json");
   let manifest: Manifest | undefined,

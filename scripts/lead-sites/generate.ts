@@ -15,6 +15,7 @@ import { exportResidue, NEXT_TEMPLATE_SPECS, TEXT_EXT } from "./next-templates";
 import { MOTION_MARKER, withMotion, writeMotionAssets } from "./motion";
 import { getPreview, upsertPreview, type PreviewRecord } from "./registry";
 import { residueIn, TEMPLATE_SPECS, templatesRoot, type Vertical } from "./templates";
+import { assertPreviewDesign } from "./design";
 
 export const PREVIEW_SUBDIR = "flagship-preview";
 
@@ -87,6 +88,9 @@ export async function generatePreview(db: Database, ref: string | number, opts: 
   const templateDir = join(templatesRoot(opts.draftsRoot), vertical);
   if (!existsSync(join(templateDir, "index.html")))
     throw new Error(`The ${vertical} template hasn't been built yet: run bun scripts/lead-sites/cli.ts templates`);
+  // Validate before replacing a generated folder: a stale or unrelated cache must never
+  // silently switch the owner's selected flagship to another design.
+  assertPreviewDesign(vertical, readFileSync(join(templateDir, "index.html"), "utf8"));
 
   const now = opts.now ?? new Date();
   const slug = previewSlug(lead.name, lead.id);

@@ -95,7 +95,8 @@ describe("F1-17: bad lead ids", () => {
     const src = readFileSync(join(ROOT, "src/components/operator/leads-crm.tsx"), "utf8");
     // `strict: false` merged the raw query string in, so ?lead=abc reached the drawer.
     expect(src).not.toMatch(/useSearch\(\{\s*strict:\s*false/);
-    expect(src).toContain('useSearch({ from: "/leads" })');
+    // Round 6: the page reads it through useLeadsRoute, which re-checks the number (behaviour: r6-ui-behaviour.test.tsx).
+    expect(src).toContain("useLeadsRoute()");
   });
 });
 

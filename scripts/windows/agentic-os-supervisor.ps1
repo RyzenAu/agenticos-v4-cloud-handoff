@@ -64,6 +64,8 @@ if (-not $created) { exit 0 }
 function Test-Listening { [bool](Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) }
 
 # Liveness: /__version is loopback-only, cached per process and carries no secret (unlike /__token).
+# MU_HUB_ROLE=server: a loopback request needs the local-owner token for everything EXCEPT this probe: the gate answers an
+# unproven loopback GET /__version with a data-free {"ok":true}, so this script needs no secret (scripts/identity/gate.ts).
 # True for any HTTP answer (a live process); false only when the connection fails or times out.
 function Test-Answering {
   $ProgressPreference = 'SilentlyContinue'

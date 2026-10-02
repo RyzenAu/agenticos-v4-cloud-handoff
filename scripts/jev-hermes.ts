@@ -18,6 +18,7 @@
  *    an unparseable request or any doubt → ESCALATE. The OS's own outbound gate
  *    (needsConfirmation in jarvis-control) is untouched and still runs before Hermes.
  */
+import { hasLocalOwnerProof, writeProtectedSecret } from "./identity/local-owner-token";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -26,6 +27,7 @@ import { needsConfirmation } from "../src/lib/jarvis-control";
 import { JEV_MODEL, jevDecide, type JevSurface } from "./jev-client";
 import { pcIntent, type PcRequest } from "./pc-hands";
 import { providerKey } from "./provider-config";
+import { dataDirFor } from "./cloud/data-dir";
 
 type JevAnswer = { choice?: string; noul?: number; confidence?: number; probabilities?: Record<string, number> };
 type Answers = Record<string, JevAnswer>;
@@ -196,15 +198,14 @@ export function completion(verdict: Verdict, stream: boolean) {
 // --- the loopback shim ---------------------------------------------------------------------------------
 /** The shim's own bearer token (not the per-run page token: Hermes' config needs a stable one). */
 export function shimToken(root: string) {
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   const file = join(directory, "jev-shim.token");
   if (existsSync(file)) {
     const saved = readFileSync(file, "utf8").trim();
     if (/^[a-f0-9]{64}$/.test(saved)) return saved;
   }
-  mkdirSync(directory, { recursive: true });
   const token = randomBytes(32).toString("hex");
-  writeFileSync(file, token, { mode: 0o600 });
+  writeProtectedSecret(file, token); // protected from its first byte (mode 0o600 does nothing on Windows)
   return token;
 }
 
@@ -229,7 +230,9 @@ export function jevShim(root: string, options: { key?: () => string; request?: t
     };
     if (!LOOPBACK.has(req.socket?.remoteAddress ?? "")) return reply(403, JSON.stringify({ error: { message: "loopback only" } }));
     const auth = String(req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
-    if (!sameToken(auth, shimToken(root))) return reply(401, JSON.stringify({ error: { message: "invalid token" } }));
+    // Server role: the gate already verified the local-owner token (and stripped it from Authorization), so Hermes' one
+    // api_key for /__jev can be that token. Elsewhere nothing sets the proof and the shim's own token is still required.
+    if (!hasLocalOwnerProof(req) && !sameToken(auth, shimToken(root))) return reply(401, JSON.stringify({ error: { message: "invalid token" } }));
     if (req.method === "GET" && path === "/v1/models") return reply(200, JSON.stringify({ object: "list", data: [{ id: JEV_MODEL, object: "model", owned_by: "typesafe" }] }));
     if (req.method !== "POST" || path !== "/v1/chat/completions") return next();
     let raw = "";

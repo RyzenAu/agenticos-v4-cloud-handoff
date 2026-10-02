@@ -1,7 +1,7 @@
 // Today's parts of the Home page (29 Sep 2026: Today merged INTO the Business brief, the landing page).
 // useToday reads the Workspace panel sources (each its own small GET, so a slow one, like the site
 // checks, never holds up the rest), the live agent feed and the calling window. TodayFocus and
-// TodaySources render them. Read-only: every row opens the page where you act.
+// TodaySources render them. Business decisions save here; other items open their action controls.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowRight, AudioLines, ChevronRight, Database, Inbox, ListChecks, RefreshCw, Users } from "lucide-react";
@@ -12,6 +12,7 @@ import { refreshPanels, useWorkspacePanel, type PanelResult } from "@/components
 import { SpeedToLeadPanel } from "@/components/workspace/speed-to-lead-panel";
 import { useNow } from "@/components/workspace/panel-shell";
 import { CallingWindow } from "@/components/workspace/today-panel";
+import { DecisionRow } from "@/components/workspace/decision-row";
 import { FEED_STATUS_LABEL, feedStatus, readFeed, subscribeFeed, type FeedTask } from "@/lib/agent-feed";
 import { mergeRunning, runningFromFeed, RUNNING_SOURCES, type RunningItem } from "@/lib/running-now";
 import { pendingUntilHydrated, useHydrated } from "@/lib/use-hydrated";
@@ -62,7 +63,8 @@ function useServerRunning() {
       );
       return { items: results.flatMap((r) => r.items), failed: results.map((r) => r.failed).filter((f): f is string => !!f) };
     },
-    refetchInterval: 10_000,
+    // Quick while something is running, slow when nothing is (idle cost).
+    refetchInterval: (query) => (query.state.data?.items.length ? 10_000 : 45_000),
     staleTime: 5_000,
     retry: false,
   });
@@ -176,7 +178,9 @@ export function useToday() {
   // L1 (29 Sep 2026): the "Waiting on you" count and its honest breakdown head the Needs you widget;
   // the other four tiles are one row of the grid. A failed or unknown read keeps its word and retry.
   const needsTile = tileByKey.needsYou;
-  const needsBadge = q.needsYou.isLoading ? "Checking" : needsTile.value ?? (needsTile.state === "failed" ? "Couldn't read" : "Unknown");
+  const needsBadge = q.needsYou.isLoading
+    ? "Checking"
+    : (needsTile.value ?? (needsTile.state === "failed" ? "Couldn't read" : "Unknown"));
   const needsRetry = needsTile.state === "failed" || needsTile.state === "unknown";
   const startAction = firstStep ? (
     firstStep.href.startsWith("/") ? (
@@ -250,13 +254,18 @@ export function TodayFocus({ m }: { m: TodayModel }) {
             <>
               <ol className="calm-rows" aria-label="Next actions">
                 {approvals.slice(0, NEXT_SHOWN).map((a) => (
-                  <ActionRow key={a.id} a={a} />
+                  <DecisionRow key={a.id} item={a} />
                 ))}
               </ol>
             </>
           ) : (
-            <WidgetEmpty title="No owner decisions waiting" body="Decisions appear here when a track needs your yes." />
+            <WidgetEmpty title="No business decisions waiting" body="Check the inbox and agent questions below for other items in this count." />
           )}
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4" aria-label="Other items needing you">
+            <Button asChild variant="outline"><Link to="/inbox">Emails{q.needsYou.data?.ok && q.needsYou.data.data.parts.email.count !== null ? ` (${q.needsYou.data.data.parts.email.count})` : ""}</Link></Button>
+            <Button asChild variant="outline"><Link to="/jarvis" hash="agent-questions">Agent questions{q.needsYou.data?.ok && q.needsYou.data.data.parts.agentApprovals.count !== null ? ` (${q.needsYou.data.data.parts.agentApprovals.count})` : ""}</Link></Button>
+            <Button asChild variant="outline"><Link to="/work" hash="ws-today">All decisions</Link></Button>
+          </div>
         </Widget>
 
         <Widget
@@ -285,10 +294,10 @@ export function TodayFocus({ m }: { m: TodayModel }) {
             <Skeleton className="h-14 rounded-xl" />
           ) : (
             <WidgetEmpty
-              title={failedNames.length ? "Nothing on fire in the sources that answered" : "Nothing on fire"}
+              title={failedNames.length ? "Status incomplete" : "No urgent items"}
               body={
                 failedNames.length
-                  ? `Not vouched for: ${failedNames.join(", ")} couldn't be read.`
+                  ? `Couldn't read ${failedNames.join(", ")}. Refresh to check.`
                   : "Urgent flags, sites down and late enquiries show here."
               }
             />
@@ -308,11 +317,27 @@ export function TodayFocus({ m }: { m: TodayModel }) {
                 state={t.state}
                 tone={t.tone}
                 // The calling window (was in the header) lives with the calls it governs.
-                hint={t.key === "callQueue" && now ? <>{t.hint}<span className="mt-1.5 block"><CallingWindow now={now} /></span></> : t.hint}
+                hint={
+                  t.key === "callQueue" && now ? (
+                    <>
+                      {t.hint}
+                      <span className="mt-1.5 block">
+                        <CallingWindow now={now} />
+                      </span>
+                    </>
+                  ) : (
+                    t.hint
+                  )
+                }
                 updatedAt={t.updatedAt}
                 now={now}
                 to={t.to}
-                recovery={t.recovery ? (t.recovery.kind === "link" ? { label: t.recovery.label, to: t.recovery.to } : { label: t.recovery.label, onClick: () => retry(t.key) }) : undefined}
+                search={t.search}
+                recovery={
+                  t.recovery
+                    ? t.recovery.kind === "link" ? { label: t.recovery.label, to: t.recovery.to } : { label: t.recovery.label, onClick: () => retry(t.key) }
+                    : undefined
+                }
               />
             </div>
           ))}
@@ -335,7 +360,9 @@ export function TodayFocus({ m }: { m: TodayModel }) {
           {running.length ? (
             <p className="truncate text-base font-medium text-foreground" title={running.map((r) => `${r.title} · ${r.agent} · ${r.source}`).join("\n")}>
               {running[0].title}
-              {running[0].state !== "running" && <span className="text-warn"> · {RUNNING_BADGE[running[0].state]}</span>}
+              {running[0].state !== "running" && (
+                <span className="text-warn"> · {RUNNING_BADGE[running[0].state]}</span>
+              )}
               <span className="font-normal text-muted-foreground"> · {running[0].agent}</span>
             </p>
           ) : runningUnknown === "checking" ? (
@@ -369,7 +396,9 @@ export function TodayFocus({ m }: { m: TodayModel }) {
             ) : undefined
           }
         >
-          <p className={cn("text-base font-medium", enquiries?.overdueCount ? "text-danger" : "text-foreground")}>{enquirySummary}</p>
+          <p className={cn("text-base font-medium", enquiries?.overdueCount ? "text-danger" : "text-foreground")}>
+            {enquirySummary}
+          </p>
         </Widget>
 
         {/* One value, one line: open leads, and the follow-ups behind them (overdue calls are on "Calls to make"). */}
@@ -408,61 +437,41 @@ export function TodayFocus({ m }: { m: TodayModel }) {
 export function TodaySources({ m, children }: { m: TodayModel; children?: ReactNode }) {
   const { q, now } = m;
   return (
-      <CalmSection
+    <CalmSection
         className="mb-10" title="Where these numbers come from" icon={Database} persistKey="today-sources">
-        <ul className="calm-rows">
-          {TODAY_KEYS.map((k) => {
-            const r = q[k].data;
-            const state = q[k].isLoading ? "Checking" : r ? (r.ok ? (r.stale ? "Stale" : "Live") : "Couldn't read") : q[k].isError ? "Couldn't read" : "Not loaded";
-            return (
-              <li key={k} className="calm-row items-start">
-                <span className="min-w-0 flex-1">
+      <ul className="calm-rows">
+        {TODAY_KEYS.map((k) => {
+          const r = q[k].data;
+          const state = q[k].isLoading
+            ? "Checking"
+            : r
+              ? r.ok
+                ? r.stale ? "Stale" : "Live"
+                : "Couldn't read"
+              : q[k].isError ? "Couldn't read" : "Not loaded";
+          return (
+            <li key={k} className="calm-row items-start">
+              <span className="min-w-0 flex-1">
                   <span className="calm-row-title">{PANEL_LABEL[k]}</span>
                   <span className="calm-row-detail">Source: {PANEL_SOURCE[k]}</span>
                 </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
-                  <Pill tone={state === "Live" ? "success" : state === "Couldn't read" ? "danger" : state === "Stale" ? "warn" : "neutral"}>{state}</Pill>
-                  {r && now ? <Freshness at={r.updatedAt} now={now} /> : null}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        {children ? <div className="mt-4 border-t border-border pt-4">{children}</div> : null}
-      </CalmSection>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <Pill tone={state === "Live" ? "success" : state === "Couldn't read" ? "danger" : state === "Stale" ? "warn" : "neutral"}>
+                  {state}
+                </Pill>
+                {r && now ? <Freshness at={r.updatedAt} now={now} /> : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {children ? <div className="mt-4 border-t border-border pt-4">{children}</div> : null}
+    </CalmSection>
   );
 }
 
 /** How many next actions show on the home page; the rest are in Work. */
 const NEXT_SHOWN = NEEDS_YOU_LIST_SHOWN;
-
-function ActionRow({ a }: { a: { id: string; title: string; detail: string; href: string; progress?: string | null } }) {
-  const inner = (
-    <>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="calm-row-title">{a.title}</span>
-          {a.progress && <Badge className="max-w-full truncate" title={a.progress}>{a.progress}</Badge>}
-        </span>
-        <span className="calm-row-detail truncate" title={a.detail}>{a.detail}</span>
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-    </>
-  );
-  return (
-    <li>
-      {a.href.startsWith("/") ? (
-        <Link to={a.href as never} className="calm-row">
-          {inner}
-        </Link>
-      ) : (
-        <a href={a.href} target="_blank" rel="noreferrer" className="calm-row">
-          {inner}
-        </a>
-      )}
-    </li>
-  );
-}
 
 function CalmExceptionList({ items }: { items: Exception[] }) {
   return (
@@ -470,8 +479,17 @@ function CalmExceptionList({ items }: { items: Exception[] }) {
       {items.map((e) => {
         const inner = (
           <>
-            <StatusDot tone={e.tone} label={<span className="sr-only">{e.tone === "danger" ? "Urgent" : e.tone === "warn" ? "Needs attention" : "Note"}</span>} />
-            <span className="calm-row-title min-w-0 flex-1 truncate" title={typeof e.text === "string" ? e.text : undefined}>{e.text}</span>
+            <StatusDot
+              tone={e.tone}
+              label={
+                <span className="sr-only">
+                  {e.tone === "danger" ? "Urgent" : e.tone === "warn" ? "Needs attention" : "Note"}
+                </span>
+              }
+            />
+            <span className="calm-row-title min-w-0 flex-1 truncate" title={typeof e.text === "string" ? e.text : undefined}>
+              {e.text}
+            </span>
             {e.to && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-sm font-medium text-muted-foreground">
                 {e.action ?? "Open"}

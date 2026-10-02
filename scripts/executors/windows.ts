@@ -79,12 +79,20 @@ const check = (signal: AbortSignal) => {
 };
 
 /** How each allow-listed app is launched (fixed names) and how its window is recognised. */
-export const APP_LAUNCH: Record<string, { exe: string; label: string; hidden?: boolean; match: (w: WinInfo) => boolean }> = {
+/**
+ * An Office app's splash screen is a window of the app too (title "Opening -", "Loading", blank, or class MsoSplash), and
+ * it is gone seconds later: it is never the verified window. Pure.
+ */
+export function isSplash(w: WinInfo): boolean {
+  const t = w.title.trim();
+  return /^mosplash|^msosplash/i.test(w.cls) || /^(?:opening|loading|starting|initializing)\b/i.test(t) || /^[-\u2013\u2014 ]*$/.test(t);
+}
+export const APP_LAUNCH: Record<string, { exe: string; label: string; hidden?: boolean; match: (w: WinInfo) => boolean; splash?: (w: WinInfo) => boolean }> = {
   notepad: { exe: "notepad.exe", label: "Notepad", match: (w) => /^notepad$/i.test(w.process) },
   calculator: { exe: "calc.exe", label: "Calculator", match: (w) => /^(?:calculatorapp|applicationframehost|calc)$/i.test(w.process) && /calculator/i.test(w.title) },
-  powerpoint: { exe: "powerpnt.exe", label: "PowerPoint", match: (w) => /^powerpnt$/i.test(w.process) },
-  excel: { exe: "excel.exe", label: "Excel", match: (w) => /^excel$/i.test(w.process) },
-  word: { exe: "winword.exe", label: "Word", match: (w) => /^winword$/i.test(w.process) },
+  powerpoint: { exe: "powerpnt.exe", label: "PowerPoint", match: (w) => /^powerpnt$/i.test(w.process), splash: isSplash },
+  excel: { exe: "excel.exe", label: "Excel", match: (w) => /^excel$/i.test(w.process), splash: isSplash },
+  word: { exe: "winword.exe", label: "Word", match: (w) => /^winword$/i.test(w.process), splash: isSplash },
   chrome: { exe: "chrome.exe", label: "Chrome", match: (w) => /^chrome$/i.test(w.process) },
   edge: { exe: "msedge.exe", label: "Edge", match: (w) => /^msedge$/i.test(w.process) },
   explorer: { exe: "explorer.exe", label: "File Explorer", match: (w) => /^explorer$/i.test(w.process) && /^cabinetwclass$/i.test(w.cls) },
@@ -173,7 +181,7 @@ export function deckBlankScript(title: string): string {
     "  try { $app.Visible = -1 } catch {}",
     "  $pres = $app.Presentations.Add(-1)",
     "  $slide = $pres.Slides.Add(1, 1)",
-    "  $slide.Shapes.Item(1).TextFrame.TextRange.Text = $title",
+    "  if ($title.Length -gt 0) { $slide.Shapes.Item(1).TextFrame.TextRange.Text = $title }",
     // The read-back: from PowerPoint itself, not from what was sent.
     "  $first = $pres.Slides.Item(1)",
     "  $read = [string]$first.Shapes.Item(1).TextFrame.TextRange.Text",
@@ -252,10 +260,18 @@ export function createWindowsExecutors(deps: WindowsDeps): Record<WindowsExecuto
     const frontBefore = await deps.foreground().catch(() => null);
     check(signal);
     await deps.startApp(app.exe, app.hidden ? { hidden: true } : undefined);
-    const fresh = await poll(signal, t.appWaitMs, async () => (await deps.windows().catch(() => [] as WinInfo[])).find((w) => !had.has(w.handle) && app.match(w)));
+    // The app's REAL window: an Office splash ("Opening -") is waited out (bounded), never accepted as the verified window.
+    const real = (w: WinInfo) => app.match(w) && !app.splash?.(w);
+    let sawSplash = false;
+    const fresh = await poll(signal, t.appWaitMs, async () => {
+      const now = (await deps.windows().catch(() => [] as WinInfo[])).filter((w) => !had.has(w.handle) && app.match(w));
+      if (now.some((w) => app.splash?.(w))) sawSplash = true;
+      return now.find(real);
+    });
+    if (!fresh && sawSplash) return { ok: true, verified: null, said: `${app.label} is still starting (only its splash screen is showing), so I can't confirm it opened.`, evidence: "only a splash window appeared", data: { app: key, splashOnly: true } };
     if (fresh) return { ok: true, verified: true, checkedAt: Date.now(), said: `Opened ${app.label}.`, evidence: `a new ${fresh.process} window appeared: "${fresh.title.slice(0, 80)}"`, data: { app: key, handle: fresh.handle, title: fresh.title } };
     const front = await deps.foreground().catch(() => null);
-    if (front && app.match(front) && front.handle !== frontBefore?.handle)
+    if (front && real(front) && front.handle !== frontBefore?.handle)
       return { ok: true, verified: null, said: `${app.label} came to the front, but in a window that was already open, so I can't confirm a new one.`, evidence: `existing window in front: "${front.title.slice(0, 80)}"`, data: { app: key, handle: front.handle } };
     return { ok: false, verified: false, said: `I asked Windows to open ${app.label}, but no new ${app.label} window appeared, so I can't say it opened.` };
   };
@@ -309,8 +325,10 @@ export function createWindowsExecutors(deps: WindowsDeps): Record<WindowsExecuto
   };
 
   const deckBlank: WindowsExecutor = async (args, { signal }) => {
-    const title = String(args.title ?? "").trim() || "Title";
-    const refused = textRefusal(title, 120);
+    // No title asked for: a blank new presentation (its title placeholder left empty), not a made-up "Title".
+    const title = String(args.title ?? "").trim();
+    const blank = title === "";
+    const refused = blank ? null : textRefusal(title, 120);
     if (refused) return { ok: false, verified: false, said: refused, data: { refused: true } };
     const off = onWindows("PowerPoint");
     if (off) return off;
@@ -327,8 +345,8 @@ export function createWindowsExecutors(deps: WindowsDeps): Record<WindowsExecuto
     if (!back) return { ok: false, verified: false, said: "PowerPoint answered, but I couldn't read the new presentation back, so I can't say it worked." };
     const data = { presentation: back.name, slides: back.slides, title: back.title, saved: back.path !== "" };
     if (back.slides !== 1 || back.layout !== 1 || back.title !== title || back.path !== "")
-      return { ok: false, verified: false, said: `PowerPoint made ${back.name || "a presentation"}, but it doesn't read back as one unsaved title slide saying "${title}", so I'm not calling it done.`, evidence: `slides=${back.slides} layout=${back.layout} titleMatches=${back.title === title} saved=${back.path !== ""}`, data };
-    return { ok: true, verified: true, checkedAt: Date.now(), said: `Started a new presentation (${back.name}) with the title slide "${title}". It isn't saved.`, evidence: `PowerPoint reads back 1 slide, title layout, title matches, not saved`, data };
+      return { ok: false, verified: false, said: `PowerPoint made ${back.name || "a presentation"}, but it doesn't read back as one unsaved ${blank ? "blank title slide" : `title slide saying "${title}"`}, so I'm not calling it done.`, evidence: `slides=${back.slides} layout=${back.layout} titleMatches=${back.title === title} saved=${back.path !== ""}`, data };
+    return { ok: true, verified: true, checkedAt: Date.now(), said: blank ? "Started a new blank presentation. It isn't saved." : `Started a new presentation (${back.name}) with the title slide "${title}". It isn't saved.`, evidence: `PowerPoint reads back 1 slide, title layout, ${blank ? "title left empty" : "title matches"}, not saved`, data };
   };
 
   const notepadType: WindowsExecutor = async (args, { signal }) => {

@@ -27,6 +27,7 @@ import { newKey, type Chip, type Seconds, type Tab, type Written } from "./libra
 import { OpenActions, RiseView, useRunner, type Target } from "./shared";
 import { InspirationCard, LiveTile, MadeVideoTile } from "./tiles";
 import { KitTab } from "./kit-tab";
+import { ScenePlanner } from "./scene-planner";
 import { KIT } from "@/motion/kit";
 import { PageHeader } from "@/components/ds";
 import "./motion-library.css";
@@ -627,7 +628,7 @@ export function MotionLibrary({
 
   const described = text.trim().length >= 3;
   const added = chips.some((c) => c.kind !== "style");
-  const counts = { styles: STYLES.length, kit: KIT.length, made: MADE.length, inspiration: INSPIRATION.length };
+  const counts = { styles: STYLES.length, kit: KIT.length, made: MADE.length, inspiration: INSPIRATION.length, scenes: null };
 
   return (
     <div
@@ -729,6 +730,7 @@ export function MotionLibrary({
             [
               ["styles", "Styles"],
               ["kit", "M&U kit"],
+              ["scenes", "Scene plan"],
               ["made", "Made in this video"],
               ["inspiration", "Inspiration"],
             ] as [Tab, string][]
@@ -741,11 +743,11 @@ export function MotionLibrary({
               onClick={() => setTab(id)}
             >
               {label}
-              <span>{counts[id]}</span>
+              {counts[id] !== null && <span>{counts[id]}</span>}
             </button>
           ))}
         </div>
-        <div className="ml-tools">
+        <div className="ml-tools" style={tab === "scenes" ? { display: "none" } : undefined}>
           <div className="ml-search">
             <Search size={14} aria-hidden="true" />
             <label className="sr-only" htmlFor="ml-search">
@@ -806,6 +808,7 @@ export function MotionLibrary({
       )}
 
       {tab === "kit" && <KitTab query={query} notify={notify} />}
+      <div hidden={tab !== "scenes"}><ScenePlanner onUse={(prompt, duration) => { setText(prompt); setSeconds(duration); setWritten(null); page.current?.scrollIntoView({ block: "start" }); notify("Scene loaded into the composer. Review it before generating."); }} /></div>
 
       {tab === "made" && (
         <>

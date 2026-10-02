@@ -28,6 +28,7 @@
  */
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const API_KEY_ENV = "HINDSIGHT_API_KEY";
 export const DEFAULT_BANK = "mu-shared";
@@ -149,7 +150,7 @@ export function resolveMemorySettings(env: Record<string, string | undefined> = 
     },
     vaultRoot,
     vaultName: env.MU_WIKI_VAULT_NAME || vaultRoot.split(/[\\/]/).filter(Boolean).pop() || "vault",
-    stateDir: env.MEMORY_STATE_DIR || join(appRoot, ".operator-data", "memory"),
+    stateDir: env.MEMORY_STATE_DIR || join(dataDirFor(appRoot), "memory"),
     sync: {
       allow: list(env.MEMORY_SYNC_ALLOW).length ? list(env.MEMORY_SYNC_ALLOW) : DEFAULT_ALLOW,
       deny: [...HARD_DENY, ...list(env.MEMORY_SYNC_DENY)],

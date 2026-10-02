@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { homedir } from "node:os";
 import { delimiter, join, resolve, sep } from "node:path";
 import { isAtThisPc } from "../../../scripts/identity/principal";
+import { isServerFounderGrant } from "../../../scripts/identity/server-role";
 
 /** M&U: C: is short on space, so on Windows projects live on D: when it exists. */
 export const WINDOWS_STUDIO_HOME = "D:\\motion-studio-projects";
@@ -101,11 +102,16 @@ export function send(res: ServerResponse, status: number, body: unknown) {
 export function isLocalRequest(req: IncomingMessage): boolean {
   // Stage B1: the same "at this PC" rule as the identity contract: loopback socket, a local Host and
   // no relay header (Tailscale-*, X-Forwarded-*, Forwarded, Via, X-Real-IP).
-  if (!isAtThisPc(req)) return false;
+  // MU_HUB_ROLE=server: a founder the identity gate admitted to this local-owner route (scripts/identity/server-role.ts)
+  // is let in too; his browser reaches the hub over HTTPS through Tailscale Serve. The cross-origin checks below
+  // still apply, against his own https origin.
+  const granted = isServerFounderGrant(req);
+  if (!granted && !isAtThisPc(req)) return false;
   const host = req.headers.host || "";
   const origin = req.headers.origin;
   if (
     origin &&
+    !(granted && origin === `https://${host}`) &&
     origin !== `http://${host}` &&
     origin !== `http://${host.replace("127.0.0.1", "localhost")}` &&
     origin !== `http://${host.replace("localhost", "127.0.0.1")}`

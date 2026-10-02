@@ -1723,7 +1723,7 @@ export function MemoryGraph3D({
         )}
         {/* Legend overlay */}
         {!graphData && (
-          <div className="dark absolute bottom-3 left-3 flex flex-wrap gap-3 rounded-lg border border-border/70 bg-black/70 backdrop-blur px-3 py-2 text-[12px] text-muted-foreground">
+          <div className="dark absolute bottom-3 left-3 flex flex-wrap gap-3 rounded-lg border border-border/70 bg-black/70 backdrop-blur px-3 py-2 text-xs text-muted-foreground">
             <LegendDot c={ACCENT} label="Memory Core" />
             <LegendDot c={WS_COL} label="Workspace" />
             <LegendDot c={FILE_COL} label="File" shape="sphere" />
@@ -1736,7 +1736,7 @@ export function MemoryGraph3D({
 
       {/* Controls — sit BELOW the canvas */}
       {!embedded && (
-        <div className="mt-3 rounded-xl border border-border bg-card shadow-sm p-3 text-[12px] text-muted-foreground">
+        <div className="mt-3 rounded-xl border border-border bg-card shadow-sm p-3 text-xs text-muted-foreground">
           {/* Stack until xl — between lg and xl the fixed-width buttons+stats
               used to squeeze the flex-1 thumbnail selector into unreadable
               slivers with overlapping captions. */}
@@ -1744,10 +1744,10 @@ export function MemoryGraph3D({
             {/* Layout selector with thumbnails */}
             <div className="w-full max-w-[460px] xl:max-w-none xl:flex-1 xl:min-w-[280px]">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   Layout
                 </span>
-                <span className="text-[12px] text-muted-foreground capitalize">{view}</span>
+                <span className="text-xs text-muted-foreground capitalize">{view}</span>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {(
@@ -1772,7 +1772,7 @@ export function MemoryGraph3D({
                     >
                       <ViewThumb kind={v.key} active={active} />
                       <div
-                        className={`mt-1 text-[12px] uppercase tracking-wider text-center ${active ? "text-foreground" : ""}`}
+                        className={`mt-1 text-xs text-center ${active ? "text-foreground" : ""}`}
                       >
                         {v.label}
                       </div>
@@ -1796,12 +1796,12 @@ export function MemoryGraph3D({
                 title="Toggle flow particles"
               >
                 <Sparkles className="h-3 w-3" />
-                <span className="text-[12px]">Flow</span>
+                <span className="text-xs">Flow</span>
               </button>
               <div className="flex rounded-md border border-border/60 overflow-hidden">
                 <button
                   onClick={() => setDensity("lite")}
-                  className={`px-2.5 py-1.5 text-[12px] uppercase tracking-wider transition-colors ${
+                  className={`px-2.5 py-1.5 text-xs transition-colors ${
                     density === "lite" ? "text-foreground bg-foreground/5" : "hover:bg-foreground/5"
                   }`}
                 >
@@ -1809,7 +1809,7 @@ export function MemoryGraph3D({
                 </button>
                 <button
                   onClick={() => setDensity("full")}
-                  className={`px-2.5 py-1.5 text-[12px] uppercase tracking-wider transition-colors flex items-center gap-1 border-l border-border/60 ${
+                  className={`px-2.5 py-1.5 text-xs transition-colors flex items-center gap-1 border-l border-border/60 ${
                     density === "full" ? "text-foreground bg-foreground/5" : "hover:bg-foreground/5"
                   }`}
                 >
@@ -1822,9 +1822,10 @@ export function MemoryGraph3D({
             {/* Stats + slider */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 xl:ml-auto">
               <div className="flex items-center gap-2 min-w-[140px] max-w-[220px] flex-1">
-                <span className="text-[12px] uppercase tracking-wider">Links</span>
+                <span className="text-xs">Links</span>
                 <input
                   type="range"
+                  aria-label="Link strength"
                   min={0.1}
                   max={1}
                   step={0.05}
@@ -1833,7 +1834,7 @@ export function MemoryGraph3D({
                   className="flex-1 accent-foreground/60 h-px opacity-60 hover:opacity-100 transition-opacity"
                 />
               </div>
-              <div className="hidden md:flex gap-3 text-[12px] tabular-nums">
+              <div className="hidden md:flex gap-3 text-xs tabular-nums">
                 <span>
                   <span className="text-muted-foreground">Nodes</span>{" "}
                   <span className="text-foreground">{data.nodes.length}</span>

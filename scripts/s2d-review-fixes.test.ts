@@ -145,7 +145,7 @@ describe("launch plus money: the launch happens, the money part is said not to b
     createJarvisEntry({
       screen: { runs: createRunLog(), act: (async () => ({ type: "done", ok: false, said: "refused", steps: 0, ms: 1, stepMs: [] })) as EntryDeps["screen"]["act"] },
       jevKey: () => "synthetic-key",
-      request: (async () => new Response(JSON.stringify({ answers: { category: { choice: "pc.open_app", confidence: 0.95 }, outbound: { noul: 0.02, confidence: 0.9 } }, usage: { input_tokens: 1, output_tokens: 1 } }))) as unknown as typeof fetch,
+      request: (async () => new Response(JSON.stringify({ answers: { category: { choice: "pc", confidence: 0.95 }, pc_action: { choice: "open_app", confidence: 0.95 }, outbound: { noul: 0.02, confidence: 0.9 } }, usage: { input_tokens: 1, output_tokens: 1 } }))) as unknown as typeof fetch,
       front: async () => ({ process: "explorer", title: "Desktop" }),
       browser: async () => null,
       summarise: null,

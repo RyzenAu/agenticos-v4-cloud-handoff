@@ -137,6 +137,13 @@ describe("policy: commands", () => {
     expect(cmd("rm lib/c.ts")).toMatchObject({ decision: "auto-deny" });
     expect(cmd("rm src/app/*.ts")).toMatchObject({ decision: "auto-deny" });
   });
+  test("the words source/eval/iex are refused as commands but are data inside a quoted commit message (job 674f43)", () => {
+    // The refusal that stranded a creative job's staged commit: "source note" in a double-quoted message.
+    expect(cmd('git commit -q -m "Correct brief source note and speech-rate wording"')).toMatchObject({ decision: "auto-allow", rule: "git-local-safe" });
+    expect(cmd('git commit -m "Explain why eval is avoided" -m "iex and Invoke-Expression too"')).toMatchObject({ decision: "auto-allow" });
+    for (const c of ["source ./x.sh", "eval ls", "git status && source x", 'git commit -m "note" && eval ls', 'git commit -m "$(eval ls)"', 'git commit -m "`source x`"', "iex (gc x)", 'echo "a" ; source "x"'])
+      expect(cmd(c)).toMatchObject({ decision: "auto-deny", rule: "runtime-path" });
+  });
   test("run-time-built paths and inline code are denied (C1C2 limit: runtime paths)", () => {
     for (const c of ['cat "$(dirname x)/../../a"', "cat `pwd`/x", "echo ${HOME}", "cat $HOME/.config/agentic-os.env", "type %USERPROFILE%\\x", "Get-Content $env:USERPROFILE\\x", "powershell -EncodedCommand ZQBjAGgAbwA=", "iex (gc x)", 'python -c "import os"', 'node -e "1"', 'ls && bash -c "cat x"', "[Environment]::GetFolderPath('x')"])
       expect(cmd(c)).toMatchObject({ decision: "auto-deny" });

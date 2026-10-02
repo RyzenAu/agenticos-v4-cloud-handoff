@@ -15,7 +15,8 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
@@ -91,8 +92,10 @@ function readRaster(file: string) {
 }
 
 function uploads(root: string) {
-  let folder = resolve(root);
-  for (const part of [".operator-data", "uploads"]) {
+  const base = dataDirFor(resolve(root));
+  if (!existsSync(base)) mkdirSync(base, { recursive: true, mode: 0o700 });
+  let folder = dirname(base);
+  for (const part of [basename(base), "uploads"]) {
     folder = join(folder, part);
     if (!existsSync(folder)) mkdirSync(folder, { mode: 0o700 });
     const st = lstatSync(folder);

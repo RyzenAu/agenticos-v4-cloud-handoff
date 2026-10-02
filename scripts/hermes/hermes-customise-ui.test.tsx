@@ -166,16 +166,19 @@ describe("Automations, calmer (W-C)", () => {
 });
 
 describe("Jarvis page keeps its features, now as a widget grid (W-C, L2)", () => {
-  test("talk first, then the HUD, hand-offs, pipelines and ways in; hand-offs fold", () => {
-    const src = read("src/components/shell/pages/jarvis-page.tsx");
-    const order = ["<JarvisPanelSlot", "<JarvisHudBody", 'title="Handed-off work"', "<ProgressPanel", "WAYS_IN.map", '<DrilldownList id="jarvis"', "<PageFoot"];
+  test("task entry and hand-offs lead; HUD and workflow previews stay reachable in details", () => {
+    const file = read("src/components/shell/pages/jarvis-page.tsx");
+    const src = file.slice(file.indexOf("export function JarvisPage"));
+    const order = ["<JarvisPanelSlot", 'title="Handed-off work"', "Daily status & shortcuts", "Workflow previews", '<DrilldownList id="jarvis"', "<PageFoot"];
     const at = order.map((s) => src.indexOf(s));
     expect(at.every((i) => i > -1)).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
     expect(src).toContain("<WidgetGrid");
+    expect(file).toContain("<JarvisHudBody");
+    expect(src).toContain("<ProgressPanel");
     expect(src).toContain("tasks.slice(0, HANDOFFS_SHOWN)");
     expect(src).toContain("Show all {tasks.length} hand-offs");
-    expect(src).toContain('import "./jarvis-page.css"');
+    expect(file).toContain('import "./jarvis-page.css"');
     const css = read("src/components/shell/pages/jarvis-page.css");
     expect(css).toContain(".jv-page .jv-hud .jh-body");
     expect(css).not.toMatch(/font-size:\s*\d/); // design-system steps only

@@ -25,7 +25,7 @@ Say what it does, then say where it stops. We sell **calls answered in the cover
 Evidence: `06-receptionist-readiness.md`. If a prospect asks "is it live?", the honest answer is in `03-objections.md` #1.
 
 ## Cover: set per practice
-The receptionist covers whichever calls the practice configures: **after hours**, **overflow** (busy or no answer), or **all calls alongside the team during business hours** (Professional and Premium; Essential: [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]). Cover is switched on by the practice's own call forwarding (`../receptionist-pack-2026-09-28/call-forwarding-guide.md`); their number never changes and is never ported.
+The receptionist covers whichever calls the practice configures: **after hours**, **overflow** (busy or no answer), or **all calls alongside the team during business hours** (every package; plans differ by included minutes and extra-minute rate, not by cover). Cover is switched on by the practice's own call forwarding (`../receptionist-pack-2026-09-28/call-forwarding-guide.md`); their number never changes and is never ported.
 
 ## The three packages (approved monthly plans, ex GST)
 
@@ -47,7 +47,7 @@ Approved by the owner on 28 Sep 2026 (catalogue 2026-09-27). Prices are ex GST, 
 
 Full comparison, billing rules and fair use: `11-package-comparison.md`. Minutes are billed by the second, totalled monthly, rounded up to the next whole minute once; calls under 5 seconds and our own test calls don't count; unused minutes don't roll over.
 
-**Which one to lead with:** Essential for a single-location practice ([OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]). Professional when there are several practitioners, they want all calls answered alongside the team, or they want reminders and the weekly report. Premium only for multi-location or high-volume practices.
+**Which one to lead with:** Essential for a single-location practice. Professional when there are several practitioners, they want all calls answered alongside the team, or they want reminders and the weekly report. Premium only for multi-location or high-volume practices.
 
 ## How a practice starts
 There is no pilot or trial offer. The approved promise is:

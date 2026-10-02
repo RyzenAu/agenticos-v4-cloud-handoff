@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { clineModels, type Receipt } from "./policy";
+import { dataDirFor } from "../cloud/data-dir";
 
 // Bridge name -> Cline provider id, from the catalogue (every Cline model, so a legacy row for a
 // since-excluded model still validates; the bridge itself refuses excluded models).
@@ -78,7 +79,7 @@ export function modelFleetReceiptSink(root:string):(r:Receipt)=>void {
     if(!validReceipt(r)) { recordFailure(root,"invalid_metadata"); throw new ReceiptRecorderFailure("invalid_metadata"); }
     let sink:ModelFleetReceiptSink|undefined;
     try{
-      sink=new ModelFleetReceiptSink(join(root,".operator-data","model-fleet","receipts.sqlite"));
+      sink=new ModelFleetReceiptSink(join(dataDirFor(root),"model-fleet","receipts.sqlite"));
       sink.append(r);
     }catch{
       recordFailure(root,"storage_unavailable"); throw new ReceiptRecorderFailure("storage_unavailable");
@@ -88,7 +89,7 @@ export function modelFleetReceiptSink(root:string):(r:Receipt)=>void {
 
 export function readModelFleetReceipts(root:string,limit=50) {
   if(!Number.isSafeInteger(limit)||limit<1||limit>100)throw new Error("Invalid receipt limit");
-  const file=join(root,".operator-data","model-fleet","receipts.sqlite");
+  const file=join(dataDirFor(root),"model-fleet","receipts.sqlite");
   if(!existsSync(file))return [];
   const db=new Database(file,{readonly:true});
   try{return db.query(`SELECT id,recordedAt,model,provider,providerModel,outcome,

@@ -241,7 +241,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
       </header>
       {site?.editorURL ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex h-10 shrink-0 items-center justify-between border-b border-[#dcddd2] px-4 text-[11px]">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-[#dcddd2] px-4 text-xs">
             <span>Connected source editor · {new URL(site.editorURL).host}</span>
             <button
               className="underline underline-offset-4"
@@ -272,7 +272,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                 </span>
                 <div className="text-[13px] font-medium">
                   Website
-                  <small className="mt-0.5 block max-w-[190px] truncate text-[11px] font-normal tracking-wide text-[#8b8f80]">
+                  <small className="mt-0.5 block max-w-[190px] truncate text-xs font-normal text-[#8b8f80]">
                     {site ? new URL(site.url).host : "YOUR WEBSITE WORKSPACE"}
                   </small>
                 </div>
@@ -294,7 +294,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                   ))}
                 </nav>
               ) : (
-                <span className="hidden text-[11px] text-[#858b77] sm:block">
+                <span className="hidden text-xs text-[#858b77] sm:block">
                   A familiar home for every website.
                 </span>
               )}
@@ -350,14 +350,14 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                         key={label}
                         aria-pressed={size.width === width && size.height === height}
                         onClick={() => setSize({ width, height })}
-                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] ${size.width === width && size.height === height ? "bg-[#e0e5d5]" : "text-[#8b907e]"}`}
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs ${size.width === width && size.height === height ? "bg-[#e0e5d5]" : "text-[#8b907e]"}`}
                       >
                         <Icon size={13} />
                         {label}
                       </button>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] text-[#858d76]">
+                  <div className="flex items-center gap-2 text-xs text-[#858d76]">
                     <input
                       type="number"
                       min="320"
@@ -422,7 +422,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                     />
                   </div>
                 </div>
-                <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-t border-[#d9ddcf] px-4 text-[11px] text-[#8a927b]">
+                <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-t border-[#d9ddcf] px-4 text-xs text-[#8a927b]">
                   <span>Connected preview · {Math.round(scale * 100)}% fit</span>
                   <button
                     className="underline underline-offset-4"
@@ -439,7 +439,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                 <aside className="flex w-[340px] max-w-[88vw] shrink-0 flex-col border-l border-[#d7ddc9] bg-[#fafbf6] max-lg:absolute max-lg:inset-y-[122px] max-lg:right-0 max-lg:z-20 max-lg:shadow-xl">
                   <div className="flex items-start justify-between border-b border-[#dce1d2] px-6 py-6">
                     <div>
-                      <span className="text-[11px] uppercase tracking-[.13em] text-[#929a81]">
+                      <span className="text-xs tracking-[.13em] text-[#929a81]">
                         Your website / {active}
                       </span>
                       <h2 className="mt-3 text-[22px] leading-tight tracking-[-.7px]">
@@ -471,26 +471,26 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                       <div className="mt-5 space-y-3">
                         {MODELS.map(({ label, name, id, detail, Icon }) => (
                           <div key={id} className="rounded-lg border border-[#dce2d0] bg-white p-4">
-                            <span className="flex items-center gap-2 text-[11px] text-[#8b9678]">
+                            <span className="flex items-center gap-2 text-xs text-[#8b9678]">
                               <Icon size={13} />
                               {label} · OpenArt
                             </span>
                             <strong className="mt-2 block text-sm font-medium">
                               {name} · {detail}
                             </strong>
-                            <code className="mt-1 block break-all text-[11px] text-[#8b937d]">
+                            <code className="mt-1 block break-all text-xs text-[#8b937d]">
                               {id}
                             </code>
                           </div>
                         ))}
-                        <p className="text-[11px] leading-5 text-[#959c88]">
+                        <p className="text-xs leading-5 text-[#959c88]">
                           Uses your connected OpenArt account and credits. You choose when to
                           generate. Alternatives are reviewed before saving.
                         </p>
                       </div>
                     )}
                     <label
-                      className="mt-6 block text-[11px] text-[#89957a]"
+                      className="mt-6 block text-xs text-[#89957a]"
                       htmlFor="source-folder"
                     >
                       Project folder {site.folder ? "· detected" : "· optional until setup"}
@@ -501,11 +501,11 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                       onChange={(e) => setFolder(e.target.value)}
                       maxLength={1024}
                       placeholder="Path to your website project"
-                      className="mt-2 w-full rounded-md border border-[#d7dfca] bg-white px-3 py-2.5 text-[11px] outline-[#8c9f71]"
+                      className="mt-2 w-full rounded-md border border-[#d7dfca] bg-white px-3 py-2.5 text-xs outline-[#8c9f71]"
                     />
                     <div className="mt-5 rounded-lg border border-[#dce3ce] bg-[#f0f3e8] p-4">
-                      <p className="text-[11px] font-medium">Your agent, your model.</p>
-                      <p className="mt-2 text-[11px] leading-5 text-[#899479]">
+                      <p className="text-xs font-medium">Your agent, your model.</p>
+                      <p className="mt-2 text-xs leading-5 text-[#899479]">
                         The OS composer shows the coding model and provider before you send. This
                         setup request does not run automatically or generate media.
                       </p>
@@ -527,7 +527,7 @@ export function LocalSiteWorkspace({ startUrl, onExit }: { startUrl: string; onE
                       {copied ? <Check size={12} /> : <Copy size={12} />}{" "}
                       {copied ? "Copied" : "Copy setup request"}
                     </button>
-                    <p className="pt-1 text-center text-[11px] leading-4 text-[#959d88]">
+                    <p className="pt-1 text-center text-xs leading-4 text-[#959d88]">
                       Review the request, choose your model, then send.
                     </p>
                   </div>

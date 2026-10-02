@@ -42,7 +42,7 @@ export function VersionPill() {
         type="button"
         onClick={() => setOpen(true)}
         title="What's new — view the changelog"
-        className="rounded-full border border-border/70 bg-accent/40 px-2 py-0.5 text-[11px] font-medium tracking-tight text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+        className="rounded-full border border-border/70 bg-accent/40 px-2 py-0.5 text-xs font-medium tracking-tight text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
       >
         {label}
       </button>
@@ -79,7 +79,7 @@ function ChangelogModal({ data, onClose }: { data: AppVersion; onClose: () => vo
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
           <div className="flex items-baseline gap-2 min-w-0">
             <h2 className="text-sm font-semibold tracking-tight">What's new</h2>
-            <span className="truncate text-[11px] text-muted-foreground">{meta}</span>
+            <span className="truncate text-xs text-muted-foreground">{meta}</span>
           </div>
           <button
             type="button"
@@ -119,7 +119,7 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
       parts.push(
         <code
           key={`${keyPrefix}-c${i}`}
-          className="rounded bg-accent/60 px-1 py-0.5 font-mono text-[11px] text-foreground"
+          className="rounded bg-accent/60 px-1 py-0.5 font-mono text-xs text-foreground"
         >
           {tok.slice(1, -1)}
         </code>,

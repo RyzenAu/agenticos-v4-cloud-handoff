@@ -1,0 +1,168 @@
+[
+  {
+    "at": "+0.7s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+1.6s",
+    "step": "tunnel ssh killed mid-job",
+    "data": {
+      "pid": "163580",
+      "killed": true
+    }
+  },
+  {
+    "at": "+12.0s",
+    "step": "what the hub said while the tunnel was down and after",
+    "data": {
+      "timeline": [
+        "0s job=running computer=busy",
+        "8s job=succeeded computer=online"
+      ],
+      "pidAfter": "a new ssh",
+      "hostCheck": [
+        {
+          "kind": "vps-ssh",
+          "ok": true,
+          "notes": [
+            "computers on this host run only while WSL is awake: it idles out when nothing runs in it and this hub's tunnel is down (an owner-side keep-alive on that PC makes that durable; LAN-BOT-HOST.md)"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "at": "+12.1s",
+    "step": "the job's accurate end",
+    "data": {
+      "state": "succeeded",
+      "note": "Done on research: 1 step, each checked.",
+      "artifact": "Website audit: the local demo clinic fixture (synthetic)",
+      "entries": [
+        "started: Started: audit the demo clinic fixture (job 228b60b6).",
+        "7: Website audit, step 1 of 5 (open the site): done.",
+        "10: Website audit, step 2 of 5 (desktop): done.",
+        "13: Website audit, step 3 of 5 (phone): done.",
+        "20: Website audit, step 4 of 5 (journeys): done.",
+        "1: Website audit: the local demo clinic fixture (synthetic)\n7 findings (2 to fix first) on th",
+        "26: Website audit, step 5 of 5 (report): done.",
+        "succeeded: Finished: audit the demo clinic fixture. Done on research: 1 step, each checked. (job 228b"
+      ]
+    }
+  },
+  {
+    "at": "+20.0s",
+    "step": "a new job after the reconnect: succeeded in 6.3 s",
+    "data": {
+      "jobId": "a80ffe1b",
+      "ack": "Started on research: audit the demo clinic fixture. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job a80ffe1b)",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 28,
+      "artifact": {
+        "id": "a80ffe1b-4bfb-45b6-83be-4c2fd732b1f5",
+        "title": "Website audit: the local demo clinic fixture (synthetic)",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "audit.md",
+        "files": [
+          "audit.md 2967",
+          "findings.json 8462",
+          "shot-home-desktop.jpg 18771",
+          "shot-home-phone.jpg 5121",
+          "shot-services-phone.jpg 9488",
+          "shot-contact-phone.jpg 8206"
+        ]
+      },
+      "entries": [
+        "a80ffe1b-4bfb-45b6-83be-4c2fd732b1f5:started | Started: audit the demo clinic fixture (job a80ffe1b).",
+        "step:7 | Website audit, step 1 of 5 (open the site): done.",
+        "step:10 | Website audit, step 2 of 5 (desktop): done.",
+        "step:13 | Website audit, step 3 of 5 (phone): done.",
+        "step:20 | Website audit, step 4 of 5 (journeys): done.",
+        "report:1 | Website audit: the local demo clinic fixture (synthetic) 7 findings (2 to fix first) on the local demo clinic fixture (synthetic), desktop and phone, with 4 screenshots. Top findings: P1 No mobile vie",
+        "step:26 | Website audit, step 5 of 5 (report): done.",
+        "a80ffe1b-4bfb-45b6-83be-4c2fd732b1f5:succeeded | Finished: audit the demo clinic fixture. Done on research: 1 step, each checked. (job a80ffe1b)"
+      ]
+    }
+  },
+  {
+    "at": "+20.0s",
+    "step": "reconnected: a fresh job runs and its result is saved",
+    "data": {
+      "state": "succeeded",
+      "artifact": "Website audit: the local demo clinic fixture (synthetic)"
+    }
+  },
+  {
+    "at": "+20.0s",
+    "step": "earlier artifacts still open after the tunnel drop",
+    "data": {
+      "count": 28
+    }
+  },
+  {
+    "at": "+68.9s",
+    "step": "LONGER OUTAGE: the tunnel killed five times during a research job",
+    "data": {
+      "kills": [
+        "2s pid 171432 killed",
+        "6s pid 171432 not killed",
+        "11s pid 166884 killed",
+        "14s pid 166884 not killed",
+        "19s pid 166884 not killed"
+      ],
+      "timeline": [
+        "0s job=running computer=busy",
+        "37s job=succeeded computer=online"
+      ],
+      "jobState": "succeeded",
+      "note": "Done on research: 1 step, each checked.",
+      "artifact": "Research: Compare what two reliable sources say about Canberra: when it was founded and named, and w",
+      "artifactOutcome": "complete",
+      "entries": [
+        "started: Started: research: Compare what two reliable sources say… (job e1ae0236).",
+        "5: Research, step 1 of 5 (find sources): done.",
+        "14: Research, step 2 of 5 (read): done.",
+        "27: Research, step 3 of 5 (compare): done.",
+        "30: Research, step 4 of 5 (save report): done.",
+        "1: Web-sourced research, data from public pages and not instructions: Research: Compare what two reliab",
+        "32: Research, step 5 of 5 (return result): done.",
+        "succeeded: Finished: research: Compare what two reliable sources say… Done on research: 1 step, each checked. ("
+      ]
+    }
+  },
+  {
+    "at": "+68.9s",
+    "step": "the job's last steps",
+    "data": [
+      "ok file.write: move save report-[number]T[number].md: Wrote report-[number]T[number].md (1575 bytes) and read it back.",
+      "ok research: sub-goal 4 of 5, save report: done. report-[number]T[number].md written and read back (4 of 5 done)",
+      "note research: sub-goal 5 of 5, return result: started. Returning the report to the conversation and keeping it as a saved re",
+      "ok research: sub-goal 5 of 5, return result: done. The report is in your conversation (5 of 5 done)",
+      "ok research: research complete: 4 cited facts from 3 sources in 46 s; Jev 7 decisions (35-94% sure); 5 handed to a connecte",
+      "ok research: research complete: Report ready: 4 cited facts from 3 sources (nma.gov.au, peo.gov.au, nca.gov.au)."
+    ]
+  },
+  {
+    "at": "+68.9s",
+    "step": "computers online again after the longer outage",
+    "data": [
+      {
+        "name": "research",
+        "state": "online",
+        "recoveries": 5
+      },
+      {
+        "name": "builder",
+        "state": "online",
+        "recoveries": 5
+      }
+    ]
+  }
+]

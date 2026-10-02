@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
+import { TriggersPanel } from "./triggers-panel";
 
 type Automation = {
   id: string;
@@ -332,6 +333,7 @@ export function AutomationsWorkspace() {
           <PageFoot>Hermes' cron jobs, refreshed every 30 seconds. Run now, pause and resume work from this PC only, and each asks first.</PageFoot>
         </>
       )}
+      <TriggersPanel />
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

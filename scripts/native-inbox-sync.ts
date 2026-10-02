@@ -5,6 +5,7 @@ import { withConnectedRead, type ConnectedTool } from "./codex-connected-read";
 import { importInboxSnapshot } from "./inbox-imports";
 import { normalizeArchiveMessage, type mailArchive } from "./mail-archive";
 import type { OperatorState } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 type Provider = "gmail" | "outlook" | "slack";
 const PROVIDERS: Provider[] = ["gmail", "outlook", "slack"];
@@ -61,13 +62,13 @@ export function slackSearchMessages(raw: any) {
 
 export function nativeInboxSync(root: string, options: { load: () => OperatorState; save: (state: OperatorState) => void; archive: ReturnType<typeof mailArchive>; connectedRead?: typeof withConnectedRead }) {
   const connectedRead = options.connectedRead || withConnectedRead;
-  const file = join(root, ".operator-data", "native-connections.json");
+  const file = join(dataDirFor(root), "native-connections.json");
   const read = (): Store => {
     if (!existsSync(file)) return {};
     const raw = JSON.parse(readFileSync(file, "utf8"));
     return Object.fromEntries(PROVIDERS.filter(p => raw[p] && typeof raw[p].account === "string").map(p => [p, { enabled: raw[p].enabled === true, account: string(raw[p].account, 300), lastSync: string(raw[p].lastSync, 40) || undefined, count: Number.isSafeInteger(raw[p].count) ? raw[p].count : undefined, error: string(raw[p].error, 300) || undefined }]));
   };
-  const save = (state: Store) => { mkdirSync(join(root, ".operator-data"), { recursive: true, mode: 0o700 }); const tmp = `${file}.${randomUUID()}.tmp`; writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 }); renameSync(tmp, file); };
+  const save = (state: Store) => { mkdirSync(join(dataDirFor(root)), { recursive: true, mode: 0o700 }); const tmp = `${file}.${randomUUID()}.tmp`; writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 }); renameSync(tmp, file); };
   let discovery: Promise<any[]> | undefined, syncing = false;
   let inflight: Promise<any> | undefined;
   // A READ never starts Codex (T8b, lead decision). GET /native-connections used to run a Codex
@@ -80,7 +81,7 @@ export function nativeInboxSync(root: string, options: { load: () => OperatorSta
   //    Check connections, the setup scan) and a sync() (the refresh button, or inbox triage's own
   //    background schedule) records what its Codex session saw as the new discovery.
   // A failed check is recorded (refreshError) and reported by status(), never swallowed.
-  const discoveryFile = join(root, ".operator-data", "native-discovery.json");
+  const discoveryFile = join(dataDirFor(root), "native-discovery.json");
   const probe = (client: { tools: Record<string, ConnectedTool | undefined> }) => PROVIDERS.map(provider => {
     const tool = client.tools[readTools[provider]];
     return { id: provider, name: names[provider], available: tool?.annotations?.readOnlyHint === true && !!identity(tool), account: identity(tool), workspace: string(tool?._meta?.link_owner_profile?.workspace_name, 100) };
@@ -102,7 +103,7 @@ export function nativeInboxSync(root: string, options: { load: () => OperatorSta
     cached = { at: Date.now(), providers };
     refreshError = null;
     try {
-      mkdirSync(join(root, ".operator-data"), { recursive: true, mode: 0o700 });
+      mkdirSync(join(dataDirFor(root)), { recursive: true, mode: 0o700 });
       const tmp = `${discoveryFile}.${randomUUID()}.tmp`;
       writeFileSync(tmp, JSON.stringify(cached), { mode: 0o600 });
       renameSync(tmp, discoveryFile);

@@ -100,13 +100,11 @@ const BILLING = {
 const SUPPORT_HOURS = "Mon–Fri 9:00am–5:00pm Sydney time, excluding NSW public holidays";
 
 /**
- * Owner decision (a), open since audit A3 (28 Sep 2026): Essential's coverModes below say after hours +
- * busy/no answer only, while its audience and "answer" label used to say business hours / alongside your
- * team. Until the owner decides (and re-costs Essential if business hours are included), the texts that
- * contradicted coverModes carry this placeholder verbatim. The sales-pack builder (build/common.py
- * DECISION_A) and check_catalogue.py match it character for character; change all three together.
+ * Owner decision (a), settled 1 Oct 2026 (source: owner brief 1 Oct 2026): "The receptionist can operate
+ * during business hours, alongside staff, after hours or as overflow." Every tier has every cover mode;
+ * plans differ by included minutes and extra-minute rate, not by cover mode. This replaces the audit A3
+ * placeholder (28 Sep) that was held because Essential's coverModes were after hours + busy only.
  */
-export const OWNER_DECISION_A = "[OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]";
 
 const common = {
   version: date, kind: "receptionist" as const, sectors: ["dental", "property", "legal"] as Sector[],
@@ -126,7 +124,6 @@ const common = {
 };
 const capability = (id: string, label: string, state: CapabilityState, evidence: string): PackageCapability => ({ id, label, state, evidence });
 const ANSWER_ALL_MODES = "Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded";
-const ANSWER_ESSENTIAL = `Answers calls in the cover configured for each business; says it is automated and the call is recorded. ${OWNER_DECISION_A}`;
 const baseFunctions = (answerLabel: string = ANSWER_ALL_MODES): PackageCapability[] => [
   capability("answer", answerLabel, "available", EVIDENCE.prompt),
   capability("message", "Takes a structured message and callback request", "available", EVIDENCE.prompt),
@@ -145,7 +142,7 @@ const integrations = (calendars: number): ReceptionistPackage["integrations"] =>
 
 const essential: ReceptionistPackage = {
   ...structuredClone(common), id: "receptionist-essential", tier: 1, name: "Booking Receptionist · Essential", shortName: "Essential",
-  audience: `One location that wants its calls answered and booked. ${OWNER_DECISION_A}`,
+  audience: "One location that wants its calls answered and booked in business hours, after hours or as overflow.",
   pricing: {
     status: "approved", approvedAt: "2026-09-28", approvalReference: "Owner decision 28 Sep 2026: monthly price, launch allowance of included minutes and extra-minute rate approved, plus GST (M&U is GST registered). Review after 30 days or the first five paying clients. Setup fee NOT approved (setupStatus proposed).",
     setup: exGst(99000), setupStatus: "proposed", monthly: exGst(69900), includedMinutes: 400, overagePerMinute: exGst(80),
@@ -156,7 +153,7 @@ const essential: ReceptionistPackage = {
   },
   inclusions: {
     phoneNumbers: 1, locations: 1, calendars: 1, concurrentCallsFairUse: 3,
-    coverModes: ["After hours", "When busy / no answer"],
+    coverModes: ["After hours", "When busy / no answer", "All calls"],
     sms: ["Booking confirmation (at go-live)"],
     reports: ["Monthly usage summary: minutes used, remaining and overage"],
   },
@@ -171,7 +168,7 @@ const essential: ReceptionistPackage = {
     { id: "base", label: "Base", calls: [{ count: 128, seconds: 150 }], smsSegments: 80, supportMinutes: 60 },
     { id: "high", label: "High", calls: [{ count: 240, seconds: 150 }], smsSegments: 150, supportMinutes: 120 },
   ] },
-  functions: baseFunctions(ANSWER_ESSENTIAL),
+  functions: baseFunctions(),
   integrations: integrations(1),
   onboarding: [
     "45-minute kickoff: hours, services and appointment lengths, what may be booked by phone, urgent-call wording",

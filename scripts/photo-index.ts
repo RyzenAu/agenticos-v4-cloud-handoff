@@ -18,6 +18,7 @@ import { photoMime, saveMemoryPhoto } from "./memory-photos";
 import { providerKey } from "./provider-config";
 import { OPENROUTER_MODELS, geminiGenerate } from "./llm/gemini";
 import type { MemorySource } from "../src/lib/operator";
+import { dataDirFor, dataDirOverride } from "./cloud/data-dir";
 
 const run = promisify(execFile);
 const MAX_BYTES = 12 * 1024 * 1024;
@@ -112,7 +113,7 @@ export type PhotoIndexOptions = {
 export function createPhotoIndex(options: PhotoIndexOptions) {
   const configuredHome = resolve(options.home || homedir());
   const home = existsSync(configuredHome) ? realpathSync(configuredHome) : configuredHome;
-  const directory = join(options.root, ".operator-data", "photo-index");
+  const directory = join(dataDirFor(options.root), "photo-index");
   const manifest = join(directory, "state.json");
   let state: State = { version: 1, previews: [], uploads: {}, jobs: [], completed: {} };
   let running = false,
@@ -120,7 +121,11 @@ export function createPhotoIndex(options: PhotoIndexOptions) {
   let modelsCache: { expires: number; models: PhotoIndexModel[] } | undefined;
   const key = () => options.key?.() || providerKey(options.root, "OPENROUTER_API_KEY", { home });
   function privateDirectory(path: string) {
-    const base = resolve(options.root);
+    // With MU_DATA_DIR the index lives outside the repo root, so the allowed base is the data directory itself.
+    const override = dataDirOverride();
+    const base = override ?? resolve(options.root);
+    // A fresh hub may not have created its relocated data directory yet (the repo root always exists).
+    if (override && !existsSync(base)) mkdirSync(base, { recursive: true, mode: 0o700 });
     if (path !== base && !path.startsWith(base + sep))
       throw new Error("Invalid private storage path.");
     let current = base;

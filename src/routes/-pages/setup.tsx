@@ -676,7 +676,7 @@ function Stepper({ current }: { current: number }) {
             <div key={t} className="flex items-center gap-1.5">
               <div
                 className={cn(
-                  "grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold tabular-nums transition-colors",
+                  "grid h-7 w-7 place-items-center rounded-full text-xs font-bold tabular-nums transition-colors",
                   active
                     ? "bg-brand text-brand-foreground"
                     : done
@@ -935,7 +935,7 @@ function StepPersonalize() {
           spellCheck={false}
           className="w-full rounded-xl border border-border bg-inset px-4 py-3.5 text-base caret-brand placeholder:text-muted-foreground/60 transition-colors focus-visible:border-brand"
         />
-        <span className="block text-[11px] text-muted-foreground mt-2">
+        <span className="block text-xs text-muted-foreground mt-2">
           We'll greet you by this name on the dashboard. Default is "Operator".
         </span>
       </label>
@@ -951,7 +951,7 @@ function StepPersonalize() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-semibold mb-1 tracking-tight">Looks good.</div>
-              <div className="text-[12px] text-muted-foreground mb-3 leading-relaxed">
+              <div className="text-xs text-muted-foreground mb-3 leading-relaxed">
                 Stored locally — only this browser ever sees it.
               </div>
               <div className="flex flex-wrap gap-2">
@@ -998,11 +998,11 @@ function StepPersonalize() {
           <div className="text-sm font-semibold mb-1.5 tracking-tight">
             {busy ? "Processing…" : "Drop a photo here, or click to browse"}
           </div>
-          <div className="text-[12px] text-muted-foreground leading-relaxed">
+          <div className="text-xs text-muted-foreground leading-relaxed">
             JPG, PNG, or WEBP. We downscale to 256×256 before saving — your file never leaves the
             browser.
           </div>
-          {error && <div className="mt-3 text-[12px] text-danger">{error}</div>}
+          {error && <div className="mt-3 text-xs text-danger">{error}</div>}
         </div>
       )}
 
@@ -1145,7 +1145,7 @@ function StepDetect({
           That walks your machine, populates the dashboard, and you come back here.
         </Sub>
         {scanState.kind === "error" && (
-          <p className="text-[11px] text-muted-foreground/70 mt-3">{scanState.message}</p>
+          <p className="text-xs text-muted-foreground/70 mt-3">{scanState.message}</p>
         )}
       </div>
     );
@@ -1245,7 +1245,7 @@ function StepDetect({
           <Badge tone={statusTone}>{statusLabel}</Badge>
         </div>
         {sub && (
-          <div className="text-[11px] text-muted-foreground mt-2 truncate font-mono">{sub}</div>
+          <div className="text-xs text-muted-foreground mt-2 truncate font-mono">{sub}</div>
         )}
       </div>
     );
@@ -1492,14 +1492,14 @@ function DetectionGroup({
   return (
     <div className="mb-5 last:mb-0">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[11px] font-medium tracking-wide text-foreground/85">{title}</div>
-        <div className="text-[11px] tabular-nums text-muted-foreground">{detected.length} detected</div>
+        <div className="text-xs font-medium tracking-wide text-foreground/85">{title}</div>
+        <div className="text-xs tabular-nums text-muted-foreground">{detected.length} detected</div>
       </div>
 
       {detected.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">{detected}</div>
       ) : (
-        <div className="text-[11px] text-muted-foreground italic">None detected.</div>
+        <div className="text-xs text-muted-foreground italic">None detected.</div>
       )}
 
       {missing.length > 0 && (
@@ -1576,13 +1576,13 @@ function DetectionCard({
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <div className="text-[12px] font-medium tracking-tight truncate">{name}</div>
+          <div className="text-xs font-medium tracking-tight truncate">{name}</div>
           <Badge tone={detected ? "success" : "neutral"} className="shrink-0">
             {detected ? (versionLabel ? `Detected · ${versionLabel}` : "Detected") : "Not found"}
           </Badge>
         </div>
         {detected && meta && (
-          <div className="text-[11px] text-muted-foreground truncate font-mono">{meta}</div>
+          <div className="text-xs text-muted-foreground truncate font-mono">{meta}</div>
         )}
       </div>
     </div>
@@ -1684,7 +1684,7 @@ function ApiKeyRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-3 mb-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-[12.5px] text-foreground/90">{name}</span>
+              <span className="font-mono text-xs text-foreground/90">{name}</span>
               {alreadyInEnv && <Badge tone="success">Already set</Badge>}
             </div>
             {url && !alreadyInEnv && (
@@ -1692,16 +1692,16 @@ function ApiKeyRow({
                 href={url}
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                className="shrink-0 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
               >
                 Get key <ExternalLink className="h-3 w-3" />
               </a>
             )}
           </div>
-          <div className="text-[12px] text-muted-foreground mb-3 leading-relaxed">{unlocks}</div>
+          <div className="text-xs text-muted-foreground mb-3 leading-relaxed">{unlocks}</div>
 
           {alreadyInEnv ? (
-            <div className="flex items-center gap-2 rounded border border-success/30 bg-success-soft px-3 py-2 font-mono text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2 rounded border border-success/30 bg-success-soft px-3 py-2 font-mono text-xs text-muted-foreground">
               <Check className="h-3 w-3 shrink-0 text-success" />
               <span>detected in your shell — leave blank</span>
             </div>
@@ -1846,7 +1846,7 @@ function StepMemoryConnect({
                 {pineconeAlreadyInEnv && <Badge tone="success">Already set</Badge>}
               </div>
               {pineconeKeySaved ? (
-                <div className="font-mono text-[11px] text-muted-foreground bg-background/30 px-3 py-2 rounded border border-border">
+                <div className="font-mono text-xs text-muted-foreground bg-background/30 px-3 py-2 rounded border border-border">
                   {stores.pinecone.detected
                     ? "Key is ready. No need to paste it again."
                     : "Key saved. We'll verify indexes when the local scan runs again."}
@@ -1863,7 +1863,7 @@ function StepMemoryConnect({
                 href="https://app.pinecone.io/organizations/-/projects/-/keys"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-1.5"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1.5"
               >
                 Get key <ExternalLink className="h-3 w-3" />
               </a>
@@ -1895,7 +1895,7 @@ function StepMemoryConnect({
                 className="w-full font-mono text-xs px-3 py-2 rounded-md bg-background border border-border focus:outline-none focus:border-foreground/40"
                 spellCheck={false}
               />
-              <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
                 {stores.obsidian.detected
                   ? "We auto-detected the path above. Override only if your vault lives somewhere else."
                   : "Paste the folder that contains your .obsidian directory. Leave blank if you don't use Obsidian."}
@@ -1910,10 +1910,10 @@ function StepMemoryConnect({
                       onClick={() => setObsidianPath(vault.path)}
                       className="w-full flex items-center justify-between gap-3 rounded-md border border-border/70 bg-background/30 px-3 py-1.5 text-left hover:border-foreground/30"
                     >
-                      <span className="min-w-0 truncate font-mono text-[11px] text-foreground/80">
+                      <span className="min-w-0 truncate font-mono text-xs text-foreground/80">
                         {vault.path}
                       </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                         {vault.files} files
                       </span>
                     </button>
@@ -1957,7 +1957,7 @@ function StepMemoryConnect({
                 {notionAlreadyInEnv && <Badge tone="success">Already set</Badge>}
               </div>
               {notionTokenSaved ? (
-                <div className="font-mono text-[11px] text-muted-foreground bg-background/30 px-3 py-2 rounded border border-border">
+                <div className="font-mono text-xs text-muted-foreground bg-background/30 px-3 py-2 rounded border border-border">
                   {stores.notion.detected
                     ? "Token is ready. No need to paste it again."
                     : "Token saved. We'll verify the workspace when the local scan runs again."}
@@ -1974,7 +1974,7 @@ function StepMemoryConnect({
                 href="https://www.notion.so/profile/integrations"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground mt-1.5"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-1.5"
               >
                 Create an integration <ExternalLink className="h-3 w-3" />
               </a>
@@ -2134,9 +2134,9 @@ function MemoryStoreCard({
             <span className="text-base font-semibold tracking-tight">{name}</span>
             <Badge tone={badgeToneMap[tone]}>{badgeLabel ?? (detected ? "Connected" : "Connect")}</Badge>
           </div>
-          <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-1">{blurb}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">{blurb}</p>
           {statusLine && (
-            <p className="text-[11px] text-muted-foreground/80 mt-1 truncate" title={statusLine}>
+            <p className="text-xs text-muted-foreground/80 mt-1 truncate" title={statusLine}>
               {statusLine}
             </p>
           )}
@@ -2232,7 +2232,7 @@ function StepApiKeys({
         ))}
       </div>
 
-      <p className="text-[11px] text-muted-foreground mt-7 leading-relaxed flex items-start gap-2">
+      <p className="text-xs text-muted-foreground mt-7 leading-relaxed flex items-start gap-2">
         <Lightbulb className="h-3 w-3 mt-0.5 shrink-0 opacity-70" />
         <span>
           We never validate keys here. On the final step we write any keys you pasted to{" "}
@@ -2298,7 +2298,7 @@ function StepValue({ config, updateConfig }: { config: ConfigShape; updateConfig
                 <span className={active ? "text-brand" : undefined}>${p.rate}</span>
                 <span className="text-sm text-muted-foreground">/hr</span>
               </div>
-              <div className="text-[11px] text-muted-foreground mt-1">{p.label}</div>
+              <div className="text-xs text-muted-foreground mt-1">{p.label}</div>
             </button>
           );
         })}
@@ -2346,7 +2346,7 @@ function StepValue({ config, updateConfig }: { config: ConfigShape; updateConfig
         </div>
       </div>
 
-      <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+      <p className="text-xs text-muted-foreground leading-relaxed">
         On a 30-day skills cadence, that scales to{" "}
         <span className="font-semibold tabular-nums text-brand">${dollars30d.toLocaleString()}</span>{" "}
         of work avoided. You can re-tune this anytime from the Skills panel.
@@ -2418,7 +2418,7 @@ function StepDream({ config, updateConfig }: { config: ConfigShape; updateConfig
                 key={f}
                 onClick={() => setFrequency(f)}
                 className={cn(
-                  "rounded-md px-4 py-1.5 text-[12px] capitalize transition-colors",
+                  "rounded-md px-4 py-1.5 text-xs capitalize transition-colors",
                   active
                     ? "bg-brand text-brand-foreground"
                     : "text-muted-foreground hover:text-foreground/80",
@@ -2459,7 +2459,7 @@ function StepDream({ config, updateConfig }: { config: ConfigShape; updateConfig
                 )}
                 <div className="absolute bottom-3 left-4 right-4">
                   <div className="text-base font-semibold text-white drop-shadow-md">{p.label}</div>
-                  <div className="text-[12px] text-white/80">{p.caption}</div>
+                  <div className="text-xs text-white/80">{p.caption}</div>
                 </div>
               </div>
             </button>
@@ -2501,7 +2501,7 @@ function StepDream({ config, updateConfig }: { config: ConfigShape; updateConfig
               href="https://platform.openai.com/api-keys"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               Get a key from platform.openai.com <ExternalLink className="h-3 w-3" />
             </a>
@@ -2650,7 +2650,7 @@ function DreamBuckets() {
                   >
                     <Icon className="h-3 w-3" />
                   </div>
-                  <span className="text-[12px] font-medium text-foreground/90 truncate flex-1">
+                  <span className="text-xs font-medium text-foreground/90 truncate flex-1">
                     {title}
                   </span>
                 </button>
@@ -2677,10 +2677,10 @@ function DreamBuckets() {
                   Close
                 </Button>
               </div>
-              <p className="text-[12.5px] text-muted-foreground leading-relaxed mb-3">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {open.detail}
               </p>
-              <div className="rounded-md border border-border bg-card px-3 py-2 text-[12px] italic text-muted-foreground">
+              <div className="rounded-md border border-border bg-card px-3 py-2 text-xs italic text-muted-foreground">
                 <span className="ds-label not-italic mr-2 opacity-80">Example output</span>
                 {open.example}
               </div>
@@ -2803,7 +2803,7 @@ function StepDreamEngine() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold">{e.name}</div>
-                    <div className="text-[12px] text-muted-foreground">{e.description}</div>
+                    <div className="text-xs text-muted-foreground">{e.description}</div>
                   </div>
                   <Badge
                     tone={isSelected ? "accent" : e.ready ? "success" : e.installed ? "warn" : "neutral"}
@@ -2813,11 +2813,11 @@ function StepDreamEngine() {
                   </Badge>
                 </div>
                 {e.needsAction && (
-                  <div className="text-[11px] text-muted-foreground mt-1.5">
+                  <div className="text-xs text-muted-foreground mt-1.5">
                     {e.needsAction}
                   </div>
                 )}
-                <div className="text-[11px] text-muted-foreground/70 mt-1">{e.cost}</div>
+                <div className="text-xs text-muted-foreground/70 mt-1">{e.cost}</div>
               </button>
             );
           })}
@@ -2834,7 +2834,7 @@ function StepDreamEngine() {
         <Button variant="accent" onClick={save} disabled={!selected || saving || !engines || engines.length === 0}>
           {saving ? "Saving…" : "Save selection"}
         </Button>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           You can skip and pick later from the dashboard.
         </span>
       </div>
@@ -2942,7 +2942,7 @@ function StepYoureSet({
         <Notice tone="warn" title="Couldn't reach the local server" className="mb-4">
           Restart <span className="font-mono">bun run dev</span> — that starts the dashboard and the
           local server together. Then click Activate again.
-          {errorMessage && <div className="mt-2 text-[11px] opacity-80">Detail: {errorMessage}</div>}
+          {errorMessage && <div className="mt-2 text-xs opacity-80">Detail: {errorMessage}</div>}
         </Notice>
       )}
 
@@ -3051,7 +3051,7 @@ function ToggleRow({
     >
       <div>
         <div className="text-sm">{label}</div>
-        {hint && <div className="mt-0.5 text-[11px] text-muted-foreground">{hint}</div>}
+        {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
       </div>
       <Toggle checked={checked} onChange={() => onChange(!checked)} stop />
     </div>

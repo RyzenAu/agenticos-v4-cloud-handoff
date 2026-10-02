@@ -61,6 +61,7 @@ describe("Overpass: retry busy and timeout answers, then fall back, then fail wi
 
   test("endpoints: the main instance by default; OVERPASS_URLS adds mirrors (https only, no duplicates)", () => {
     expect(overpassEndpoints({})).toEqual(["https://overpass-api.de/api/interpreter"]);
+    expect(overpassEndpoints({ OVERPASS_URLS: "http://127.0.0.1:18991/api/interpreter,http://evil.example/x" })).toEqual(["http://127.0.0.1:18991/api/interpreter"]); // loopback stub only
     expect(overpassEndpoints({ OVERPASS_URLS: "https://overpass-api.de/api/interpreter, https://overpass.kumi.systems/api/interpreter,http://insecure.example/x,https://overpass-api.de/api/interpreter" }))
       .toEqual(["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]);
   });

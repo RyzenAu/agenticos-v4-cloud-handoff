@@ -107,6 +107,16 @@ export const SNAPSHOT_JS = `(() => {
       value: type === "password" || !/^(?:INPUT|SELECT|TEXTAREA)$/.test(el.tagName) ? "" : String(el.value == null ? "" : el.value).slice(0, 120), readOnly: !!el.readOnly });
     if (items.length >= 300) break;
   }
+  // Small, visible status/heading evidence. Never scrape the body or make text a click target.
+  for (const el of document.querySelectorAll('h1,h2,h3,[role=heading],[role=status],[role=alert],[aria-live=polite],[aria-live=assertive]')) {
+    if (el.matches(sel) || el.querySelector(sel)) continue;
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.right < 0 || r.top > innerHeight || r.left > innerWidth || cs.visibility === "hidden" || cs.display === "none" || Number(cs.opacity) === 0) continue;
+    refs.push(el);
+    items.push({ i: refs.length - 1, tag: el.tagName.toLowerCase(), role: el.getAttribute("role") || "", type: "statictext", name: name(el), id: (el.id || "").slice(0, 80), x: r.x, y: r.y, w: r.width, h: r.height,
+      disabled: true, focused: false, password: false, checked: null, expanded: null, selected: false, value: "", readOnly: true });
+    if (items.filter(it => it.type === "statictext").length >= 20) break;
+  }
   globalThis[Symbol.for("jarvis.refs")] = refs;
   return JSON.stringify({ dpr: devicePixelRatio, innerWidth, innerHeight, outerWidth, outerHeight, items });
 })()`;
@@ -134,6 +144,7 @@ export type CdpPage = { dpr: number; innerWidth: number; innerHeight: number; ou
 
 /** A page role/tag → the UIA control type the rest of screen-hands knows. Pure. */
 export function uiaType(item: Pick<CdpItem, "tag" | "role" | "type">): string {
+  if (item.type === "statictext") return "Text";
   const role = item.role.toLowerCase();
   const map: Record<string, string> = { button: "Button", link: "Hyperlink", tab: "TabItem", menuitem: "MenuItem", menuitemcheckbox: "MenuItem", checkbox: "CheckBox", switch: "Button", radio: "RadioButton", option: "ListItem", treeitem: "TreeItem", combobox: "ComboBox", textbox: "Edit", searchbox: "Edit" };
   if (map[role]) return map[role];
@@ -156,7 +167,7 @@ export function cdpElements(page: CdpPage, origin: { x: number; y: number }): Ui
       x: Math.round(origin.x + it.x * k), y: Math.round(origin.y + it.y * k), w: Math.round(it.w * k), h: Math.round(it.h * k),
       password: it.password, enabled: !it.disabled, focused: it.focused, hasValue: type === "Edit" || type === "ComboBox", readOnly: it.readOnly,
       ...(it.checked !== null ? { toggled: it.checked } : {}), ...(it.expanded !== null ? { expanded: it.expanded } : {}), ...(it.selected ? { selected: true } : {}),
-      invokable: !["Edit", "ComboBox"].includes(type), name: it.name, aid: it.id, help: "", value: it.password ? "" : it.value, web: true,
+      invokable: !["Edit", "ComboBox", "Text"].includes(type), name: it.name, aid: it.id, help: "", value: it.password ? "" : it.value, web: true,
     };
   });
 }

@@ -1,12 +1,14 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ApprovalService } from "../approvals/service";
+import { screenFact } from "../memory/guard";
 import { SpokenConfirmationLedger } from "../jarvis-execution/voice-confirmation";
 import { MemoryReceiptSink } from "../model-router/receipts";
 import { DEFAULT_ACCOUNTS } from "./accounts";
 import type { AllowanceSnapshot, CodingJob, IsoTime, RepoRegistry, VerifiedPrincipal } from "./contracts";
-import { createOrchestrator, type OrchestratorDeps } from "./orchestrator";
+import { createOrchestrator, type MemorySaver, type OrchestratorDeps } from "./orchestrator";
+import { codingBlocker } from "./pause-reason";
 import { claudeRunner } from "./runners/claude";
 import { codexRunner } from "./runners/codex";
 import { FakeClaude, FakeCodex, type ClaudeStep } from "./runners/fakes";
@@ -67,7 +69,7 @@ const BUILDER_STEPS = (content = "export const a = 42;\n"): ClaudeStep[] => [
 ];
 const APPROVE = JSON.stringify({ verdict: "approve", findings: [{ id: "f1", severity: "minor", file: "src/a.ts", line: 1, message: "consider a comment" }], criteria: [{ criterionId: "c2", met: true, note: "a is 42" }] });
 
-function world(options: { builder?: (cwd: string, args: string[]) => FakeClaude; reviewer?: () => FakeClaude; codex?: () => FakeCodex; claudeAllowance?: () => AllowanceSnapshot | null; liveRoot?: string | null; memoryWrites?: boolean; store?: CodingStore; fx?: FixtureRepo; dataDir?: string; approvals?: ApprovalService; spoken?: SpokenConfirmationLedger; codexIsolation?: OrchestratorDeps["codexIsolation"]; isolationRecheckMs?: number } = {}): World {
+function world(options: { builder?: (cwd: string, args: string[]) => FakeClaude; reviewer?: () => FakeClaude; codex?: () => FakeCodex; claudeAllowance?: () => AllowanceSnapshot | null; liveRoot?: string | null; memoryWrites?: boolean; memorySave?: MemorySaver; store?: CodingStore; fx?: FixtureRepo; dataDir?: string; approvals?: ApprovalService; spoken?: SpokenConfirmationLedger; codexIsolation?: OrchestratorDeps["codexIsolation"]; isolationRecheckMs?: number; contextHelper?: OrchestratorDeps["contextHelper"] } = {}): World {
   const fx = options.fx ?? fastFixture();
   if (!options.fx) roots.push(fx.root);
   const dataDir = options.dataDir ?? join(fx.root, "coding-data");
@@ -105,21 +107,22 @@ function world(options: { builder?: (cwd: string, args: string[]) => FakeClaude;
     },
     approvals: () => approvals,
     liveRoot: options.liveRoot ?? null,
-    memory: { writes: () => options.memoryWrites ?? true, save: async (p, input) => { saved.push({ p, input }); return { ok: true, fact: { wiki_ref: "mf-test", source: { link: "obsidian://test" } } }; } },
+    memory: { writes: () => options.memoryWrites ?? true, save: options.memorySave ? async (p, input) => { saved.push({ p, input }); return options.memorySave!(p, input); } : async (p, input) => { saved.push({ p, input }); return { ok: true, fact: { wiki_ref: "mf-test", source: { link: "obsidian://test" } } }; } },
     fleetSink: sink,
     claudeAllowance: options.claudeAllowance ?? (() => null),
     inputTimeoutMs: 120_000,
     codexIsolation: options.codexIsolation ?? (() => ({ ok: true, message: "" })),
     isolationRecheckMs: options.isolationRecheckMs,
+    ...(options.contextHelper ? { contextHelper: options.contextHelper } : {}),
   });
   orch.attachApprovals();
   return { fx, store, orch, approvals, spoken, sink, saved, launched, codexLaunched, registry, dataDir };
 }
 
-function spec(w: World, over: { builderBinding?: ReturnType<typeof claudeBinding> } = {}) {
+function spec(w: World, over: { builderBinding?: ReturnType<typeof claudeBinding>; objective?: string } = {}) {
   return draftSpec({
     requestedBy: OWNER, channel: "voice", utterance: "Set a to 42. Opus builds, another Opus reviews.", entry: w.fx.entry,
-    objective: "Set a to 42 in the fixture", doneWhen: [{ id: "c1", text: "alpha passes", evidence: "test", ref: "alpha" }, { id: "c2", text: "a is 42", evidence: "reviewer-confirms" }],
+    objective: over.objective ?? "Set a to 42 in the fixture", doneWhen: [{ id: "c1", text: "alpha passes", evidence: "test", ref: "alpha" }, { id: "c2", text: "a is 42", evidence: "reviewer-confirms" }],
     roleTemplate: "build+review",
     builders: [{ binding: over.builderBinding ?? claudeBinding("claude-opus-5-5", "2.1.280"), owns: { globs: ["src/a.ts"], newFiles: [] } }],
     reviewer: { binding: claudeBinding("claude-opus-5-5", "2.1.280") },
@@ -139,6 +142,25 @@ async function until(w: World, id: string, pred: (j: CodingJob) => boolean, ms =
 const settled = (j: CodingJob) => ["completed", "needs_owner", "failed", "cancelled", "interrupted", "blocked_allowance"].includes(j.state) && !j.runs.some((r) => ["starting", "running", "needs_input"].includes(r.state));
 
 describe("orchestrator: a SYNTHETIC job end to end", () => {
+  // Open Dot review C5: the context helper keeps raw command output per job; it is deleted when the job ends for good.
+  test("a finished job deletes its context-helper data (and only its own)", async () => {
+    const w = world();
+    const dataRoot = join(w.fx.root, "context-mode-data");
+    w.orch.close();
+    const w2 = world({ fx: w.fx, store: w.store, approvals: w.approvals, dataDir: w.dataDir, contextHelper: () => ({ dataRoot }) });
+    const s = spec(w2);
+    const { job } = w2.orch.draft(s);
+    const mine = join(dataRoot, job.id, "builder", "store");
+    const other = join(dataRoot, "another-job", "builder", "store");
+    for (const d of [mine, other]) { mkdirSync(d, { recursive: true }); writeFileSync(join(d, "raw.db"), "raw command output"); }
+    w2.orch.confirmAndStart(job.id, OWNER, "spoken-yes", specDigest(s));
+    const done = await until(w2, job.id, settled);
+    expect(done.state).toBe("completed");
+    await Bun.sleep(100);
+    expect(existsSync(join(dataRoot, job.id))).toBe(false);
+    expect(existsSync(other)).toBe(true);
+    w2.orch.close(); w2.store.close(); w2.approvals.close();
+  }, 600_000);
   test("build → test → review → gate → handoff; canonical untouched; receipts name the account and model", async () => {
     const w = world();
     const before = canonicalSnapshot(w.fx.canonical);
@@ -193,6 +215,41 @@ describe("orchestrator: a SYNTHETIC job end to end", () => {
     w.orch.close(); w.store.close(); w.approvals.close();
   }, 600_000);
 
+  describe("the handoff fact and the memory screen (round 3)", () => {
+    const realScreen: MemorySaver = async (_p, input) => {
+      const r = screenFact(input.text, input.title);
+      return r.ok ? { ok: true, fact: { wiki_ref: "mf-screened", source: { link: "obsidian://test" } } } : { ok: false, code: r.code };
+    };
+    async function runHandoff(objective: string) {
+      const w = world({ memorySave: realScreen });
+      const s = spec(w, { objective });
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "spoken-yes", specDigest(s));
+      await until(w, job.id, settled);
+      const handoff = w.store.events(job.id, 0, 5000).find((e) => e.type === "handoff")!.payload as any;
+      const saved = (w.saved as { input: { title: string; text: string } }[]).map((x) => x.input);
+      w.orch.close(); w.store.close(); w.approvals.close();
+      return { handoff, saved };
+    }
+
+    test("a normal request about credentials ('the password is stored hashed') is saved WITH its wording: the screen no longer mistakes handling words for a value", async () => {
+      const { handoff, saved } = await runHandoff("Make sure the password is stored hashed and the api key is never logged");
+      expect(handoff).toMatchObject({ memory: "saved", memoryObjective: "copied" });
+      expect(saved).toHaveLength(1);
+      expect(saved[0]!.text).toContain("stored hashed");
+    }, 600_000);
+
+    test("a request that contains a real-looking secret is still never stored: the fact is saved without the request's words, and the secret is in no saved text", async () => {
+      const secret = "Zq7781-Fake-Pw-xyz";
+      const { handoff, saved } = await runHandoff(`Set the Xero password is now ${secret} in the config`);
+      expect(handoff).toMatchObject({ memory: "saved", memoryObjective: "withheld" });
+      expect(saved.length).toBeGreaterThan(1); // the full fact was refused first
+      for (const s of saved.slice(1)) expect(`${s.title}
+${s.text}`).not.toContain(secret);
+      expect(saved.at(-1)!.text).toContain("not copied here");
+    }, 600_000);
+  });
+
   test("memory writes off → the handoff records 'skipped-writes-off'", async () => {
     const w = world({ memoryWrites: false });
     const s = spec(w);
@@ -218,6 +275,252 @@ describe("orchestrator: a SYNTHETIC job end to end", () => {
     w.orch.close(); w.store.close(); w.approvals.close();
   }, 600_000);
 
+  test("review repair: Resume sends rejected work back to the builder and reviews the new commit", async () => {
+    let builds = 0;
+    let reviews = 0;
+    const w = world({
+      builder: () => new FakeClaude({ steps: BUILDER_STEPS(++builds === 1 ? "export const a = 41;\n" : "export const a = 42;\n") }),
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({
+        verdict: "request-changes", findings: [{ id: "b1", severity: "major", file: "src/a.ts", line: 1, message: "wrong value: a must be 42" }],
+        criteria: [{ criterionId: "c2", met: false, note: "a is 41" }],
+      }) : APPROVE } }),
+    });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const paused = await until(w, job.id, settled);
+      expect(paused.state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      w.orch.resume(job.id, { by: OWNER });
+      const done = await until(w, job.id, settled);
+      expect(builds).toBe(2);
+      expect(reviews).toBe(2);
+      expect(done.headSha).not.toBe(paused.headSha);
+      expect(done.review?.sha).toBe(done.headSha);
+      expect(done.gate?.passed).toBe(true);
+      expect(done.state).toBe("completed");
+      const secondBuilder = w.launched.filter((r) => r.args[r.args.indexOf("--permission-mode") + 1] !== "plan")[1];
+      expect(JSON.stringify(secondBuilder.sent)).toContain("wrong value: a must be 42");
+      expect(JSON.stringify(secondBuilder.sent)).toContain("a is 41");
+      expect(done.applies).toHaveLength(0);
+      expect(gitIn(w.fx.canonical, "rev-parse", "HEAD").trim()).toBe(w.fx.baseSha);
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("review repair: cannot-assess retries the reviewer without repeating a successful builder", async () => {
+    let builds = 0;
+    let reviews = 0;
+    const w = world({
+      builder: () => { builds++; return new FakeClaude({ steps: BUILDER_STEPS() }); },
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({ verdict: "cannot-assess", findings: [], criteria: [] }) : APPROVE } }),
+    });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const paused = await until(w, job.id, settled);
+      expect(paused.state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      w.orch.resume(job.id, { by: OWNER });
+      const done = await until(w, job.id, settled);
+      expect(builds).toBe(1);
+      expect(reviews).toBe(2);
+      expect(done.headSha).toBe(paused.headSha);
+      expect(done.state).toBe("completed");
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("review repair: the test author sees the corrected builder commit and preserves its own earlier work", async () => {
+    let builds = 0;
+    let authors = 0;
+    let reviews = 0;
+    const w = world({
+      builder: (cwd) => {
+        if (!cwd.endsWith("test-author")) return new FakeClaude({ steps: BUILDER_STEPS(++builds === 1 ? "export const a = 41;\n" : "export const a = 42;\n") });
+        authors++;
+        if (authors === 2) expect(readFileSync(join(cwd, "src/a.ts"), "utf8")).toContain("a = 42");
+        const content = `export const b = ${authors};\n`;
+        return new FakeClaude({ steps: [
+          { tool: "Write", input: { file_path: "src/b.ts", content }, effect: { write: { path: "src/b.ts", content } } },
+          { tool: "Bash", input: { command: "git add -- src/b.ts" }, effect: { git: ["add", "--", "src/b.ts"] } },
+          { tool: "Bash", input: { command: 'git commit -m "test author update"' }, effect: { git: ["commit", "-q", "-m", "test author update"] } },
+        ] });
+      },
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "major", message: "correct the implementation and coverage" }], criteria: [] }) : APPROVE } }),
+    });
+    try {
+      const s = spec(w);
+      s.roles = [...s.roles, { ...s.roles[0], roleId: "test-author" as never, role: "test-author", owns: { globs: ["src/b.ts"], newFiles: [] } }];
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      expect((await until(w, job.id, settled)).state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      w.orch.resume(job.id, { by: OWNER });
+      const done = await until(w, job.id, settled);
+      expect(builds).toBe(2);
+      expect(authors).toBe(2);
+      expect(done.state).toBe("completed");
+      expect(done.gate?.checks.find((c) => c.check === "ownership")?.passed).toBe(true);
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("review repair: reviewers receive baseline failure identities without calling them passing tests", async () => {
+    const fx = fastFixture();
+    roots.push(fx.root);
+    writeFileSync(join(fx.canonical, "results.txt"), RESULTS.replace(" 0 fail", "(fail) pre-existing environment check [1.00ms]\n 1 fail"));
+    gitIn(fx.canonical, "add", "results.txt");
+    gitIn(fx.canonical, "commit", "-q", "--only", "-m", "synthetic baseline failure", "--", "results.txt");
+    const w = world({ fx: {
+      ...fx, baseSha: gitIn(fx.canonical, "rev-parse", "HEAD").trim() as never,
+      entry: { ...fx.entry, commands: [{ ...fx.entry.commands[0], argv: [process.execPath, "-e", "process.stdout.write(require('node:fs').readFileSync('results.txt', 'utf8')); process.exit(1)"] }] },
+    } });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const done = await until(w, job.id, settled);
+      expect(done.state).toBe("completed");
+      expect(done.gate?.baselineFailures[0]?.failed).toBe(1);
+      const reviewer = w.launched.find((r) => r.args[r.args.indexOf("--permission-mode") + 1] === "plan")!;
+      expect(JSON.stringify(reviewer.sent)).toContain("recorded baseline at");
+      expect(JSON.stringify(reviewer.sent)).toContain("pre-existing environment check");
+      expect(JSON.stringify(reviewer.sent)).toContain("not a new regression or a passing test");
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("reviewer route unavailable: the blocker says so, Resume can move only the reviewer to Claude on a different model, and the build is kept", async () => {
+    let builds = 0;
+    let reviews = 0;
+    const w = world({
+      builder: () => { builds++; return new FakeClaude({ steps: BUILDER_STEPS() }); },
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "major", file: "src/a.ts", line: 1, message: "wrong value" }], criteria: [] }) : APPROVE } }),
+      codexIsolation: () => ({ ok: false, message: "Codex roles are paused: its Windows sandbox could read C:\\synthetic (never protected)." }),
+    });
+    try {
+      const s = spec(w);
+      s.roles = s.roles.map((r) => (r.role === "reviewer" ? { ...r, agent: codexBinding("gpt-6-astra", "codex:openai-2", "0.159.0") } : r)) as never;
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const stopped = await until(w, job.id, settled);
+      expect(stopped.state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      expect(codingBlocker(stopped)).toMatchObject({ kind: "reviewer-unavailable", roleId: "reviewer", label: "Retry review" });
+      expect(codingBlocker(stopped).text).toContain("Codex is paused");
+      expect(builds).toBe(1);
+      // The reviewer can never be moved onto the builder's own model.
+      expect(() => w.orch.resume(job.id, { by: OWNER, roleId: "reviewer", reassignTo: claudeBinding("claude-opus-5-5", "2.1.280") })).toThrow(/different model from the builder/);
+      expect(w.store.getJob(job.id)!.state).toBe("needs_owner");
+      w.orch.resume(job.id, { by: OWNER, roleId: "reviewer", reassignTo: claudeBinding("claude-sonnet-5-5", "2.1.280") });
+      const next = await until(w, job.id, settled);
+      expect(builds).toBe(1);
+      expect(next.headSha).toBe(stopped.headSha);
+      const reviewer = [...next.runs].reverse().find((r) => r.role === "reviewer")!;
+      expect(reviewer.binding).toMatchObject({ route: "claude-code-cli", model: "claude-sonnet-5-5", accountSlot: "claude:max" });
+      expect(w.codexLaunched).toHaveLength(0);
+      // The earlier Codex error is resolved: the CURRENT blocker is the review's own findings.
+      expect(next.state).toBe("needs_owner");
+      expect(codingBlocker(next).kind).toBe("review-changes");
+      expect(codingBlocker(next).text).not.toContain("Codex");
+      expect(w.store.events(job.id, 0, 5000).some((e) => e.type === "step" && (e.payload as any).label === "Owner reassigned this role" && /claude-sonnet-5-5/.test((e.payload as any).detail))).toBe(true);
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("a rejection that is only a test already failing on the base commit retries the review, not the builder; a repeated Resume doesn't duplicate runs", async () => {
+    const fx = fastFixture();
+    roots.push(fx.root);
+    writeFileSync(join(fx.canonical, "results.txt"), RESULTS.replace(" 0 fail", "(fail) pre-existing environment check [1.00ms]\n 1 fail"));
+    gitIn(fx.canonical, "add", "results.txt");
+    gitIn(fx.canonical, "commit", "-q", "--only", "-m", "synthetic baseline failure", "--", "results.txt");
+    let builds = 0;
+    let reviews = 0;
+    const w = world({
+      fx: { ...fx, baseSha: gitIn(fx.canonical, "rev-parse", "HEAD").trim() as never,
+        entry: { ...fx.entry, commands: [{ ...fx.entry.commands[0], argv: [process.execPath, "-e", "process.stdout.write(require('node:fs').readFileSync('results.txt', 'utf8')); process.exit(1)"] }] } },
+      builder: () => { builds++; return new FakeClaude({ steps: BUILDER_STEPS() }); },
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "major", message: "The suite fails: pre-existing environment check" }], criteria: [{ criterionId: "c1", met: false, note: "suite exits 1" }] }) : APPROVE } }),
+    });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const paused = await until(w, job.id, settled);
+      expect(paused.state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      expect(codingBlocker(paused)).toMatchObject({ kind: "review-baseline-only", label: "Retry review with the baseline" });
+      w.orch.resume(job.id, { by: OWNER });
+      // A second click while that Resume runs is refused; nothing is started twice.
+      expect(() => w.orch.resume(job.id, { by: OWNER })).toThrow(/already running|can't be resumed/);
+      const done = await until(w, job.id, settled);
+      expect(builds).toBe(1);
+      expect(reviews).toBe(2);
+      expect(done.state).toBe("completed");
+      expect(done.gate?.baselineFailures[0]).toMatchObject({ failed: 1, names: ["pre-existing environment check"] });
+      expect(done.gate?.checks.find((c) => c.check === "done-when-evidenced")?.passed).toBe(true);
+      expect(done.runs.filter((r) => r.role === "reviewer")).toHaveLength(2);
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("a gate that doesn't pass is spoken in plain words, never as redacted check ids", async () => {
+    const w = world({ reviewer: () => new FakeClaude({ result: { result: JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "blocker", message: "wrong" }], criteria: [] }) } }) });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      await until(w, job.id, settled);
+      const lines = w.store.events(job.id, 0, 5000).filter((e) => e.type === "spoken").map((e) => (e.payload as any).line as string);
+      const gateLine = lines.find((l) => l.includes("done gate"))!;
+      expect(gateLine).toContain("an independent review approved this commit");
+      expect(gateLine).not.toContain("[redacted]");
+      expect(lines.join(" ")).not.toMatch(/It needs you/);
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("review fix 2: independence is judged against what the other role actually ran on, and a move sticks on later Resumes", async () => {
+    let builds = 0;
+    let reviews = 0;
+    const w = world({
+      builder: () => (++builds === 1 ? new FakeClaude({ steps: [{ text: "I did nothing." }] }) : new FakeClaude({ steps: BUILDER_STEPS(builds === 2 ? "export const a = 41;\n" : "export const a = 42;\n") })),
+      reviewer: () => new FakeClaude({ result: { result: ++reviews === 1 ? JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "major", message: "a must be 42" }], criteria: [] }) : APPROVE } }),
+      codexIsolation: () => ({ ok: false, message: "Codex roles are paused: synthetic." }),
+    });
+    try {
+      const s = spec(w);
+      s.roles = s.roles.map((r) => (r.role === "reviewer" ? { ...r, agent: codexBinding("gpt-6-astra", "codex:openai-2", "0.159.0") } : r)) as never;
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      expect((await until(w, job.id, settled)).state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      // The builder failed on Opus; the owner moves it to Sonnet and it succeeds. The Codex reviewer is then unavailable.
+      w.orch.resume(job.id, { by: OWNER, roleId: "builder-1", reassignTo: claudeBinding("claude-sonnet-5-5", "2.1.280") });
+      const stopped = await until(w, job.id, (j) => settled(j) && j.runs.some((r) => r.role === "reviewer"));
+      await until(w, job.id, () => !w.orch.running(job.id));
+      expect(codingBlocker(stopped).kind).toBe("reviewer-unavailable");
+      // The PLAN still says Opus, but the builder ran on Sonnet: Sonnet must not review Sonnet; Opus may.
+      expect(() => w.orch.resume(job.id, { by: OWNER, roleId: "reviewer", reassignTo: claudeBinding("claude-sonnet-5-5", "2.1.280") })).toThrow(/different model from the builder/);
+      w.orch.resume(job.id, { by: OWNER, roleId: "reviewer", reassignTo: claudeBinding("claude-opus-5-5", "2.1.280") });
+      const changes = await until(w, job.id, (j) => settled(j) && j.review?.verdict === "request-changes");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      expect(changes.state).toBe("needs_owner");
+      // A later plain Resume repairs on the builder's MOVED binding and reviews on the reviewer's moved binding.
+      w.orch.resume(job.id, { by: OWNER });
+      const done = await until(w, job.id, settled);
+      expect(done.state).toBe("completed");
+      const builderArgs = w.launched.filter((r) => r.args[r.args.indexOf("--permission-mode") + 1] !== "plan").map((r) => r.args.join(" "));
+      expect(builderArgs.at(-1)).toContain("claude-sonnet-5-5");
+      expect(w.codexLaunched).toHaveLength(0);
+      expect([...done.runs].reverse().find((r) => r.role === "reviewer")!.binding.model).toBe("claude-opus-5-5");
+      await until(w, job.id, () => !w.orch.running(job.id));
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
   test("a spec that changed after it was shown can't be confirmed", async () => {
     const w = world();
     const s = spec(w);
@@ -229,7 +532,7 @@ describe("orchestrator: a SYNTHETIC job end to end", () => {
 
 describe("orchestrator: allowance, isolation, stop", () => {
   test("Claude at the stop threshold: the role is blocked before starting; resume with an explicit reassignment to Codex is recorded", async () => {
-    const high: AllowanceSnapshot = { accountSlot: "claude:max", windows: [{ label: "5-hour", usedPercent: 97, resetsAt: "2026-09-28T16:00:00.000Z" as IsoTime }], creditsWouldBeUsed: false, limitReached: false, source: "anthropic-oauth-usage-cached", readAt: new Date().toISOString() as IsoTime };
+    const high: AllowanceSnapshot = { accountSlot: "claude:max", windows: [{ label: "5-hour", usedPercent: 97, resetsAt: new Date(Date.now() + 3_600_000).toISOString() as IsoTime }], creditsWouldBeUsed: false, limitReached: false, source: "anthropic-oauth-usage-cached", readAt: new Date().toISOString() as IsoTime };
     let allowance: AllowanceSnapshot | null = high;
     const w = world({
       claudeAllowance: () => allowance,
@@ -310,6 +613,24 @@ describe("orchestrator: allowance, isolation, stop", () => {
     expect(JSON.stringify(events.filter((e) => e.type === "step"))).toContain("while it ran (replaced by a rewrite since --apply)");
     expect(JSON.stringify(events.filter((e) => e.type === "error"))).toContain("Paused: Codex roles are paused: synthetic lapse.");
     expect(paused.runs.find((r) => r.roleId === "builder-1")!.state).toBe("interrupted");
+    w.orch.cancel(job.id);
+    w.orch.close(); w.store.close(); w.approvals.close();
+  }, 600_000);
+
+  test("a builder whose commit the policy refuses fails with that reason, not just 'uncommitted files' (job 674f43)", async () => {
+    const steps: ClaudeStep[] = [
+      { tool: "Write", input: { file_path: "src/a.ts", content: "export const a = 7;\n" }, effect: { write: { path: "src/a.ts", content: "export const a = 7;\n" } } },
+      { tool: "Bash", input: { command: "git add -- src/a.ts" }, effect: { git: ["add", "--", "src/a.ts"] } },
+      { tool: "Bash", input: { command: 'git commit -m "$(date)"' }, effect: { git: ["commit", "-q", "-m", "never happens"] } },
+      { text: "Changed src/a.ts; I could not commit." },
+    ];
+    const w = world({ builder: () => new FakeClaude({ steps }) });
+    const s = spec(w);
+    const { job } = w.orch.draft(s);
+    w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+    await until(w, job.id, (j) => j.runs.some((r) => r.state === "failed"));
+    const error = w.store.events(job.id, 0, 5000).find((e) => e.type === "error" && (e.payload as { code: string }).code === "postcheck_failed");
+    expect(JSON.stringify(error?.payload)).toContain("uncommitted file(s) left in its worktree; its git commit was refused by the coding policy 1 time (rule: runtime-path)");
     w.orch.cancel(job.id);
     w.orch.close(); w.store.close(); w.approvals.close();
   }, 600_000);
@@ -479,5 +800,108 @@ describe("orchestrator: consequential steps behind B2 approvals", () => {
     await expect(w.orch.requestApply(job.id, { action: "git.push.production", toRef: "production", remote: "origin", by: OWNER })).rejects.toThrow(/pushes to a deploy branch/);
     expect(w.store.getJob(job.id)!.applies).toHaveLength(0);
     w.orch.close(); w.store.close(); w.approvals.close();
+  }, 600_000);
+});
+
+describe("orchestrator: a paused job superseded by newer work (2 Oct 2026)", () => {
+  const rejecting = () => new FakeClaude({ result: { result: JSON.stringify({ verdict: "request-changes", findings: [{ id: "b1", severity: "blocker", message: "wrong value" }], criteria: [] }) } });
+  test("marking keeps the history and worktrees; Resume is refused with the reason; nothing is launched or merged", async () => {
+    const w = world({ reviewer: rejecting });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const paused = await until(w, job.id, settled);
+      expect(paused.state).toBe("needs_owner");
+      await until(w, job.id, () => !w.orch.running(job.id));
+      const launchedBefore = w.launched.length;
+      const eventsBefore = w.store.events(job.id, 0, 5000).length;
+      const mainBefore = gitIn(w.fx.canonical, "rev-parse", "main").trim();
+      // Bad input is refused first and changes nothing.
+      expect(() => w.orch.supersede(job.id, { ref: "--oops", reason: "landed", by: OWNER })).toThrow(/Name the commit or branch/);
+      const done = w.orch.supersede(job.id, { ref: "main", reason: "the successor landed in the live branch", by: OWNER });
+      expect(done.state).toBe("cancelled");
+      expect(done.supersededBy).toMatchObject({ ref: "main", by: "usman", reason: "the successor landed in the live branch" });
+      // History is kept (events only grow), receipts and runs stay, and the job branch worktree is still on disk.
+      expect(w.store.events(job.id, 0, 5000).length).toBeGreaterThan(eventsBefore);
+      expect(done.runs.length).toBe(paused.runs.length);
+      expect(done.headSha).toBe(paused.headSha);
+      expect(existsSync(join(w.fx.entry.worktreeParent))).toBe(true);
+      // Refused, in the owner's words, and nothing started.
+      expect(() => w.orch.resume(job.id, { by: OWNER })).toThrow(/superseded by main.*could overwrite newer work/);
+      await expect(w.orch.requestApply(job.id, { action: "git.merge.protected", toRef: "main", by: OWNER })).rejects.toThrow(/superseded by main/);
+      expect(() => w.orch.supersede(job.id, { ref: "abc1234", reason: "again please", by: OWNER })).toThrow(/already marked superseded/);
+      expect(w.launched.length).toBe(launchedBefore);
+      expect(gitIn(w.fx.canonical, "rev-parse", "main").trim()).toBe(mainBefore);
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  async function awaitingMerge(w: World) {
+    gitIn(w.fx.canonical, "branch", "production", w.fx.baseSha);
+    const s = spec(w);
+    const { job } = w.orch.draft(s);
+    w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+    const done = await until(w, job.id, settled);
+    expect(done.state).toBe("completed");
+    await w.orch.requestApply(job.id, { action: "git.merge.protected", toRef: "production", by: OWNER });
+    expect(w.store.getJob(job.id)!.state).toBe("awaiting_approval");
+    return job.id;
+  }
+
+  test("plain Stop while a merge waits for approval withdraws the request and ends completed, not in an error", async () => {
+    const w = world();
+    try {
+      const id = await awaitingMerge(w);
+      const after = w.orch.cancel(id);
+      expect(after.state).toBe("completed");
+      expect(after.applies[0].state).toBe("cancelled");
+      expect(gitIn(w.fx.canonical, "rev-parse", "production").trim()).toBe(w.fx.baseSha);
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("marking superseded while a merge waits withdraws the request, records the mark and refuses a new merge, resume and tests", async () => {
+    const w = world();
+    try {
+      const id = await awaitingMerge(w);
+      const done = w.orch.supersede(id, { ref: "main", reason: "the successor already landed", by: OWNER });
+      expect(done.state).toBe("completed");
+      expect(done.supersededBy?.ref).toBe("main");
+      expect(done.applies[0].state).toBe("cancelled");
+      await expect(w.orch.requestApply(id, { action: "git.merge.protected", toRef: "production", by: OWNER })).rejects.toThrow(/superseded by main/);
+      await expect(w.orch.rerunTest(id, "fx.test" as never)).rejects.toThrow(/marked superseded by main.*not re-run/);
+      expect(() => w.orch.resume(id, { by: OWNER })).toThrow(/superseded by main/);
+      expect(gitIn(w.fx.canonical, "rev-parse", "production").trim()).toBe(w.fx.baseSha);
+      // Taking the mark back leaves the job as it was (completed, merge withdrawn).
+      const back = w.orch.unsupersede(id, { by: OWNER });
+      expect(back.supersededBy).toBeUndefined();
+      expect(back.state).toBe("completed");
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("a ref that isn't in the repo is refused and nothing is marked", async () => {
+    const w = world({ reviewer: rejecting });
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      await until(w, job.id, settled);
+      await until(w, job.id, () => !w.orch.running(job.id));
+      expect(() => w.orch.supersede(job.id, { ref: "feedface1234", reason: "landed another way", by: OWNER })).toThrow(/isn't a commit or branch/);
+      expect(w.store.getJob(job.id)!.state).toBe("needs_owner");
+      expect(w.store.getJob(job.id)!.supersededBy).toBeUndefined();
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
+  }, 600_000);
+
+  test("a running or a finished job can't be marked superseded", async () => {
+    const w = world();
+    try {
+      const s = spec(w);
+      const { job } = w.orch.draft(s);
+      expect(() => w.orch.supersede(job.id, { ref: "abc1234", reason: "landed another way", by: OWNER })).toThrow(/only a paused job can/);
+      w.orch.confirmAndStart(job.id, OWNER, "ui", specDigest(s));
+      const done = await until(w, job.id, settled);
+      expect(done.state).toBe("completed");
+      expect(() => w.orch.supersede(job.id, { ref: "abc1234", reason: "landed another way", by: OWNER })).toThrow(/A finished job is not paused/);
+    } finally { w.orch.close(); w.store.close(); w.approvals.close(); }
   }, 600_000);
 });

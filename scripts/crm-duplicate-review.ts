@@ -36,6 +36,7 @@ import { publicUrl } from "./leads/site-audit";
 import { JEV_MODEL, jevAnswers } from "./jev-client";
 import { hashInput, recordDecisionShadow } from "./jev-shadow";
 import { providerKey } from "./provider-config";
+import { dataDirFor } from "./cloud/data-dir";
 
 // --- deterministic candidate retrieval ------------------------------------------------------
 
@@ -261,7 +262,7 @@ async function main() {
     return i >= 0 ? args[i + 1] : undefined;
   };
   const root = flag("root") ?? join(import.meta.dir, "..");
-  const file = join(root, ".operator-data", "crm.sqlite");
+  const file = join(dataDirFor(root), "crm.sqlite");
   const db = openCrmReadOnly(file);
   try {
     const leads = listLeads(db, { limit: 10_000 });

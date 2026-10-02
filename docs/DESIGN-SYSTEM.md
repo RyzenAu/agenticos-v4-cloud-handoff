@@ -108,9 +108,9 @@ comfortable 15px / 1.6 paragraph.
 | `text-base` | 17 / 1.55 | 500–600 | Card titles, lead copy, page descriptions |
 | `text-sm` | 15 / 1.6 | 400 | Body (the shell's base size) |
 | `text-xs` | 13 / 1.5 | 400–500 | Meta, captions, header controls, buttons in dense UI |
-| `.ds-label` / `text-2xs` | 12, caps, 0.12em | 500 | Stat labels, badges and table headers only |
+| `.ds-label` / `text-2xs` | 13, sentence case | 500 | Stat labels, badges and table headers |
 
-Floor: **12px**, and only for caps labels and badges. Running text never below 13px. Body measure
+Floor: **13px** for everything (1 Oct 2026, programme C: the old 12px caps floor is gone; important labels are sentence case, never tiny capitals). `scripts/ui-type-floor.test.ts` fails on any new sub-13px size. Body measure
 ≤ 70ch. Numbers use `.ds-num` (tabular figures). Fonts: `font-sans` (Inter), `font-mono`
 (JetBrains Mono).
 
@@ -130,6 +130,24 @@ hard-coded size doesn't follow the scale, which is why pages written that way st
 
 Nothing loops unless it reports live work (a spinner, a pulsing "live" dot). No ambient video,
 drifting auroras, starfields, sheens or shimmer. `prefers-reduced-motion` is honoured globally.
+
+**One motion language (1 Oct 2026).** Tokens above plus `--dur-task` 420ms, `--move-sm` 6px and
+`--move-drawer` 24px; TypeScript twin `src/lib/ui-motion.ts` (`MOTION`, `useReducedMotion`,
+`useDocumentVisible`, `useSavePhase`, `installMotionGuards`). Only `transform` and `opacity` animate.
+
+| Class / component | Says | Used by |
+|---|---|---|
+| `.mo-enter` | You arrived (page enter, 280ms) | the shell's `<main>`, keyed by path |
+| `.mo-select` / gold drill dot | What is selected changed | sidebar destinations and drilldowns |
+| `.mo-drawer-in`, Sheet durations | Something opened | lead drawer, nav drawer, dialogs |
+| `SaveStatus` + `useSavePhase` | A save landed (Saving, Saved, Couldn't save) | lead drawer |
+| `TaskPhase` / `TaskBar` / `TaskWord` | Start, progress, complete; the bar slides only while the length is unknown | Jarvis hand-offs |
+| `ConnectionState` | Live, Reconnecting (dot breathes), Offline | coding job header |
+| `DeviceStatusSlot` | "This PC", the device label, or "No device reported"; Offline and "Status not reported" are words, never red | job step log, command scene |
+
+A hidden tab pauses every CSS animation (`html[data-doc-hidden]`, set by `installMotionGuards`). Decorative
+loops additionally follow the header's ambient switch (`src/lib/motion.ts`). Under reduced motion the
+durations collapse to zero, so states still change but nothing travels.
 
 ### Focus
 
@@ -256,6 +274,12 @@ Provider logos (Claude, OpenAI, Gemini…) likewise appear only as marks inside 
   sharing, meeting mode, jobs) stays in the bar itself.
 - **Workspaces:** three, M&U Ventures, Receptionist and Websites (`/workspaces`, under Work). Each shows its
   projects; worktrees fold into their repo and never get a card (`scripts/workspace/three-workspaces.ts`).
+
+## Detail surfaces (30 Sep 2026)
+
+Lead sheets, memory dialogs and coding jobs use `ds-detail`: 15px body text, 17px section titles, 20–24px section spacing and one-pixel dividers. Use `DetailSection` for titled groups. Metadata follows the 13px token; prose and form fields do not use microtype. Right-side sheet close controls are 44px.
+
+A detail opens with the next action and key facts. Put extended research, commercial forms and history in named sections; show source evidence and technical configuration on demand. Keep visited sections mounted so navigation preserves unfinished edits. The lead sheet has a fixed header, a scrollable tab row and a scrolling body. Restore focus when it closes.
 
 ## Widget grid (L-wave, 29 Sep 2026)
 

@@ -13,7 +13,7 @@
  */
 export const THIS_PC_DEVICE_ID = "usman-pc";
 
-export type ResolveContext = { personId: string; spokenTarget?: string };
+export type ResolveContext = { personId: string; spokenTarget?: string; /** The device the request came from ("here" means this one, if it is theirs). */ originDeviceId?: string };
 export type ResolveResult = { ok: true; deviceId: string; owner: "usman" | "mehroz"; online: boolean } | { ok: false; reason: string };
 export type ResolveTarget = (ctx: ResolveContext) => ResolveResult | Promise<ResolveResult>;
 

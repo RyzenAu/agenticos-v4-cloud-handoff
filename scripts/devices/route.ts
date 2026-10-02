@@ -1,5 +1,5 @@
 import { activeRegistry, type DeviceRegistry } from "./registry";
-import { normalisePersonId, PERSON_IDS, type PersonId, type ResolveContext, type ResolveResult, type TargetDevice } from "./types";
+import { isSharedComputer, normalisePersonId, PERSON_IDS, SHARED_OWNER, type PersonId, type ResolveContext, type ResolveResult, type TargetDevice } from "./types";
 
 /**
  * resolveTarget — which machine a person's command runs on (WAVE2-CONTRACT.md).
@@ -7,6 +7,8 @@ import { normalisePersonId, PERSON_IDS, type PersonId, type ResolveContext, type
  * Rules, all fail-closed:
  *  - A person's commands go only to a device that person owns. Usman's PC (the hub) is just
  *    another device owned by Usman; it is never a fallback for anyone else.
+ *  - "here" / "this pc" / "this computer" means the device the request came from (originDeviceId: the
+ *    companion, or the mic-owner companion), else that person's own primary/only device. Never someone else's.
  *  - A spoken target ("on my laptop") must match exactly one device that person owns.
  *    Naming someone else's device ("on Usman's PC" from Mehroz) is refused.
  *  - No spoken target: the device the command came from (if it is theirs), else their primary
@@ -26,20 +28,40 @@ export function resolveTarget(ctx: ResolveContext, registry: DeviceRegistry = ac
       ? { ok: true, deviceId: d.id, owner: d.owner, online: true }
       : { ok: false, reason: "device offline", deviceId: d.id };
 
+  // The computers service names a shared computer exactly ("computer:<device id>"). Only a shared cloud computer can be
+  // reached this way: a personal device's id (or its display name) never routes anywhere but through its owner's rules below.
+  const exact = /^computer:([\w.-]{1,80})$/.exec(String(ctx.spokenTarget ?? "").trim());
+  if (exact) {
+    const computer = targets.find((d) => d.id === exact[1] && isSharedComputer(d));
+    return computer ? pick(computer) : { ok: false, reason: "no such shared computer" };
+  }
+
   const spoken = parseSpokenTarget(ctx.spokenTarget ?? "", person);
   if (spoken) {
     if (spoken.owner !== person)
       return { ok: false, reason: `that device belongs to ${spoken.owner}; you can only run commands on your own devices` };
-    if (!spoken.words.length) return pickDefault();
+    if (!spoken.words.length) return pickDefault(); // also "here" / "this pc": origin first, then their own primary
     const matches = mine.filter((d) => matchesWords(d, spoken.words));
     if (matches.length === 1) return pick(matches[0]);
     if (matches.length > 1)
       return { ok: false, reason: `"${ctx.spokenTarget?.trim()}" matches more than one of your devices (${matches.map((d) => d.label).join(", ")}); say which` };
-    if (targets.some((d) => d.owner !== person && matchesWords(d, spoken.words)))
+    // A shared cloud computer, by name ("the research computer"): both founders may. Never by "here" or as a default, and
+    // never on a bare "computer"/"pc" (that means the person's own PC).
+    const shared = sharedComputerFor(spoken.words);
+    if (shared === "ambiguous") return { ok: false, reason: `"${ctx.spokenTarget?.trim()}" matches more than one shared computer; say which` };
+    if (shared) return pick(shared);
+    if (targets.some((d) => d.owner !== person && d.owner !== SHARED_OWNER && matchesWords(d, spoken.words)))
       return { ok: false, reason: `that device isn't yours; you can only run commands on your own devices` };
     return { ok: false, reason: `none of your devices is called "${ctx.spokenTarget?.trim()}"` };
   }
   return pickDefault();
+
+  /** The one shared computer the words name (a distinctive word beyond "pc"), "ambiguous", or null. */
+  function sharedComputerFor(words: string[]): TargetDevice | "ambiguous" | null {
+    if (!words.some((w) => w !== "pc")) return null;
+    const found = targets.filter((d) => isSharedComputer(d) && matchesWords(d, words));
+    return found.length === 1 ? found[0] : found.length > 1 ? "ambiguous" : null;
+  }
 
   function pickDefault(): ResolveResult {
     if (ctx.originDeviceId) {
@@ -63,7 +85,9 @@ const SYNONYMS: Record<string, string> = {
   laptop: "laptop", notebook: "laptop",
   phone: "phone", mobile: "phone",
 };
-const FILLER = new Set(["on", "in", "using", "at", "from", "the", "a", "an", "my", "mine", "own", "his", "her", "to", "please", "run", "it", "this", "that", "device"]);
+const FILLER = new Set(["on", "in", "using", "at", "from", "the", "a", "an", "my", "mine", "own", "to", "please", "run", "it", "this", "that", "device"]);
+
+const HERE_NOUNS = new Set(["pc", "device"]);
 
 function tokens(text: string) {
   return text
@@ -82,9 +106,11 @@ function canon(word: string) {
  * "on my laptop" → { owner: speaker, words: ["laptop"] };
  * "on Usman's PC" → { owner: "usman", words: ["pc"] }. Empty text → null.
  */
-export function parseSpokenTarget(text: string, speaker: PersonId): { owner: PersonId; words: string[] } | null {
+export function parseSpokenTarget(text: string, speaker: PersonId): { owner: PersonId; words: string[]; here?: boolean } | null {
   const raw = tokens(text);
   if (!raw.length) return null;
+  // "here", "right here", "this pc", "this computer": the machine the request came from, no name to match.
+  const here = raw.includes("here") || raw.some((t, i) => t === "this" && HERE_NOUNS.has(canon(raw[i + 1] ?? "")));
   let owner: PersonId = speaker;
   const words: string[] = [];
   for (const token of raw) {
@@ -95,10 +121,10 @@ export function parseSpokenTarget(text: string, speaker: PersonId): { owner: Per
       continue;
     }
     const word = bare.replace(/'/g, "");
-    if (!word || FILLER.has(word)) continue;
+    if (!word || FILLER.has(word) || (here && (word === "here" || word === "right" || HERE_NOUNS.has(canon(word))))) continue;
     words.push(canon(word));
   }
-  return { owner, words };
+  return { owner, words, ...(here ? { here: true } : {}) };
 }
 
 function vocabulary(device: TargetDevice) {

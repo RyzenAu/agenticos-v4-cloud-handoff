@@ -7,75 +7,115 @@
 // the page DOES: talk to or ask Jarvis, and what it's doing. The HUD, the confirmed-event pipelines,
 // the hand-offs and the ways in are all still here, each as a widget; sources sit in the page foot.
 import { useEffect, useState } from "react";
-import { AudioLines, Keyboard, ListChecks, MessageSquare, PanelRight, PhoneCall } from "lucide-react";
-import { Button, PageFoot, PageHeader, Widget, WidgetEmpty, WidgetGrid, WidgetList, WidgetRow } from "@/components/ds";
+import { AudioLines, ListChecks, Send } from "lucide-react";
+import { Button, DeviceStatusSlot, PageFoot, PageHeader, TaskBar, TaskWord, Widget, WidgetEmpty, WidgetGrid, WidgetList, WidgetRow } from "@/components/ds";
 import { JarvisHudBody, useJarvisHud } from "@/components/operator/jarvis-hud";
+import { AgentQuestionsPanel } from "@/components/operator/agent-jobs-panel";
 import { FEED_STATUS_LABEL, feedStatus, readFeed, subscribeFeed, type FeedTask } from "@/lib/agent-feed";
 import { DrilldownList } from "../page-parts";
-import { JarvisPanelSlot, openJarvis, openJarvisText, useJarvisProgress, type JarvisProgress } from "../jarvis-slot";
+import {
+  JarvisPanelSlot,
+  openJarvis,
+  submitJarvisRequest,
+  useJarvisProgress,
+  type JarvisProgress,
+} from "../jarvis-slot";
+import { activeDevice, deviceSlotInput, useDevices } from "@/lib/use-devices";
 import { ProgressPanel } from "../progress-panel";
 import "./jarvis-page.css";
+import { useDraft } from "@/lib/use-draft";
 
 /** How many hand-offs show before the rest fold into "Show all". */
 export const HANDOFFS_SHOWN = 3;
 
 function ProgressCard({ progress }: { progress: JarvisProgress }) {
   const idle = progress.phase === "idle";
+  const [request, setRequest] = useDraft("jarvis-request");
   return (
     <Widget
       icon={AudioLines}
-      span={2}
-      className="h-full"
-      title="Talk to Jarvis"
-      badge={idle ? "Ready" : progress.source === "jev" ? "Jev" : progress.source === "agent-feed" ? "Agent" : "Voice"}
-      value={idle ? "Nothing running" : progress.label}
+      span={4}
+      title="What do you want done?"
+      badge={idle ? undefined : progress.label}
       tone={progress.phase === "error" ? "danger" : progress.phase === "needs-you" ? "warn" : "default"}
-      line={
-        idle
-          ? 'Say "Hey Jarvis", press the chip in the header, or type a request.'
-          : progress.step
-            ? `Step ${progress.step.index}${progress.step.total ? ` of ${progress.step.total}` : ""}: ${progress.step.text}`
-            : undefined
-      }
-      action={
-        <>
-          <Button variant="accent" className="h-11 rounded-full px-5 text-base" onClick={openJarvis}>
-            <AudioLines className="h-4 w-4" aria-hidden="true" /> Talk to Jarvis
+      line={!idle && progress.step ? progress.step.text : undefined}
+    >
+      <form
+        className="space-y-4"
+        data-assistant-request
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!request.trim()) return;
+          submitJarvisRequest(request);
+          setRequest("");
+        }}
+      >
+        <label htmlFor="assistant-request" className="sr-only">
+          Request for Jarvis
+        </label>
+        <textarea
+          id="assistant-request"
+          value={request}
+          onChange={(event) => setRequest(event.target.value)}
+          maxLength={600}
+          rows={3}
+          placeholder="Describe the task. Include the project or app you want to use."
+          className="w-full resize-y rounded-xl border border-input bg-background px-4 py-3 text-base leading-relaxed placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="submit"
+            variant="accent"
+            className="min-h-11 rounded-full px-5"
+            disabled={!request.trim()}
+          >
+            <Send className="h-4 w-4" aria-hidden="true" /> Send request
           </Button>
-          <Button variant="outline" className="h-11 rounded-full px-5 text-base" onClick={openJarvisText}>
-            <MessageSquare className="h-4 w-4" aria-hidden="true" /> Type to Jarvis
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 rounded-full px-5"
+            onClick={openJarvis}
+          >
+            <AudioLines className="h-4 w-4" aria-hidden="true" /> Use voice
           </Button>
-        </>
-      }
-    />
+        </div>
+      </form>
+    </Widget>
   );
 }
 
 function HandoffRow({ t }: { t: FeedTask }) {
   const status = feedStatus(t);
-  const tone = ({ running: "text-foreground", "needs-you": "text-warn", done: "text-success", failed: "text-danger" } as const)[status];
+  // Start -> progress -> complete (src/lib/ui-motion.ts): the bar slides while the length is unknown and
+  // the tick lands once when the confirming event arrives. A run that stopped for his yes is "waiting".
+  const phase = ({ running: "running", "needs-you": "waiting", done: "done", failed: "failed" } as const)[status];
   return (
     <WidgetRow
       title={t.title}
-      meta={`${t.agent} · ${t.steps.length} step${t.steps.length === 1 ? "" : "s"}`}
-      aside={<span className={`text-sm font-medium ${tone}`}>{FEED_STATUS_LABEL[status]}</span>}
+      meta={
+        <>
+          {t.agent} · {t.steps.length} step{t.steps.length === 1 ? "" : "s"}
+          <TaskBar phase={phase} label={`${t.title}: ${FEED_STATUS_LABEL[status]}`} className="mt-2" />
+        </>
+      }
+      aside={<TaskWord phase={phase} word={FEED_STATUS_LABEL[status]} className="text-sm" />}
     />
   );
 }
 
-/** The ways to reach Jarvis, one widget each (were one folded list; W-C "Ways to reach Jarvis"). */
-const WAYS_IN = [
-  { Icon: AudioLines, title: "Voice", value: "Hey Jarvis", line: "Or the chip at the top of every page." },
-  { Icon: Keyboard, title: "HUD", value: "Alt+Shift+J", line: "Opens Jarvis's HUD over any page." },
-  { Icon: PanelRight, title: "Inspector", value: "Alt+Shift+I", line: "Every step of every hand-off." },
-  { Icon: PhoneCall, title: "Away", value: "Telegram", line: "Reaches the same Jarvis when you're not at the PC." },
-] as const;
+function HudDetails() {
+  const hud = useJarvisHud(true);
+  return <JarvisHudBody data={hud} />;
+}
 
 export function JarvisPage() {
-  const hud = useJarvisHud(true);
   const { progress } = useJarvisProgress();
   const [tasks, setTasks] = useState<FeedTask[]>([]);
   const [allHandoffs, setAllHandoffs] = useState(false);
+  const [hudOpen, setHudOpen] = useState(false);
+  const [previewsOpen, setPreviewsOpen] = useState(false);
+  const devices = useDevices();
   useEffect(() => {
     setTasks(readFeed());
     return subscribeFeed(setTasks);
@@ -84,19 +124,17 @@ export function JarvisPage() {
   const folded = tasks.slice(HANDOFFS_SHOWN);
   return (
     <div className="jv-page min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="Jarvis" description="Talk to Jarvis or hand it work, and watch it run." />
+      <PageHeader title="Jarvis" meta={devices.data ? <DeviceStatusSlot device={deviceSlotInput(activeDevice(devices.data))} /> : devices.isError ? <span className="text-xs text-muted-foreground">Devices not readable</span> : undefined} />
       <WidgetGrid aria-label="Jarvis">
-        <div className="col-span-full min-w-0 md:col-span-2">
+        <div className="col-span-full min-w-0">
           <JarvisPanelSlot fallback={<ProgressCard progress={progress} />} />
         </div>
-        <section aria-label="Jarvis HUD" className="sh-hud-card jv-hud col-span-full min-w-0 md:col-span-2 xl:row-span-2">
-          <JarvisHudBody data={hud} />
-        </section>
         <WidgetList
           icon={ListChecks}
           title="Handed-off work"
+          span={4}
           badge={tasks.length || undefined}
-          empty={<WidgetEmpty title="No hand-offs in this session" body="Tasks Jarvis gives Hermes, screen hands or a coding agent appear here with every step." />}
+          empty={<WidgetEmpty title="No tasks in this session" />}
           action={
             folded.length > 0 ? (
               <Button variant="outline" size="sm" className="rounded-full" aria-expanded={allHandoffs} onClick={() => setAllHandoffs((v) => !v)}>
@@ -109,12 +147,39 @@ export function JarvisPage() {
             <HandoffRow key={t.id} t={t} />
           ))}
         </WidgetList>
-        <ProgressPanel />
-        {WAYS_IN.map(({ Icon, title, value, line }) => (
-          <Widget key={title} icon={Icon} title={title} value={<span className="text-2xl">{value}</span>} line={line} data-way-in="" />
-        ))}
       </WidgetGrid>
-      <div className="mt-10">
+      <div className="mt-6"><AgentQuestionsPanel /></div>
+      <details
+        className="mt-6 border-t border-border py-2"
+        onToggle={(event) => setHudOpen(event.currentTarget.open)}
+      >
+        <summary className="min-h-11 cursor-pointer py-3 text-sm text-muted-foreground hover:text-foreground">
+          Daily status & shortcuts
+        </summary>
+        {hudOpen && (
+          <div className="sh-hud-card jv-hud mt-3 max-w-2xl">
+            <HudDetails />
+          </div>
+        )}
+        <p className="mt-3 text-sm text-muted-foreground">
+          Alt+Shift+J opens the HUD. Alt+Shift+I opens diagnostics. Away mode uses your configured
+          Telegram connection.
+        </p>
+      </details>
+      <details
+        className="border-t border-border py-2"
+        onToggle={(event) => setPreviewsOpen(event.currentTarget.open)}
+      >
+        <summary className="min-h-11 cursor-pointer py-3 text-sm text-muted-foreground hover:text-foreground">
+          Workflow previews
+        </summary>
+        {previewsOpen && (
+          <WidgetGrid className="mt-3">
+            <ProgressPanel />
+          </WidgetGrid>
+        )}
+      </details>
+      <div>
         <DrilldownList id="jarvis" />
       </div>
       <PageFoot>

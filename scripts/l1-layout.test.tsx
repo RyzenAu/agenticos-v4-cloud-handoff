@@ -27,7 +27,11 @@ describe("WidgetEmpty", () => {
 describe("SignalTile quiet (the widget-grid tiles)", () => {
   async function render(props: Record<string, unknown>) {
     const { SignalTile } = await import("../src/components/shell/page-parts");
-    const rootRoute = createRootRoute({ component: () => <SignalTile label="Calls to make" to="/leads" now={Date.parse("2026-09-29T00:00:30Z")} updatedAt="2026-09-29T00:00:00Z" {...props} /> });
+    const rootRoute = createRootRoute({
+      component: () => (
+        <SignalTile label="Calls to make" to="/leads" now={Date.parse("2026-09-29T00:00:30Z")} updatedAt="2026-09-29T00:00:00Z" {...props} />
+      ),
+    });
     const router = createRouter({ routeTree: rootRoute, history: createMemoryHistory({ initialEntries: ["/"] }) });
     await router.load();
     return html(<RouterProvider router={router} />);
@@ -75,9 +79,9 @@ describe("Leads: the call queue leads the grid", () => {
   test("page: headline is the morning sentence, the queue is the grid's first widget, sources in the foot", () => {
     const page = read("src/components/operator/leads-crm.tsx");
     expect(page).toContain('description={overview.data?.sentence ?? "Calls to make first, then the pipeline."}');
-    expect(page).toContain("lead={<CallQueue");
+    expect(page).toMatch(/lead=\{\s*<CallQueue/); // the queue is the overview's lead widget (Today workspace)
     expect(page).not.toContain("max-w-[1400px]");
-    expect(page).toMatch(/<PageFoot[^>]*>[\s\S]*Nothing here dials or emails on its own · Map data © OpenStreetMap contributors/);
+    expect(page).toContain("No automatic outreach · Map data © OpenStreetMap contributors"); // the one wording that ships
     const overview = read("src/components/operator/crm-overview.tsx");
     expect(overview.indexOf("{lead}")).toBeLessThan(overview.indexOf("<TodoList"));
     expect(overview).toContain("<WidgetGrid>");
@@ -113,12 +117,13 @@ describe("Today, Work, Receptionist, Inbox: one headline, a full-width grid, one
     expect(home.indexOf("<TodayFocus")).toBeLessThan(home.indexOf("<MuBrief"));
     expect(home.indexOf("<MuBrief")).toBeLessThan(home.indexOf("<TodaySources"));
   });
-  test("Work: decisions first as widgets, panels two-up in the grid, the answer card's footer in the foot", () => {
+  test("Work: decisions first, compact counts and detailed panels remain reachable", () => {
     const page = read("src/components/shell/pages/work-page.tsx");
     expect(page).not.toContain("VerdictCard");
-    expect(page).toContain('title="Decisions"');
-    expect(page.indexOf('title="Decisions"')).toBeLessThan(page.indexOf('title="Calls to make"'));
-    expect(page).toContain('<a href="#ws-today">Review the decisions');
+    expect(page).toContain('label: "Decisions"');
+    expect(page.indexOf('label: "Decisions"')).toBeLessThan(page.indexOf('label: "Calls to make"'));
+    expect(page).toContain("Calls, pipeline & site status");
+    expect(page).toMatch(/<a href="#ws-today">\s*Review the decisions/);
     expect(read("src/components/workspace/panel-shell.tsx")).toContain('<Surface as="section" id={id}'); // the anchor now exists
     expect(page).toContain('<PageFoot title="From the same reads as the cards');
   });
@@ -129,7 +134,8 @@ describe("Today, Work, Receptionist, Inbox: one headline, a full-width grid, one
   });
   test("Receptionist: headline, D1 tiles on the grid, no 'Updated' chip or (i) in the header", () => {
     const page = read("src/components/receptionist/dashboard/index.tsx");
-    expect(page).toContain(`description="Sell it, or fix what's stopping it."`);
+    expect(page).toContain(`description="Calls, clients and launch readiness."`);
+    expect(page).toContain("collapsible={false}"); // stale warnings must remain visible
     expect(page).not.toContain("<InfoTip");
     expect(page).not.toMatch(/<Badge[^>]*>Updated/);
     // L10: no routine "Updated … · Sources: …" line either; the foot shows only when the read is stale or missing.

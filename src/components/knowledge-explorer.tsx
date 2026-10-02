@@ -226,13 +226,13 @@ export function KnowledgeExplorer({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-border">
         <div>
-          <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1 inline-flex items-center gap-2">
+          <div className="text-xs text-muted-foreground mb-1 inline-flex items-center gap-2">
             <BookOpen className="h-3.5 w-3.5" />
             Knowledge explorer
             {isDemo && (
               <span
                 title="Sample knowledge base shipped with this repo. Run `bun run scripts/aggregate.ts` to load your real Obsidian vault."
-                className="px-1.5 py-0.5 rounded-full text-[12px] tracking-[0.18em] font-semibold bg-warn-soft text-warn border border-warn/30"
+                className="px-1.5 py-0.5 rounded-full text-xs font-semibold bg-warn-soft text-warn border border-warn/30"
               >
                 DEMO DATA
               </span>
@@ -256,7 +256,7 @@ export function KnowledgeExplorer({
                   role="tab"
                   aria-selected={i === vaultIdx}
                   onClick={() => switchVault(i)}
-                  className={`rounded-full border px-2.5 py-1 text-[12px] transition-all ${
+                  className={`rounded-full border px-2.5 py-1 text-xs transition-all ${
                     i === vaultIdx
                       ? "border-foreground/40 bg-foreground/[0.08] text-foreground"
                       : "border-border/70 bg-card/40 text-muted-foreground hover:text-foreground hover:border-foreground/20"
@@ -501,14 +501,14 @@ function ThemeView({
         </div>
         {related.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 max-w-md">
-            <span className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mr-1">
+            <span className="text-xs text-muted-foreground mr-1">
               Related
             </span>
             {related.map(([t, n]) => (
               <button
                 key={t}
                 onClick={() => onTheme(t)}
-                className="rounded-full border border-border/70 bg-card/40 px-2 py-0.5 text-[12px] text-foreground/85 hover:text-foreground hover:border-foreground/25 transition-colors"
+                className="rounded-full border border-border/70 bg-card/40 px-2 py-0.5 text-xs text-foreground/85 hover:text-foreground hover:border-foreground/25 transition-colors"
                 title={`${n} shared notes`}
               >
                 #{t}
@@ -581,7 +581,7 @@ function Band({
 }) {
   return (
     <div>
-      <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-2 inline-flex items-center gap-1.5">
+      <div className="text-xs text-muted-foreground mb-2 inline-flex items-center gap-1.5">
         {icon}
         {label}
       </div>
@@ -613,7 +613,7 @@ function NoteCard({
           {cleanTitle(note.title)}
         </span>
         <span
-          className="text-[12px] tabular-nums shrink-0 rounded-full px-1.5 py-0.5"
+          className="text-xs tabular-nums shrink-0 rounded-full px-1.5 py-0.5"
           style={{ background: `${color}1a`, color }}
           title="How connected this note is — more relations, more load-bearing"
         >
@@ -760,7 +760,7 @@ function NoteView({
             {show ? "Hide full document" : "Read full document"}
           </button>
         </div>
-        {err && <p className="text-[12px]" style={{ color: "#fca5a5" }}>{err}</p>}
+        {err && <p className="text-xs" style={{ color: "#fca5a5" }}>{err}</p>}
 
         {show && full != null && (
           <pre
@@ -785,7 +785,7 @@ function NoteView({
               <button
                 key={t}
                 onClick={() => onTheme(t.toLowerCase())}
-                className="rounded-full border border-border/70 px-2 py-0.5 text-[12px] text-muted-foreground hover:text-foreground hover:border-foreground/25 transition-colors"
+                className="rounded-full border border-border/70 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/25 transition-colors"
                 title={`Open the #${t} topic`}
               >
                 #{t}
@@ -836,7 +836,7 @@ function RelationList({
   if (notes.length === 0) return null;
   return (
     <div>
-      <div className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5 inline-flex items-center gap-1.5">
+      <div className="text-xs text-muted-foreground mb-1.5 inline-flex items-center gap-1.5">
         {icon}
         {label}
       </div>
@@ -892,14 +892,14 @@ function SearchView({
     <div className="space-y-5">
       {matchedThemes.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground mr-1">
+          <span className="text-xs text-muted-foreground mr-1">
             Topics
           </span>
           {matchedThemes.map((t) => (
             <button
               key={t.tag}
               onClick={() => onTheme(t.tag)}
-              className="rounded-full border border-border/70 bg-card/40 px-2.5 py-1 text-[12px] text-foreground/85 hover:text-foreground hover:border-foreground/25 transition-colors"
+              className="rounded-full border border-border/70 bg-card/40 px-2.5 py-1 text-xs text-foreground/85 hover:text-foreground hover:border-foreground/25 transition-colors"
             >
               #{t.tag}
               <span className="text-muted-foreground/70 ml-1 tabular-nums">{t.notes.length}</span>
@@ -921,7 +921,7 @@ function SearchView({
 function Badge({ color, children }: { color: string; children: React.ReactNode }) {
   return (
     <span
-      className="rounded-full px-2 py-0.5 text-[12px] uppercase tracking-[0.14em] font-semibold"
+      className="rounded-full px-2 py-0.5 text-xs font-semibold"
       style={{ background: `${color}1f`, color, border: `1px solid ${color}44` }}
     >
       {children}

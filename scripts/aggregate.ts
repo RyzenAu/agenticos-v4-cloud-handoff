@@ -824,6 +824,8 @@ interface MemNode {
   size?: string;
   updated?: string;
   status?: MemStatus;
+  /** Workspace has files but no MEMORY.md index (distinct from "missing", which means zero files). */
+  noIndex?: boolean;
   freshness?: number;
   meta?: string;
   val: number;
@@ -4179,7 +4181,9 @@ async function main() {
     hermes,
   };
 
-  const emitted = sanitizeForEmission(data);
+  const sanitized = sanitizeForEmission(data);
+  if (!sanitized || typeof sanitized !== "object" || Array.isArray(sanitized)) throw new Error("aggregate: sanitised live data is not an object");
+  const emitted: Record<string, unknown> = { ...sanitized };
   // Persist today's snapshot to ~/.claude-os/history.jsonl and embed the recent
   // window so the dashboard can chart trends without filesystem access. Never
   // throws — a history hiccup must not block the live-data.json write.

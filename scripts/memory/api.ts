@@ -517,6 +517,10 @@ export function createMemoryApi(options: MemoryApiOptions = {}) {
       version: d.version,
       version_hash: d.version_hash,
       date: d.updated,
+      origin: d.origin,
+      actor: d.actor ?? null,
+      indexed: c.indexState(d.id),
+      processed_by: c.processedBy(d.id),
       via: [],
       score: 0,
     };

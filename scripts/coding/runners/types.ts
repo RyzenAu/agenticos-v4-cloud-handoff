@@ -12,6 +12,7 @@
 import type {
   AgentBinding,
   AllowanceSnapshot,
+  GuidanceUse,
   InputRequest,
   PolicyDecision,
   RoleKind,
@@ -104,6 +105,10 @@ export type RunnerOutcome = {
   allowanceEnd: AllowanceSnapshot | null;
   /** Codex: which plan the account reported, to check it matches the slot. */
   accountPlan: string | null;
+  /** The CLI version that actually ran this turn (the binding's is only what was known at draft time). */
+  cliVersion?: string | null;
+  /** Engineering guidance supplied to (or withheld from) this turn, set by `withGuidance` (guidance.ts). */
+  guidance?: readonly GuidanceUse[];
 };
 
 export type SessionMode =
@@ -135,6 +140,10 @@ export type RunnerStart = {
   creditsAllowed: boolean;
   /** Codex only: the CODEX_HOME of the slot's own login, null = the default ~/.codex. */
   codexHome?: string | null;
+  /** Claude roles: the slot's own CLAUDE_CONFIG_DIR (null = the default ~/.claude login, "claude:max"). */
+  claudeConfigDir?: string | null;
+  /** Claude roles, opt-in: the per-run context helper (runners/context-helper.ts). Absent = today's behaviour exactly. */
+  contextHelper?: import("./context-helper").ContextHelperRequest;
   /** Reviewer/planner structured output: a JSON Schema (kept small; sent by file where the CLI allows). */
   jsonSchema?: Record<string, unknown>;
 };

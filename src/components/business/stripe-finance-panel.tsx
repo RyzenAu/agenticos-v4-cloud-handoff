@@ -11,6 +11,7 @@ import { operatorRequest } from "@/lib/operator";
 import { Button, Widget, WidgetGrid, WidgetList, WidgetRow } from "@/components/ds";
 import type { StripeLink } from "@/components/finance/signals";
 import { fmtDay } from "@/lib/format";
+import { recordedLine } from "./finance-snapshot-state";
 
 type StripeStatus = { configured: boolean; keyStatus: { present: boolean; ok: boolean; message: string | null } };
 export type StripeSummary = {
@@ -78,7 +79,7 @@ export function StripeFinancePanel() {
               title="Revenue this month"
               badge="Read-only"
               value={stripeAud(data.revenueThisMonthAud)}
-              line={data.lastSyncedAt ? `Last synced ${data.lastSyncedAt.slice(0, 10)}` : undefined}
+              line={data.lastSyncedAt ? recordedLine("Last synced", data.lastSyncedAt) : undefined}
               action={
                 <Button type="button" variant="outline" className="h-10 rounded-full px-5" disabled={busy} onClick={() => void refresh()}>
                   <RefreshCw className={busy ? "animate-spin" : undefined} aria-hidden="true" />

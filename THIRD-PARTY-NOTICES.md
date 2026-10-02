@@ -286,3 +286,47 @@ If the Work includes a "NOTICE" text file as part of its distribution, then any 
 9. Accepting Warranty or Additional Liability. While redistributing the Work or Derivative Works thereof, You may choose to offer, and charge a fee for, acceptance of support, warranty, indemnity, or other liability obligations and/or rights consistent with this License. However, in accepting such obligations, You may act only on Your own behalf and on Your sole responsibility, not on behalf of any other Contributor, and only if You agree to indemnify, defend, and hold each Contributor harmless for any liability incurred by, or claims asserted against, such Contributor by reason of your accepting any such warranty or additional liability.
 
 END OF TERMS AND CONDITIONS
+
+## 8. noVNC (MPL-2.0)
+
+- Package: `@novnc/novnc` version 1.7.0, the VNC client used by the Computers page's live screen viewer.
+- Copyright (C) 2022 The noVNC authors (see `node_modules/@novnc/novnc/AUTHORS`).
+- Licence: Mozilla Public License 2.0, https://www.mozilla.org/MPL/2.0/ . The full text ships in the package as `LICENSE.txt`. The core library files (`core/**/*.js`) are MPL-2.0; the `vendor` files carry their own permissive licences, stated in the package.
+- Source: https://github.com/novnc/noVNC (release v1.7.0). The package is pinned exactly in `package.json`.
+- Unmodified: the files are installed from npm and served as they are by the hub from `node_modules` (`/__computers/assets/novnc/...`). Nothing is copied into this repository's source tree or edited. The Covered Software is therefore available from the source above.
+
+## 9. Open Dot (reference only, builder V section)
+
+- Project: `composio-community/open-dot`, read at commit `f838e17cf5c3a88ade5ceea54680a8145d048c1d` (described by its authors as open source; no licence file at that commit; the owner treats it as open source).
+- Used for: understanding how a voice front hands work to a background agent and how results return to the same conversation (see `docs/programme-20261001/OPEN-DOT-ADOPTION.md`, "Voice and background work").
+- **Adapted files from this section: none.** No Open Dot code, snippet or prompt text is in this repository for the voice and background work; it was implemented independently in `scripts/jarvis-command/` and `scripts/conversations.ts`. (Other sections of the adoption record may list adapted files.)
+
+## 10. Matt Pocock's skills (MIT) - adapted text in the coding-role engineering guidance
+
+- Source: https://github.com/mattpocock/skills at commit `d81f3a183412e71a5b1e84ca21bc1a35eea03a60`.
+- Used in: `scripts/coding/guidance/builder.md`, `reviewer.md` and `planner.md` (pinned by `scripts/coding/guidance/manifest.json`). The text is adapted and condensed from the `diagnosing-bugs`, `code-review`, `codebase-design`, `tdd`, `to-spec`, `to-tickets`, `implement-spec` and `handoff` skills; it is not a verbatim copy and it is changed to fit this repository's rules. Which parts were kept, merged or skipped is recorded in `docs/programme-20261001/ENGINEERING-SKILLS.md`.
+- Licence: MIT. Notice reproduced as required:
+
+```
+MIT License
+
+Copyright (c) 2026 Matt Pocock
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

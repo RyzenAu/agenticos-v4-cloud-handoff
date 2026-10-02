@@ -13,6 +13,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { chatRuntimeArgs } from "./chat-runtime";
 import { cliHomeGuard } from "./cli-home-guard";
+import { dataDirFor } from "./cloud/data-dir";
 const locals = {
   ollama: "http://127.0.0.1:11434/v1",
   lmstudio: "http://127.0.0.1:1234/v1",
@@ -292,11 +293,11 @@ const catalogState: Record<string, { building: number; error: string | null }> =
 const lastCatalog = new Map<string, { value: Catalog; fp: string }>();
 // The last build, per OS folder, on disk so a restart answers at once. Model names and provider status
 // lines only, plus the key's one-way fingerprint (never the key): a changed key does not serve this.
-const catalogFile = (root: string) => resolve(root, ".operator-data", "model-catalog.json");
+const catalogFile = (root: string) => resolve(dataDirFor(root), "model-catalog.json");
 function rememberCatalog(root: string, value: Catalog, fp: string) {
   lastCatalog.set(root, { value, fp });
   try {
-    mkdirSync(resolve(root, ".operator-data"), { recursive: true, mode: 0o700 });
+    mkdirSync(resolve(dataDirFor(root)), { recursive: true, mode: 0o700 });
     const tmp = `${catalogFile(root)}.${randomUUID()}.tmp`;
     writeFileSync(tmp, JSON.stringify({ version: 1, models: value.models, statuses: value.statuses, builtAt: value.builtAt, keyFp: fp }), { mode: 0o600 });
     renameSync(tmp, catalogFile(root));

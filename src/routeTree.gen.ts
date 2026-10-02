@@ -36,6 +36,7 @@ import { Route as HudRouteImport } from './routes/hud'
 import { Route as FinanceRouteImport } from './routes/finance'
 import { Route as DesignRouteImport } from './routes/design'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ComputersRouteImport } from './routes/computers'
 import { Route as CodegraphRouteImport } from './routes/codegraph'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -187,6 +188,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComputersRoute = ComputersRouteImport.update({
+  id: '/computers',
+  path: '/computers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CodegraphRoute = CodegraphRouteImport.update({
   id: '/codegraph',
   path: '/codegraph',
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/chat': typeof ChatRoute
   '/codegraph': typeof CodegraphRoute
+  '/computers': typeof ComputersRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/finance': typeof FinanceRoute
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/chat': typeof ChatRoute
   '/codegraph': typeof CodegraphRoute
+  '/computers': typeof ComputersRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/finance': typeof FinanceRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/chat': typeof ChatRoute
   '/codegraph': typeof CodegraphRoute
+  '/computers': typeof ComputersRoute
   '/dashboard': typeof DashboardRoute
   '/design': typeof DesignRoute
   '/finance': typeof FinanceRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/chat'
     | '/codegraph'
+    | '/computers'
     | '/dashboard'
     | '/design'
     | '/finance'
@@ -450,6 +460,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/chat'
     | '/codegraph'
+    | '/computers'
     | '/dashboard'
     | '/design'
     | '/finance'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/chat'
     | '/codegraph'
+    | '/computers'
     | '/dashboard'
     | '/design'
     | '/finance'
@@ -539,6 +551,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   ChatRoute: typeof ChatRoute
   CodegraphRoute: typeof CodegraphRoute
+  ComputersRoute: typeof ComputersRoute
   DashboardRoute: typeof DashboardRoute
   DesignRoute: typeof DesignRoute
   FinanceRoute: typeof FinanceRoute
@@ -767,6 +780,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/computers': {
+      id: '/computers'
+      path: '/computers'
+      fullPath: '/computers'
+      preLoaderRoute: typeof ComputersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/codegraph': {
       id: '/codegraph'
       path: '/codegraph'
@@ -883,6 +903,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   ChatRoute: ChatRoute,
   CodegraphRoute: CodegraphRoute,
+  ComputersRoute: ComputersRoute,
   DashboardRoute: DashboardRoute,
   DesignRoute: DesignRoute,
   FinanceRoute: FinanceRoute,

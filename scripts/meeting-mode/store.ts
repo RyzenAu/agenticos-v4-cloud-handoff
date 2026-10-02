@@ -6,6 +6,7 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderNotes, type MeetingNotes } from "./coach";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type ConsentRecord = {
   at: string;
@@ -34,7 +35,7 @@ export const fsWriter: Writer = {
 };
 
 export function meetingStore(root: string, writer: Writer = fsWriter) {
-  const dir = join(root, ".operator-data", "meeting-mode");
+  const dir = join(dataDirFor(root), "meeting-mode");
   const notesDir = join(dir, "notes");
   const ensure = () => mkdirSync(notesDir, { recursive: true, mode: 0o700 });
   const safeId = (id: string) => {

@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 // Disabled unless .operator-data/private-advisor.json enables it. No account
 // session is copied from a browser; the public bot accepts bounded chat requests.
-const configPath = (root: string) => join(root, ".operator-data", "private-advisor.json");
+const configPath = (root: string) => join(dataDirFor(root), "private-advisor.json");
 const SERVICE_HOST = "www.aiwithjack.com";
 /** The endpoint comes from the local config file only and must live on the advisor host over https. */
 function serviceEndpoint(config: { endpoint?: unknown }): string | null {

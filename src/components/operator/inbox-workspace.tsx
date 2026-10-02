@@ -1805,6 +1805,8 @@ function InboxOverview({
         : source.count
           ? "Saved messages"
           : "Not connected";
+  // With no account connected and nothing saved, "no conversations" would be a guess, not a fact.
+  const anySource = grouped.some((source) => source.connected || source.native || source.count);
   return (
     <section className="wi-overview wi-overview-grid" aria-label="Inbox overview">
       <WidgetGrid mobile={2}>
@@ -1816,8 +1818,8 @@ function InboxOverview({
           badge={review.length || undefined}
           empty={
             <>
-              <span className="block text-base font-medium text-foreground">No conversations flagged here.</span>
-              <span className="mt-1 block">Drafts, flagged and unread messages show here.</span>
+              <span className="block text-base font-medium text-foreground">{anySource ? "No conversations flagged here." : "Nothing to read yet."}</span>
+              <span className="mt-1 block">{anySource ? "Drafts, flagged and unread messages show here." : "Connect Gmail, Outlook, Slack or Skool with Connect accounts above. Until then this list is unknown, not empty."}</span>
             </>
           }
         >
@@ -1966,7 +1968,8 @@ function InboxOverview({
           ) : null}
         </Widget>
 
-        {grouped.map((source) => (
+        {/* Four identical "Not connected" tiles are noise: the tabs above open each source, Connect accounts connects them. */}
+        {anySource && grouped.map((source) => (
           <Widget
             key={source.id}
             data-source={source.id}

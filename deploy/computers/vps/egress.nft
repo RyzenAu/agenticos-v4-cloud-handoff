@@ -1,0 +1,16 @@
+# Egress rules for the user that runs shared cloud computers on a VPS. NOT APPLIED ANYWHERE: an example for the runbook.
+#
+# A computer's browser must reach the PUBLIC web and the hub's own loopback port, and nothing else: never the provider's metadata
+# service (169.254.169.254), the VM's private network, the tailnet or other loopback services. companion/linux/urlpolicy.ts checks
+# every address the companion is asked to open; this is the network-level rule that also covers a redirect or a DNS answer that
+# changed after the check. Replace 1001 with the computers' uid (one uid per computer is better still).
+table inet mu_computers {
+  chain output {
+    type filter hook output priority 0; policy accept;
+    meta skuid 1001 oifname "lo" tcp dport 8081 accept comment "the hub, over loopback"
+    meta skuid 1001 oifname "lo" udp dport 53 accept
+    meta skuid 1001 oifname "lo" drop comment "no other loopback service"
+    meta skuid 1001 ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16, 127.0.0.0/8 } drop
+    meta skuid 1001 ip6 daddr { fc00::/7, fe80::/10, ::1 } drop
+  }
+}

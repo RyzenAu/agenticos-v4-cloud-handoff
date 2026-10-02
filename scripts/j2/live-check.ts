@@ -63,7 +63,11 @@ try {
   const voice = freeVoice(root, {
     key: () => "",
     jarvisChromeInFront: async () => true,
-    fetch: (async () => new Response(JSON.stringify({ choices: [{ message: { content: "(the brain was asked: it should not be)" } }] }), { status: 200 })) as typeof fetch,
+    // A complete `typeof fetch` (Bun's includes `preconnect`), not a cast: the brain must never be reached.
+    fetch: Object.assign(
+      async () => new Response(JSON.stringify({ choices: [{ message: { content: "(the brain was asked: it should not be)" } }] }), { status: 200 }),
+      { preconnect: () => {} },
+    ),
   });
   const say = async (n: number, words: string, expect: (said: string, url: string) => boolean) => {
     const r: any = await voice.handle("/voice/free/turn", { messages: [{ role: "user", content: words }] });

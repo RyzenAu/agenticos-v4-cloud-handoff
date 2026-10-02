@@ -11,6 +11,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { approveDraft, discardDraft, editDraft, deleteDraft, listDrafts, type ApproveTargets } from "./narrate-store";
+import { dataDirFor } from "../cloud/data-dir";
 
 type RouteInput = {
   root: string;
@@ -35,7 +36,7 @@ export async function skillDraftsRoute(
   // Drafts can hold a real transcript of what he or Mehroz said; a remote (Tailscale) viewer
   // doesn't get to read, edit, approve or delete them — same posture as finance/ai_usage skills.
   if (remote) return send({ error: "Skill drafts are only available at the PC itself." }, 403), true;
-  const operatorData = join(root, ".operator-data");
+  const operatorData = join(dataDirFor(root));
   const parts = path.split("/").filter(Boolean); // ["skill-drafts"] or ["skill-drafts", id, action]
   try {
     if (method === "GET" && parts.length === 1) return send({ drafts: listDrafts(operatorData) }), true;

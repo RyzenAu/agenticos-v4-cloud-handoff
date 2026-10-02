@@ -41,6 +41,7 @@ import { parseSnapshot } from "../screen-hands/plan";
 import { EXCEL_APP_PS } from "../jarvis-skills/pc-files";
 import { createGuard, type Guard } from "./guard";
 import { isOn, parseMonitors, parseWindowState, type Monitor } from "../jarvis-skills/monitors";
+import { dataDirFor } from "../cloud/data-dir";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => (args.indexOf(name) >= 0 ? args[args.indexOf(name) + 1] : undefined);
@@ -125,7 +126,7 @@ async function execute(call: ToolCall, ctx: Ctx): Promise<string> {
         return r.data?.ok ? `Done: ${r.data.said}` : `Not done: ${r.data?.said ?? r.status}`;
       }
       const r = await op<{ ok: boolean; said: string }>("/pc/act", { action: a.action, target: a.target });
-      return r.data?.ok ? `Done: ${r.data.said}` : `Not done: ${r.data?.said ?? r.data?.error ?? r.status}`;
+      return r.data?.ok ? `Done: ${r.data.said}` : `Not done: ${r.data?.said ?? r.status}`;
     }
     case "skill": {
       const r = await op<{ said: string }>("/jarvis/skill", a);
@@ -315,7 +316,7 @@ const SHOTS = join(WORK, "shots");
 const MADE_FOLDER = join(WORK, "made-by-jarvis");
 const timers = () => {
   try {
-    return (JSON.parse(readFileSync(join(ROOT, ".operator-data", "jarvis-timers.json"), "utf8")).items ?? []) as Array<Record<string, any>>;
+    return (JSON.parse(readFileSync(join(dataDirFor(ROOT), "jarvis-timers.json"), "utf8")).items ?? []) as Array<Record<string, any>>;
   } catch {
     return [];
   }
@@ -1224,7 +1225,7 @@ async function main() {
   const file = flag("--json");
   if (file) writeFileSync(file, JSON.stringify({ summary, rows }, null, 2));
   // The latest full run is what "what can you do on my PC" reports (jarvis-skills/capabilities.ts).
-  if (!only.length) writeFileSync(join(ROOT, ".operator-data", "jarvis-e2e-last.json"), JSON.stringify({ at: summary.at, label: summary.label, rows: rows.map((r) => ({ id: r.id, say: r.say, ok: r.ok, ...(r.skipped ? { skipped: r.skipped } : {}), ms: r.ms })) }, null, 1));
+  if (!only.length) writeFileSync(join(dataDirFor(ROOT), "jarvis-e2e-last.json"), JSON.stringify({ at: summary.at, label: summary.label, rows: rows.map((r) => ({ id: r.id, say: r.say, ok: r.ok, ...(r.skipped ? { skipped: r.skipped } : {}), ms: r.ms })) }, null, 1));
 }
 void main()
   .catch((error) => console.error(error))

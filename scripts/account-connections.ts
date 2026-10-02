@@ -19,6 +19,7 @@ import {
 } from "./gmail-mailbox";
 import type { OperatorState, InboxItem, CalendarEvent } from "../src/lib/operator";
 import { bulkReason, type BulkInput } from "../src/lib/inbox-bulk";
+import { dataDirFor } from "./cloud/data-dir";
 export type AccountProvider = "google" | "outlook" | "cal";
 const providers: AccountProvider[] = ["google", "outlook", "cal"];
 const redirect = (p: AccountProvider) =>
@@ -171,7 +172,7 @@ export function accountConnections(
   options: { homeDir?: string } = {},
 ) {
   const slack = slackConnection(root, load, save, options);
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "accounts.json");
   const read = (): Partial<Record<AccountProvider, Account>> => {
     if (!existsSync(file)) return {};

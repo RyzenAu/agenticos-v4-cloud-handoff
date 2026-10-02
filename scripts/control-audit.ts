@@ -8,9 +8,10 @@
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { sanitizeAuditEntry, type AuditEntry } from "../src/lib/control-outcome";
+import { dataDirFor } from "./cloud/data-dir";
 
 export function auditDir(root: string, env: Record<string, string | undefined> = process.env) {
-  return env.JARVIS_AUDIT_DIR ? resolve(env.JARVIS_AUDIT_DIR) : join(root, ".operator-data", "audit");
+  return env.JARVIS_AUDIT_DIR ? resolve(env.JARVIS_AUDIT_DIR) : join(dataDirFor(root), "audit");
 }
 
 /** The Sydney calendar date (YYYY-MM-DD) of an ISO instant, DST-aware. Files are named by it so a

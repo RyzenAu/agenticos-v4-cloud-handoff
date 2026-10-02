@@ -159,3 +159,22 @@ describe("osm-hunt: one region/vertical, network fully mocked", () => {
     });
   }, 25_000);
 });
+
+describe("osm-hunt: the bulk pass never claims a checked absence", () => {
+  test("a lead with no site found carries no 'no website found (checked ...)' reason and is not-checked", async () => {
+    await withHunt(async (dir, db) => {
+      const elements = [{ type: "node", id: 9, lat: -33.8, lon: 151.0, tags: { name: "Nobody Dental", phone: "0299990009", "addr:housenumber": "5", "addr:street": "Test Street", "addr:suburb": "Testville", "addr:postcode": "2000" } }];
+      const request = (async (input: string | URL) => {
+        const url = String(input);
+        if (url.includes("overpass-api.de")) return new Response(JSON.stringify({ elements }), { headers: { "Content-Type": "application/json" } });
+        if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nDisallow: /\n"); // DuckDuckGo unusable
+        return new Response("down", { status: 503 }); // SearXNG, domain guesses
+      }) as typeof fetch;
+      await runHunt({ root: dir, db, request, regions: [HUNT_REGIONS[0]], verticals: ["dental"] });
+      const lead = findLead(db, "osm:node/9")!;
+      expect(lead.website).toBe("");
+      expect(lead.websiteCheck).toBe("not-checked");
+      expect(lead.reasons.join(" ")).not.toMatch(/no website found \(checked/i);
+    });
+  }, OVERPASS_PAUSE_TEST_MS);
+});

@@ -27,6 +27,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Direction, ShotId } from "./direction";
 import type { Vertical } from "../leads/places";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 export type AssetRole = ShotId | "film" | "fallback";
 
@@ -87,6 +88,9 @@ const STOP_AND_ASK_USD = 3;
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** The hub's loopback calls carry the local-owner token where this machine has one (server role); elsewhere no header is added. */
+const authedFetch = (url: string, init: RequestInit = {}) => fetch(url, { ...init, headers: { ...localOwnerHeaders(), ...((init.headers as Record<string, string>) ?? {}) } });
+
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timed out")), ms))]);
 }
@@ -96,7 +100,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 async function fetchDesignToken(baseUrl: string, tries = 3): Promise<string | null> {
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await withTimeout(fetch(`${baseUrl}/__token`, { signal: AbortSignal.timeout(20_000) }), 21_000);
+      const res = await withTimeout(authedFetch(`${baseUrl}/__token`, { signal: AbortSignal.timeout(20_000) }), 21_000);
       if (res.ok) {
         const data = (await res.json()) as { token?: string };
         if (data.token) return data.token;
@@ -111,7 +115,7 @@ async function fetchDesignToken(baseUrl: string, tries = 3): Promise<string | nu
 
 export async function checkHiggsfieldDevServer(baseUrl = DESIGN_SERVER): Promise<{ available: boolean; reason: string }> {
   try {
-    const res = await withTimeout(fetch(`${baseUrl}/__design_higgsfield_account/status`, { signal: AbortSignal.timeout(20_000) }), 21_000);
+    const res = await withTimeout(authedFetch(`${baseUrl}/__design_higgsfield_account/status`, { signal: AbortSignal.timeout(20_000) }), 21_000);
     if (!res.ok) return { available: false, reason: `Agentic OS dev server responded ${res.status} to a Higgsfield status check.` };
     const data = (await res.json()) as { ok?: boolean; connected?: boolean };
     if (!data.ok) return { available: false, reason: "Higgsfield status check failed on the Agentic OS dev server." };
@@ -184,7 +188,7 @@ type ModelPrice = { unit: string; costUsd: number };
 
 async function livePrices(baseUrl: string, token: string): Promise<Record<string, ModelPrice>> {
   try {
-    const res = await fetch(`${baseUrl}/__design_models?engine=higgsfield`, { headers: { "X-Claude-OS-Token": token }, signal: AbortSignal.timeout(20_000) });
+    const res = await authedFetch(`${baseUrl}/__design_models?engine=higgsfield`, { headers: { "X-Claude-OS-Token": token }, signal: AbortSignal.timeout(20_000) });
     const data = (await res.json()) as { models?: { id: string; pricing?: { unit: string; costUsd: number }[] }[] };
     const out: Record<string, ModelPrice> = {};
     for (const m of data.models ?? []) if (m.pricing?.[0]) out[m.id] = { unit: m.pricing[0].unit, costUsd: m.pricing[0].costUsd };
@@ -239,7 +243,7 @@ function devServerGenerator(baseUrl: string, opts: { generationsDir?: string; po
     const since = Date.now();
     const jobId = `site-draft-${since}-${Math.random().toString(36).slice(2, 10)}`;
     try {
-      const res = await fetch(`${baseUrl}/__design_generate`, {
+      const res = await authedFetch(`${baseUrl}/__design_generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Claude-OS-Token": token },
         body: JSON.stringify({ engine: "higgsfield", model, kind, count: 1, params, prompt, jobId, engineLabel: "Higgsfield", modelLabel: model, ...(references?.length ? { references } : {}) }),
@@ -258,7 +262,7 @@ function devServerGenerator(baseUrl: string, opts: { generationsDir?: string; po
         if (saved) return saved;
         let active = true;
         try {
-          const jobs = (await (await fetch(`${baseUrl}/__design_jobs`, { signal: AbortSignal.timeout(5000) })).json()) as { jobs?: { id: string }[] };
+          const jobs = (await (await authedFetch(`${baseUrl}/__design_jobs`, { signal: AbortSignal.timeout(5000) })).json()) as { jobs?: { id: string }[] };
           active = Boolean(jobs.jobs?.some((j) => j.id === jobId));
         } catch {
           /* server busy; keep waiting until the deadline */
@@ -271,7 +275,7 @@ function devServerGenerator(baseUrl: string, opts: { generationsDir?: string; po
           // name the request so the owner can fetch the output from the Higgsfield console.
           let orphan = "";
           try {
-            const ledger = (await (await fetch(`${baseUrl}/__design_higgsfield_requests`, { signal: AbortSignal.timeout(8000) })).json()) as { requests?: { requestId: string; model: string; status: string; updatedAt: number }[] };
+            const ledger = (await (await authedFetch(`${baseUrl}/__design_higgsfield_requests`, { signal: AbortSignal.timeout(8000) })).json()) as { requests?: { requestId: string; model: string; status: string; updatedAt: number }[] };
             const hit = ledger.requests?.find((r) => r.model === model && r.updatedAt >= since && r.status === "accepted");
             if (hit) orphan = ` Higgsfield accepted request ${hit.requestId} (likely billed); its output can be downloaded from the Higgsfield console.`;
           } catch {

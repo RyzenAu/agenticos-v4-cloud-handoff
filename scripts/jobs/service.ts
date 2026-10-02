@@ -209,7 +209,7 @@ export type Execution = {
    * waiting for the person's answer), `handed-off` (it passed the request to another tool; nothing ran here,
    * recorded as succeeded with the note). Never used after a stop.
    */
-  settle?: "awaiting-approval" | "handed-off";
+  settle?: "awaiting-approval" | "handed-off" | "unknown";
   /** `ok: false` after a stop: the note to record instead of "Stopped on request." (e.g. "a step may still finish"). */
   stopNote?: string;
 };
@@ -555,6 +555,8 @@ export class JobService {
         (to = "cancelled"), (note = entry.settledLate ? "Stopped late: it didn't settle within the grace period after the stop." : (result.stopNote ?? "Stopped on request."));
       else if (result.settle === "awaiting-approval") (to = "awaiting-approval"), (note = result.note);
       else if (result.settle === "handed-off") (to = "succeeded"), (note = result.note ?? "Handed off to another tool; nothing ran here.");
+      // It may or may not have happened (a device dropped after the command was delivered): never "failed", never retried.
+      else if (result.settle === "unknown") (to = "unknown"), (note = result.note ?? "The outcome is unknown.");
       else (to = result.ok ? "succeeded" : "failed"), (note = result.note);
     } catch (error) {
       if ((error as Error)?.name === "ChildTerminationUnverified" || (error as Error)?.message === "Child termination not verified")

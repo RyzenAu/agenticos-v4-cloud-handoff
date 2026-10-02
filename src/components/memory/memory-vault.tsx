@@ -35,6 +35,7 @@ import {
   type StatusView,
 } from "./client";
 import { fmtDateTime, fmtDay as formatDay, fmtTime } from "@/lib/format";
+import { MemoryBrowser } from "./memory-browser";
 
 const fmtDay = (iso: string) => formatDay(new Date(iso), { year: true });
 const fmtClock = (iso: string | null | undefined) => (iso ? fmtTime(new Date(iso), { seconds: true }) : "unknown");
@@ -63,6 +64,14 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
   const [showSuperseded, setShowSuperseded] = useState(false);
   const [rows, setRows] = useState<MemoryRow[] | null>(null);
   const [detail, setDetail] = useState<MemoryItemDetail | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
+  const detailRequest = useRef(0);
+  const closeDetail = useCallback(() => {
+    detailRequest.current++;
+    setOpening(null);
+    setDetail(null);
+  }, []);
+  useEffect(() => () => { detailRequest.current++; }, [client]);
   const [error, setError] = useState<string | null>(null);
   /** A failed status or items fetch is shown as failed, never as empty or current (REVIEW-STAGE-D S3). */
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -112,9 +121,19 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
 
   const open = useCallback(
     async (itemId: string) => {
-      const r = await client.item(itemId).catch(() => null);
-      setDetail(r);
-      if (!r) setNotice({ tone: "warn", text: "That item is no longer available. It may have been forgotten." });
+      const request = ++detailRequest.current;
+      setOpening(itemId);
+      setDetail(null);
+      try {
+        const r = await client.item(itemId);
+        if (request !== detailRequest.current) return;
+        setDetail(r);
+        if (!r) setNotice({ tone: "warn", text: "That item is no longer available. It may have been forgotten." });
+      } catch (e) {
+        if (request === detailRequest.current) setNotice({ tone: "danger", text: `Couldn't load this memory. Try opening it again. ${(e as Error).message}` });
+      } finally {
+        if (request === detailRequest.current) setOpening(null);
+      }
     },
     [client],
   );
@@ -126,6 +145,13 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
     setSyncing(true);
     try {
       const r = await client.sync();
+      // A structured refusal (not signed in, sync already running, vault unavailable) arrives as { ok: false, message }
+      // rather than a throw. It used to fall through here and Sync now looked like it did nothing.
+      const refused = r as unknown as { ok?: boolean; message?: string; error?: string; code?: string };
+      if (refused.ok === false) {
+        setNotice({ tone: "danger", text: refused.message || refused.error || `Sync was refused${refused.code ? ` (${refused.code})` : ""}. Try again in a moment.` });
+        return;
+      }
       setStatus((s) => (s ? { ...s, ...r.status } : s));
       refresh();
     } catch (e) {
@@ -209,7 +235,7 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
         onSubmit={(e) => {
           e.preventDefault();
           setActiveQuery(query.trim());
-          setDetail(null);
+          closeDetail();
         }}
         className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center"
       >
@@ -237,7 +263,7 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
       </form>
 
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <Segmented ariaLabel="Show" value={kind} options={KIND_OPTIONS} onChange={(v) => (setKind(v), setDetail(null))} />
+        <Segmented ariaLabel="Show" value={kind} options={KIND_OPTIONS} onChange={(v) => (setKind(v), closeDetail())} />
         <label className="flex min-h-11 cursor-pointer items-center gap-2 whitespace-nowrap text-sm text-muted-foreground">
           <input type="checkbox" className="size-4 accent-current" checked={showSuperseded} onChange={(e) => setShowSuperseded(e.target.checked)} />
           Show superseded
@@ -245,7 +271,7 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <section aria-label={activeQuery ? `Results for ${activeQuery}` : "Memory items"} className={cn("min-w-0", detail && "hidden lg:block")}>
+        <section aria-label={activeQuery ? `Results for ${activeQuery}` : "Memory items"} className={cn("min-w-0", (detail || opening) && "hidden lg:block")}>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">
             {activeQuery ? `Results for “${activeQuery}”` : "Latest"}
             {rows && <span className="ml-1.5 normal-case tracking-normal">({rows.length})</span>}
@@ -285,24 +311,18 @@ export function MemoryVault({ client: injected, initialRef, className }: { clien
               )}
             </Surface>
           ) : (
-            <ul className="space-y-3">
-              {rows.map((row) => (
-                <li key={`${row.id}:${row.status}`}>
-                  <Row row={row} selected={row.id === selected} onOpen={() => open(row.id)} />
-                </li>
-              ))}
-            </ul>
+            <MemoryBrowser rows={rows} renderRow={(row) => <Row row={row} selected={row.id === selected} onOpen={() => open(row.id)} />} />
           )}
         </section>
 
-        <aside aria-label="Item detail" className={cn("min-w-0", !detail && "hidden lg:block")}>
-          {detail ? (
+        <aside aria-label="Item detail" className={cn("min-w-0", !detail && !opening && "hidden lg:block")}>
+          {opening ? <div><Button variant="ghost" onClick={closeDetail}><ArrowLeft className="size-4" aria-hidden />Back to memory</Button><p className="mt-4 text-sm text-muted-foreground" role="status" aria-busy="true">Loading memory…</p></div> : detail ? (
             <Detail
               detail={detail}
               client={client}
               writes={status?.settings.writes ?? false}
               hindsightOn={status?.settings.hindsight_enabled ?? true}
-              onBack={() => setDetail(null)}
+              onBack={closeDetail}
               onOpen={open}
               onChanged={(n, nextId) => {
                 setNotice(n);

@@ -23,6 +23,7 @@ import {
   localLinkTargets, mobileRenderCheck, overallPass, reducedMotionCheck, robotsCheck, tenTellsChecklist,
   type CheckResult, type FileEntry, type PageWeight, type SiteMode,
 } from "./checks";
+import { dataDirFor } from "../cloud/data-dir";
 
 const TEXT_EXT = new Set([".html", ".htm"]);
 const CSS_EXT = new Set([".css"]);
@@ -30,7 +31,7 @@ const ASSET_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".j
 const SKIP_DIRS = new Set(["node_modules", ".git", ".vercel"]);
 
 export function qaDir(root: string) {
-  return join(root, ".operator-data", "qa");
+  return join(dataDirFor(root), "qa");
 }
 export function qaReportBase(root: string, slug: string, date: string) {
   return join(qaDir(root), `${slug}-${date}`);

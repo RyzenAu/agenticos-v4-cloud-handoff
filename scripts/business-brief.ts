@@ -7,6 +7,7 @@ import type { BriefHighlight } from "./business-brief-highlights";
 import { rankBriefInbox } from "./business-brief-ranking";
 import { goalPeriodState, validGoalPeriod } from "../src/lib/goal-periods";
 import { audienceMeasurementIdentity } from "../src/lib/audience-measurement";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type BriefSource = { label: string; ref?: string; recordedAt?: string };
 export type BriefSection = { id: string; title: string; body: string; bullets?: string[]; sources: BriefSource[] };
@@ -108,7 +109,7 @@ function priorityActions(brief: Pick<DailyBrief, "date" | "timezone" | "prioriti
 const withActions = (brief: DailyBrief): DailyBrief => ({ ...brief, priorityActions: priorityActions(brief) });
 
 export function businessBrief(root: string, mode: "live" | "demo" = "live") {
-  const directory = join(root, ".operator-data"), file = join(directory, mode === "demo" ? "business-brief-demo.json" : "business-brief.json");
+  const directory = join(dataDirFor(root)), file = join(directory, mode === "demo" ? "business-brief-demo.json" : "business-brief.json");
   const blank = () => ({ briefs: [] as DailyBrief[], schedule: { enabled: false, hour: 7, minute: 0, timezone: defaultZone(), managedBy: "Codex automation" } as BriefSchedule });
   const state = () => {
     if (!existsSync(file)) return blank();
@@ -435,7 +436,7 @@ export function briefGeneratorName(generator: BriefGenerator, provider?: string)
 }
 
 export function briefModelSettings(root: string) {
-  const directory = join(root, ".operator-data"), file = join(directory, "business-brief-settings.json");
+  const directory = join(dataDirFor(root)), file = join(directory, "business-brief-settings.json");
   const read = (): { model: BriefModelChoice | null } => {
     try {
       const saved = load(file).data.model;

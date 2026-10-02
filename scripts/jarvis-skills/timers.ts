@@ -23,6 +23,7 @@ import {
   type Meridiem,
 } from "./text";
 import { MIN_TASK_HORIZON_MS, type ReminderTaskHost } from "../windows/reminder-tasks";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type TimerKind = "timer" | "alarm" | "reminder";
 export type ClockSpec = { hour: number; minute: number; day: "today" | "tomorrow" | null };
@@ -259,7 +260,7 @@ export function createScheduler(root: string, options: SchedulerOptions) {
   const setTimer = options.setTimer ?? setTimeout;
   const clearTimer = options.clearTimer ?? clearTimeout;
   const tasks = options.tasks;
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   const file = join(directory, "jarvis-timers.json");
   let armed: ReturnType<typeof setTimeout> | undefined;
   let closed = false;

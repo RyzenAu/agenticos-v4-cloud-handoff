@@ -248,7 +248,7 @@ export function BrainConverse({
                 </div>
               ) : (
                 <div>
-                  <div className="text-[11px] uppercase tracking-[0.22em] mb-1" style={{ color: `${ACCENT}b0` }}>from your memory</div>
+                  <div className="text-xs mb-1" style={{ color: `${ACCENT}b0` }}>from your memory</div>
                   <div className="text-[13px] leading-relaxed text-foreground/90 whitespace-pre-wrap">{t.text}</div>
                   {t.sources && t.sources.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -257,7 +257,7 @@ export function BrainConverse({
                           key={s}
                           onClick={() => onOpenNode(s)}
                           title="Open this memory"
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors hover:brightness-125"
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors hover:brightness-125"
                           style={{ background: `${ACCENT}12`, border: `1px solid ${ACCENT}3a`, color: "#c9efe2" }}
                         >
                           <FileText className="h-3 w-3" style={{ color: ACCENT }} />
@@ -272,11 +272,11 @@ export function BrainConverse({
           ))}
           {busy && (
             <div className="self-start max-w-[92%]">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] mb-1" style={{ color: `${ACCENT}b0` }}>
+              <div className="flex items-center gap-2 text-xs mb-1" style={{ color: `${ACCENT}b0` }}>
                 <Loader2 className="h-3 w-3 animate-spin" style={{ color: ACCENT }} />
                 reading your memory
               </div>
-              {streamTail && <div className="text-[12.5px] leading-relaxed text-foreground/45 whitespace-pre-wrap">…{streamTail}</div>}
+              {streamTail && <div className="text-xs leading-relaxed text-foreground/45 whitespace-pre-wrap">…{streamTail}</div>}
             </div>
           )}
         </div>

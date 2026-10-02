@@ -21,7 +21,7 @@ export type BrowserSkillRequest = {
   query?: string;
   dir?: "up" | "down";
   target?: string;
-  /** "Search Google for X and open the first result": the search is done, the click is not (said plainly, J4). */
+  /** Request continuation through the existing screen-control loop after search succeeds. */
   firstResult?: boolean;
 };
 /** Actions on the page in front (Jarvis Chrome must be what he's looking at; otherwise it's his own window). */
@@ -120,7 +120,7 @@ export function browserSkillIntent(utterance: string, options: { sharing?: boole
   if (m) for (const [re, url, name] of WEB_APPS) if (re.test(m[1])) return q("open", { url, name });
   // A compound — "…and play the first video, then pause it" — is a multi-step job: not a single search here.
   const single = (words: string) => !/\b(?:and|then)\s+(?:play|click|open|pause|watch|tap|press|stop|skip|like|subscribe)\b|,\s*then\b/.test(words);
-  // "Search Google for dentists and open the first result": the search is done; the click isn't, and he's told so plainly.
+  // Keep the requested follow-up so voice can continue from search to the first result.
   m = l.match(/^(?:search|look up|google)\s+(?:(?:on\s+)?google\s+)?(?:for\s+)?(.{2,120}?)\s+(?:and|then)\s+(?:open|click|go to|pick|select|choose)\s+(?:on\s+)?(?:the\s+)?(?:first|top|1st)\s+(?:result|link|one|hit|page)$/);
   if (m && webQuery(m[1])) return q("search", { engine: "google", query: webQuery(m[1])!, firstResult: true });
   // Searches: "search Google for X", "google X", "do a google search for X", "find X on Google", "can you look up X on Google".

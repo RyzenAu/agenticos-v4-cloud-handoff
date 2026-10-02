@@ -90,7 +90,12 @@ function changed() {
   cached = null;
   const snap = readPageContext();
   for (const l of listeners) l(snap);
-  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-context:change", { detail: { version } }));
+  // Best effort: listeners above already have the snapshot; a DOM that refuses the event must not break the caller.
+  try {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-context:change", { detail: { version } }));
+  } catch {
+    /* no window listeners this time */
+  }
 }
 
 /**

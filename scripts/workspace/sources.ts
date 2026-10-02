@@ -24,13 +24,16 @@ import { projectCallQueue, projectEmail, projectPipeline, projectReceptionist, t
 import { createSiteChecker, type SitesPanel } from "./sites";
 import { needsYouFrom, type NeedsYouPanel } from "./needs-you";
 import { projectSpeedToLead } from "../speed-to-lead/panel";
+import { applyDecisions, decisionRevision, readDecisions, type DecisionRecord } from "./decisions";
 import type { EnquiryRecord } from "../speed-to-lead/store";
 import type { EnquiryPanel } from "../../src/lib/speed-to-lead";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 export type TodayPanel = {
   now: string;
   callingWindow: CallingWindowStatus;
   approvals: Approval[];
+  decisions?: DecisionRecord[];
   /** Approval-file problems (bad items are skipped, never shown half-valid). */
   approvalsErrors: string[];
   /** Set when live receptionist gates couldn't be read (file items still show). */
@@ -75,7 +78,7 @@ export type GetJson = (path: string, signal: AbortSignal) => Promise<any>;
 /** A GET against this server's own loopback API. Non-2xx and non-JSON replies become errors. */
 export function loopbackJson(origin: () => string, f: typeof fetch = fetch): GetJson {
   return async (path, signal) => {
-    const res = await f(`${origin()}${path}`, { signal, headers: { Accept: "application/json" } });
+    const res = await f(`${origin()}${path}`, { signal, headers: { Accept: "application/json", ...localOwnerHeaders() } });
     const type = res.headers.get("content-type") ?? "";
     if (!type.includes("application/json")) throw new Error(`${path.split("?")[0]} answered without JSON (HTTP ${res.status})`);
     const body = await res.json();
@@ -87,6 +90,7 @@ export function loopbackJson(origin: () => string, f: typeof fetch = fetch): Get
 export type WorkspaceDeps = {
   get: GetJson;
   approvalsFile: string;
+  decisionsFile?: string;
   sites?: { check(force?: boolean): Promise<SitesPanel> };
   /** Open speed-to-lead enquiries (read-only). Absent: the panel reports it isn't connected. */
   enquiries?: () => EnquiryRecord[];
@@ -185,7 +189,8 @@ export function createWorkspace(deps: WorkspaceDeps) {
       return {
         now: new Date(now()).toISOString(),
         callingWindow: callingWindowStatus(new Date(now())),
-        approvals: mergeApprovals(file.items, readiness.ok ? readiness.data?.readiness ?? null : null),
+        approvals: mergeApprovals(applyDecisions(file.items, deps.decisionsFile ? readDecisions(deps.decisionsFile) : []).map(item => ({ ...item, recordable: true, revision: decisionRevision(item) })), readiness.ok ? readiness.data?.readiness ?? null : null),
+        decisions: deps.decisionsFile ? readDecisions(deps.decisionsFile) : [],
         // An expired item left the waiting count; say so, so it gets closed or renewed (UI-truth M6).
         approvalsErrors: [...file.errors, ...file.expired.map((x) => `"${x.title}" expired unreviewed on ${x.expiredOn}: mark it done or decided, or renew it with a later expires date`)],
         derivedError: readiness.ok ? null : `Receptionist gates unavailable: ${readiness.error}`,

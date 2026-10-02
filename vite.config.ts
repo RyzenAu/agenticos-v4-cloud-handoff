@@ -16,11 +16,16 @@ import { previewGuard } from "./scripts/preview-guard";
 import { founderMayRead as founderMayReadFor, identityGatePlugin, pageTokenMatches, requestAtHub, requestPrincipal } from "./scripts/identity/gate";
 import { commandsPlugin } from "./scripts/commands/plugin";
 import { devRestartPolicy } from "./scripts/dev-restart-policy";
-import { lucideSubset, routeReferenceMaps } from "./scripts/dev-page-weight";
+import { appSourceMapsOff, lucideSubset, routeReferenceMaps } from "./scripts/dev-page-weight";
 import { operatorPlugin, filterWorkspaceMemory } from "./scripts/operator-plugin";
 import { websiteOSPlugin } from "./scripts/website-os-plugin";
 import { siteDraftPlugin } from "./scripts/site-draft/plugin";
 import { leadSitesPlugin } from "./scripts/lead-sites/plugin";
+import { handleDesignPublish } from "./scripts/design-publish";
+import { harnessFakePublish } from "./scripts/harness/fake-publish";
+import { jobsRuntime } from "./scripts/jobs/runtime";
+import { personNotifier } from "./scripts/approvals/notify";
+import { previewOriginPlugin } from "./scripts/lead-sites/preview-origin";
 import { seoAuditFilesPlugin } from "./scripts/leads/seo-audit-files-plugin";
 import { aiUsagePlugin } from "./scripts/ai-usage/plugin";
 import { receptionistPlugin } from "./scripts/receptionist/plugin";
@@ -169,6 +174,11 @@ import {
 // "anthropic". Same module as the browser uses, so client and server can never
 // disagree about who is being billed.
 import { laneFor, usageLaneLabel, type Lane } from "./src/lib/model-lane";
+import { dataDirFor } from "./scripts/cloud/data-dir";
+import { hubRole, hubRolePlugin } from "./scripts/cloud/hub-role";
+import { publicDirIndexPlugin } from "./scripts/public-dir-index";
+import { healthPlugin } from "./scripts/cloud/health";
+import { dependencyMonitorPlugin, hubDependencyMonitor } from "./scripts/ops/monitor-plugin";
 
 // ── Cross-platform binary resolution (Windows support) ──
 // The Hermes page probes for the hermes / graphify CLIs and a venv Python. On
@@ -214,7 +224,7 @@ const runAggregate = () => aggregator.run();
 // 0.8 s timeouts, so the Hermes page waited and then showed nothing (or a made-up version). Now
 // each is a last-known value: the request answers at once from memory or disk and the CLI runs in
 // the background (one at a time, killed with its children if it hangs). The version needs no CLI.
-const hermesCliCache = join(__dirname, ".operator-data", "cache");
+const hermesCliCache = join(dataDirFor(__dirname), "cache");
 async function hermesCliText(args: string[], timeout: number): Promise<string> {
   const bin = resolveCliBin("hermes");
   if (!bin) throw new Error("hermes is not installed");
@@ -1219,6 +1229,8 @@ async function listRecentSessions(
 // user lands on the preset's default 8080, the sidecar refuses CORS and "Activate now" /
 // "Run this fix" silently fail. Override here, with strictPort so a port collision fails
 // loudly instead of drifting to 8082.
+const hubMonitor = hubDependencyMonitor(__dirname);
+
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
@@ -1242,9 +1254,21 @@ export default defineConfig({
       // up once, async, at startup; requests arriving before that lands wait for it instead of each
       // running a blocking `where` / `tailscale status` / `git status`. Before the identity gate.
       startupGatePlugin(() => Promise.all([cliBinsWarm, primeOwnTailnetName(), versionInfo()])),
+      // Remote lead-site previews: the hub's tailnet name on MU_PREVIEW_ORIGIN_PORT (default 8445, a second Tailscale
+      // Serve mapping to this same listener) is a preview origin. It authenticates with the gate's own identity
+      // functions and answers every request on that Host itself, so it sits just before the gate (preview-origin.ts).
+      previewOriginPlugin({ root: __dirname }),
       // Stage B1: the ONE identity contract (scripts/identity). Every /__* route answers 401 without a
       // verified principal; remote callers get person-bound page tokens, never REFRESH_TOKEN.
       identityGatePlugin({ root: __dirname, internalToken: () => REFRESH_TOKEN }),
+      // A public/ directory with an index.html is served at /dir/ and /dir (the router answered /dir/ with a 307 to a 404).
+      publicDirIndexPlugin(resolve(__dirname, "public"), resolve(__dirname, "src", "routes")),
+      // Cloud mode (MU_HUB_ROLE=cloud): PC-only routes answer "runs on your PC, needs the companion" (a pass-through on the PC).
+      hubRolePlugin(),
+      // GET /__health: per-component status with recovery hints, no secrets (scripts/cloud/health.ts).
+      healthPlugin({ root: __dirname, dependencies: () => hubMonitor.snapshot() }),
+      // Startup health check and slow monitor for SearXNG, Hindsight, companions and model routes: bounded retry, one alert per change.
+      dependencyMonitorPlugin(__dirname, hubMonitor),
       {
         // The "Hey Jarvis" wake word loads onnxruntime-web's WASM runtime from /ort/.
         // Served straight from the installed package so it can never drift out of step
@@ -1275,7 +1299,7 @@ export default defineConfig({
       }),
       websiteOSPlugin(),
       siteDraftPlugin({ root: __dirname, token: REFRESH_TOKEN }),
-      leadSitesPlugin({ root: __dirname, token: REFRESH_TOKEN }),
+      leadSitesPlugin({ root: __dirname, token: REFRESH_TOKEN, deps: harnessFakePublish()?.leadSites }),
       seoAuditFilesPlugin({ root: __dirname }),
       aiUsagePlugin({ root: __dirname, token: REFRESH_TOKEN, providerKey: (name) => providerKey(__dirname, name) }),
       // Finance destination: NAB CSV import + owner-scoped aggregates (w2/finance).
@@ -9464,25 +9488,7 @@ export default defineConfig({
           // which prerequisite is missing, so the button is always pressable
           // and the answer is always specific. Only slides with a finished
           // render publish — backgrounds are never a substitute for the deck.
-          const BLOTATO_API = "https://backend.blotato.com/v2";
-          async function blotatoFetch(key: string, path: string, init?: RequestInit) {
-            const r = await fetch(`${BLOTATO_API}${path}`, {
-              ...init,
-              headers: {
-                "blotato-api-key": key,
-                "Content-Type": "application/json",
-                ...(init?.headers ?? {}),
-              },
-            });
-            const body = await r.text();
-            let json: any = null;
-            try {
-              json = JSON.parse(body);
-            } catch {
-              /* non-JSON error body */
-            }
-            return { status: r.status, ok: r.ok, json, body };
-          }
+          // The staged route itself (stages, approval in the server role, fake Blotato for tests) is scripts/design-publish.ts.
           server.middlewares.use("/__design_publish", (req, res, next) => {
             if (req.method !== "POST") return next();
             res.setHeader("Content-Type", "application/json");
@@ -9493,131 +9499,19 @@ export default defineConfig({
             }
             withJsonBody(req, res, 64_000, async (body) => {
               try {
-                const parsed = JSON.parse(body || "{}");
-                const carouselId = String(parsed.carouselId ?? "");
-                const platforms: string[] = Array.isArray(parsed.platforms)
-                  ? parsed.platforms.map(String)
-                  : [];
-                const caption = typeof parsed.caption === "string" ? parsed.caption : "";
-                if (!carouselId || !platforms.length) {
-                  res.statusCode = 400;
-                  res.end(
-                    JSON.stringify({ ok: false, error: "expected { carouselId, platforms }" }),
-                  );
-                  return;
-                }
-                const key = designApiKey("blotato");
-                if (!key) {
-                  res.statusCode = 428;
-                  res.end(
-                    JSON.stringify({ ok: false, stage: "key", error: "no Blotato key connected" }),
-                  );
-                  return;
-                }
-                const doc: any = (readCarousels() as any[]).find((c) => c?.id === carouselId);
-                if (!doc) {
-                  res.statusCode = 404;
-                  res.end(JSON.stringify({ ok: false, error: "carousel not found" }));
-                  return;
-                }
-                const renders: string[] = (doc.slides ?? [])
-                  .map((sl: any) => sl?.render)
-                  .filter((r2: unknown) => typeof r2 === "string" && existsSync(r2 as string));
-                if (renders.length !== (doc.slides ?? []).length || !renders.length) {
-                  res.statusCode = 409;
-                  res.end(
-                    JSON.stringify({
-                      ok: false,
-                      stage: "render",
-                      error:
-                        "this deck's type is still live HTML — no finished renders to post yet",
-                    }),
-                  );
-                  return;
-                }
-                // Stage: who's connected on the account.
-                const accounts = await blotatoFetch(key, "/users/me/accounts");
-                if (!accounts.ok) {
-                  res.statusCode = 502;
-                  res.end(
-                    JSON.stringify({
-                      ok: false,
-                      stage: "accounts",
-                      error: `Blotato accounts lookup failed (${accounts.status}): ${accounts.body.slice(0, 180)}`,
-                    }),
-                  );
-                  return;
-                }
-                const accountList: any[] = Array.isArray(accounts.json?.items)
-                  ? accounts.json.items
-                  : Array.isArray(accounts.json)
-                    ? accounts.json
-                    : [];
-                // Stage: media up. Local renders travel as data URLs.
-                const mediaUrls: string[] = [];
-                for (const file of renders) {
-                  const b64 = readFileSync(file).toString("base64");
-                  const up = await blotatoFetch(key, "/media", {
-                    method: "POST",
-                    body: JSON.stringify({ url: `data:image/png;base64,${b64}` }),
-                  });
-                  const url = up.json?.url ?? up.json?.publicUrl;
-                  if (!up.ok || !url) {
-                    res.statusCode = 502;
-                    res.end(
-                      JSON.stringify({
-                        ok: false,
-                        stage: "media",
-                        error: `slide upload failed (${up.status}): ${up.body.slice(0, 180)}`,
-                      }),
-                    );
-                    return;
-                  }
-                  mediaUrls.push(String(url));
-                }
-                // Stage: one post per selected platform that has an account.
-                const results: Array<{ platform: string; ok: boolean; detail: string }> = [];
-                for (const platform of platforms) {
-                  const account = accountList.find(
-                    (a) =>
-                      String(a?.platform ?? a?.targetType ?? "").toLowerCase() ===
-                      platform.toLowerCase(),
-                  );
-                  if (!account) {
-                    results.push({
-                      platform,
-                      ok: false,
-                      detail: "no account connected in Blotato",
-                    });
-                    continue;
-                  }
-                  const post = await blotatoFetch(key, "/posts", {
-                    method: "POST",
-                    body: JSON.stringify({
-                      post: {
-                        accountId: account.id,
-                        target: { targetType: platform.toLowerCase() },
-                        content: {
-                          text: caption || doc.name,
-                          mediaUrls,
-                          platform: platform.toLowerCase(),
-                        },
-                      },
-                    }),
-                  });
-                  results.push({
-                    platform,
-                    ok: post.ok,
-                    detail: post.ok ? "queued" : `${post.status}: ${post.body.slice(0, 140)}`,
-                  });
-                }
-                res.end(
-                  JSON.stringify({
-                    ok: results.some((r2) => r2.ok),
-                    results,
-                    mediaUrls: mediaUrls.length,
-                  }),
+                const fake = harnessFakePublish();
+                const reply = await handleDesignPublish(
+                  {
+                    body: JSON.parse(body || "{}"),
+                    approvalMode: hubRole() === "server",
+                    requester: requestPrincipal(req, { root: __dirname }),
+                    approvals: () => jobsRuntime(__dirname).approvals,
+                    notify: (personId, text) => personNotifier(__dirname)(personId, text),
+                  },
+                  { blotatoKey: fake ? fake.blotatoKey : () => designApiKey("blotato"), readCarousels, blotato: fake?.blotato },
                 );
+                res.statusCode = reply.status;
+                res.end(JSON.stringify(reply.body));
               } catch (e: any) {
                 res.statusCode = 500;
                 res.end(JSON.stringify({ ok: false, error: e?.message ?? String(e) }));
@@ -15904,6 +15798,7 @@ export default defineConfig({
       // stubs stop inlining their full source as a source map (design.tsx sent ~525 KB per page).
       lucideSubset({ root: __dirname }),
       routeReferenceMaps({ root: __dirname }),
+      appSourceMapsOff({ root: __dirname }),
       // Audit F5 P2-2: an unmatched /__* request (wrong method, unknown sub-path) gets a JSON 404,
       // or 405 with Allow, instead of falling through to the app's HTML 404. Mounted after every
       // other route (order: "post"), before Vite's own middlewares and the page renderer.

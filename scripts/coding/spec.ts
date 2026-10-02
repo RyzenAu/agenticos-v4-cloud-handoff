@@ -4,6 +4,7 @@ import { catalogueTask } from "../model-router/catalogue";
 import type {
   AgentBinding,
   ApprovalPoint,
+  ClaudeAccountSlot,
   ClaudeModelId,
   CodexModelId,
   CommandId,
@@ -16,6 +17,7 @@ import type {
   RepoRegistry,
   RepoRegistryEntry,
   RoleAssignment,
+  RoleChoice,
   RoleId,
   RoleLimits,
   RoleTemplate,
@@ -33,7 +35,19 @@ import { git, jobBranchName, resolveBaseSha } from "./worktree";
  * involved here: Jev and the planner PROPOSE; this code decides whether a spec may be confirmed.
  */
 
-export const CLAUDE_MODELS: readonly ClaudeModelId[] = ["claude-opus-5-5", "claude-sonnet-5", "claude-fable-5-1", "claude-haiku-4-5"];
+/** Every Claude id a binding may carry (a stored job's legacy id stays valid). */
+export const CLAUDE_MODELS: readonly ClaudeModelId[] = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-sonnet-5", "claude-fable-5-1", "claude-haiku-4-5"];
+/** Ids that still run but are not what new work is bound to. A stored job keeps its own id (never silently rewritten). */
+export const LEGACY_CLAUDE_MODELS: Readonly<Partial<Record<ClaudeModelId, ClaudeModelId>>> = { "claude-sonnet-5": "claude-sonnet-5-5" };
+/** What the owner may pick for new work: no legacy aliases. */
+export const CLAUDE_MODELS_OFFERED: readonly ClaudeModelId[] = CLAUDE_MODELS.filter((m) => !LEGACY_CLAUDE_MODELS[m]);
+/** The id new work should use for a model id (a legacy alias maps to its current one). */
+export const currentClaudeModel = (id: ClaudeModelId): ClaudeModelId => LEGACY_CLAUDE_MODELS[id] ?? id;
+/** Requested vs reported: equal, ignoring a dated snapshot suffix (claude-haiku-4-5-20251001 = claude-haiku-4-5). */
+export const sameClaudeModel = (requested: string, reported: string) => {
+  const norm = (x: string) => x.replace(/-\d{8}$/, "");
+  return norm(requested) === norm(reported);
+};
 /** The native Codex 0.154.0 catalogue (verified 27 Sep; gpt-6-sol is NOT native, only via Hermes). */
 export const CODEX_MODELS: readonly CodexModelId[] = ["gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"];
 export const ROUTER_TASK = "coding.router";
@@ -50,8 +64,9 @@ export function specDigest(spec: TaskSpec): Digest {
 export const slugOf = (text: string) =>
   text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").split("-").filter(Boolean).slice(0, 5).join("-").slice(0, 36) || "job";
 
-export function claudeBinding(model: ClaudeModelId, cliVersion: string): AgentBinding {
-  return { provider: "anthropic", route: "claude-code-cli", accountSlot: "claude:max", model, cliVersion };
+/** A Claude role on one account. The slot is fixed for the run; "claude:max" is the original (default) login. */
+export function claudeBinding(model: ClaudeModelId, cliVersion: string, slot: ClaudeAccountSlot = "claude:max"): AgentBinding {
+  return { provider: "anthropic", route: "claude-code-cli", accountSlot: slot, model, cliVersion };
 }
 export function codexBinding(model: CodexModelId, slot: "codex:openai-1" | "codex:openai-2" | "codex:openai-3", cliVersion: string, effort: "low" | "medium" | "high" = "medium"): AgentBinding {
   return { provider: "openai", route: "codex-app-server", accountSlot: slot, model, reasoningEffort: effort, cliVersion };
@@ -78,6 +93,7 @@ export type DraftInput = {
   approvalPoints?: ApprovalPoint[];
   dataClass?: "synthetic" | "business-internal";
   jev?: JevShapingRecord | null;
+  roleChoices?: readonly RoleChoice[];
   planner?: TaskSpec["planner"];
   now?: () => Date;
   id?: Uuid;
@@ -124,13 +140,14 @@ export function draftSpec(input: DraftInput): TaskSpec {
     dataClass: input.dataClass ?? "business-internal",
     jobLimits: { maxWallMinutes: 120, maxConcurrentAgents: 3 },
     jev: input.jev ?? null,
+    ...(input.roleChoices?.length ? { roleChoices: input.roleChoices } : {}),
     planner: input.planner ?? null,
     confirmation: { state: "unconfirmed" },
   };
 }
 
 /** An edit before confirmation: a new revision (approvals bound to the old digest are void). */
-export function reviseSpec(spec: TaskSpec, patch: Partial<Pick<TaskSpec, "objective" | "doneWhen" | "roles" | "checks" | "nonGoals" | "roleTemplate">>): TaskSpec {
+export function reviseSpec(spec: TaskSpec, patch: Partial<Pick<TaskSpec, "objective" | "doneWhen" | "roles" | "checks" | "nonGoals" | "roleTemplate" | "roleChoices">>): TaskSpec {
   if (spec.confirmation.state === "confirmed") throw new Error("A confirmed spec is immutable.");
   return { ...spec, ...patch, revision: spec.revision + 1, confirmation: { state: "unconfirmed" } };
 }

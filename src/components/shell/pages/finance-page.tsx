@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Landmark, ListChecks, Percent, Plug, Receipt, Wallet } from "lucide-react";
+import { Landmark, ListChecks, Percent, Receipt, Wallet } from "lucide-react";
 import { Badge, EmptyState, PageFoot, PageHeader, Surface, WidgetGrid, WidgetList, WidgetRow } from "@/components/ds";
 import { stripeAud, useStripeFinance } from "@/components/business/stripe-finance-panel";
 import { FINANCE_MANUAL_CHANGED, NAB_IMPORT_ANCHOR, type ManualFinanceStatus } from "@/components/finance/manual-finance";
@@ -73,7 +73,7 @@ function MarginList({ rows }: { rows: PackageRow[] }) {
     <WidgetList
       icon={Percent}
       title="Package margins (estimate)"
-      span={2}
+      span={4}
       id="package-margins-widget"
       data-testid="package-margin-rings"
       action={<WidgetLink to="/operations">Open the economics workbench</WidgetLink>}
@@ -129,7 +129,9 @@ function MarginTable({ rows }: { rows: PackageRow[] }) {
                   ≈ {pct(r.margin)}
                   {r.incomplete && <span className="block text-xs font-normal text-muted-foreground">known costs only</span>}
                 </td>
-                <td className="ds-num px-4 py-3.5 text-right text-muted-foreground">≈ {pct(r.highMargin)}</td>
+                <td className="ds-num px-4 py-3.5 text-right text-muted-foreground">
+                  ≈ {pct(r.highMargin)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -178,14 +180,22 @@ function MarginsByBasis() {
           Per client, on the Receptionist dashboard
         </Link>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground" role="status">Reading usage and costs…</p>}
-      {!isLoading && !block && <EmptyState variant="row" icon={Landmark} title="Couldn't read usage" body={`${error instanceof Error ? error.message : "The receptionist dashboard didn't answer."} Margins by basis are unknown, not zero.`} />}
-      {block && !block.ok && <EmptyState variant="row" icon={Landmark} title="Usage unknown" body={`${block.reason}. Margins by basis are unknown, not zero.`} />}
+      {isLoading && (
+        <p className="text-sm text-muted-foreground" role="status">Reading usage and costs…</p>
+      )}
+      {!isLoading && !block && (
+        <EmptyState variant="row" icon={Landmark} title="Couldn't read usage" body={`${error instanceof Error ? error.message : "The receptionist dashboard didn't answer."} Margins by basis are unknown, not zero.`} />
+      )}
+      {block && !block.ok && (
+        <EmptyState variant="row" icon={Landmark} title="Usage unknown" body={`${block.reason}. Margins by basis are unknown, not zero.`} />
+      )}
       {block && block.ok && (
         <>
           <TierBasisTable tiers={block.tiers} caption="Margin per tier by basis, this month, ex GST" />
           <p className="mt-3 text-xs text-muted-foreground">
-            Catalogue {block.catalogue} · list rates checked {fmtProse(block.ratesCheckedAt)} · USD at the RBA rate of {fmtProse(block.fx.date)} · reconciled: {block.portfolio.reconciled.statement ?? "No NAB CSV imported"} · built {asOfText(block.generatedAt)}
+            Catalogue {block.catalogue} · list rates checked {fmtProse(block.ratesCheckedAt)} · USD at the RBA rate of {fmtProse(block.fx.date)} · reconciled:{" "}
+            {block.portfolio.reconciled.statement ?? "No NAB CSV imported"} · built{" "}
+            {asOfText(block.generatedAt)}
           </p>
         </>
       )}
@@ -232,7 +242,11 @@ export function FinancePage() {
     t.recovery ? { label: t.recovery.label, onClick: t.recovery.action === "import" ? goToImport : t.id.startsWith("ai-") ? retryAi : retryManual } : undefined;
 
   const s = stripe.summary.data;
-  const stripeState = stripe.status.error ? "failed" : stripe.link === "connected" ? (s ? "ok" : undefined) : stripe.link === "unknown" ? undefined : "setup-required";
+  const stripeState = stripe.status.error
+    ? "failed"
+    : stripe.link === "connected"
+      ? s ? "ok" : undefined
+      : stripe.link === "unknown" ? undefined : "setup-required";
   const bankNeedsImport = !csv.loading && (csv.state === "unknown" || csv.state === "stale");
   const unpricedCount = typeof unpriced.value === "number" ? unpriced.value : 0;
 
@@ -242,12 +256,18 @@ export function FinancePage() {
       <WidgetLink to={FINANCES.to} search={FINANCES.search} hash={FINANCES.hash} accent>
         {step.action.label}
       </WidgetLink>
+    ) : step.action.kind === "stripe" ? (
+      <WidgetLink to={FINANCES.to} search={FINANCES.search}>
+        {step.action.label}
+      </WidgetLink>
     ) : step.action.kind === "link" ? (
       <WidgetLink to={step.action.to ?? "/usage"} hash={step.action.hash}>
         {step.action.label}
       </WidgetLink>
     ) : (
-      <WidgetButton onClick={step.action.kind === "retry-ai" ? retryAi : retryManual}>{step.action.label}</WidgetButton>
+      <WidgetButton onClick={step.action.kind === "retry-ai" ? retryAi : retryManual}>
+        {step.action.label}
+      </WidgetButton>
     );
 
   const headline = financeHeadline({ aiSpend, csv, stripe: stripe.link });
@@ -263,7 +283,34 @@ export function FinancePage() {
     <div className="min-w-0 [overflow-wrap:anywhere]">
       <PageHeader title="Finance" description={headline} />
 
-      <WidgetGrid className="mb-6" aria-label="Where money stands" data-testid="finance-signals">
+      {/* What needs you comes first (also on a phone, and in the page order for the keyboard); the tiles are the detail. */}
+      <WidgetGrid className="mb-6" aria-label="What needs you">
+        <WidgetList icon={ListChecks} title="What needs you" span={4} id="finance-next-steps" empty="Nothing needs you on Finance right now." data-next-steps={steps.length ? String(steps.length) : "none"}>
+          {steps.map((step) => (
+            <li key={step.id} className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0" data-step={step.id} data-tone={step.tone}>
+              {/* A 16rem basis: on a phone the action drops under the text instead of squeezing it into a sliver. */}
+              <span className="min-w-0 flex-[1_1_16rem]">
+                <span className="flex items-center gap-2 text-base font-medium text-foreground">
+                  {step.tone === "attention" && (
+                    <span className="size-2 shrink-0 rounded-full bg-warn" aria-hidden="true" />
+                  )}
+                  {step.title}
+                </span>
+                <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+                  {step.body}
+                </span>
+              </span>
+              {stepAction(step)}
+            </li>
+          ))}
+        </WidgetList>
+      </WidgetGrid>
+
+      <WidgetGrid
+        className="mb-6 xl:grid-cols-3"
+        aria-label="Where money stands"
+        data-testid="finance-signals"
+      >
         <SignalWidget
           icon={Wallet}
           title="AI spend"
@@ -295,11 +342,8 @@ export function FinancePage() {
           now={now}
           recovery={csv.recovery?.action === "retry" ? recover(csv) : undefined}
           action={
-            bankNeedsImport ? (
-              <WidgetLink to={FINANCES.to} search={FINANCES.search} hash={FINANCES.hash} accent>
-                {csv.recovery?.label ?? "Import a NAB CSV"}
-              </WidgetLink>
-            ) : csv.state === "ok" ? (
+            // The import step is already under "What needs you"; the tile does not repeat it.
+            !bankNeedsImport && csv.state === "ok" ? (
               <WidgetLink to={FINANCES.to} search={FINANCES.search}>
                 Open Finances
               </WidgetLink>
@@ -311,7 +355,11 @@ export function FinancePage() {
           title="Revenue (Stripe)"
           data-tile="stripe-revenue"
           loading={stripe.status.isLoading || (stripe.link === "connected" && stripe.summary.isPending)}
-          value={stripe.link === "connected" ? (s ? stripeAud(s.revenueThisMonthAud) : null) : stripe.link === "unknown" ? null : "Not connected"}
+          value={
+            stripe.link === "connected"
+              ? s ? stripeAud(s.revenueThisMonthAud) : null
+              : stripe.link === "unknown" ? null : "Not connected"
+          }
           state={stripeState}
           line={
             stripe.status.error
@@ -325,37 +373,11 @@ export function FinancePage() {
           tone={s && s.overdueInvoices.length ? "warn" : undefined}
           lastSuccess={s?.lastSyncedAt ?? undefined}
           now={now}
-          link={{ to: FINANCES.to, search: FINANCES.search, label: "Open Finances" }}
-        />
-        <SignalWidget
-          icon={Plug}
-          title="Live bank feed"
-          data-tile={liveFeed.id}
-          value={liveFeed.value}
-          line={liveFeed.hint}
-          tone={liveFeed.tone}
-          state={liveFeed.state}
-          updatedAt={liveFeed.updatedAt}
-          staleAfterMs={liveFeed.staleAfterMs}
-          now={now}
+          link={stripe.link === "connected" ? { to: FINANCES.to, search: FINANCES.search, label: "Open Finances" } : undefined}
         />
       </WidgetGrid>
 
-      <WidgetGrid className="mb-6" aria-label="What needs you and the package margins">
-        <WidgetList icon={ListChecks} title="What needs you" span={2} id="finance-next-steps" empty="Nothing needs you on Finance right now." data-next-steps={steps.length ? String(steps.length) : "none"}>
-          {steps.map((step) => (
-            <li key={step.id} className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0" data-step={step.id} data-tone={step.tone}>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2 text-base font-medium text-foreground">
-                  {step.tone === "attention" && <span className="size-2 shrink-0 rounded-full bg-warn" aria-hidden="true" />}
-                  {step.title}
-                </span>
-                <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">{step.body}</span>
-              </span>
-              {stepAction(step)}
-            </li>
-          ))}
-        </WidgetList>
+      <WidgetGrid className="mb-6" aria-label="The package margins">
         <MarginList rows={rows} />
       </WidgetGrid>
 
@@ -365,7 +387,8 @@ export function FinancePage() {
       </div>
       <DrilldownList id="finance" />
       <PageFoot title="AI usage receipts and plan prices, the NAB CSV import, Stripe (read-only) and the package catalogue.">
-        {foot}. Estimates are marked; nothing here moves money.
+        {foot}. Live bank feed: {liveFeed.value}. {liveFeed.hint} Estimates are marked; nothing here
+        moves money.
       </PageFoot>
     </div>
   );

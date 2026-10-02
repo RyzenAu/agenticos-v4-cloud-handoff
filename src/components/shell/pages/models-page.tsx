@@ -53,14 +53,16 @@ async function token(): Promise<string | null> {
   return typeof t === "string" ? t : null;
 }
 
-async function routerRequest(
+export async function routerRequest(
   path: string,
   method: "GET" | "POST" = "GET",
 ): Promise<ModelRouterView> {
   const t = await token();
   const res = await fetch(`/__operator${path}`, {
     method,
-    headers: { Accept: "application/json", ...(t ? { "X-Claude-OS-Token": t } : {}) },
+    // The operator API refuses a POST that is not declared JSON (415 "JSON required"), so Check now said it failed.
+    headers: { Accept: "application/json", ...(method === "POST" ? { "Content-Type": "application/json" } : {}), ...(t ? { "X-Claude-OS-Token": t } : {}) },
+    ...(method === "POST" ? { body: "{}" } : {}),
   });
   const body = await res.json().catch(() => null);
   if (!res.ok || !body || body.error)
@@ -351,7 +353,6 @@ export function ModelsPage() {
               ? `Verified no charge · plus ${summary.freeUnverified} free tier, billing unverified`
               : undefined
           }
-          action={router.data && !hollow ? <WidgetButton onClick={() => setFilter("free")}>Show free</WidgetButton> : undefined}
         />
         <SignalWidget
           icon={Gauge}
@@ -363,7 +364,6 @@ export function ModelsPage() {
           now={now}
           value={router.data && !hollow ? summary.subscription : null}
           line="Use plan allowance"
-          action={router.data && !hollow ? <WidgetButton onClick={() => setFilter("subscription")}>Show plan models</WidgetButton> : undefined}
         />
         <SignalWidget
           icon={WalletCards}
@@ -375,7 +375,6 @@ export function ModelsPage() {
           now={now}
           value={router.data && !hollow ? summary.metered : null}
           line="Charged per use"
-          action={router.data && !hollow ? <WidgetButton onClick={() => setFilter("metered")}>Show metered</WidgetButton> : undefined}
         />
         <SignalWidget
           icon={ShieldAlert}
@@ -385,7 +384,8 @@ export function ModelsPage() {
           lastSuccess={lastProbeAt}
           staleAfterMs={24 * 3_600_000}
           now={now}
-          value={router.data && attentionState !== "unknown" ? summary.attention : null}
+          // A stale read with no recorded calls has nothing behind its zero: show "—", not "0 need attention".
+          value={router.data && attentionState !== "unknown" && !((!lastProbeAt || now - lastProbeAt > 24 * 3_600_000) && !summary.calls && !summary.attention) ? summary.attention : null}
           tone={summary.attention ? "danger" : lastProbeAt ? "success" : undefined}
           line={
             router.data

@@ -128,9 +128,10 @@ export async function fetchCodexUsage(entry: CodexPoolEntry, request: Fetch = fe
 
 type ClaudeCredential = { accessToken: string; expiresAt?: number; subscriptionType?: string; rateLimitTier?: string };
 
-export function readClaudeCredential(home = homedir()): ClaudeCredential | null {
+/** `configDir` = a slot's own CLAUDE_CONFIG_DIR (a second account); null/omitted = the default ~/.claude. */
+export function readClaudeCredential(home = homedir(), configDir: string | null = null): ClaudeCredential | null {
   try {
-    const parsed = JSON.parse(readFileSync(join(home, ".claude", ".credentials.json"), "utf8"));
+    const parsed = JSON.parse(readFileSync(join(configDir ?? join(home, ".claude"), ".credentials.json"), "utf8"));
     const inner = parsed?.claudeAiOauth ?? parsed;
     if (typeof inner?.accessToken !== "string" || !inner.accessToken.startsWith("sk-ant-oat01-")) return null;
     return inner as ClaudeCredential;
@@ -167,9 +168,9 @@ function claudeCodeVersion(): Promise<string> {
   return (claudeVersion ??= readClaudeCodeVersion());
 }
 
-export async function fetchClaudePlan(request: Fetch = fetch, home = homedir()): Promise<Result<{ plan: ClaudePlanUsage; subscriptionType: string | null; tier: string | null }>> {
-  const cred = readClaudeCredential(home);
-  if (!cred) return fail("No Claude Code sign-in found in ~/.claude/.credentials.json");
+export async function fetchClaudePlan(request: Fetch = fetch, home = homedir(), configDir: string | null = null): Promise<Result<{ plan: ClaudePlanUsage; subscriptionType: string | null; tier: string | null }>> {
+  const cred = readClaudeCredential(home, configDir);
+  if (!cred) return fail(configDir ? "No Claude Code sign-in found in this account's own profile" : "No Claude Code sign-in found in ~/.claude/.credentials.json");
   if (cred.expiresAt && Date.now() > cred.expiresAt)
     return fail("Claude Code's sign-in token has expired; it refreshes the next time Claude Code runs");
   try {

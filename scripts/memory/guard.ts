@@ -68,9 +68,26 @@ const SECRET_PATTERNS: RegExp[] = [
   /\bgithub_pat_[A-Za-z0-9_]{20,}/,
   /\bxox[abprs]-[A-Za-z0-9-]{10,}/,
   /\bAIza[0-9A-Za-z_-]{30,}/,
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /-----BEGIN [A-Z ]*PRIVATE KEY(?: BLOCK)?-----/,
+  // Round 5 review: provider formats and command-line credentials. Additive only.
+  /\bsk_[0-9a-f]{40,}\b/,
+  /\bkey_[0-9a-f]{20,}\b/,
+  /\bya29\.[A-Za-z0-9_-]{20,}/,
+  /hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[A-Za-z0-9]{20,}/,
+  /\bBearer\s+(?=[A-Za-z0-9._~+\/=-]*\d)(?=[A-Za-z0-9._~+\/=-]*[A-Za-z])[A-Za-z0-9._~+\/=-]{20,}/,
+  /\bcurl\b[^\n]*\s(?:-u|--user)[ =]\S+:\S{3,}/,
+  /\bmysql(?:dump)?\b[^\n]*\s-p\S{3,}/,
+  /\bsshpass\b[^\n]*\s-p\s*\S{3,}/,
+  /\bdocker\s+login\b[^\n]*\s-p\s*\S{3,}/,
+  /(?:^|\s)--(?:password|passwd|pwd|token|secret|api-key|apikey|auth-token)[ =]\S{3,}/,
+  /\b[a-z][a-z0-9+.-]{1,20}:\/\/:[^\s@\/]{3,}@/i,
+  /\bhttps?:\/\/[A-Za-z0-9_-]{20,}@/i,
   /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/,
   /\bsk-or-[A-Za-z0-9_-]{12,}/,
+  // Lead, 1 Oct: any URL that carries a password (mongodb+srv://user:pass@host, amqp://, redis://…), not only postgres.
+  /\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s:/@]{1,64}:[^\s@/]{3,}@[^\s/]+/i,
+  // Lead, 1 Oct: a secret-named key assigned a long value (aws_secret_access_key = …, client_secret: …).
+  /\b(?:aws_secret_access_key|secret_access_key|client_secret|api_secret|secret_key|private_key|access_token|refresh_token|auth_token)\s*[=:]\s*["']?[A-Za-z0-9/+_.=-]{12,}/i,
 ];
 
 const NUMBER_WORDS: Record<string, string> = { zero: "0", oh: "0", nought: "0", nil: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9" };
@@ -199,17 +216,113 @@ const FILLER = new Set([
  * "the login is broken"). They clear it only when no value-shaped token (digit, symbol, mixed case)
  * follows them, so "the password is required: Xk9#…" is still caught.
  */
-const NOT_A_VALUE = new Set([
+const STATE_WORDS = new Set([
   "required", "needed", "reset", "expired", "shared", "managed", "missing", "wrong", "correct", "strong", "weak", "long", "short",
   "unknown", "written", "sent", "broken", "working", "down", "fixed", "slow", "failing", "locked", "disabled", "enabled", "done",
   "ok", "okay", "fine", "via", "through", "handled", "separate", "different", "in", "with", "by", "not", "being", "going",
   "protected", "expiring", "rotated", "secure", "safe", "private", "hidden", "encrypted", "sso", "optional", "blank", "empty",
   "changing", "due", "valid", "invalid", "incorrect", "case-sensitive", "sensitive", "complex", "simple",
 ]);
+/**
+ * How a credential is HANDLED (round 3, 1 Oct 2026): a coding handoff says "the password is hashed", "the api key is never logged".
+ * Kept apart from STATE_WORDS because a handling word must never switch the screen off: "the password is only hunter2" and
+ * "the passcode is passed 4821" are still a value after the filler. valueAfter skips these words and keeps reading; a value-shaped
+ * token (digit, symbol, mixed case) or a final long plain word after them is refused.
+ */
+const HANDLING_WORDS = new Set([
+  "hashed", "salted", "logged", "validated", "checked", "verified", "masked", "redacted", "compared", "leaked", "exposed",
+  "committed", "accepted", "rejected", "ignored", "flagged", "refused", "used", "read", "passed", "cached", "refreshed",
+  "revoked", "issued", "signed", "truncated", "trimmed", "encoded", "decoded", "persisted", "loaded", "sourced", "injected",
+  "never", "always", "only", "too", "based", "also", "still", "again", "stale", "shown", "displayed", "printed", "stripped",
+]);
+const NOT_A_VALUE = new Set([...STATE_WORDS, ...HANDLING_WORDS]);
+/** Plain prose that can end a clause after a handling word ("never logged in plaintext"); not a password. */
+const PROSE_TAIL = /(?:ly|ing|ed|tion|ment|ness)$|^(?:anywhere|plaintext|everywhere|production|database|requests?|service|session|storage|browser|workers?|between|another|nothing|something|anything|outside|without|against|because|before|after)$/;
 const LOCATION = new Set(["on", "in", "at", "under", "behind", "inside", "near", "beside", "within", "taped", "printed"]);
+/**
+ * Round 5 (2 Oct 2026). The screen is MONOTONE against the base (af45e77): everything it refused still is, except six narrow ordinary shapes, each
+ * implemented as a tight allow-condition at the place the base refused:
+ *   (1) a Windows drive path whose slash is glued to it ("C:/Users/x/source"), (2) a variable NAME with no value after it,
+ *   (3) a type annotation "label: string" with nothing value-shaped after it on that line or the next, (4) a run/job/ticket/commit id in parentheses straight
+ *   after a participle ("never logged (run 1ff900c)"), (5) a compound noun phrase whose whole tail is ordinary words, (6) a glued "?token=abc" with an
+ *   all-lowercase value of fewer than 8 characters. Anything added beyond that only refuses more.
+ */
+const REFERENCE_WORDS = new Set(["run", "job", "ticket", "issue", "pr", "commit", "sha", "build"]);
+const PARTICIPLES = new Set(["logged", "hashed", "stored", "rotated", "masked", "redacted", "encrypted", "salted", "validated", "checked", "verified", "compared", "cached", "refreshed", "revoked", "issued", "signed", "truncated", "trimmed", "encoded", "decoded", "persisted", "loaded", "sourced", "injected", "stripped", "leaked", "exposed", "committed", "rejected", "ignored", "flagged", "refused"]);
+const ENV_ACTION_WORDS = new Set(["set", "export", "read", "from", "in", "via", "named", "called"]);
+/** An environment variable NAME ("OPENROUTER_API_KEY"): where a credential lives, not one, unless it stands straight after an introducer. */
+const ENV_NAME = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:API_KEY|KEY|TOKEN|SECRET|PASSWORD|PASSWD|PWD|PASS|SK|AUTH)S?$/;
+const TYPE_WORDS = new Set(["string", "number", "boolean", "bool", "any", "unknown", "undefined", "null", "object", "str", "int", "float", "bytes", "void", "securestring"]);
+const NULLISH = new Set(["none", "null", "undefined", "nil", "optional", "nullable"]);
+const STOP_WORDS = new Set(["with", "must", "should", "can", "will", "to", "for", "from", "in", "on", "at", "is", "are", "be", "of", "when", "if", "no", "so", "which", "or", "but", "as", "by", "and", "the", "a", "an", "that", "this", "it", "its"]);
+const ORDINARY_WORDS = new Set([
+  "settings", "setting", "screen", "page", "form", "section", "menu", "tab", "dashboard", "console", "admin", "account", "profile", "panel", "view", "list", "table", "column", "file",
+  "vault", "store", "manager", "support", "team", "security", "user", "users", "login", "sign", "out", "up", "name", "names", "label", "labels", "field", "fields", "input", "inputs",
+  "env", "variable", "variables", "var", "environment", "config", "configuration", "header", "headers", "scope", "scopes", "prefix", "ttl", "lifetime", "format", "storage", "hashing",
+  "encryption", "validation", "masking", "meter", "toggle", "placeholder", "handling", "flow", "endpoint", "middleware", "cookie", "param", "params", "parameter", "parameters",
+  "rotation", "key", "token", "secret", "password", "code", "pin", "api", "service", "server", "client", "app", "site", "web", "email", "text", "data", "base", "check", "test",
+  "tests", "types", "type", "docs", "doc", "help", "link", "url", "button", "modal", "dialog", "window", "area", "box", "not", "also", "only", "here", "there", "now", "new", "old", "ok",
+]);
+const isPunctOnly = (t: string) => /^[\p{P}\p{S}]+$/u.test(t);
+const ordinaryWord = (w: string) => {
+  const l = w.toLowerCase();
+  return STOP_WORDS.has(l) || ORDINARY_WORDS.has(l) || NOT_A_VALUE.has(l) || FILLER.has(l) || TYPE_WORDS.has(l) || NULLISH.has(l) || ENV_NAME.test(w);
+};
+/** (3) What follows a type word: only punctuation, types, None/null, stop words and short lowercase words. A quoted string or any other token of 6 or more characters is a value. */
+function typeTailClean(tail: string): boolean {
+  const lines = tail.split(/\r?\n/).slice(0, 2).join(" \n ");
+  for (const t of lines.split(/\s+/).filter(Boolean)) {
+    if (isPunctOnly(t) || /^["'`]{2}$/.test(t)) continue;
+    const w = t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, "");
+    if (!w) continue;
+    if (/^["'`“‘]/.test(t)) return false;
+    if (ordinaryWord(w)) continue;
+    if (w.length < 6 && /^[a-z]+$/.test(w)) continue;
+    return false;
+  }
+  return true;
+}
+/** "label: <typeword>" and what follows it, from the text right after the label. */
+function typeAnnotationClean(rest: string): boolean {
+  const m = /^\s*:\s*([A-Za-z]+)(?![\w])([\s\S]*)$/.exec(rest);
+  return !!m && TYPE_WORDS.has(m[1]!.toLowerCase()) && typeTailClean(m[2]!);
+}
+const typeWordOf = (v: string) => TYPE_WORDS.has(v.replace(/[\p{P}\p{S}]+$/gu, "").toLowerCase());
+/** (5) The whole tail after a phrase noun is ordinary words, variable names and punctuation: no value, no passphrase. */
+function ordinaryTail(restT: string): boolean {
+  const body = restT.replace(COMPOUND_PHRASE, "").slice(0, 160).split(/\r?\n/)[0]!;
+  for (const t of body.split(/\s+/).filter(Boolean)) {
+    if (isPunctOnly(t)) continue;
+    const w = t.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, "");
+    if (!w) continue;
+    if (!ordinaryWord(w)) return false;
+  }
+  return true;
+}
+const COMPOUND_PHRASE = /^(rotation|settings?|input|inputs|name|names|column|variables?|header|headers|scope|scopes|prefix|ttl|lifetime|format|storage|store|vault|hashing|encryption|validation|masking|meter|toggle|labels?|placeholder|handling|flow|endpoint|middleware|cookie|param|params|parameter|parameters|env|environment)\b/i;
+/** Additive: a phrase noun followed by a value ("password vault (Hunter2x9!)", "password store Hunter2x9!"). */
+function phraseHoldsValue(label: string, restT: string): boolean {
+  const body = restT.replace(COMPOUND_PHRASE, "").slice(0, 160).split(/\r?\n/)[0]!;
+  const words = body.split(/\s+/).map((t) => t.replace(/^["'`“(\[{<]+|["'`”),;.!?\]}>]+$/g, "")).filter(Boolean);
+  const pinLike = /pin|code/i.test(label);
+  for (let i = 0; i < words.length && i < 12; i++) {
+    const t = words[i]!;
+    if (t.length < 4 || ENV_NAME.test(t) || REPO_PATH.test(t) || /^https?:/i.test(t)) continue;
+    if (valueShaped(t) && (pinLike || !/^\d+$/.test(t))) return true;
+  }
+  return false;
+}
 /** Nouns right after a label that make it a compound, not a value ("password manager", "pin the message"). */
 const COMPOUND = /^(policy|policies|manager|managers|reset|resets|rules|field|prompt|box|page|screen|strength|hint|generator|portal|expiry|change|changes|budget|budgets|count|counts|limit|limits|usage|cost|costs|price|window|length|requirements?|the (message|note|post|chat|thread|file|tab))\b/i;
-const valueShaped = (t: string) => /\d/.test(t) || /[^\p{L}\p{N}'’.,;:!?()"“”-]/u.test(t) || (/\p{Ll}/u.test(t) && /\p{Lu}/u.test(t.slice(1)));
+/**
+ * A repo path in a handoff ("scripts/voice", "src/lib/auth2.ts"): a lower-case path whose first segment is a real repo directory,
+ * or a bare file name with a known extension. It is exempt from "looks like a value" ONLY after a handling word or a location
+ * word ("read from scripts/voice", "stored in src/lib/x.ts"), never straight after a label or an introducer ("token: scripts/voice",
+ * "password is correct/horse"). Used with `pathOk`.
+ */
+const REPO_PATH = /^(?:\.{0,2}\/)?(?:(?:scripts|src|lib|app|apps|docs|test|tests|public|dist|config|packages|components|pages|api|node_modules|memory|data|\.github)(?:\/[a-z0-9][\w.-]*)*\/?|[a-z0-9][\w.-]*(?:\/[a-z0-9][\w.-]*)*\.(?:ts|tsx|js|jsx|mjs|json|md|py|sh|ps1|ya?ml|toml|css|html|sql|lock))$/;
+const valueShaped = (t: string, pathOk = false) =>
+  !(pathOk && REPO_PATH.test(t)) && (/\d/.test(t) || /[^\p{L}\p{N}'’.,;:!?()"“”-]/u.test(t) || (/\p{Ll}/u.test(t) && /\p{Lu}/u.test(t.slice(1))));
 
 /**
  * Strong labels: whatever follows an introducer is a credential ("the Xero password is now
@@ -227,20 +340,54 @@ const NOT_SECRET_CODE = /\b(discount|promo|promotion|coupon|voucher|referral|pos
 const INTRO_HINT = /[:=\-—–]|\b(?:is|was|are|were|now|to|as|be)\b/i;
 
 function valueAfter(label: string, rest: string, weak: boolean): boolean {
-  const head = rest.slice(0, 160);
+  if (typeAnnotationClean(rest)) return false; // (3) "password: str | None = None"
+  if (weak && /^[=:][a-z]{1,7}(?![A-Za-z0-9_])/.test(rest)) return false; // (6) "?token=abc"
+  return valueAfterCore(label, rest, weak);
+}
+
+function valueAfterCore(label: string, rest: string, weak: boolean): boolean {
+  // A value on the next line after an introducer ("the password is\nHunter2x9") belongs to the same clause (additive).
+  const head = rest.slice(0, 160).replace(/^\s*\n\s*(?=(?:is|was|are|to|as)\b)/i, " ").replace(/(\b(?:is|was|are|to|as|now)|[:=])[ \t]*\r?\n\s*/gi, "$1 ");
   const strip = (t: string) => t.replace(/^["'“(]+|["'”),;]+$/g, "");
   let tokens: string[];
+  let orig: string[];
+  let gluedAt: boolean[];
   const limit = 14;
   if (!INTRO_HINT.test(head)) {
     // Nothing after the label can introduce a value, so only its first token can be one: the same answer, far cheaper on a text that repeats the label.
     const first = /^[ \t]*(\S+)/.exec(head);
     tokens = first ? [strip(first[1].replace(/[.!?]+$/, ""))].filter(Boolean) : [];
+    orig = tokens.slice();
+    gluedAt = tokens.map(() => false);
   } else {
     const clause = head.split(/(?<=[^\s.])[.!?](?=\s|$)|\n/)[0];
-    tokens = clause.split(/\s+/).map(strip).filter(Boolean);
+    // A glued "=" or ":" ("token=sunflowerfield") is the introducer; the value after it is remembered as glued (additive: a weak label refuses it at 8 characters).
+    const pieces: { raw: string; glued: boolean }[] = [];
+    for (const t of clause.split(/\s+/)) {
+      if (/^[:=](?![>=]).+/.test(t)) pieces.push({ raw: t[0]!, glued: false }, { raw: t.slice(1), glued: true });
+      else pieces.push({ raw: t, glued: false });
+    }
+    const kept = pieces.map((p) => ({ raw: strip(p.raw), glued: p.glued, orig: p.raw })).filter((p) => p.raw);
+    tokens = kept.map((p) => p.raw);
+    orig = kept.map((p) => p.orig);
+    gluedAt = kept.map((p) => p.glued);
   }
+  // (2) a variable name used as a reference, with no value after it: only after set/export/read/from/in/via/named/called, or as the first word after a weak label.
+  const envNameExempt = (i: number) =>
+    ENV_NAME.test(tokens[i]!) && ((i > 0 && ENV_ACTION_WORDS.has(tokens[i - 1]!.toLowerCase())) || (i === 0 && weak)) && !tokens.slice(i + 1).some((t) => valueShaped(t) && !ENV_NAME.test(t) && !REPO_PATH.test(t));
+  // (4) "never logged (run 1ff900c)": an id in parentheses straight after a participle. Never pure digits after a pin, code or password label.
+  const refExempt = (i: number) => {
+    if (i < 2 || !REFERENCE_WORDS.has(tokens[i - 1]!.toLowerCase()) || !orig[i - 1]!.startsWith("(") || !PARTICIPLES.has(tokens[i - 2]!.toLowerCase())) return false;
+    const id = tokens[i]!.toLowerCase();
+    const closed = /\)$/.test(orig[i]!) || /(?:\.\.\.|…)$/.test(id);
+    if (!closed) return false;
+    if (/^#?\d{1,6}$/.test(id)) return !/pin|code|pass/i.test(label);
+    return /^[0-9a-f]{6,12}$/.test(id) || /^[0-9a-f]{1,12}(?:\.\.\.|…)$/.test(id);
+  };
   let introduced = false;
   let sawState = false;
+  let sawHandling = false;
+  let lastIntro = "";
   // After a state word ("required", "in", "on the fridge") a value counts only after an explicit ":" or
   // "=" ("the password is required: Xk9#…"); "required to be 12 characters" is a rule, not a value.
   let stateColon = false;
@@ -251,6 +398,7 @@ function valueAfter(label: string, rest: string, weak: boolean): boolean {
     if (sawState && (/[:=]$/.test(raw) || t === ":" || t === "=")) stateColon = true;
     if (INTRODUCER.has(t) || /[:=]$/.test(raw)) {
       introduced = true;
+      lastIntro = t;
       if (INTRODUCER.has(t) || FILLER.has(bare) || INTRODUCER.has(bare) || !bare) continue;
       // "password: X" → the colon was on the label side; "one: X" → filler. Anything else: this token IS the value.
     }
@@ -260,9 +408,21 @@ function valueAfter(label: string, rest: string, weak: boolean): boolean {
       continue;
     }
     if (FILLER.has(bare) || !bare) continue;
+    if (HANDLING_WORDS.has(bare) && !STATE_WORDS.has(bare)) {
+      sawHandling = true; // a handling word describes what happens to the credential; it never ends the search for a value
+      continue;
+    }
     if (NOT_A_VALUE.has(bare)) {
       sawState = true;
       if (/[:=]$/.test(raw)) stateColon = true; // "required: Xk9#…"
+      continue;
+    }
+    if (sawHandling && !sawState && refExempt(i)) continue;
+    if (sawHandling && !sawState) {
+      if (valueShaped(raw, true) && !envNameExempt(i)) return true;
+      // A plain final word ("my password is never sunflower") is the value unless it is clearly prose.
+      // Only when it directly follows a handling word: "refreshed when it expires" and "passed to the worker" are prose.
+      if (i === tokens.length - 1 && i > 0 && HANDLING_WORDS.has(tokens[i - 1].toLowerCase()) && /^[a-z]+(?:-[a-z]+)*$/.test(bare) && bare.length >= (weak ? 10 : 6) && !PROSE_TAIL.test(bare)) return true;
       continue;
     }
     if (sawState) {
@@ -271,13 +431,15 @@ function valueAfter(label: string, rest: string, weak: boolean): boolean {
     }
     if (!introduced) {
       // Direct values: "wifi pw sunflower"; a value-shaped token right after any label; else a qualifier ("for the Xero account").
-      if (i === 0 && (DIRECT.test(label) || valueShaped(raw))) return !weak || valueShaped(raw);
+      if (i === 0 && (DIRECT.test(label) || valueShaped(raw))) return !weak || (valueShaped(raw) && !envNameExempt(i));
       continue;
     }
     if (bare.length < 3) continue;
     if (!weak) return true;
-    if (valueShaped(raw)) return true;
-    return i === tokens.length - 1 && bare.length >= 10;
+    if (gluedAt[i] && bare.length >= 8 && !ENV_NAME.test(raw)) return true; // "token=sunflowerfield" (additive)
+    // A weak label with a destination ("the wake word code to scripts/voice"): a real repo path there is a place, not a value.
+    if (valueShaped(raw, lastIntro === "to") && !envNameExempt(i)) return true;
+    return i === tokens.length - 1 && bare.length >= 10 && !envNameExempt(i) && !(lastIntro === "to" && REPO_PATH.test(bare));
   }
   return false;
 }
@@ -405,6 +567,7 @@ function credentialPair(text: string): boolean {
       const identOk = strong || loginLike(ident);
       if (viaLabel) {
         // "… and the pass is bluesky": a password-labelled value needs no shape, only to be a value.
+        if (typeWordOf(secret) && typeTailClean(text.slice(start + p[0].length, start + p[0].length + 200))) continue; // (3) "user: string, password: string }"
         if (identOk && !FILLER.has(secret.toLowerCase()) && !NOT_A_VALUE.has(secret.toLowerCase())) return true;
         continue;
       }
@@ -414,6 +577,60 @@ function credentialPair(text: string): boolean {
   }
   const t = PAIR_THEN_CUE.exec(text);
   return !!t && strongSecret(t[2], false) && !dateToken(t[2]);
+}
+
+/**
+ * The base's two login-pair rules. Narrowed only by (3) a type word as the value with nothing value-shaped after it ("type Creds = { user: string, password: string }")
+ * and a URL path segment: "login?next=/agency/feed" is a link, not a login.
+ */
+function loginPairText(lower: string): boolean {
+  for (const m of lower.matchAll(/\b(login|username|user name|user|email|e-mail)\b\s*(?:is|:|=)?\s*\S+\s*(?:\/|,|and)?\s*(?:pass(?:word)?|pwd|pw)\b\s*(?:is|:|=)?\s*(\S{3,})/g)) {
+    if (typeWordOf(m[2]!) && typeTailClean(lower.slice(m.index! + m[0].length))) continue;
+    return true;
+  }
+  for (const m of lower.matchAll(/\b(login|username|user)(?![?#])\s*(?:is|:)?\s*\S+\s*\/\s*\S{3,}/g)) {
+    // (1) a path segment of a Windows drive path ("c:/users/x/source"): no whitespace in the match and a drive letter and slash right before the segment.
+    if (!/\s/.test(m[0]) && /(?:^|[\s(])[a-z]:[\\/](?:[^\s\\/]+[\\/])*$/.test(lower.slice(0, m.index!))) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Credential-named variables and keys written as assignments (additive): FOO_API_KEY=x, export FOO_SECRET="x", $env:FOO_KEY='x', {"apiKey": "x"}, api_key: x,
+ * "FOO_TOKEN is x", "set FOO_API_KEY to x", PGPASSWORD=x, a value on the next line. A password-type name takes any real value; a key or token name takes a
+ * value-shaped one of 8 or more characters. A closed placeholder (${KEY}, %KEY%, <your-key>) or a read of another variable (process.env.X) is not a value;
+ * <Hunter2x9> (digits or mixed case inside) is.
+ */
+const CRED_SUFFIX = /^(?:api[_-]?keys?|keys?|tokens?|secrets?|passwords?|passwd|pass|pwd|sk|auth|credentials?|pat)$/i;
+function envNameKind(name: string): "secret" | "password" | null {
+  if (name.length > 60) return null;
+  if (/^[A-Z]{2,}PASSWORD$/.test(name)) return "password";
+  const parts = name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").split(/[_-]/).filter(Boolean);
+  if (parts.length < 2) return null;
+  const last = parts[parts.length - 1]!;
+  if (!CRED_SUFFIX.test(last)) return null;
+  return /^(?:pass|passwd|pwd|passwords?)$/i.test(last) ? "password" : "secret";
+}
+const ENV_ASSIGN = /(?<![A-Za-z0-9_.\/-])["'`]?([A-Za-z][A-Za-z0-9]*(?:[_-][A-Za-z0-9]+)+|[A-Z]{2,}PASSWORD)["'`]?([ \t]*(?::|=>?|->|\bis\b|\bto\b|\bare\b)?\s*)(\S+)/g;
+function envAssignment(cred: string): boolean {
+  for (const m of cred.matchAll(ENV_ASSIGN)) {
+    const kind = envNameKind(m[1]!);
+    if (!kind) continue;
+    if (!/[:=>\-]|\bis\b|\bto\b|\bare\b|\t|\n/.test(m[2]!)) continue;
+    const v = m[3]!.replace(/^["'`]+|["'`,;]+$/g, "");
+    if (v.length < 3) continue;
+    const closed = /^\$\{[^}]*\}$|^%[^%\s]+%$|^<[^<>]*>$/.test(v);
+    const inner = v.replace(/^\$\{|^%|^</, "").replace(/\}$|%$|>$/, "");
+    if (closed && !/\d/.test(inner) && !(/\p{Ll}/u.test(inner) && /\p{Lu}/u.test(inner.slice(1)))) continue;
+    if (/^(?:process\.env|os\.environ|env\.|getenv)/i.test(v) || ENV_NAME.test(v)) continue;
+    if (kind === "password") {
+      const low = v.toLowerCase();
+      if (typeWordOf(v) || STOP_WORDS.has(low) || NOT_A_VALUE.has(low) || FILLER.has(low)) continue;
+      if (valueShaped(v) || (v.length >= 6 && !PROSE_TAIL.test(low))) return true;
+    } else if (v.length >= 8 && valueShaped(v) && !REPO_PATH.test(v) && !/^https?:\/\/[^\s:@]+$/i.test(v)) return true;
+  }
+  return false;
 }
 
 /** A credential stated as a value, however it is phrased. */
@@ -426,10 +643,23 @@ function credential(text: string, norm: string): boolean {
     re.lastIndex = 0;
     for (const m of cred.matchAll(re)) {
       const rest = cred.slice(m.index! + m[0].length, m.index! + m[0].length + 240);
-      if (COMPOUND.test(rest.trimStart())) continue;
+      const restT = rest.trimStart();
+      if (COMPOUND.test(restT)) continue;
       if (weak && /codes?/i.test(m[0]) && NOT_SECRET_CODE.test(cred.slice(0, m.index!))) continue;
-      if (valueAfter(m[0], rest, weak)) return true;
+      const refused = valueAfter(m[0], rest, weak);
+      if (COMPOUND_PHRASE.test(restT)) {
+        // (5) "key rotation page is in settings" is a phrase; "password format: sunflowerfield" and "password rotation: Hunter2x9!" are not.
+        if (refused ? !ordinaryTail(restT) : phraseHoldsValue(m[0], restT)) return true;
+        continue;
+      }
+      if (refused) return true;
     }
+  }
+  if (envAssignment(cred)) return true;
+  // "pass=Hunter2x9", "pass: Hunter2x9!" (additive).
+  for (const m of cred.matchAll(/(?<![\w\/.-])pass\s*[=:]\s*(\S+)/gi)) {
+    const v = m[1]!.replace(/^["'`]+|["'`,;]+$/g, "");
+    if (v.length >= 6 && valueShaped(v) && !ENV_NAME.test(v) && !REPO_PATH.test(v)) return true;
   }
   const lower = cred.toLowerCase();
   // "Use X as the Xero password": the value comes first.
@@ -438,12 +668,24 @@ function credential(text: string, norm: string): boolean {
     if (!FILLER.has(v) && !NOT_A_VALUE.has(v) && !["it", "that", "this", "same"].includes(v)) return true;
   }
   // "Xero: jane.admin / Winter-Is-Coming", "Wifi: KestrelGuest / sunflowerfield": a username-shaped
-  // name, a slash, then a value.
-  for (const m of cred.matchAll(/(?:^|[\s(])[\p{L}][\p{L}\p{N} .&'-]{0,30}:\s*(\S+)\s*\/\s*(\S{3,})/gu)) {
-    const user = m[1];
+  // name, a slash, then a value. "https://host/path" is a URL, not a label
+  for (const m of cred.matchAll(/(?:^|[\s(])[\p{L}][\p{L}\p{N} .&'-]{0,30}:\s*(\S+)(\s*)\/\s*(\S{3,})/gu)) {
+    // "https://host/path" is a URL, not a label and a login: a host-like token (a dot, localhost or an IP) with the path slash straight after it.
+    // "Xero://jane.admin / pass" has a space before the slash, so it is still a pair.
+    if (/^[^:]*:\/\/(?:localhost|[^\s/]*\.[^\s/]*)(?::\d+)?\//.test(m[0].slice(m[0].indexOf(":")))) continue;
+    const user = m[1]!;
+    // (1) "C:/Users/x/source": a drive letter, then a path whose slash is glued to it. "Xero: /jane.admin / pass" has a space before the slash and stays a pair.
+    const labelPart = m[0].slice(0, m[0].indexOf(":"));
+    if (m[2] === "" && /^[\\/][\w.~-]/.test(user) && /(?:^|[\s(])[A-Za-z]$/.test(labelPart)) continue;
+    // "Preview: https://host.tld/a/b?x=1#frag": a well-formed URL token (dotted host, no user info) with its slash glued is a link, not a login and a password.
+    if (m[2] === "" && /^https?:\/\/[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?::\d+)?(?:\/[^\s@]*)?$/i.test(user)) continue;
     const userShaped = /\p{L}/u.test(user) && (/[.@_]/.test(user) || /\p{Lu}/u.test(user.slice(1)) || /\p{L}\d|\d\p{L}/u.test(user));
     const time = /^\d{1,2}([:.]\d{2})?\s*(am|pm)?$/i;
-    if (userShaped && !time.test(m[2])) return true;
+    if (userShaped && !time.test(m[3]!)) return true;
+  }
+  // "Portal: https://portal.example.com jane.admin / Winter-Is-Coming", "Router: http://192.168.0.1 admin / Sunflower99": a URL (any host, dotless or bracketed IPv6 too), then a user / value pair.
+  for (const m of cred.matchAll(/\b[a-z][a-z0-9+.-]{1,20}:\/\/[^\s/]+(?:\/\S*)?\s+(\p{L}[\p{L}\p{N}._@-]{1,59})\s+\/\s+(\S{6,60})/giu)) {
+    if (/\p{L}.*\p{L}/u.test(m[1])) return true;
   }
   // "netflix — usman@example.com / Sunflower99" (an em or en dash as the joiner): the name, a slash, then a password-shaped value.
   for (const m of cred.matchAll(/[—–]\s*(\S{1,60})\s*\/\s*(\S{3,60})/gu)) {
@@ -453,14 +695,12 @@ function credential(text: string, norm: string): boolean {
   // "pin 4821", "passcode 0000": a pin-like label followed by digits.
   if (/\b(pin|passcode|pass code|door code|alarm code|gate code|lock code)\s*(?:number|no\.?|#)?\s*(?:is|was|:|=|-)?\s*\d{3,}/.test(norm)) return true;
   // Login pairs: "login admin / Winter-Is-Coming", "user jane pass bluesky", "username: jane password: hunter".
-  if (/\b(login|username|user name|user|email|e-mail)\b\s*(?:is|:|=)?\s*\S+\s*(?:\/|,|and)?\s*(?:pass(?:word)?|pwd|pw)\b\s*(?:is|:|=)?\s*\S{3,}/.test(lower)) return true;
-  if (/\b(login|username|user)\s*(?:is|:)?\s*\S+\s*\/\s*\S{3,}/.test(lower)) return true;
+  if (loginPairText(lower)) return true;
   // The same pairs as they are SPOKEN ("admin slash Sunflower99", "usman at example dot com and Sunflower99").
   const spoken = spokenForm(cred);
   if (spoken !== cred) {
     const sl = spoken.toLowerCase();
-    if (/\b(login|username|user name|user|email|e-mail)\b\s*(?:is|:|=)?\s*\S+\s*(?:\/|,|and)?\s*(?:pass(?:word)?|pwd|pw)\b\s*(?:is|:|=)?\s*\S{3,}/.test(sl)) return true;
-    if (/\b(login|username|user)\s*(?:is|:)?\s*\S+\s*\/\s*\S{3,}/.test(sl)) return true;
+    if (loginPairText(sl)) return true;
   }
   if (credentialPair(spoken)) return true;
   // "sign in to Xero with admin@kestrel.test and Winter-Is-Coming": two values, one credential-shaped.
@@ -469,11 +709,23 @@ function credential(text: string, norm: string): boolean {
   return false;
 }
 
+/** "Authorization: Basic <base64 of user:password>" (additive). */
+function basicAuth(t: string): boolean {
+  for (const m of t.matchAll(/\bBasic\s+([A-Za-z0-9+\/]{12,}={0,2})/g)) {
+    try {
+      if (atob(m[1]!).includes(":")) return true;
+    } catch {
+      /* not base64 */
+    }
+  }
+  return false;
+}
+
 /** A key split by spaces ("sk_live_51H8x Yz9ab CDE…"): join the run after a known prefix and test it. */
 function splitKey(text: string): boolean {
   const t = text.normalize("NFKC");
-  for (const m of t.matchAll(/(?<![A-Za-z0-9])(sk[-_]|rk_|pk_|ghp_|gh[ousr]_|github_pat_|xox[abprs]-|AIza|AKIA)/g)) {
-    const joined = t.slice(m.index!, m.index! + 200).split(/[.,;\n]/)[0].replace(/\s+/g, "");
+  for (const m of t.matchAll(/(?<![A-Za-z0-9])(sk\s*[-_]|rk_|pk_|ghp_|gh[ousr]_|github_pat_|xox[abprs]-|AIza|AKIA)/g)) {
+    const joined = t.slice(m.index!, m.index! + 200).split(/[.,;]/)[0].replace(/\s+/g, "");
     if (SECRET_PATTERNS.some((re) => re.test(joined))) return true;
   }
   return false;
@@ -522,6 +774,11 @@ function bankRecord(text: string, ls: string[], norm = normaliseForSecrets(text)
   if (/\bstatement (period|number)\b/i.test(text)) return true;
   // A card number: 13-19 digits passing Luhn, however it was written (spaces, dots, dashes, words).
   for (const m of norm.matchAll(/\d{13,19}/g)) if (luhn(m[0])) return true;
+  // A card number followed by its expiry and CVV runs into one digit run once the separators go (additive): test the 15 and 16 digit prefix of a run that starts like a card.
+  for (const m of norm.matchAll(/\d{16,}/g)) {
+    const d = m[0];
+    if (/^(?:4|5[1-5]|2[2-7]|3[47]|6011|65)/.test(d)) for (const len of [15, 16]) if (d.length > len && luhn(d.slice(0, len))) return true;
+  }
   const txLines = ls.filter((l) => /\b\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(l) && /-?\$?\d[\d,]*\.\d{2}\b/.test(l));
   return txLines.length >= 2;
 }
@@ -551,7 +808,7 @@ function prohibited(rawCombined: string, rawText: string, _ls: string[], opts: {
   const ls = lines(text);
   const norm = normaliseForSecrets(combined);
   const nfkc = combined.normalize("NFKC");
-  if (SECRET_PATTERNS.some((re) => re.test(nfkc)) || splitKey(combined) || highEntropyToken(nfkc) || credential(combined, norm)) return "secret";
+  if (SECRET_PATTERNS.some((re) => re.test(nfkc)) || basicAuth(nfkc) || splitKey(combined) || highEntropyToken(nfkc) || credential(combined, norm)) return "secret";
   if (oneTimeCode(norm)) return "one-time-code";
   if (governmentId(combined, norm)) return "government-id";
   if (bankRecord(combined, ls, norm)) return "bank-record";

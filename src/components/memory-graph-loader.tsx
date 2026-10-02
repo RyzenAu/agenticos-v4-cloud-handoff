@@ -217,7 +217,7 @@ export function MemoryGraphLoader({ height = 680 }: { height?: number }) {
           >
             {memoryCount.toLocaleString()}
           </div>
-          <div className="text-[12px] uppercase tracking-[0.25em] text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1">
             memories indexed
           </div>
         </div>

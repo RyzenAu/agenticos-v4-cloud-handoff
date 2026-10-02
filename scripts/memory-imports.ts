@@ -14,6 +14,7 @@ import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { dataDirFor } from "./cloud/data-dir";
 const run = promisify(execFile);
 export const imageFile = (name: string) => /\.(png|jpe?g|webp|gif|avif|heic|heif|tiff?|bmp)$/i.test(name);
 export const imageOCRAvailable = () =>
@@ -118,9 +119,7 @@ export async function readImageOnCPU(root: string, file: string) {
   if (!imageOCRAvailable())
     throw new Error("Local image text recognition requires macOS and Apple Command Line Tools.");
   const source = join(root, "scripts/memory-ocr.m"),
-    bin = join(
-      root,
-      ".operator-data/bin",
+    bin = join(dataDirFor(root), "bin",
       "memory-ocr-" + fingerprint(readFileSync(source, "utf8")).slice(0, 12),
     );
   if (!existsSync(bin)) {
@@ -128,7 +127,7 @@ export async function readImageOnCPU(root: string, file: string) {
       compiling.set(
         bin,
         (async () => {
-          mkdirSync(join(root, ".operator-data/bin"), { recursive: true, mode: 0o700 });
+          mkdirSync(join(dataDirFor(root), "bin"), { recursive: true, mode: 0o700 });
           const temp = bin + "." + randomUUID();
           await run(
             "/usr/bin/xcrun",

@@ -1,0 +1,1050 @@
+{
+  "run": "aacb81",
+  "at": "2026-10-01T03:58:42.672Z",
+  "commit": "8237181",
+  "branch": "prog/integration-20261001",
+  "machine": "this PC (Windows 11; WSL2 distro for the shared computers)",
+  "quick": false,
+  "summary": {
+    "pass": 8,
+    "partial": 3,
+    "fail": 0,
+    "blocked": 0,
+    "owed": 1
+  },
+  "byLabel": {
+    "mocked": [],
+    "synthetic-integration": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      12
+    ],
+    "real-local-computer": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      12
+    ],
+    "real-cloud-vm": [],
+    "real-remote-device": [],
+    "live-provider": [
+      11
+    ]
+  },
+  "cleanup": [
+    "removed: close the acceptance presentation (and PowerPoint, if this run started it and it is now empty)",
+    "removed: isolated hub and its companion",
+    "removed: scratch folder D:\\prog-scratch\\acceptance-aacb81"
+  ],
+  "tasks": [
+    {
+      "id": 1,
+      "key": "two-bots-independent",
+      "title": "Two bots work independently",
+      "ms": 1689,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "blocker": "not shown on a real cloud VM: no real cloud VM exists yet (the shared computers are WSL on this PC); a cloud VM needs the owner's provider account",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"two agents run concurrently\"",
+          "checks": [
+            {
+              "name": "a test matching /two jobs overlap in time/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass two jobs overlap in time, each verified, each on its own device, both leases released"
+              ]
+            },
+            {
+              "name": "a test matching /second job on a busy computer is refused/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a second job on a busy computer is refused and nothing is queued behind it"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 3
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "two computers were busy at the same moment, each under its own agent and its own job",
+              "ok": true,
+              "observed": [
+                {
+                  "name": "research",
+                  "state": "busy",
+                  "controller": {
+                    "kind": "agent",
+                    "who": "researcher",
+                    "jobId": "39eff769-4d01-4351-939f-c18d6a80c6e7",
+                    "expiresAt": 1790792657148,
+                    "epoch": 1
+                  },
+                  "assigned": {
+                    "agent": "researcher",
+                    "by": "usman"
+                  }
+                },
+                {
+                  "name": "builder",
+                  "state": "busy",
+                  "controller": {
+                    "kind": "agent",
+                    "who": "builder-agent",
+                    "jobId": "e39bf7b1-f2d2-4619-89d8-d782577a797c",
+                    "expiresAt": 1790792657150,
+                    "epoch": 1
+                  },
+                  "assigned": {
+                    "agent": "builder-agent",
+                    "by": "usman"
+                  }
+                }
+              ]
+            },
+            {
+              "name": "both jobs ended succeeded, and overlapped (wall time well under running them one after the other)",
+              "ok": true,
+              "observed": {
+                "wallMs": 6103,
+                "states": [
+                  "succeeded",
+                  "succeeded"
+                ]
+              }
+            },
+            {
+              "name": "each computer's file holds its OWN text (same file name, different content)",
+              "ok": true,
+              "observed": [
+                "research: research notes",
+                "builder: builder notes"
+              ]
+            },
+            {
+              "name": "separate working folders and separate processes",
+              "ok": true,
+              "observed": {
+                "workdirs": [
+                  "/home/ryzen/mu-computers/research/work",
+                  "/home/ryzen/mu-computers/builder/work"
+                ],
+                "pids": [
+                  "4063",
+                  "4195"
+                ]
+              }
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "key": "files-survive-restart",
+      "title": "Files survive a desktop restart",
+      "ms": 222,
+      "status": "partial",
+      "bestLabel": "synthetic-integration",
+      "blocker": "a real desktop restart isn't observed: the WSL computers have no desktop (Xvfb, chromium, x11vnc, xdotool are missing and sudo needs the owner's password): run `sudo apt-get install -y --no-install-recommends xvfb chromium x11vnc xdotool fonts-liberation` in the distro, then re-run scripts/computers/journey.ts",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "scripts/acceptance/synthetic-computers.ts (real computer service + store; fake host)",
+          "checks": [
+            {
+              "name": "the file existed before the restart with the expected text",
+              "ok": true,
+              "observed": {
+                "name": "client-note.md",
+                "text": "# Synthetic client note aacb81\n\nSYNTHETIC-ACCEPT-aacb81. The synthetic clinic wants a booking page and after-hours call answering. Invented for tests.\n"
+              }
+            },
+            {
+              "name": "the desktop/session was really restarted (a new session id or a new start time)",
+              "ok": true,
+              "observed": {
+                "restarted": true
+              }
+            },
+            {
+              "name": "the same file is read back after the restart with the same text",
+              "ok": true,
+              "observed": {
+                "name": "client-note.md",
+                "text": "# Synthetic client note aacb81\n\nSYNTHETIC-ACCEPT-aacb81. The synthetic clinic wants a booking page and after-hours call answering. Invented for tests.\n"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "key": "sessions-stay-assigned",
+      "title": "Browser sessions stay assigned",
+      "ms": 1225,
+      "status": "partial",
+      "bestLabel": "real-local-computer",
+      "blocker": "unknown: a real browser session per agent (the real run observed computer and job assignment only, not browser tabs). the WSL computers have no desktop (Xvfb, chromium, x11vnc, xdotool are missing and sudo needs the owner's password): run `sudo apt-get install -y --no-install-recommends xvfb chromium x11vnc xdotool fonts-liberation` in the distro, then re-run scripts/computers/journey.ts",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"takeover and return\"",
+          "checks": [
+            {
+              "name": "a test matching /a person takes control mid-job/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a person takes control mid-job: the agent finishes its step and stops; the person acts; return resumes the same job after a fresh read"
+              ]
+            },
+            {
+              "name": "a test matching /viewer that vanishes while an agent is paused gives the computer back to that same job/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a viewer that vanishes while an agent is paused gives the computer back to that same job"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 4
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "each computer was assigned to its own agent, by the person who started it",
+              "ok": true,
+              "observed": [
+                [
+                  "research",
+                  "researcher",
+                  "usman"
+                ],
+                [
+                  "builder",
+                  "builder-agent",
+                  "usman"
+                ]
+              ]
+            },
+            {
+              "name": "through takeover the controller went agent -> person and the paused job stayed the assigned agent's",
+              "ok": true,
+              "observed": [
+                "agent:researcher",
+                "agent:researcher",
+                "person:usman"
+              ]
+            },
+            {
+              "name": "on return the SAME job went back to the same agent and finished",
+              "ok": true,
+              "observed": {
+                "resumedJob": "the same job",
+                "state": "succeeded"
+              }
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "key": "takeover-blocks-agent",
+      "title": "Takeover blocks the agent's input",
+      "ms": 347,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "blocker": "not shown on a real cloud VM: no real cloud VM exists yet (the shared computers are WSL on this PC); a cloud VM needs the owner's provider account",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/lease.test.ts",
+          "checks": [
+            {
+              "name": "a test matching /the agent holds until it hands over; only then does the person hold/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass the agent holds until it hands over; only then does the person hold; return gives it back under a new epoch"
+              ]
+            },
+            {
+              "name": "a test matching /stale epoch is refused/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a stale epoch is refused: a command issued before a change of holder never lands"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 9
+              }
+            }
+          ]
+        },
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"a program with no confirmed session cannot take a computer over\"",
+          "checks": [
+            {
+              "name": "a test matching /program with no confirmed session cannot take a computer over or send it input/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a program with no confirmed session cannot take a computer over or send it input"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 1
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "the takeover request did not interrupt the agent's running step (it waited for the step boundary)",
+              "ok": true,
+              "observed": {
+                "status": 200,
+                "state": "pending"
+              }
+            },
+            {
+              "name": "while the person held control, the agent's later files did not exist and the person's file did",
+              "ok": true,
+              "observed": [
+                "findings.txt",
+                "human.txt"
+              ]
+            },
+            {
+              "name": "the person's own input was accepted and read back",
+              "ok": true,
+              "observed": {
+                "status": 200,
+                "said": "Wrote human.txt (39 bytes) and read it back."
+              }
+            },
+            {
+              "name": "the job recorded that it paused before its next step",
+              "ok": true,
+              "observed": [
+                "ok wait: step 1 wait: Waited 7000 ms.",
+                "note : paused before step 2 (file.write): usman is taking control",
+                "note : control returned to the agent; re-reading the computer before step 2",
+                "ok computer.info: refreshed state after the handover: research: headless, no browser installed.",
+                "ok file.write: step 2 file.write: Wrote after-return-1.txt (12 bytes) and read it back.",
+                "ok file.write: step 3 file.write: Wrote after-return-2.txt (12 bytes) and read it back."
+              ]
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "key": "return-resumes-fresh",
+      "title": "Return resumes with fresh state",
+      "ms": 1230,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "blocker": "not shown on a real cloud VM: no real cloud VM exists yet (the shared computers are WSL on this PC); a cloud VM needs the owner's provider account",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"takeover and return\"",
+          "checks": [
+            {
+              "name": "a test matching /return resumes the same job after a fresh read/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a person takes control mid-job: the agent finishes its step and stops; the person acts; return resumes the same job after a fresh read"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 4
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "return resumed the SAME job",
+              "ok": true,
+              "observed": {
+                "status": 200,
+                "resumedJob": "the same job"
+              }
+            },
+            {
+              "name": "the agent re-read the computer before its next step (fresh state after the handover)",
+              "ok": true,
+              "observed": [
+                "ok wait: step 1 wait: Waited 7000 ms.",
+                "note : paused before step 2 (file.write): usman is taking control",
+                "note : control returned to the agent; re-reading the computer before step 2",
+                "ok computer.info: refreshed state after the handover: research: headless, no browser installed.",
+                "ok file.write: step 2 file.write: Wrote after-return-1.txt (12 bytes) and read it back.",
+                "ok file.write: step 3 file.write: Wrote after-return-2.txt (12 bytes) and read it back."
+              ]
+            },
+            {
+              "name": "the remaining steps then ran in order and the job ended succeeded",
+              "ok": true,
+              "observed": {
+                "state": "succeeded"
+              }
+            },
+            {
+              "name": "the first step ran exactly once, and the person's file is still there beside the agent's",
+              "ok": true,
+              "observed": [
+                "after-return-1.txt",
+                "after-return-2.txt",
+                "findings.txt",
+                "human.txt"
+              ]
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "key": "cancel-stops-later",
+      "title": "Cancel stops later actions",
+      "ms": 7262,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/devices/companion-executors.test.ts -t \"cancel through submit\"",
+          "checks": [
+            {
+              "name": "a test matching /job's stop cancels the command on the companion and PowerPoint's run is killed/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass the job's stop cancels the command on the companion and PowerPoint's run is killed"
+              ]
+            },
+            {
+              "name": "a test matching /already-stopped job sends nothing/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass an already-stopped job sends nothing"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 2
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "the stopped job ended cancelled, quickly, with its later step skipped",
+              "ok": true,
+              "observed": {
+                "status": 200,
+                "state": "cancelled",
+                "afterMs": 13,
+                "steps": [
+                  "cancelled: step 1 wait: Cancelled.",
+                  "skipped: step 2 file.write not run: it was stopped first"
+                ],
+                "neverWritten": true,
+                "computer": "online"
+              }
+            },
+            {
+              "name": "the file the skipped step would have written does not exist",
+              "ok": true,
+              "observed": {
+                "neverWritten": true
+              }
+            },
+            {
+              "name": "the computer is free again afterwards",
+              "ok": true,
+              "observed": {
+                "computer": "online"
+              }
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "run-now",
+          "source": "scripts/devices/real-local-proof.ts c1 and c2 against an isolated hub and a real companion",
+          "checks": [
+            {
+              "name": "real PC companion: stopped right after step 1, only step 1 ever reached its ledger",
+              "ok": true,
+              "observed": [
+                "observe.window:done"
+              ]
+            },
+            {
+              "name": "the job stopped after step 1 is not a success",
+              "ok": true,
+              "observed": {
+                "jobState": "cancelled"
+              }
+            },
+            {
+              "name": "real PC companion: stopped during step 2, step 2 is cancelled in its ledger",
+              "ok": true,
+              "observed": [
+                "s1:echo:done",
+                "s2:wait:cancelled"
+              ]
+            },
+            {
+              "name": "step 3 never reached the companion's ledger after the stop",
+              "ok": true,
+              "observed": [
+                "s1:echo:done",
+                "s2:wait:cancelled"
+              ]
+            },
+            {
+              "name": "the job stopped during step 2 is not a success",
+              "ok": true,
+              "observed": {
+                "jobState": "cancelled"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "key": "interrupted-not-replayed",
+      "title": "An interrupted action is not replayed",
+      "ms": 36987,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"lifecycle and recovery\"",
+          "checks": [
+            {
+              "name": "a test matching /dead companion shows failed, recover restarts it with the same pairing, and the step that was in flight is not replayed/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a dead companion shows failed, recover restarts it with the same pairing, and the step that was in flight is not replayed"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 5
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "earlier-evidence",
+          "source": "scripts/computers/journey.ts (real WSL computers on this PC): D:\\prog-scratch\\journey\\evidence.json",
+          "checks": [
+            {
+              "name": "the job whose computer died ended 'unknown' (not succeeded, not failed-and-retried)",
+              "ok": true,
+              "observed": {
+                "jobState": "unknown",
+                "note": "Step 1 (wait) may or may not have happened; I did not run it again or run the later steps."
+              }
+            },
+            {
+              "name": "the later step never ran and its file does not exist",
+              "ok": true,
+              "observed": {
+                "laterStepRan": false
+              }
+            },
+            {
+              "name": "the recovered computer's ledger moved running -> interrupted and the count of finished steps did not change",
+              "ok": true,
+              "observed": {
+                "before": [
+                  "4 \"state\":\"done\"",
+                  "      1 \"state\":\"running\""
+                ],
+                "after": [
+                  "4 \"state\":\"done\"",
+                  "      1 \"state\":\"interrupted\""
+                ]
+              }
+            },
+            {
+              "name": "it came back as the same device and took new work",
+              "ok": true,
+              "observed": {
+                "sameDevice": true,
+                "recoveries": 1
+              }
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:24:19.526Z"
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "run-now",
+          "source": "scripts/devices/real-local-proof.ts d (real companion killed mid-step, restarted)",
+          "checks": [
+            {
+              "name": "real PC companion killed mid-step: the job did not end succeeded",
+              "ok": true,
+              "observed": {
+                "jobState": "unknown"
+              }
+            },
+            {
+              "name": "the step that was running is 'interrupted' in the companion's own ledger after it restarted",
+              "ok": true,
+              "observed": [
+                "s1:echo:done",
+                "s2:wait:interrupted"
+              ]
+            },
+            {
+              "name": "after the restart nothing was delivered again and the later step never ran",
+              "ok": true,
+              "observed": {
+                "ledger": [
+                  "s1:echo:done",
+                  "s2:wait:interrupted"
+                ],
+                "jobStateNow": "unknown",
+                "stepsRunAgain": 0,
+                "hubSays": "s2:uncertain, the companion says: interrupted"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "key": "ownership-refused",
+      "title": "Ownership is refused before dispatch and at execution",
+      "ms": 2030,
+      "status": "partial",
+      "bestLabel": "synthetic-integration",
+      "blocker": "the other founder's real PC isn't here: a real remote-device run needs Mehroz to pair his own PC (docs/programme-20261001/worker-evidence.md, owners proof)",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/devices/target-contract.test.ts -t \"device ownership\"",
+          "checks": [
+            {
+              "name": "a test matching /not by name, id, spokenTarget, originDeviceId or a person's display name/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass not by name, id, spokenTarget, originDeviceId or a person's display name"
+              ]
+            },
+            {
+              "name": "a test matching /companion's own gate refuses a command signed for someone else/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass the companion's own gate refuses a command signed for someone else"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 3
+              }
+            }
+          ]
+        },
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/computers/computers.test.ts -t \"ownership\"",
+          "checks": [
+            {
+              "name": "a test matching /never reach the other founder's PC: refused BEFORE dispatch/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a person's commands never reach the other founder's PC: refused BEFORE dispatch, whatever the request names"
+              ]
+            },
+            {
+              "name": "a test matching /command to a shared computer without a live lease is refused before it is queued/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a command to a shared computer without a live lease is refused before it is queued (even with its exact id)"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 7
+              }
+            }
+          ]
+        },
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/devices/companion.test.ts -t \"local permission boundaries\"",
+          "checks": [
+            {
+              "name": "a test matching /non-allow-listed executors are refused on the PC even if the hub sends them/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass non-allow-listed executors are refused on the PC even if the hub sends them"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "key": "powerpoint-usable",
+      "title": "A usable PowerPoint presentation",
+      "ms": 3451,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "probes": [
+        {
+          "label": "real-local-computer",
+          "freshness": "run-now",
+          "source": "the real deck.blank executor (PowerPoint COM), then PowerPoint read back independently",
+          "checks": [
+            {
+              "name": "PowerPoint has the presentation open (found by its own object model, not by a window title)",
+              "ok": true,
+              "observed": {
+                "found": true
+              }
+            },
+            {
+              "name": "it has at least 1 slide(s) (read from PowerPoint)",
+              "ok": true,
+              "observed": {
+                "slideCount": 1
+              }
+            },
+            {
+              "name": "the first slide's title text is the requested title (read from PowerPoint)",
+              "ok": true,
+              "observed": {
+                "firstSlideTitle": "SYNTHETIC M&U Acceptance Deck aacb81"
+              }
+            }
+          ],
+          "notes": [
+            "executor said: {\"name\":\"SYNTHETIC M\\u0026U Acceptance Deck aacb81\",\"slides\":1,\"layout\":1,\"path\":\"\",\"title64\":\"U1lOVEhFVElDIE0mVSBBY2NlcHRhbmNlIERlY2sgYWFjYjgx\"}"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "key": "spoken-compound",
+      "title": "A spoken compound command",
+      "ms": 1,
+      "status": "owed",
+      "bestLabel": null,
+      "probes": [],
+      "blocker": "needs the owner's real microphone: say the sentence at the Jarvis page, then save that job's steps and the companion ledger as JSON ({transcript, heardByPipeline, jobSteps[{executor,outcome}], ledger[]}) and run with ACCEPT_SPOKEN_OBSERVATION=<file>. The evaluator (evaluators.ts: spokenCompound) is ready and unit-tested"
+    },
+    {
+      "id": 11,
+      "key": "coding-job-receipt",
+      "title": "A real coding job: receipt and output",
+      "ms": 316,
+      "status": "pass",
+      "bestLabel": "live-provider",
+      "blocker": "no new paid job was run: the recorded job's receipts and its git output were re-read and re-evaluated",
+      "probes": [
+        {
+          "label": "live-provider",
+          "freshness": "earlier-evidence",
+          "source": "job receipts (D:\\AgenticOS-prog-int\\docs\\programme-20261001\\coding-job-result.json) and the repo in git (D:\\prog-scratch\\job2)",
+          "checks": [
+            {
+              "name": "a receipt exists for the builder and for the reviewer",
+              "ok": true,
+              "observed": [
+                "builder-1",
+                "reviewer"
+              ]
+            },
+            {
+              "name": "both ran on a named second account slot, not the default",
+              "ok": true,
+              "observed": [
+                "claude:max-2",
+                "claude:max-2"
+              ]
+            },
+            {
+              "name": "requested and reported models agree and differ between builder and reviewer",
+              "ok": true,
+              "observed": [
+                [
+                  "claude-sonnet-5-5",
+                  "claude-sonnet-5-5"
+                ],
+                [
+                  "claude-opus-5-5",
+                  "claude-opus-5-5"
+                ]
+              ]
+            },
+            {
+              "name": "the CLI version and execution location are recorded",
+              "ok": true,
+              "observed": [
+                [
+                  "2.1.280",
+                  "this-pc"
+                ],
+                [
+                  "2.1.280",
+                  "this-pc"
+                ]
+              ]
+            },
+            {
+              "name": "the OUTPUT exists in git: the job branch has the function and exactly one commit; the base branch is untouched",
+              "ok": true,
+              "observed": {
+                "branchFileHasFarewell": true,
+                "branchCommits": 2,
+                "mainUntouched": true
+              }
+            },
+            {
+              "name": "tests at the head passed and the review verdict is for that same head",
+              "ok": true,
+              "observed": {
+                "headTests": {
+                  "passed": 2,
+                  "failed": 0
+                },
+                "verdict": "approve",
+                "sameSha": true
+              }
+            }
+          ],
+          "evidenceAt": "2026-09-30T18:04:04.741Z"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "key": "restart-preserves-jobs",
+      "title": "A restart preserves jobs without duplicate execution",
+      "ms": 15994,
+      "status": "pass",
+      "bestLabel": "real-local-computer",
+      "probes": [
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/coding/orchestrator.test.ts -t \"restart and resume\"",
+          "checks": [
+            {
+              "name": "a test matching /a restart interrupts the build; nothing replays; an explicit resume continues the SAME native session/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a restart interrupts the build; nothing replays; an explicit resume continues the SAME native session"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 1
+              }
+            }
+          ]
+        },
+        {
+          "label": "synthetic-integration",
+          "freshness": "run-now",
+          "source": "bun test scripts/devices/target-contract.test.ts -t \"no duplicate dispatch\"",
+          "checks": [
+            {
+              "name": "a test matching /same key from the same person while it runs is one command/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass the same key from the same person while it runs is one command"
+              ]
+            },
+            {
+              "name": "a test matching /finished one is reused within the window/ ran and passed",
+              "ok": true,
+              "observed": [
+                "pass a finished one is reused within the window, run again after it, and different args are different"
+              ]
+            },
+            {
+              "name": "no test in that run failed",
+              "ok": true,
+              "observed": {
+                "failed": [],
+                "exitCode": 0,
+                "ran": 3
+              }
+            }
+          ]
+        },
+        {
+          "label": "real-local-computer",
+          "freshness": "run-now",
+          "source": "an isolated hub process killed and started again on the same data, with a real companion",
+          "checks": [
+            {
+              "name": "every job that existed before the restart is still there after it",
+              "ok": true,
+              "observed": {
+                "before": 4,
+                "after": 4
+              }
+            },
+            {
+              "name": "a job that was running when the hub died is now uncertain ('unknown' or 'interrupted'), never still 'running' and never 'succeeded' on its own",
+              "ok": true,
+              "observed": {
+                "02a79881-c01c-4ab8-b7eb-94108d94585b": "succeeded",
+                "22ac76c3-1dfc-4fe8-bcd0-cc3040967921": "cancelled",
+                "0479fa47-d574-4365-ab28-999c0b4603b5": "unknown",
+                "dae0f0a4-77a4-42e8-897e-2d3cc0532b02": "unknown"
+              }
+            },
+            {
+              "name": "nothing was executed a second time by the restart (execution count unchanged, nothing resumed on its own)",
+              "ok": true,
+              "observed": {
+                "before": 8,
+                "after": 8,
+                "resumedAnything": false
+              }
+            },
+            {
+              "name": "finished steps are kept exactly",
+              "ok": true,
+              "observed": {
+                "before": 5,
+                "after": 5
+              }
+            }
+          ],
+          "notes": [
+            "Found by this probe on its first run: the isolated hub (scripts/devices/local-hub.ts) never ran the startup recovery the real OS runs (JobService.recover via scripts/jobs/runtime.ts), so a job killed mid-step stayed 'running' forever. Fixed there (it now recovers: running becomes unknown, never re-run); the real OS was not affected."
+          ]
+        }
+      ]
+    }
+  ]
+}

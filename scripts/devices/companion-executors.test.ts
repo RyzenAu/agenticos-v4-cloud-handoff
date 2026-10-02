@@ -214,7 +214,8 @@ describe("a companion going offline mid-command", () => {
     hub.clock.advance(31_000);
     hub.svc.dispatcher.sweepOffline();
     const r = await pending;
-    expect(r).toEqual({ ok: false, reason: "device offline", deviceId: m.deviceId, commandId: queued });
+    // It had been delivered and its device dropped: it may have run, so it is uncertain (not a plain failure).
+    expect(r).toEqual({ ok: false, reason: "device offline", deviceId: m.deviceId, commandId: queued, uncertain: true });
     expect(JSON.stringify(r)).not.toContain("usman-pc");
     // A new command for Mehroz now is refused, not sent to the hub.
     expect(await hub.svc.dispatcher.submit({ personId: "mehroz", executor: "notepad.type", args: { text: "again" } })).toMatchObject({ ok: false, reason: "device offline", deviceId: m.deviceId });
@@ -224,7 +225,8 @@ describe("a companion going offline mid-command", () => {
     await new Promise((r2) => setTimeout(r2, 400));
     expect(pc.typed).toEqual([]);
     expect(m.worker.history.filter((h) => h.id === queued)).toHaveLength(1);
-    expect(hub.svc.dispatcher.get(queued)?.status).toBe("failed");
+    // Delivered, then its device dropped: it stays uncertain (the companion aborted it, but the hub cannot know that).
+    expect(hub.svc.dispatcher.get(queued)?.status).toBe("uncertain");
   });
 });
 

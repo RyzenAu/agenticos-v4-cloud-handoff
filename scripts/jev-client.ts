@@ -9,6 +9,7 @@
 // No in-app caps (V7). A missing key means no call, so no receipt.
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validJevAnswers } from "./jev-answer-validation";
 import { providerModelId } from "./model-router/catalogue";
 import { httpProviderError } from "./model-router/clients";
 import { callHealth, defaultReceiptSink, defaultRequest } from "./model-router/defaults";
@@ -82,7 +83,8 @@ export type JevOk = { ok: true; answers: JevAnswers; ms: number; httpStatus: num
 export type JevFail = { ok: false; reason: "no-key" | "unavailable" | "http" | "timeout" | "cancelled" | "unreadable"; httpStatus: number | null; ms: number; receipt: RouterReceipt | null };
 export type JevOutcome = JevOk | JevFail;
 
-const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+// TypeSafe also documents 529 for overload; it uses the same bounded budget.
+const RETRYABLE = new Set([429, 500, 502, 503, 504, 529]);
 const sleepMs = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** One Jev decision. Never throws: a failure is a JevFail (with its receipt) and the caller uses its own rules. */
@@ -147,7 +149,7 @@ export async function jevDecide(call: JevCall): Promise<JevOutcome> {
           if (res.ok) {
             raw = await res.json().catch(() => null);
             const answers = (raw as { answers?: unknown } | null)?.answers;
-            if (!answers || typeof answers !== "object") throw fail(new ProviderError("unknown", "unreadable reply", { httpStatus: res.status, sent: "unknown" }));
+            if (!validJevAnswers(call.questions, answers)) throw fail(new ProviderError("unknown", "unreadable reply", { httpStatus: res.status, sent: "unknown" }));
             const usage = (raw as { usage?: { input_tokens?: number; prompt_tokens?: number } })?.usage;
             const input = usage?.input_tokens ?? usage?.prompt_tokens;
             return { value: answers as JevAnswers, httpStatus: res.status, providerModel: typeof (raw as { model?: unknown })?.model === "string" ? String((raw as { model: string }).model).slice(0, 80) : null, usage: { inputTokens: typeof input === "number" ? input : null, outputTokens: typeof input === "number" ? 0 : null } };

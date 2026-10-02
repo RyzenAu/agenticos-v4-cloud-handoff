@@ -5,7 +5,7 @@ Close at the end of the demo, not on the cold call. Recommend **one** package fr
 ## The recommendation
 > "From what you've told me, you'd want the receptionist taking [after-hours / overflow] calls, about [N] a week, and you'd release new-patient check-ups into a booking calendar. That's **Essential**: A$699 a month + GST, 400 minutes included, and at go-live every booking lands in your connected Google Calendar or Cal.com calendar and your inbox."
 
-**Essential's cover, before you say it:** [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]
+**Essential's cover:** Essential covers business hours, alongside staff, after hours and overflow, like every package. Essential differs by included minutes (400) and extra-minute rate (A$0.80), not by cover mode.
 
 Swap in Professional (several practitioners, all calls alongside the team, reminders, weekly report) or Premium (multi-site, high volume, weekly call review) only when their answers point there. Prices and inclusions: `11-package-comparison.md` (generated from the catalogue; + 10% GST). Setup: quoted separately once approved.
 

@@ -37,8 +37,8 @@ test("N1 BL1: production health (real files): a 404 on screen.point does not sto
   expect(r1.ok).toBe(false);
   await new Promise((r) => setImmediate(r));
   expect(routerHealthStore(root).model("typesafe/jev-latest").state).toBe("down");
-  const r2 = await jevDecide({ surface: "hermes.guardian", key: "k", state: {}, questions: {}, root, sink: new MemoryReceiptSink(),
-    request: (async () => { calls++; return ok({ decision: "allow" }); }) as any });
+  const r2 = await jevDecide({ surface: "hermes.guardian", key: "k", state: {}, questions: { decision: { type: "choice", criteria: { allow: "Allowed", refuse: "Refused" } } }, root, sink: new MemoryReceiptSink(),
+    request: (async () => { calls++; return ok({ decision: { choice: "allow", confidence: 0.95 } }); }) as any });
   expect(r2.ok).toBe(true);
   expect(calls).toBe(2);
 });

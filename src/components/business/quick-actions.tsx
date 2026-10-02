@@ -79,7 +79,7 @@ type Owner = "usman" | "mehroz";
 type State = { pinned: string[]; log: LogEntry[]; viewer: { name: string | null; remote: boolean } };
 type LogEntry = { id: string; at: string; action: string; by: string; ok: boolean; summary: string; ms: number };
 type Lead = { id: number; name: string; website?: string; phone?: string; status: string; vertical?: string; area?: string; excluded?: boolean };
-type Picked = { lead?: Lead; org?: string; fast?: boolean };
+type Picked = { lead?: Lead; org?: string; bespoke?: boolean };
 type Run = { id: QuickActionId; by: string; startedAt: number; subject?: string };
 type Shown = { id: QuickActionId; by: string; at: number; ms: number; subject?: string; result: ActionResult };
 type Toast = { id: number; ok: boolean; text: string };
@@ -134,7 +134,7 @@ async function execute(id: QuickActionId, picked: Picked, owner: Owner): Promise
         headline: callsHeadline(data.due, data.leads.length),
         summary: `${due ? `${due} · ${sheet}` : sheet} · calling window ${data.callWindow.open ? "open" : "closed"}, ${data.callWindow.why}.`,
         lines: data.leads.map((l) => [l.name, l.vertical, l.area, l.phone].filter(Boolean).join(" · ")),
-        link: { label: "Open Leads", href: "/leads" },
+        link: { label: "Open Leads", href: "/leads?view=today" },
       };
     }
     case "morning-brief": {
@@ -165,7 +165,7 @@ async function execute(id: QuickActionId, picked: Picked, owner: Owner): Promise
     }
     case "generate-preview": {
       const lead = picked.lead!;
-      const r = await postSiteDraft({ lead: lead.id, ...(picked.fast ? { fast: true } : {}) });
+      const r = await postSiteDraft({ lead: lead.id, by: owner, ...(picked.bespoke ? { mode: "bespoke" } : {}) });
       return {
         ok: true,
         summary: `Preview ready for ${r.name}${r.qaPass === false ? "; QA flagged issues to fix before showing anyone" : ""}.`,
@@ -320,7 +320,7 @@ export function QuickActions() {
   }
   function picked(def: QuickActionDef, choice: Picked) {
     setPicking(null);
-    if (def.gate === "spend") setConfirming({ def, picked: choice });
+    if (def.gate === "spend" && !(def.id === "generate-preview" && choice.lead?.vertical === "dental" && !choice.bespoke)) setConfirming({ def, picked: choice });
     else void run(def, choice);
   }
 
@@ -544,7 +544,7 @@ function ManagePins({ pinned, onChange }: { pinned: string[]; onChange: (next: s
 
 function Picker({ def, onPick, onCancel }: { def: QuickActionDef; onPick: (choice: Picked) => void; onCancel: () => void }) {
   const [query, setQuery] = useState("");
-  const [fast, setFast] = useState(false);
+  const [bespoke, setBespoke] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const isOrg = def.needs === "org";
   const leads = useQuery<{ leads: Lead[] }>({
@@ -578,8 +578,8 @@ function Picker({ def, onPick, onCancel }: { def: QuickActionDef; onPick: (choic
         </label>
         {def.id === "generate-preview" && (
           <label className="qa-picker-fast">
-            <input type="checkbox" checked={fast} onChange={(e) => setFast(e.target.checked)} />
-            Quick template draft instead (instant, no Claude build)
+            <input type="checkbox" checked={bespoke} onChange={(e) => setBespoke(e.target.checked)} />
+            Create a new design with Claude
           </label>
         )}
         <div className="qa-picker-list" role="listbox" aria-label={isOrg ? "Clients" : "Leads"}>
@@ -604,7 +604,7 @@ function Picker({ def, onPick, onCancel }: { def: QuickActionDef; onPick: (choic
             <p className="qa-picker-empty">Couldn't load leads: {(leads.error as Error).message}</p>
           ) : leadRows.length ? (
             leadRows.map((lead) => (
-              <button key={lead.id} type="button" role="option" aria-selected={false} onClick={() => onPick({ lead, fast })}>
+              <button key={lead.id} type="button" role="option" aria-selected={false} onClick={() => onPick({ lead, bespoke })}>
                 <strong>{lead.name}</strong>
                 <small>{[lead.vertical, lead.area, lead.status.replace(/_/g, " "), lead.website?.replace(/^https?:\/\/(www\.)?/, "")].filter(Boolean).join(" · ")}</small>
               </button>

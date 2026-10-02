@@ -2,6 +2,7 @@
 import { writeFileSync } from "node:fs";
 import { providerModelId } from "../model-router/catalogue";
 import { CLINE_CATALOGUE as catalogueUrl, clineBridgeName } from "./policy";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 /** Bridge name + Cline provider id for a catalogue id (ids live in the catalogue only). */
 const fleetModel = (id: string) => ({ model: clineBridgeName(id), id: providerModelId(id) });
@@ -42,7 +43,7 @@ async function review(item: typeof reviews[number]) {
   const start = Date.now();
   const response = await fetch("http://127.0.0.1:8081/__cline/v1/chat/completions", {
     // Deliberately synthetic code, declared so (recorded by the bridge; never a refusal).
-    method: "POST", headers: { "Content-Type": "application/json", "X-MU-Data-Class": "synthetic" }, signal: AbortSignal.timeout(320_000),
+    method: "POST", headers: { "Content-Type": "application/json", "X-MU-Data-Class": "synthetic", ...localOwnerHeaders() }, signal: AbortSignal.timeout(320_000),
     body: JSON.stringify({model:item.model, messages:[{role:"user",content:
       `Independent review of this deliberately flawed SYNTHETIC example. No tools. Give at most 5 concrete findings and corrected expected values or test assertions. Under 250 words. Do not invent runtime evidence.\n${item.code}`}]}),
   });

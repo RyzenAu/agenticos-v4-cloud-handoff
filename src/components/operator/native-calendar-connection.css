@@ -25,12 +25,12 @@
 .ar-native-calendar-copy p {
   margin: 4px 0;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   overflow-wrap: anywhere;
 }
 .ar-native-calendar-copy small {
   color: var(--op-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.6;
 }
 .ar-native-calendar-actions {

@@ -21,7 +21,7 @@ function transport(options: { permission?:boolean; malformed?:boolean; oversized
  const launch=((_binary:string,flags:string[])=>{args=flags;return child;}) as any;
  return {requests,kills,launch,get args(){return args;}};
 }
-const run=<T>(fixture:ReturnType<typeof transport>,work:(client:any)=>Promise<T>)=>withConnectedRead("/tmp",work,{binary:"/synthetic/codex",launch:fixture.launch} as any);
+const run=<T>(fixture:ReturnType<typeof transport>,work:(client:any)=>Promise<T>)=>withConnectedRead("/tmp",work,{binary:"/synthetic/codex",launch:fixture.launch,env:{}} as any);
 
 test("connected read unwraps only successful structured provider data",()=>{
  expect(unwrapConnectedRead({structuredContent:{value:[]}})).toEqual({value:[]});

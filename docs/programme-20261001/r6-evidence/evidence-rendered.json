@@ -1,0 +1,193 @@
+[
+  {
+    "at": "+0.8s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+8.1s",
+    "step": "rendered d (1440 px): progress arrived with no refresh; ONE started, ONE finished",
+    "data": {
+      "width": 1440,
+      "ack": "Started on builder: prepare a comparison table of three website packages. It runs there whether or not your PC is on; sa",
+      "pageNeverReloaded": true,
+      "overflowX": false,
+      "lines": [
+        "FailedFailed: go to r6-no-such-host.invalid and check the tit… Stopped at step 1 of 1 (screen.goal): Couldn't find r6-no-such-host.invalid. ",
+        "JarvisStarted: prepare a comparison table of three website pac… (job 6cb04d69).Remember this",
+        "ProgressBusiness preparation, step 1 of 5 (gather): done.Remember this",
+        "ProgressBusiness preparation, step 2 of 5 (draft): done.Remember this",
+        "ProgressBusiness preparation, step 3 of 5 (check): done.Remember this",
+        "ProgressBusiness preparation, step 4 of 5 (save on the computer): done.Remember this",
+        "ResultBusiness preparation: Comparison: Starter / Standard / PlusComparison table of 3 synthetic options (Starter $690, Standard $1,090, Plu",
+        "ProgressBusiness preparation, step 5 of 5 (return result): done.Remember this",
+        "FinishedFinished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job 6cb04d69)Open job 6cb04d69 Re"
+      ],
+      "openResultHref": "/__computers/artifacts/6cb04d69-62b4-42a2-8d90-74b55b21dce3",
+      "startedLines": 1,
+      "finishedLines": 1
+    }
+  },
+  {
+    "at": "+20.6s",
+    "step": "rendered m (390 px): progress arrived with no refresh; ONE started, ONE finished",
+    "data": {
+      "width": 390,
+      "ack": "Started on research: audit the demo clinic fixture. It runs there whether or not your PC is on; say \"show me the researc",
+      "pageNeverReloaded": true,
+      "overflowX": false,
+      "lines": [
+        "FinishedFinished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job 6cb04d69)Open job 6cb04d69 Re",
+        "JarvisStarted: audit the demo clinic fixture (job c04d33aa).Remember this",
+        "ProgressWebsite audit, step 1 of 5 (open the site): done.Remember this",
+        "ProgressWebsite audit, step 2 of 5 (desktop): done.Remember this",
+        "ProgressWebsite audit, step 3 of 5 (phone): done.Remember this",
+        "ProgressWebsite audit, step 4 of 5 (journeys): done.Remember this",
+        "ResultWebsite audit: the local demo clinic fixture (synthetic)7 findings (2 to fix first) on the local demo clinic fixture (synthetic), desk",
+        "ProgressWebsite audit, step 5 of 5 (report): done.Remember this",
+        "FinishedFinished: audit the demo clinic fixture. Done on research: 1 step, each checked. (job c04d33aa)Open job c04d33aa Remember this"
+      ],
+      "openResultHref": "/__computers/artifacts/c04d33aa-ebf9-451c-8d5a-4c5314e408cc",
+      "startedLines": 1,
+      "finishedLines": 1
+    }
+  },
+  {
+    "at": "+27.8s",
+    "step": "rendered d: a stopped workflow and a failed one say so",
+    "data": {
+      "stepSeen": true,
+      "stop": "Stopped it. Nothing further will run.",
+      "stoppedLine": true,
+      "failedLine": true,
+      "tail": [
+        "ProgressWebsite audit, step 2 of 5 (desktop): done.Remember this",
+        "StoppedStopped: audit the demo clinic fixture. Nothing further ran. (job a0a0f9ba)Open job a0a0f9ba Remember this",
+        "JarvisStarted: go to r6-no-such-host.invalid and check the tit… (job a4b35b97).Remember this",
+        "FailedFailed: go to r6-no-such-host.invalid and check the tit… Stopped at step 1 of 1 (screen.goal): Couldn't find r6-no-such-host"
+      ]
+    }
+  },
+  {
+    "at": "+35.1s",
+    "step": "rendered m: a stopped workflow and a failed one say so",
+    "data": {
+      "stepSeen": true,
+      "stop": "Stopped it. Nothing further will run.",
+      "stoppedLine": true,
+      "failedLine": true,
+      "tail": [
+        "ProgressWebsite audit, step 2 of 5 (desktop): done.Remember this",
+        "StoppedStopped: audit the demo clinic fixture. Nothing further ran. (job 654b13d2)Open job 654b13d2 Remember this",
+        "JarvisStarted: go to r6-no-such-host.invalid and check the tit… (job b88b6cc8).Remember this",
+        "FailedFailed: go to r6-no-such-host.invalid and check the tit… Stopped at step 1 of 1 (screen.goal): Couldn't find r6-no-such-host"
+      ]
+    }
+  },
+  {
+    "at": "+39.8s",
+    "step": "the user returns (a new page load): the results are waiting",
+    "data": {
+      "startedLines": 48,
+      "finishedLines": 30,
+      "savedResultButtons": 29
+    }
+  },
+  {
+    "at": "+43.5s",
+    "step": "OPEN JOB lands on the specific job (not the list)",
+    "data": {
+      "job": "c04d33aa",
+      "selected": true,
+      "text": "audit the demo clinic fixtureDonejob c04d33aa · 2 Oct, 6:35 am · took 7 sOpen saved resultDone on research: 1 step, each checked.companion move check 3 links: Checked 3 links: 2 answered, 1 did not.co",
+      "marked": 1,
+      "openResult": true
+    }
+  },
+  {
+    "at": "+53.2s",
+    "step": "saved results rendered",
+    "data": [
+      {
+        "file": "r6-artifact-audit-1440.png",
+        "width": 1440,
+        "overflowX": false
+      },
+      {
+        "file": "r6-artifact-audit-390.png",
+        "width": 390,
+        "overflowX": false
+      },
+      {
+        "file": "r6-artifact-builder-1440.png",
+        "width": 1440,
+        "overflowX": false
+      },
+      {
+        "file": "r6-artifact-builder-390.png",
+        "width": 390,
+        "overflowX": false
+      },
+      {
+        "file": "r6-artifact-bizprep-1440.png",
+        "width": 1440,
+        "overflowX": false
+      },
+      {
+        "file": "r6-artifact-research-1440.png",
+        "width": 1440,
+        "overflowX": false
+      }
+    ]
+  },
+  {
+    "at": "+53.2s",
+    "step": "rendered evidence",
+    "data": [
+      {
+        "width": 1440,
+        "ack": "Started on builder: prepare a comparison table of three website packages. It runs there whether or not your PC is on; sa",
+        "pageNeverReloaded": true,
+        "overflowX": false,
+        "lines": [
+          "FailedFailed: go to r6-no-such-host.invalid and check the tit… Stopped at step 1 of 1 (screen.goal): Couldn't find r6-no-such-host.invalid. ",
+          "JarvisStarted: prepare a comparison table of three website pac… (job 6cb04d69).Remember this",
+          "ProgressBusiness preparation, step 1 of 5 (gather): done.Remember this",
+          "ProgressBusiness preparation, step 2 of 5 (draft): done.Remember this",
+          "ProgressBusiness preparation, step 3 of 5 (check): done.Remember this",
+          "ProgressBusiness preparation, step 4 of 5 (save on the computer): done.Remember this",
+          "ResultBusiness preparation: Comparison: Starter / Standard / PlusComparison table of 3 synthetic options (Starter $690, Standard $1,090, Plu",
+          "ProgressBusiness preparation, step 5 of 5 (return result): done.Remember this",
+          "FinishedFinished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job 6cb04d69)Open job 6cb04d69 Re"
+        ],
+        "openResultHref": "/__computers/artifacts/6cb04d69-62b4-42a2-8d90-74b55b21dce3",
+        "startedLines": 1,
+        "finishedLines": 1
+      },
+      {
+        "width": 390,
+        "ack": "Started on research: audit the demo clinic fixture. It runs there whether or not your PC is on; say \"show me the researc",
+        "pageNeverReloaded": true,
+        "overflowX": false,
+        "lines": [
+          "FinishedFinished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job 6cb04d69)Open job 6cb04d69 Re",
+          "JarvisStarted: audit the demo clinic fixture (job c04d33aa).Remember this",
+          "ProgressWebsite audit, step 1 of 5 (open the site): done.Remember this",
+          "ProgressWebsite audit, step 2 of 5 (desktop): done.Remember this",
+          "ProgressWebsite audit, step 3 of 5 (phone): done.Remember this",
+          "ProgressWebsite audit, step 4 of 5 (journeys): done.Remember this",
+          "ResultWebsite audit: the local demo clinic fixture (synthetic)7 findings (2 to fix first) on the local demo clinic fixture (synthetic), desk",
+          "ProgressWebsite audit, step 5 of 5 (report): done.Remember this",
+          "FinishedFinished: audit the demo clinic fixture. Done on research: 1 step, each checked. (job c04d33aa)Open job c04d33aa Remember this"
+        ],
+        "openResultHref": "/__computers/artifacts/c04d33aa-ebf9-451c-8d5a-4c5314e408cc",
+        "startedLines": 1,
+        "finishedLines": 1
+      }
+    ]
+  }
+]

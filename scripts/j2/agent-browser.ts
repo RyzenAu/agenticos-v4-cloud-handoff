@@ -136,8 +136,22 @@ export function createAgentBrowserHands(options: { run: AbRun; port?: number; se
     async open(url: string, where: "new-tab" | "this-tab" = "new-tab"): Promise<{ ok: boolean; said: string; targetId?: string; url?: string }> {
       const verdict = toolGuardVerdict({ tool: "browser_navigate", args: { url } });
       if (!verdict.allow) return { ok: false, said: verdict.message };
+      // A navigation timeout is ambiguous: the tab may have been created already.
+      // Keep a before snapshot so recovery can only identify a newly created tab.
+      const before = where === "new-tab" ? await ab<{ tabs?: Tab[] }>(["tab"]) : null;
       const r = where === "new-tab" ? await ab<{ targetId?: string; url?: string }>(["tab", "new", url]) : await ab<{ url?: string }>(["open", url]);
-      if (!r.ok) return { ok: false, said: `The browser didn't open it: ${r.error}.` };
+      if (!r.ok) {
+        if (/timed?\s*out|timeout/i.test(r.error)) {
+          if (before?.ok && Array.isArray(before.data.tabs)) {
+            const after = await ab<{ tabs?: Tab[] }>(["tab"]);
+            const old = new Set(before.data.tabs.map((t) => t.targetId));
+            const found = after.ok && Array.isArray(after.data.tabs) ? after.data.tabs.filter((t) => t.targetId && !old.has(t.targetId) && t.url === url) : [];
+            if (found.length === 1) return { ok: true, said: "Opened; confirmed the new tab after a slow response.", targetId: found[0].targetId, url: found[0].url };
+          }
+          return { ok: false, said: "Chrome took too long to respond. I couldn't confirm whether the tab opened, so I haven't tried again." };
+        }
+        return { ok: false, said: `The browser didn't open it: ${r.error.replace(/[.]+$/, "")}.` };
+      }
       const now = where === "new-tab" ? (r.data as { targetId?: string }).targetId : (await active())?.targetId;
       return { ok: true, said: "Opened.", ...(now ? { targetId: String(now) } : {}), ...(r.data.url ? { url: String(r.data.url) } : {}) };
     },

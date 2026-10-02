@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { isRouteReferenceModule, lucideExportMap, lucideValueImports, needsWholeBarrel, subsetEntry } from "./dev-page-weight";
+import { isAppSourceModule, isRouteReferenceModule, lucideExportMap, lucideValueImports, needsWholeBarrel, subsetEntry } from "./dev-page-weight";
 
 test("collects value imports from lucide-react and skips type-only ones", () => {
   const code = `
@@ -55,4 +55,16 @@ test("only route reference modules lose their dev source map", () => {
   expect(isRouteReferenceModule("C:/app/src/routes/__root.tsx", routes)).toBe(false);
   expect(isRouteReferenceModule("C:/app/src/routes/business.css", routes)).toBe(false);
   expect(isRouteReferenceModule("C:/app/src/components/design.tsx", routes)).toBe(false);
+});
+
+test("app modules lose their dev source map; dependencies, assets and raw imports keep theirs", () => {
+  const src = "C:/app/src";
+  expect(isAppSourceModule("C:/app/src/components/floating-oracle.tsx", src)).toBe(true);
+  expect(isAppSourceModule("C:\\app\\src\\lib\\money-policy.ts", src)).toBe(true);
+  expect(isAppSourceModule("C:/app/src/routes/business.tsx?tsr-split=component", src)).toBe(true);
+  expect(isAppSourceModule("C:/app/src/styles.css", src)).toBe(false);
+  expect(isAppSourceModule("C:/app/src/data/graph.json", src)).toBe(false);
+  expect(isAppSourceModule("C:/app/src/x/y.ts?raw", src)).toBe(false);
+  expect(isAppSourceModule("C:/app/node_modules/react/index.js", src)).toBe(false);
+  expect(isAppSourceModule("C:/app/scripts/leads/crm.ts", src)).toBe(false);
 });

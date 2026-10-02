@@ -43,6 +43,8 @@ export type BriefToday = {
   weatherCity?: { name: string; source: "profile" | "timezone" | "environment" };
   weatherError?: string;
   updatedAt: string;
+  /** The server answered from its last good read while it refreshes: `updatedAt` says how old it is. */
+  stale?: boolean;
 };
 
 function safeLink(value: string) {

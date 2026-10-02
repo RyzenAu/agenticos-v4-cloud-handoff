@@ -12,6 +12,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Vertical } from "./places";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type LeadSource = "google" | "osm";
 
@@ -22,6 +23,10 @@ export const STATUSES = [
 export type Status = (typeof STATUSES)[number];
 /** Outcomes that end outreach for good. */
 const CLOSED: Status[] = ["won", "lost", "not_interested", "do_not_contact"];
+
+export const WEBSITE_CHECKS = ["found", "none-verified", "check-failed", "search-unavailable", "not-checked"] as const;
+export type WebsiteCheck = (typeof WEBSITE_CHECKS)[number];
+export const normaliseWebsiteCheck = (v: unknown): WebsiteCheck => ((WEBSITE_CHECKS as readonly string[]).includes(v as string) ? (v as WebsiteCheck) : "not-checked");
 
 export type Lead = {
   id: number;
@@ -63,6 +68,11 @@ export type Lead = {
   /** When a website check last ran for this lead (found or not) — backs the
    *  "no website found (checked <date>)" reason so that's never a bare assumption. */
   websiteCheckedAt: string | null;
+  /** What the last website check established, written where the result is known (never inferred from dates or text):
+   *  found (a website exists, listed or discovered), none-verified (a real search engine answered and nothing was found),
+   *  check-failed (a candidate or the check itself could not be completed), search-unavailable (no search engine answered),
+   *  not-checked (never checked, or a legacy row that cannot prove a check). Only none-verified may become "No website, verified". */
+  websiteCheck: WebsiteCheck;
   /** Set once this lead has been folded into another (same discovered domain or phone) as a
    *  duplicate — the id it was merged into. The row is kept (never deleted) and `excluded`
    *  becomes true with a "duplicate of #<id>" reason, same as any other excluded lead. */
@@ -99,7 +109,7 @@ export const PLACES_FIELD_SOURCES = new Set(["google", "places", ""]);
 export type Activity = { id: number; leadId: number; at: string; kind: string; outcome: string; note: string; by: string };
 
 export function crmPath(root: string) {
-  return join(root, ".operator-data", "crm.sqlite");
+  return join(dataDirFor(root), "crm.sqlite");
 }
 
 export function openCrm(file: string) {
@@ -137,6 +147,7 @@ export function openCrm(file: string) {
       website_source TEXT NOT NULL DEFAULT '',
       website_confidence REAL,
       website_checked_at TEXT,
+      website_check TEXT NOT NULL DEFAULT 'not-checked',
       merged_into INTEGER,
       phone_source TEXT NOT NULL DEFAULT '',
       phone_confidence REAL,
@@ -254,6 +265,17 @@ export function openCrm(file: string) {
   if (!existing.has("website_source")) db.exec("ALTER TABLE leads ADD COLUMN website_source TEXT NOT NULL DEFAULT ''");
   if (!existing.has("website_confidence")) db.exec("ALTER TABLE leads ADD COLUMN website_confidence REAL");
   if (!existing.has("website_checked_at")) db.exec("ALTER TABLE leads ADD COLUMN website_checked_at TEXT");
+  // The column and its backfill are one step: a crash between them must not leave websites "not-checked" for good.
+  // Conservative backfill: a saved website is "found"; an empty one stays "not-checked" however old its check date is,
+  // because older runs stamped that date even when no search engine had answered. Nothing becomes none-verified here.
+  if (!existing.has("website_check")) {
+    db.transaction(() => {
+      db.exec("ALTER TABLE leads ADD COLUMN website_check TEXT NOT NULL DEFAULT 'not-checked'");
+      db.exec("UPDATE leads SET website_check = 'found' WHERE website <> ''");
+    })();
+  }
+  // Idempotent repair on every open: an older build can add a website or merge two leads without knowing this column.
+  db.exec("UPDATE leads SET website_check = 'found' WHERE website <> '' AND website_check <> 'found'");
   if (!existing.has("merged_into")) db.exec("ALTER TABLE leads ADD COLUMN merged_into INTEGER");
   if (!existing.has("phone_source")) db.exec("ALTER TABLE leads ADD COLUMN phone_source TEXT NOT NULL DEFAULT ''");
   if (!existing.has("phone_confidence")) db.exec("ALTER TABLE leads ADD COLUMN phone_confidence REAL");
@@ -275,7 +297,7 @@ function toLead(r: Row): Lead {
     source: (r.source as LeadSource) || "google", attribution: r.attribution || "",
     excluded: !!r.excluded, excludedReason: r.excluded_reason || "",
     websiteSource: r.website_source || "", websiteConfidence: r.website_confidence ?? null,
-    websiteCheckedAt: r.website_checked_at ?? null, mergedInto: r.merged_into ?? null,
+    websiteCheckedAt: r.website_checked_at ?? null, websiteCheck: normaliseWebsiteCheck(r.website_check), mergedInto: r.merged_into ?? null,
     phoneSource: r.phone_source || "", phoneConfidence: r.phone_confidence ?? null,
     phoneCheckedAt: r.phone_checked_at ?? null, suggestedPhone: r.suggested_phone || "",
     placesCheckedAt: r.places_checked_at ?? null, fieldSources: parseFieldSources(r.field_sources),
@@ -299,7 +321,7 @@ export function knownPlaceIds(db: Database): Set<string> {
 
 export type UpsertLeadInput = Omit<
   Lead,
-  "id" | "status" | "owner" | "nextAt" | "lastContactAt" | "createdAt" | "source" | "attribution" | "excluded" | "excludedReason" | "websiteSource" | "websiteConfidence" | "websiteCheckedAt" | "mergedInto"
+  "id" | "status" | "owner" | "nextAt" | "lastContactAt" | "createdAt" | "source" | "attribution" | "excluded" | "excludedReason" | "websiteSource" | "websiteConfidence" | "websiteCheckedAt" | "websiteCheck" | "mergedInto"
   | "phoneSource" | "phoneConfidence" | "phoneCheckedAt" | "suggestedPhone" | "placesCheckedAt" | "fieldSources"
 > & {
   /** Defaults to "google" so every existing caller (and test) keeps behaving exactly as before. */
@@ -310,6 +332,8 @@ export type UpsertLeadInput = Omit<
   websiteSource?: string;
   websiteConfidence?: number | null;
   websiteCheckedAt?: string | null;
+  /** Omitted: kept from the existing row when its website is unchanged, else "found" for a website and "not-checked" for none. */
+  websiteCheck?: WebsiteCheck;
   /** Google rows: when the place ID was looked up. Kept on re-upsert when omitted. */
   placesCheckedAt?: string | null;
   /** Per-field non-Places origins (see Lead.fieldSources). Kept on re-upsert when omitted/empty. */
@@ -317,6 +341,15 @@ export type UpsertLeadInput = Omit<
 };
 
 export function upsertLead(db: Database, lead: UpsertLeadInput) {
+  // A later directory import must not undo a founder's corrections.
+  const existing = findLead(db, lead.placeId);
+  if (existing) {
+    const manual = Object.fromEntries(Object.entries(existing.fieldSources ?? {}).filter(([key, source]) => source === "manual" && ["name", "phone", "address", "website", "emails"].includes(key)));
+    lead = { ...lead, fieldSources: { ...lead.fieldSources, ...manual } };
+    for (const key of Object.keys(manual)) (lead as any)[key] = (existing as any)[key];
+    if (manual.website) Object.assign(lead, { websiteSource: existing.websiteSource, websiteConfidence: existing.websiteConfidence, websiteCheckedAt: existing.websiteCheckedAt, websiteCheck: existing.websiteCheck, score: existing.score, pitch: existing.pitch, reasons: existing.reasons });
+    if (manual.emails || existing.status === "do_not_contact") lead.emailOk = existing.emailOk;
+  }
   const optedOut = lead.emails.some((e) => isOptedOut(db, e));
   const source: LeadSource = lead.source ?? "google";
   const attribution = lead.attribution ?? "";
@@ -325,16 +358,17 @@ export function upsertLead(db: Database, lead: UpsertLeadInput) {
   const websiteSource = lead.websiteSource ?? "";
   const websiteConfidence = lead.websiteConfidence ?? null;
   const websiteCheckedAt = lead.websiteCheckedAt ?? null;
+  const websiteCheck: WebsiteCheck = lead.websiteCheck ?? (existing && existing.website === lead.website ? existing.websiteCheck : lead.website ? "found" : "not-checked");
   const fieldSources = JSON.stringify(lead.fieldSources ?? {});
   db.query(`
-    INSERT INTO leads (place_id, vertical, area, name, phone, address, website, maps_url, rating, reviews, emails, email_ok, score, pitch, reasons, google_at, status, source, attribution, excluded, excluded_reason, website_source, website_confidence, website_checked_at, places_checked_at, field_sources)
-    VALUES ($placeId, $vertical, $area, $name, $phone, $address, $website, $mapsUrl, $rating, $reviews, $emails, $emailOk, $score, $pitch, $reasons, $googleAt, $status, $source, $attribution, $excluded, $excludedReason, $websiteSource, $websiteConfidence, $websiteCheckedAt, $placesCheckedAt, $fieldSources)
+    INSERT INTO leads (place_id, vertical, area, name, phone, address, website, maps_url, rating, reviews, emails, email_ok, score, pitch, reasons, google_at, status, source, attribution, excluded, excluded_reason, website_source, website_confidence, website_checked_at, website_check, places_checked_at, field_sources)
+    VALUES ($placeId, $vertical, $area, $name, $phone, $address, $website, $mapsUrl, $rating, $reviews, $emails, $emailOk, $score, $pitch, $reasons, $googleAt, $status, $source, $attribution, $excluded, $excludedReason, $websiteSource, $websiteConfidence, $websiteCheckedAt, $websiteCheck, $placesCheckedAt, $fieldSources)
     ON CONFLICT(place_id) DO UPDATE SET name=excluded.name, phone=excluded.phone, address=excluded.address,
       website=excluded.website, maps_url=excluded.maps_url, rating=excluded.rating, reviews=excluded.reviews,
       emails=excluded.emails, email_ok=excluded.email_ok, score=excluded.score, pitch=excluded.pitch,
       reasons=excluded.reasons, google_at=excluded.google_at, source=excluded.source, attribution=excluded.attribution,
       excluded=excluded.excluded, excluded_reason=excluded.excluded_reason, website_source=excluded.website_source,
-      website_confidence=excluded.website_confidence, website_checked_at=excluded.website_checked_at,
+      website_confidence=excluded.website_confidence, website_checked_at=excluded.website_checked_at, website_check=excluded.website_check,
       places_checked_at=COALESCE(excluded.places_checked_at, places_checked_at),
       field_sources=CASE WHEN excluded.field_sources = '{}' THEN field_sources ELSE excluded.field_sources END
   `).run({
@@ -344,7 +378,7 @@ export function upsertLead(db: Database, lead: UpsertLeadInput) {
     $pitch: lead.pitch, $reasons: JSON.stringify(lead.reasons), $googleAt: lead.googleAt,
     $status: optedOut ? "do_not_contact" : "new", $source: source, $attribution: attribution,
     $excluded: excluded ? 1 : 0, $excludedReason: excludedReason, $websiteSource: websiteSource,
-    $websiteConfidence: websiteConfidence, $websiteCheckedAt: websiteCheckedAt,
+    $websiteConfidence: websiteConfidence, $websiteCheckedAt: websiteCheckedAt, $websiteCheck: websiteCheck,
     $placesCheckedAt: lead.placesCheckedAt ?? null, $fieldSources: fieldSources,
   });
   return findLead(db, lead.placeId)!;
@@ -407,7 +441,8 @@ export function mergeLead(db: Database, keepId: number, mergeId: number, opts: {
   const emails = keep.emails.length ? keep.emails : merge.emails;
   const reason = opts.reason || `duplicate of #${keepId} (${keep.name || keep.placeId})`;
   db.transaction(() => {
-    db.query(`UPDATE leads SET phone = $phone, address = $address, website = $website, maps_url = $mapsUrl, emails = $emails WHERE id = $id`)
+    db.query(`UPDATE leads SET phone = $phone, address = $address, website = $website, maps_url = $mapsUrl, emails = $emails,
+        website_check = CASE WHEN $website <> '' THEN 'found' ELSE website_check END WHERE id = $id`)
       .run({ $phone: phone, $address: address, $website: website, $mapsUrl: mapsUrl, $emails: JSON.stringify(emails), $id: keepId });
     db.query(`UPDATE leads SET excluded = 1, excluded_reason = $reason, merged_into = $keepId WHERE id = $id`)
       .run({ $reason: reason, $keepId: keepId, $id: mergeId });

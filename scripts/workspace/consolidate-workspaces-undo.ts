@@ -17,6 +17,7 @@
 import { copyFileSync, existsSync, readdirSync, readFileSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { stampOf, workspacesFilePath } from "./consolidate-workspaces";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type UndoResult = {
   applied: boolean;
@@ -28,7 +29,7 @@ export type UndoResult = {
 
 /** The newest workspaces-<stamp> backup folder with a manifest, or null. */
 export function latestBackup(root: string): string | null {
-  const dir = join(root, ".operator-data", "backups");
+  const dir = join(dataDirFor(root), "backups");
   if (!existsSync(dir)) return null;
   const found = readdirSync(dir)
     .filter((name) => name.startsWith("workspaces-") && existsSync(join(dir, name, "manifest.json")) && statSync(join(dir, name)).isDirectory())

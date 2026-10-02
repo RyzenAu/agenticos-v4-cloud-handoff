@@ -123,8 +123,6 @@ for i, (h1, b, who) in enumerate(modes):
     d.text(s, x + 20, 180, 232, 90, b, 14, colour=SLATE)
     d.box(s, x + 20, 285, 150, 26, fill=TEAL_LIGHT)
     d.text(s, x + 20, 290, 150, 20, who, 11, bold=True, colour=TEAL, align=2)
-if DECISION_A in cover_text(ess):
-    d.text(s, M, 340, W - 2 * M, 24, f"Essential: {DECISION_A}", 10.5, colour=AMBER, italic=True)
 d.box(s, M, 368, W - 2 * M, 80, fill="FFFBEB", line=AMBER)
 d.text(s, M + 16, 383, W - 2 * M - 32, 60, "Cover is set for your practice and tested before it goes live. Rollback, any time: switch forwarding off with your phone provider (exact codes in call-forwarding-guide.md) and your phones work exactly as before. Your number is never changed or ported. Keep your voicemail on as a fallback.", 14, colour=INK)
 

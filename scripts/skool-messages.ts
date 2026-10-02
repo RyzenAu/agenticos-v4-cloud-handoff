@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFile
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
+import { dataDirFor } from "./cloud/data-dir";
 
 const API = "https://api2.skool.com";
 const PAGE_SIZE = 30;
@@ -169,7 +170,7 @@ function mergeMessages(old: SkoolMessage[], fresh: SkoolMessage[]) {
 
 /** Read conversations and explicitly send replies through the installed Skool connection. */
 export function skoolMessages(root: string, options: Options = {}) {
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   const file = join(directory, "skool-messages.json");
   const sendDirectory = join(directory, "skool-send-requests");
   const home = options.homeDir || homedir();

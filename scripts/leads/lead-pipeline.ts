@@ -6,6 +6,8 @@ import { isVerifiedFact } from "./score";
 import { readSeoAudit } from "./seo-audit";
 import { getPreview, readRegistry, type PreviewRecord } from "../lead-sites/registry";
 import { draftFiles } from "./sales-backoffice";
+import { leadArtifactCurrent } from "./edit";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const STAGES = ["found", "verified", "scored", "audited", "preview", "contacted", "replied", "meeting", "proposal", "won", "building", "QA", "launched", "care plan"] as const;
 export type Stage = typeof STAGES[number];
@@ -19,8 +21,8 @@ const listDir = (dir: string) => new Set(existsSync(dir) ? readdirSync(dir) : []
 export function pipelineContext(root: string): PipelineContext {
   return {
     previews: new Map(readRegistry(root).map((p) => [p.leadId, p])),
-    draftIds: listDir(join(root, ".operator-data", "drafts")),
-    auditIds: listDir(join(root, ".operator-data", "seo-audits")),
+    draftIds: listDir(join(dataDirFor(root), "drafts")),
+    auditIds: listDir(join(dataDirFor(root), "seo-audits")),
   };
 }
 
@@ -31,7 +33,8 @@ export function leadPipeline(root: string, db: Database, lead: Lead, ctx?: Pipel
   const milestone = (name: string) => kickoff?.milestones.some(m => m.name === name && m.state === "done") ?? false;
   const preview = ctx ? ctx.previews.get(lead.id) ?? null : getPreview(root, lead.id);
   const drafts = !ctx || ctx.draftIds.has(String(lead.id)) ? draftFiles(root, lead.id) : [];
-  const audited = (!ctx || ctx.auditIds.has(String(lead.id))) && readSeoAudit(root, lead.id)?.ok === true;
+  const audit = (!ctx || ctx.auditIds.has(String(lead.id))) ? readSeoAudit(root, lead.id) : null;
+  const audited = audit?.ok === true && leadArtifactCurrent(db, lead.id, audit.startedAt, true);
   const completed: [Stage, boolean, string][] = [
     ["found", true, "CRM record"],
     ["verified", !!lead.websiteCheckedAt || lead.reasons.some(isVerifiedFact), "Site checked or a first-party fact recorded"],

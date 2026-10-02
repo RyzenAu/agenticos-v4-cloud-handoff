@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { scrub } from "./away-mode/store";
 import { hermesApiUp } from "./hermes-api";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** Keys, tokens, long numbers (the away-mode scrubber) plus anything pointing into a .env file. */
 export function redact(text: unknown, max = 220): string {
@@ -198,7 +199,7 @@ export async function hudServices(root: string) {
   if (cached && Date.now() - cached.at < 20_000) return cached.value;
   let caps: Capability[] = [];
   try {
-    caps = JSON.parse(readFileSync(join(root, ".operator-data", "capabilities.json"), "utf8")).capabilities ?? [];
+    caps = JSON.parse(readFileSync(join(dataDirFor(root), "capabilities.json"), "utf8")).capabilities ?? [];
   } catch {
     caps = [];
   }

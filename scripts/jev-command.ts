@@ -31,9 +31,12 @@ import { marginAnswer, parseMarginQuery } from "./jev-margin";
 import { fileNameIn, openFileByName, type FileDeps } from "./jev-files";
 import { deckOp as runDeckOp, parseDeckRequest, type DeckOp, type DeckState } from "./jev-powerpoint";
 import { watchAndSummarise, type AppBrowser, type Summarise } from "./browser/app-browser";
-import type { StartApp } from "./pc-hands";
+import { pcIntent, type StartApp } from "./pc-hands";
+import { windowIsApp } from "./jarvis-skills/windows";
+import { tidyHead } from "./screen-hands/plan";
 import { voiceDestination } from "../src/lib/voice-actions";
 import type { ExecutorResult, JevDecision, PageContext, SpecialistId, SurfaceThresholds } from "./jarvis-command/contracts";
+import { planContinuation } from "./jarvis-command/continuation";
 import { planRules, safeHost } from "./jarvis-command/plan";
 import { policyFor, thresholdsFor } from "./jarvis-command/thresholds";
 
@@ -76,6 +79,8 @@ export type CommandDone = {
   ask?: boolean;
   stopped?: boolean;
   confirm?: string;
+  /** The unfinished screen goal; earlier verified setup must never be replayed on yes. */
+  resumeGoal?: string;
   refused?: boolean;
   numbers?: Record<string, unknown>;
 };
@@ -86,14 +91,14 @@ export type EntryDeps = {
   /** The Jev (TypeSafe) key, from the runtime reference; "" = no Jev. */
   jevKey: () => string;
   request?: typeof fetch;
-  front: () => Promise<{ process: string; title: string } | null>;
+  front: () => Promise<{ process: string; title: string; handle?: number } | null>;
   /** The app-owned browser (opened on first use). */
   browser: () => Promise<AppBrowser | null>;
   summarise: Summarise | null;
   files: FileDeps;
   deck?: (op: DeckOp) => Promise<DeckState>;
   openApp: (name: string, signal: AbortSignal) => Promise<{ ok: boolean; said: string; checkedAt?: number }>;
-  apps?: () => StartApp[];
+  apps?: () => StartApp[] | Promise<StartApp[]>;
   /** Is a video open in the app browser right now? ("watch this" then means that video.) */
   activeVideo?: () => Promise<boolean>;
   resolver?: { resolve: ResolveTarget; source: "devices" | "stub" };
@@ -267,7 +272,49 @@ export function createJarvisEntry(deps: EntryDeps) {
       return finish({ ok: true, said: a.said, kind: "answer", route: routed, numbers: a.numbers, verified: true });
     }
 
-    const rule = planRules(utterance);
+    const continuation = planContinuation(utterance);
+    if (continuation) {
+      const blocked = screenGoalRefusal(utterance);
+      if (blocked) return finish({ ok: false, refused: true, kind: "refused", said: blocked.said });
+      const setup = continuation.setup;
+      lane("screen", setup.executor === "open-url" ? "playwright" : "uia", "verified setup followed by the existing Jev screen loop", "task.continue", setup.target);
+      say("act", `Opening ${setup.executor === "open-url" ? safeHost(String(setup.args.url)) : setup.target ?? "the app"}.`, true);
+      let checked: ExecutorResult;
+      let browserPage: import("./screen-hands/browser-exec").PwPage | undefined;
+      if (setup.executor === "notepad.type" && deps.notepad) checked = await deps.notepad(String(setup.args.text), signal);
+      else if (setup.executor === "deck.blank" && deps.deckBlank) checked = await deps.deckBlank(String(setup.args.title), signal);
+      else if (setup.executor === "app.open") {
+        const r = await deps.openApp(String(setup.args.name), signal);
+        checked = { ...r, verified: r.ok };
+      } else if (setup.executor === "open-url") {
+        const browser = await deps.browser();
+        if (!browser) return finish({ ok: false, kind: "unavailable", said: "My browser isn't available, so nothing opened." });
+        const r: { ok: boolean; said: string; stopped?: boolean } = await untilStopped(browser.open(String(setup.args.url)), signal, PAGE_STOPPED, late);
+        checked = { ...r, verified: r.ok && !r.stopped };
+        browserPage = browser.page();
+      } else return finish({ ok: false, kind: "unavailable", said: "The opening step isn't connected, so nothing ran." });
+      log.step({ stage: "check", text: checked.said, verified: checked.verified === true });
+      if (signal.aborted) return finish({ ok: false, stopped: true, kind: "screen", said: "Stopped. The opening step may have finished; no later steps ran." });
+      if (!checked.ok || checked.verified !== true) return finish({ ok: false, kind: "screen", verified: false, outcome: "unverified", said: `${checked.said} I stopped before the remaining steps.` });
+      say("check", "The opening step is confirmed. Continuing on that target.");
+      let onlyWindow: number | undefined;
+      if (!browserPage) {
+        const target = await deps.front().catch(() => null);
+        const app = setup.executor === "notepad.type" ? "notepad" : setup.executor === "deck.blank" ? "powerpoint" : String(setup.args.name);
+        if (!target || !windowIsApp(app, target.process)) return finish({ ok: false, kind: "screen", verified: false, outcome: "unverified", said: `${checked.said} The target app isn't in front, so I stopped before the remaining steps.` });
+        onlyWindow = target.handle;
+      }
+      return screenLane(continuation.remaining, signal, onEvent, log, finish, routed, browserPage, checked.said, onlyWindow);
+    }
+
+    const exactRule = planRules(utterance);
+    const wantsApp = /^(?:open|launch|start|run|fire up|bring up)\s/i.test(tidyHead(utterance));
+    let apps: StartApp[] = [];
+    if (wantsApp && exactRule?.lane !== "executor") apps = await Promise.resolve(deps.apps?.() ?? []).catch(() => [] as StartApp[]);
+    const installed = pcIntent(utterance, apps);
+    const rule = installed?.action === "open_app"
+      ? {lane:"executor" as const,executor:"app.open" as const,args:{name:installed.target},op:"app.open",target:installed.target,why:"installed app from the Windows catalogue"}
+      : exactRule;
     if (rule?.lane === "unsupported") {
       lane("ask", "none", rule.why, rule.op);
       return finish({ ok: false, ask: true, kind: "ask", said: rule.said, route: routed });
@@ -282,7 +329,7 @@ export function createJarvisEntry(deps: EntryDeps) {
       if (rule.executor === "deck.blank" && deps.deckBlank) {
         lane("app", "app-api", rule.why, rule.op, "powerpoint");
         say("act", "Opening a new PowerPoint and adding the title slide.", true);
-        const r = await deps.deckBlank(String(rule.args.title ?? "Title"), signal);
+        const r = await deps.deckBlank(String(rule.args.title ?? ""), signal);
         return executorFinish(r, "app", routed, log, finish, signal);
       }
       if (rule.executor === "open-url") {
@@ -359,7 +406,8 @@ export function createJarvisEntry(deps: EntryDeps) {
       return screenLane(utterance, signal, onEvent, log, finish, routed);
     }
     if (intent === "pc.open_app") {
-      const call = buildCall(intent, utterance, answers, { apps: deps.apps?.() ?? [], skills: [] });
+      if (!apps.length) apps = await Promise.resolve(deps.apps?.() ?? []).catch(() => [] as StartApp[]);
+      const call = buildCall(intent, utterance, answers, { apps, skills: [] });
       const name = "name" in call && call.name === "pc_act" ? String((call.arguments as { target?: unknown }).target ?? "") : "";
       if (!name) return finish({ ok: false, said: "I couldn't tell which app to open.", kind: "ask", ask: true, route: routed });
       lane("app", "app-api", `open ${name}`, "app.open", name, false);
@@ -413,14 +461,14 @@ export function createJarvisEntry(deps: EntryDeps) {
     return finish({ ok, said: r.ok && r.verified !== true ? `${r.said} I couldn't confirm it, so I'm not calling it done.` : r.said, kind, route: routed, verified: r.verified, ...(ok && typeof r.checkedAt === "number" ? { checkedAt: r.checkedAt } : {}), ...(ok ? {} : { outcome: "unverified" as const }) });
   }
 
-  async function screenLane(utterance: string, signal: AbortSignal, onEvent: (e: CommandEvent) => void, log: RunHandle, finish: (d: Omit<CommandDone, "type" | "runId">) => CommandDone, routed: NonNullable<CommandDone["route"]>) {
-    const done = await deps.screen.act({ goal: utterance, jev: true, source: "command" }, signal, (e) => onEvent(e), log);
+  async function screenLane(utterance: string, signal: AbortSignal, onEvent: (e: CommandEvent) => void, log: RunHandle, finish: (d: Omit<CommandDone, "type" | "runId">) => CommandDone, routed: NonNullable<CommandDone["route"]>, browserPage?: import("./screen-hands/browser-exec").PwPage, setupSaid = "", onlyWindow?: number) {
+    const done = await deps.screen.act({ goal: utterance, jev: true, requireSpokenYes: true, source: "command", ...(setupSaid ? { resumeFrom: 0 } : {}), ...(browserPage ? { browserPage } : {}), ...(onlyWindow ? { onlyWindow } : {}) }, signal, (e) => onEvent(e), log);
     // A question back (an ask, or a final button waiting for his yes) is not done (REVIEW-JEV §2): ok stays
     // false so the job, the voice batch and the calibration log never count it as a success.
     const waiting = !!done.ask || !!done.confirm;
     return finish({
-      ok: done.ok && !waiting && !done.outcome, said: done.said, kind: "screen", route: routed, verified: waiting ? null : done.ok && !done.outcome,
-      ...(done.outcome ? { outcome: done.outcome } : {}), ...(waiting ? { ask: true } : {}), ...(done.stopped ? { stopped: true } : {}), ...(done.confirm ? { confirm: done.confirm } : {}), ...(done.refused ? { refused: true } : {}),
+      ok: done.ok && !waiting && !done.outcome, said: `${setupSaid ? `${setupSaid} ` : ""}${done.said}`, kind: "screen", route: routed, verified: waiting ? null : done.ok && !done.outcome,
+      ...(done.outcome ? { outcome: done.outcome } : {}), ...(waiting ? { ask: true } : {}), ...(done.stopped ? { stopped: true } : {}), ...(done.confirm ? { confirm: done.confirm, resumeGoal: utterance } : {}), ...(done.refused ? { refused: true } : {}),
     });
   }
 

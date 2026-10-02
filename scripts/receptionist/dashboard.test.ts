@@ -155,7 +155,7 @@ test("deterministic economics: estimated monthly cost matches calculateEconomics
   expect(model.clients.rows[0].costs.estimatedMonthlyCents).toBe(expected.variableCostCents);
   expect(model.clients.rows[0].commercial.marginCents).toBe(expected.contributionCents);
   expect(model.economics).toMatchObject({ ok: true, estimatedMonthlyCents: expected.variableCostCents });
-  expect(model.commercial).toMatchObject({ ok: true, mrrCents: pkg.pricing.monthly.cents, setupFeesCents: pkg.pricing.setup.cents, unassignedClients: 0 });
+  expect(model.commercial).toMatchObject({ ok: true, mrrCents: pkg.pricing.monthly.cents, setupFeesCents: null, unassignedClients: 0 });
 });
 
 test("an unassigned client (no local package mapping) never gets an invented cost or margin", () => {
@@ -317,4 +317,17 @@ test("lineSource flows into agent readiness so a legacy demo-line fallback is vi
   expect(buildDashboard(baseInput()).agentReadiness).toMatchObject({ ok: true, lineSource: null });
   expect(ageText(null, NOW)).toBeNull();
   expect(ageText(new Date(NOW - 90 * 60_000).toISOString(), NOW)).toBe("1 h ago");
+});
+
+test("billing blocked: the client row says blocked with its reason and shows no margin (never zero); setup stays out of totals", () => {
+  const blocked = { reason: "TAX_MODE_MISMATCH", message: "Billing blocked: tax mode mismatch." };
+  const client = syntheticClient({ usage: { receipts: 1, pending: 0, billableMinutes: 250, smsSegments: 0, periodBillableMinutes: 250, periodBillingBlocked: blocked } });
+  const model = buildDashboard(baseInput({ feed: feedOk({ clients: [client] }), clientPackages: { "synthetic-dental": "receptionist-professional" } }));
+  if (!model.clients.ok) throw Error("unreachable");
+  const row = model.clients.rows[0];
+  expect(row.commercial.billingBlocked).toEqual(blocked);
+  expect(row.commercial.marginCents).toBeNull();
+  expect(row.commercial.marginPct).toBeNull();
+  expect(row.commercial.caveat).toContain("Billing blocked (TAX_MODE_MISMATCH)");
+  expect(row.commercial.setupFeeCents).toBeNull(); // proposed setup fee never a figure
 });

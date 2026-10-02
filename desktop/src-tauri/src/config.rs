@@ -10,19 +10,23 @@
 //!
 //! Resolution order (first hit wins, per field):
 //! 1. environment: `JARVIS_REPO_ROOT`, `JARVIS_PORT`, `JARVIS_BUN`,
-//!    `JARVIS_DESKTOP_CONFIG` (path of the JSON file below);
+//!    `JARVIS_DESKTOP_CONFIG` (path of the JSON file below), `JARVIS_HUB_URL`;
 //! 2. `%USERPROFILE%\.jarvis-desktop\config.json` (written by
 //!    `scripts/windows/install-jarvis-desktop.ps1`). Deliberately under the
 //!    profile root, not `%LOCALAPPDATA%`/`%APPDATA%`: new folders there are
 //!    redirected into Claude desktop's MSIX package cache when created from
 //!    an agent session, which is exactly how the first install went missing;
 //! 3. defaults: `%USERPROFILE%\source\repos\AgenticOS-v4`, port 8081.
+//!
+//! `hubUrl` / `JARVIS_HUB_URL` switches the app into remote-hub mode (see
+//! `HubMode`): it opens that hub and never starts a local server. Unset = local mode.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::Deserialize;
@@ -39,6 +43,75 @@ pub fn set_app_port(port: u16) {
 pub fn app_port() -> u16 {
     APP_PORT.load(Ordering::SeqCst)
 }
+/// Which origin counts as "the app" for the WebView2 handlers (links, microphone,
+/// navigation watch). Set once at startup from the config.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AppScope {
+    /// Local mode: `localhost` / `127.0.0.1` on the app port.
+    Local,
+    /// Remote mode: only this hub origin.
+    Hub(String),
+    /// Invalid hub setting: no origin is ours (no mic grant, nothing stays in the window).
+    Nothing,
+}
+
+static APP_SCOPE: Mutex<AppScope> = Mutex::new(AppScope::Local);
+
+pub fn set_app_scope(scope: AppScope) {
+    if let Ok(mut slot) = APP_SCOPE.lock() {
+        *slot = scope;
+    }
+}
+
+fn current_scope() -> AppScope {
+    APP_SCOPE.lock().map(|s| s.clone()).unwrap_or(AppScope::Nothing)
+}
+
+/// Is `uri` inside the app's own origin (see `AppScope`)?
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn is_app_url(uri: &str) -> bool {
+    is_app_url_in(uri, &current_scope(), app_port())
+}
+
+/// For logs: the origin `is_app_url` currently accepts.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn app_origin_label() -> String {
+    match current_scope() {
+        AppScope::Hub(origin) => origin,
+        AppScope::Local => format!("http://localhost:{}", app_port()),
+        AppScope::Nothing => "no origin (invalid hub setting)".to_string(),
+    }
+}
+
+/// Pure form of `is_app_url`.
+pub fn is_app_url_in(uri: &str, scope: &AppScope, port: u16) -> bool {
+    match scope {
+        AppScope::Hub(origin) => origin_matches(uri, origin),
+        AppScope::Local => crate::supervisor::is_app_url(uri, port),
+        AppScope::Nothing => false,
+    }
+}
+
+/// `raw` with any `user:pw@` userinfo replaced, so a rejected URL can be shown or logged.
+pub fn redact_userinfo(raw: &str) -> String {
+    let (head, rest) = match raw.find("://") {
+        Some(i) => raw.split_at(i + 3),
+        None => ("", raw),
+    };
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    match rest[..end].rfind('@') {
+        Some(at) => format!("{head}<redacted>@{}", &rest[at + 1..]),
+        None => raw.to_string(),
+    }
+}
+
+/// `uri` is exactly `origin`, or a path/query/fragment under it. Not a longer
+/// host (`https://x.ts.net.evil.com`) and not a longer port (`:80812`).
+pub fn origin_matches(uri: &str, origin: &str) -> bool {
+    let (lower, o) = (uri.to_ascii_lowercase(), origin.to_ascii_lowercase());
+    lower == o || ["/", "?", "#"].iter().any(|sep| lower.starts_with(&format!("{o}{sep}")))
+}
+
 pub const EXPECTED_BRANCH: &str = "jarvis-voice";
 
 #[derive(Debug, Default, Deserialize)]
@@ -68,6 +141,11 @@ struct FileConfig {
     /// Test-only: shorter supervision timers, so a test instance can exercise them.
     #[serde(default)]
     timings: FileTimings,
+    /// Remote-hub mode: the hub to open instead of starting a local server.
+    hub_url: Option<String>,
+    /// Set by `read_file_config` when the file exists but can't be used (never from JSON).
+    #[serde(skip)]
+    load_error: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -128,6 +206,67 @@ impl SupervisorTimings {
     }
 }
 
+/// A validated remote hub: `origin` is `scheme://host[:port]` with no path.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Hub {
+    pub origin: String,
+    pub host: String,
+    pub port: u16,
+}
+
+/// Which hub the app shows, decided once from the settings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HubMode {
+    /// No hub URL: supervise a local `bun` server (the original behaviour).
+    Local,
+    /// Open this hub; never start, supervise, restart or lock anything locally.
+    Remote(Hub),
+    /// A hub URL was given but is not allowed. Shown as an error; never falls back to local.
+    Invalid(String),
+}
+
+/// Validate a hub URL: `https://<name>.ts.net[:port]` (Tailscale), or
+/// `http://localhost` / `http://127.0.0.1` for tests. Origin only: no
+/// credentials, path, query or fragment.
+pub fn parse_hub_url(raw: &str) -> Result<Hub, String> {
+    let raw = raw.trim();
+    let shown = redact_userinfo(raw);
+    let bad = |why: &str| {
+        Err(format!(
+            "hubUrl \"{shown}\" is not allowed: {why}. Use https://<machine>.<tailnet>.ts.net[:port] \
+             (or http://localhost / http://127.0.0.1 for tests)."
+        ))
+    };
+    let url = match tauri::Url::parse(raw) {
+        Ok(url) => url,
+        Err(err) => return bad(&format!("not a URL ({err})")), // url's message never echoes the input
+    };
+    if !url.username().is_empty() || url.password().is_some() {
+        return bad("it must not contain credentials");
+    }
+    if url.query().is_some() || url.fragment().is_some() || url.path() != "/" {
+        return bad("give the hub's address only, with no path, query or fragment");
+    }
+    let host = match url.host_str() {
+        Some(h) if !h.is_empty() && !h.starts_with('[') => h.to_ascii_lowercase(),
+        _ => return bad("the host must be a name"),
+    };
+    let allowed = match url.scheme() {
+        "https" => host.len() > ".ts.net".len() && host.ends_with(".ts.net"),
+        "http" => host == "localhost" || host == "127.0.0.1",
+        _ => false,
+    };
+    if !allowed {
+        return bad(match url.scheme() {
+            "https" => "the host must end in .ts.net",
+            "http" => "plain http is only allowed for localhost / 127.0.0.1",
+            _ => "only https:// is allowed",
+        });
+    }
+    let port = url.port_or_known_default().unwrap_or(443);
+    Ok(Hub { origin: url.origin().ascii_serialization(), host, port })
+}
+
 #[derive(Debug, Clone)]
 pub struct DesktopConfig {
     pub repo_root: PathBuf,
@@ -142,6 +281,7 @@ pub struct DesktopConfig {
     /// Another supervisor's named mutex for this port (see `FileConfig::supervisor_mutex`).
     pub supervisor_mutex: Option<String>,
     pub timings: SupervisorTimings,
+    pub hub: HubMode,
     /// Where the settings came from, for the log and the recovery screen.
     pub source: String,
     pub config_path: PathBuf,
@@ -149,7 +289,30 @@ pub struct DesktopConfig {
 
 impl DesktopConfig {
     pub fn origin(&self) -> String {
-        format!("http://localhost:{}", self.port)
+        match &self.hub {
+            HubMode::Remote(hub) => hub.origin.clone(),
+            _ => format!("http://localhost:{}", self.port),
+        }
+    }
+
+    /// True only in local mode: the app owns (or attaches to) a server on this PC.
+    pub fn app_scope(&self) -> AppScope {
+        match &self.hub {
+            HubMode::Local => AppScope::Local,
+            HubMode::Remote(hub) => AppScope::Hub(hub.origin.clone()),
+            HubMode::Invalid(_) => AppScope::Nothing,
+        }
+    }
+
+    pub fn is_local(&self) -> bool {
+        self.hub == HubMode::Local
+    }
+
+    pub fn remote_hub(&self) -> Option<&Hub> {
+        match &self.hub {
+            HubMode::Remote(hub) => Some(hub),
+            _ => None,
+        }
     }
 
     /// 127.0.0.1, not `localhost`: resolving the literal hostname from a
@@ -179,17 +342,38 @@ pub fn load() -> DesktopConfig {
     let config_path = env("JARVIS_DESKTOP_CONFIG")
         .map(PathBuf::from)
         .unwrap_or_else(default_config_path);
-    let (file, file_note) = match fs::read_to_string(&config_path) {
-        Ok(text) => match serde_json::from_str::<FileConfig>(text.trim_start_matches('\u{feff}')) {
-            Ok(parsed) => (parsed, format!("{}", config_path.display())),
-            Err(err) => {
-                log::error!("Jarvis: ignoring unreadable {}: {err}", config_path.display());
-                (FileConfig::default(), format!("defaults ({} is invalid: {err})", config_path.display()))
-            }
-        },
-        Err(_) => (FileConfig::default(), "defaults (no config file)".to_string()),
-    };
+    let (file, file_note) = read_file_config(&config_path);
     resolve(file, file_note, config_path, env)
+}
+
+/// Reads the config file. Missing = defaults (local mode). Present but unreadable or unparseable =
+/// `load_error` is set: the hub setting is then `Invalid`, never a silent fall back to a local hub
+/// (a PC meant to be remote-only must not start bun because of a typo). Only the error *class* and
+/// position are kept: serde's message can quote the offending value.
+fn read_file_config(config_path: &Path) -> (FileConfig, String) {
+    let broken = |what: String| {
+        log::error!("Jarvis: {what}");
+        (
+            FileConfig { load_error: Some(what.clone()), ..Default::default() },
+            format!("defaults ({what})"),
+        )
+    };
+    match fs::read_to_string(config_path) {
+        Ok(text) => match serde_json::from_str::<FileConfig>(text.trim_start_matches('\u{feff}')) {
+            Ok(parsed) => (parsed, config_path.display().to_string()),
+            Err(err) => broken(format!(
+                "{} can't be parsed ({:?} error at line {} column {})",
+                config_path.display(),
+                err.classify(),
+                err.line(),
+                err.column()
+            )),
+        },
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            (FileConfig::default(), "defaults (no config file)".to_string())
+        }
+        Err(err) => broken(format!("{} can't be read ({:?})", config_path.display(), err.kind())),
+    }
 }
 
 fn resolve(
@@ -220,7 +404,28 @@ fn resolve(
         None => None,
     };
     let timings = SupervisorTimings::from_file(&file.timings);
+    // Env beats file. A set-but-invalid value is an error, never a quiet fallback to local mode
+    // (and an invalid env value does not fall through to the file either).
+    let hub_raw = match env("JARVIS_HUB_URL") {
+        Some(raw) => {
+            source = format!("JARVIS_HUB_URL + {source}");
+            Some(raw)
+        }
+        None => file.hub_url.filter(|v| !v.trim().is_empty()),
+    };
+    let hub = match (hub_raw, &file.load_error) {
+        (Some(raw), _) => match parse_hub_url(&raw) {
+            Ok(hub) => HubMode::Remote(hub),
+            Err(err) => HubMode::Invalid(err),
+        },
+        (None, Some(why)) => HubMode::Invalid(format!(
+            "The settings file is unusable, so Jarvis can't tell whether a hub was intended: {why}."
+        )),
+        (None, None) => HubMode::Local,
+    };
+    let supervisor_mutex = if hub == HubMode::Local { supervisor_mutex } else { None };
     DesktopConfig {
+        hub,
         repo_root,
         port,
         supervisor_mutex,
@@ -513,5 +718,199 @@ mod tests {
             server_args(&cfg),
             ["--bun", "run", "dev", "--port", "8095", "--strictPort", "--configLoader", "native"]
         );
+    }
+
+    fn hub_cfg(env_hub: Option<&str>, file_hub: Option<&str>) -> DesktopConfig {
+        let file = FileConfig { hub_url: file_hub.map(str::to_string), ..Default::default() };
+        resolve(file, "f".into(), PathBuf::from("c.json"), |name| match name {
+            "JARVIS_HUB_URL" => env_hub.map(str::to_string),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn no_hub_url_is_local_mode() {
+        let cfg = hub_cfg(None, None);
+        assert_eq!(cfg.hub, HubMode::Local);
+        assert!(cfg.is_local());
+        assert_eq!(cfg.origin(), "http://localhost:8081");
+        assert_eq!(hub_cfg(None, Some("  ")).hub, HubMode::Local, "a blank file value is unset");
+        assert_eq!(cfg.supervisor_mutex.as_deref(), Some("Local\\AgenticOSSupervisor"), "local mode unchanged");
+    }
+
+    #[test]
+    fn hub_url_precedence_is_env_then_file_then_unset() {
+        let file_only = hub_cfg(None, Some("https://file-pc.tail1.ts.net:8443"));
+        assert_eq!(file_only.remote_hub().unwrap().origin, "https://file-pc.tail1.ts.net:8443");
+        let both = hub_cfg(Some("https://env-pc.tail1.ts.net"), Some("https://file-pc.tail1.ts.net:8443"));
+        assert_eq!(both.remote_hub().unwrap().origin, "https://env-pc.tail1.ts.net");
+        assert_eq!(both.origin(), "https://env-pc.tail1.ts.net");
+        assert!(both.source.contains("JARVIS_HUB_URL"));
+        // A bad env value is an error, not a fall-through to a good file value or to local mode.
+        let bad_env = hub_cfg(Some("https://evil.example"), Some("https://file-pc.tail1.ts.net"));
+        assert!(matches!(bad_env.hub, HubMode::Invalid(_)));
+        assert!(!bad_env.is_local());
+        assert!(matches!(hub_cfg(None, Some("http://192.168.1.120:8081")).hub, HubMode::Invalid(_)));
+    }
+
+    #[test]
+    fn hub_url_file_field_is_camel_case() {
+        let file: FileConfig = serde_json::from_str(r#"{"hubUrl":"https://ryzen-pc.tail1.ts.net:8443"}"#).unwrap();
+        let cfg = resolve(file, "f".into(), PathBuf::from("c.json"), |_| None);
+        let hub = cfg.remote_hub().unwrap();
+        assert_eq!((hub.host.as_str(), hub.port), ("ryzen-pc.tail1.ts.net", 8443));
+        assert_eq!(cfg.supervisor_mutex, None, "remote mode has no local supervisor to wait for");
+    }
+
+    #[test]
+    fn hub_url_validation_accepts_only_tailnet_https_and_local_http() {
+        for ok in [
+            "https://ryzen-pc.tail1234.ts.net:8443",
+            "https://ryzen-pc.tail1234.ts.net",
+            "https://ryzen-pc.tail1234.ts.net/",
+            "HTTPS://Ryzen-PC.Tail1234.TS.NET:8443",
+            "http://localhost",
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+        ] {
+            assert!(parse_hub_url(ok).is_ok(), "{ok} should be accepted");
+        }
+        for bad in [
+            "http://192.168.1.120:8081",
+            "https://evil.example",
+            "https://x.ts.net.evil.com",
+            "https://evil.com/x.ts.net",
+            "https://user:pw@x.tail1.ts.net",
+            "https://x.tail1.ts.net@evil.com",
+            "https://.ts.net",
+            "https://ts.net",
+            "http://x.tail1.ts.net:8443",
+            "http://localhost.evil.com",
+            "ftp://x.tail1.ts.net",
+            "https://x.tail1.ts.net/hud",
+            "https://x.tail1.ts.net/?a=1",
+            "https://100.101.102.103:8443",
+            "ryzen-pc",
+            "",
+        ] {
+            assert!(parse_hub_url(bad).is_err(), "{bad} should be rejected");
+        }
+        let err = parse_hub_url("https://evil.example").unwrap_err();
+        assert!(err.contains("https://evil.example") && err.contains(".ts.net"), "{err}");
+        assert_eq!(
+            parse_hub_url("HTTPS://Ryzen-PC.Tail1234.TS.NET:8443").unwrap().origin,
+            "https://ryzen-pc.tail1234.ts.net:8443"
+        );
+    }
+
+    #[test]
+    fn origin_matching_is_exact_on_host_and_port() {
+        let o = "https://ryzen-pc.tail1.ts.net:8443";
+        assert!(origin_matches("https://ryzen-pc.tail1.ts.net:8443", o));
+        assert!(origin_matches("https://ryzen-pc.tail1.ts.net:8443/leads?x=1", o));
+        assert!(origin_matches("HTTPS://RYZEN-PC.tail1.ts.net:8443/#a", o));
+        assert!(!origin_matches("https://ryzen-pc.tail1.ts.net:84430/", o));
+        assert!(!origin_matches("https://ryzen-pc.tail1.ts.net:8443.evil.com/", o));
+        assert!(!origin_matches("https://ryzen-pc.tail1.ts.net/", o), "different port");
+        assert!(!origin_matches("http://ryzen-pc.tail1.ts.net:8443/", o), "different scheme");
+        assert!(!origin_matches("https://evil.example/", o));
+    }
+
+    #[test]
+    fn links_and_microphone_scope_follow_the_mode() {
+        let hub = AppScope::Hub("https://ryzen-pc.tail1.ts.net:8443".into());
+        // Remote: the hub origin, and nothing local.
+        assert!(is_app_url_in("https://ryzen-pc.tail1.ts.net:8443/hud", &hub, 8081));
+        assert!(!is_app_url_in("http://localhost:8081/", &hub, 8081), "local origin is not ours in remote mode");
+        assert!(!is_app_url_in("http://127.0.0.1:8081/", &hub, 8081));
+        assert!(!is_app_url_in("https://www.example.com/", &hub, 8081));
+        assert!(!is_app_url_in("https://other.tail1.ts.net:8443/", &hub, 8081), "another tailnet machine is not the hub");
+        // Local: unchanged.
+        assert!(is_app_url_in("http://localhost:8081/x", &AppScope::Local, 8081));
+        assert!(!is_app_url_in("https://ryzen-pc.tail1.ts.net:8443/", &AppScope::Local, 8081));
+        // Invalid hub setting: nothing is the app's origin (no mic grant, nothing stays in the window).
+        for uri in ["http://localhost:8081/", "http://127.0.0.1:8081/", "https://ryzen-pc.tail1.ts.net:8443/"] {
+            assert!(!is_app_url_in(uri, &AppScope::Nothing, 8081), "{uri}");
+        }
+        assert_eq!(hub_cfg(None, None).app_scope(), AppScope::Local);
+        assert_eq!(hub_cfg(Some("https://evil.example"), None).app_scope(), AppScope::Nothing);
+        assert_eq!(
+            hub_cfg(Some("https://h.tail1.ts.net"), None).app_scope(),
+            AppScope::Hub("https://h.tail1.ts.net".into())
+        );
+    }
+
+    #[test]
+    fn rejected_urls_never_echo_credentials() {
+        for raw in [
+            "https://user:s3cret@evil.example",
+            "https://x.tail1.ts.net@evil.com",
+            "https://user:s3cret@x.tail1.ts.net/hud",
+            "user:s3cret@host",
+        ] {
+            let err = parse_hub_url(raw).unwrap_err();
+            assert!(!err.contains("s3cret") && !err.contains("user:"), "{raw} -> {err}");
+        }
+        assert_eq!(redact_userinfo("https://a:b@h.example/p@q"), "https://<redacted>@h.example/p@q");
+        assert_eq!(redact_userinfo("https://h.example/p@q"), "https://h.example/p@q");
+        assert!(parse_hub_url("https://x.tail1.ts.net@evil.com").unwrap_err().contains("<redacted>@evil.com"));
+    }
+
+    fn file_config_from_text(name: &str, text: &str) -> (FileConfig, String) {
+        let dir = temp_dir(name);
+        let path = dir.join("config.json");
+        fs::write(&path, text).unwrap();
+        let out = read_file_config(&path);
+        let _ = fs::remove_dir_all(&dir);
+        out
+    }
+
+    fn mode_for_file_text(name: &str, text: &str, env_hub: Option<&str>) -> HubMode {
+        let (file, note) = file_config_from_text(name, text);
+        resolve(file, note, PathBuf::from("c.json"), |n| match n {
+            "JARVIS_HUB_URL" => env_hub.map(str::to_string),
+            _ => None,
+        })
+        .hub
+    }
+
+    #[test]
+    fn an_unusable_config_file_is_invalid_never_a_silent_local_hub() {
+        for (i, text) in [
+            r#"{"hubUrl":"https://ryzen-pc.tail1.ts.net:8443","port":"8443"}"#, // wrong type for another key
+            r#"{"hubUrl":123}"#,
+            r#"{"hubUrl":"https://ryzen-pc.tail1.ts.net:8443",}"#, // trailing comma
+            r#"{"hubUrl":"https://ryzen-pc.tail1.ts.net:84"#,      // truncated
+            "",
+            "not json",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            match mode_for_file_text(&format!("bad{i}"), text, None) {
+                HubMode::Invalid(msg) => {
+                    assert!(msg.contains("can't be parsed"), "{text}: {msg}");
+                    assert!(msg.contains("config.json"), "names the file: {msg}");
+                    assert!(msg.contains("error at line"), "names the error class: {msg}");
+                    assert!(!msg.contains("8443"), "does not quote the file's values: {msg}");
+                }
+                other => panic!("{text:?} gave {other:?}, expected Invalid"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_valid_env_hub_still_wins_over_a_broken_file_and_a_missing_file_is_local() {
+        let mode = mode_for_file_text("envwins", "{broken", Some("https://ryzen-pc.tail1.ts.net:8443"));
+        assert!(matches!(mode, HubMode::Remote(_)), "{mode:?}");
+        let mode = mode_for_file_text("envbad", "{broken", Some("https://evil.example"));
+        assert!(matches!(mode, HubMode::Invalid(_)), "{mode:?}");
+        let (file, note) = read_file_config(&temp_dir("missing").join("nope.json"));
+        assert!(file.load_error.is_none() && note.contains("no config file"));
+        assert_eq!(resolve(file, note, PathBuf::from("c.json"), |_| None).hub, HubMode::Local);
+        // A good file is untouched by all of this; a BOM is tolerated.
+        let mode = mode_for_file_text("good", "\u{feff}{\"hubUrl\":\"https://h.tail1.ts.net\"}", None);
+        assert!(matches!(mode, HubMode::Remote(_)), "{mode:?}");
+        assert_eq!(mode_for_file_text("goodlocal", r#"{"port":8081}"#, None), HubMode::Local);
     }
 }

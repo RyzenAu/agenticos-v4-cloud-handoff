@@ -25,6 +25,7 @@ import { subscriptionLlm } from "./llm";
 import { meetingMode } from "./session";
 import { meetingStore } from "./store";
 import { localTranscriber, MEETING_HOME } from "./transcriber";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 const flag = (name: string, fallback: string) => {
@@ -269,8 +270,8 @@ async function main() {
     const summaryStart = Date.now();
     const out = await meeting.end();
     const summaryMs = Date.now() - summaryStart;
-    const keptFile = readdirSync(join(dataRoot, ".operator-data", "meeting-mode", "notes")).find((f) => f.endsWith(".transcript.txt"));
-    const liveHyp = keptFile ? readFileSync(join(dataRoot, ".operator-data", "meeting-mode", "notes", keptFile), "utf8") : "";
+    const keptFile = readdirSync(join(dataDirFor(dataRoot), "meeting-mode", "notes")).find((f) => f.endsWith(".transcript.txt"));
+    const liveHyp = keptFile ? readFileSync(join(dataDirFor(dataRoot), "meeting-mode", "notes", keptFile), "utf8") : "";
     const liveWer = wer(REFERENCE, liveHyp);
     const sttAvg = meeting.status().sttAvgMs;
     liveLine = `Live speaker→mic WER ${(liveWer * 100).toFixed(1)}% · ${latencies.length} chunks · STT ${sttAvg ?? "?"} ms/chunk on the GPU · chunk-cut→text ${Math.round(latencies.reduce((a, b) => a + b, 0) / Math.max(1, latencies.length))} ms mean · end of call → notes ${((Date.now() - callEnd) / 1000).toFixed(1)} s (coach ${(summaryMs / 1000).toFixed(1)} s, ${out.notes?.model ?? "no model"}) · mic peak ${peak.toFixed(3)} before gain · "Jarvis, end meeting" heard: ${ended ? "yes" : "no"}`;

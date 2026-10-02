@@ -17,6 +17,8 @@ export const OWNERS = ["usman", "mehroz"] as const;
 export type Owner = (typeof OWNERS)[number];
 
 export type Lead = {
+  /** Optimistic revision of the stored fields, not hydrated Places content. */
+  editVersion?: string;
   id: number;
   vertical: Vertical;
   area: string;
@@ -43,6 +45,8 @@ export type Lead = {
   excludedReason?: string;
   websiteSource?: string;
   websiteCheckedAt?: string | null;
+  /** What the last website check established (written by the server where the result is known): see scripts/leads/crm.ts. */
+  websiteCheck?: "found" | "none-verified" | "check-failed" | "search-unavailable" | "not-checked";
   /** '' (directory/unknown) or 'found_…' when scripts/leads/phone-finder.ts found the phone. */
   phoneSource?: string;
   phoneConfidence?: number | null;
@@ -168,13 +172,39 @@ export type LeadSitesStatus = {
   templates: Record<string, string | null>;
   thumbs: Record<string, string | null>;
   previewServer?: { port: number; listening: boolean; error: string | null } | null;
+  /** The Serve port a remote founder's previews open on (scripts/lead-sites/preview-origin.ts). */
+  previewOrigin?: { port: number } | null;
 };
 
 /** Where a generated preview opens locally: the root of its own origin (scripts/lead-sites/preview-server.ts). */
 export const PREVIEW_PORT = 8091;
-export function localPreviewHref(preview: Pick<Preview, "slug" | "localUrl">): string {
-  return preview.localUrl ?? `http://${preview.slug}.localhost:${PREVIEW_PORT}/`;
+/** The hub's second Tailscale Serve port for previews (scripts/lead-sites/preview-origin.ts); /status can override it. */
+export const PREVIEW_ORIGIN_PORT = 8445;
+let previewOriginPort = PREVIEW_ORIGIN_PORT;
+
+/** How this page was reached: only its host name matters (loopback = the hub's own PC, anything else = Tailscale). */
+export type PageReach = { hostname: string };
+const LOOPBACK_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|::1|[a-z0-9-]+\.localhost)$/i;
+const LOCAL_PREVIEW = /^http:\/\/([a-z0-9-]+)\.localhost(?::\d+)?\/?$/i;
+
+/**
+ * The link for a preview, from how the page was reached. On the hub's own loopback it is the local copy
+ * (`<name>.localhost:8091`, which only means anything on that PC); from any other origin it is the hub's
+ * authenticated preview origin on the same host (a second Serve port), entered through
+ * /_mu-preview/open/<name>. A URL that isn't a `*.localhost` preview is returned untouched.
+ */
+export function previewHrefFor(localUrl: string, reach: PageReach | null, remotePort = previewOriginPort): string {
+  const m = LOCAL_PREVIEW.exec(localUrl);
+  if (!m || !reach?.hostname || LOOPBACK_HOST.test(reach.hostname)) return localUrl;
+  return `https://${reach.hostname}:${remotePort}/_mu-preview/open/${m[1].toLowerCase()}`;
 }
+const currentReach = (): PageReach | null => (typeof location === "undefined" ? null : { hostname: location.hostname });
+
+export function localPreviewHref(preview: Pick<Preview, "slug" | "localUrl">): string {
+  return previewHrefFor(preview.localUrl ?? `http://${preview.slug}.localhost:${PREVIEW_PORT}/`, currentReach());
+}
+/** Any local preview URL (a lead preview, a template, a draft) as the current page can open it. */
+export const reachablePreviewUrl = (localUrl: string): string => previewHrefFor(localUrl, currentReach());
 
 export const VERTICAL_LABEL: Record<Vertical, string> = { dental: "Dental", "real-estate": "Real estate", legal: "Legal" };
 export const statusLabel = (s: string) => {
@@ -294,25 +324,41 @@ export function useOwner(): [Owner, (o: Owner) => void] {
   return [by, update];
 }
 
-// ── /__lead-sites (scripts/lead-sites/plugin.ts): local-only preview routes ──
+// ── /__lead-sites (scripts/lead-sites/plugin.ts): the owner at the hub, or a founder signed in over Tailscale ──
 
 export async function leadSitesStatus(ids: number[] = []): Promise<LeadSitesStatus> {
   const res = await fetch(`/__lead-sites/status${ids.length ? `?ids=${ids.join(",")}` : ""}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (Number.isInteger(data?.previewOrigin?.port)) previewOriginPort = data.previewOrigin.port;
   return data;
 }
 
-export async function leadSitesPost<T = any>(path: "/generate" | "/deploy" | "/takedown" | "/thumb", body: Record<string, unknown>): Promise<T> {
+/** The same POST, but an HTTP status is an answer, not an exception: the approval flow needs the 202 and the 409s as they are. */
+export async function leadSitesPostRaw(path: "/generate" | "/deploy" | "/takedown" | "/thumb", body: Record<string, unknown>): Promise<{ status: number; json: any }> {
   const token = (await (await fetch("/__token")).json()).token;
   const res = await fetch(`/__lead-sites${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Claude-OS-Token": token },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data as T;
+  return { status: res.status, json: await res.json().catch(() => ({})) };
+}
+
+export async function leadSitesPost<T = any>(path: "/generate" | "/deploy" | "/takedown" | "/thumb", body: Record<string, unknown>): Promise<T> {
+  const { status, json } = await leadSitesPostRaw(path, body);
+  if (status < 200 || status >= 300) throw new Error(json?.error || `Request failed (${status})`);
+  return json as T;
+}
+
+/**
+ * A deploy that answered 200 but whose preview isn't live and checked is a failure, not a success (the pc-role drawer always
+ * said so). Applied to the direct answer and to the run after an approval alike. Pure.
+ */
+export function deployReply(reply: { status: number; json: any }): { status: number; json: any } {
+  const p = reply.json?.preview;
+  if (reply.status === 200 && p && (p.status !== "live" || p.lastError)) return { status: 400, json: { error: p.lastError || "The public preview hasn't passed its live check yet.", outcome: reply.json?.outcome } };
+  return reply;
 }
 
 export const leadsApi = {
@@ -321,6 +367,7 @@ export const leadsApi = {
   calls: (n: number) => operatorRequest<{ callWindow: Summary["callWindow"]; due?: number; leads: CallLead[] }>(`/leads/calls?n=${n}`, undefined, "GET"),
   list: (all: boolean) => operatorRequest<{ leads: Lead[] }>(`/leads/list${all ? "?all=1" : ""}`, undefined, "GET"),
   detail: (id: number) => operatorRequest<{ lead: Lead; activities: Activity[]; phoneFinding?: PhoneFinding | null; pipeline: { stage: string; evidence: string; nextAction: string; owner: string; closed: boolean }; drafts: string[]; issues?: LeadIssues | null; deal?: LeadDeal }>(`/leads/detail?id=${id}`, undefined, "GET"),
+  edit: (id: number, patch: Partial<Pick<Lead, "name" | "phone" | "emails" | "address" | "website" | "area" | "vertical" | "owner" | "status" | "nextAt">> & { version: string; by: Owner }) => operatorRequest<{ lead: Lead }>("/leads/edit", { lead: id, ...patch }, "POST"),
   /** Every lead with its deal row (stage, days in stage, stuck flag, value, issues). */
   board: (all: boolean) => operatorRequest<{ leads: BoardLead[] }>(`/leads/list?deals=1${all ? "&all=1" : ""}`, undefined, "GET"),
   overview: () => operatorRequest<CrmOverview>("/leads/overview", undefined, "GET"),

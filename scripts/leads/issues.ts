@@ -15,6 +15,7 @@ import type { Database } from "bun:sqlite";
 import { isChallengePage } from "./challenge-page";
 import { crawl4aiFetch, type Crawl4aiDeps } from "./crawl4ai";
 import type { Lead } from "./crm";
+import { leadArtifactCurrent } from "./edit";
 import { NOT_A_WEBSITE } from "./discovery";
 import type { Pitch } from "./score";
 import { analyseHtml, publicUrl, statusPhrase } from "./site-audit";
@@ -265,8 +266,10 @@ export async function detectIssues(lead: Lead, deps: DetectDeps = {}): Promise<I
   const directoryIssues = reviewIssues(lead);
 
   if (!lead.website) {
-    if (lead.websiteCheckedAt) {
-      const checked = lead.websiteCheckedAt.slice(0, 10);
+    // Only an explicit none-verified outcome (a real search engine answered and found nothing) may become a verified absence;
+    // a check date alone proves nothing (older runs stamped it even when search was down).
+    if (lead.websiteCheck === "none-verified") {
+      const checked = (lead.websiteCheckedAt ?? checkedAt).slice(0, 10);
       return finalise({
         ...base, status: "no_website_verified", statusNote: `no website found by discovery (checked ${checked})`,
         issues: [{
@@ -722,16 +725,30 @@ export function readIssues(db: Database, leadId: number): IssueReport | null {
   const row = db.query("SELECT report FROM lead_issues WHERE lead_id = ?").get(leadId) as { report: string } | null;
   if (!row) return null;
   try {
-    return JSON.parse(row.report) as IssueReport;
+    const report = JSON.parse(row.report) as IssueReport;
+    return leadArtifactCurrent(db, leadId, report.checkedAt, true) ? report : null;
   } catch {
     return null;
   }
 }
 
+/**
+ * The stored report, with an unproven "no website" claim removed. A report that says no_website_verified is only believed while the
+ * lead itself says none-verified; older reports were built from a bare check date. Otherwise the findings and the hook are dropped
+ * (nothing is shown rather than a claim nobody proved) and the status reads no_website_unverified.
+ */
+export function trustedReport(report: IssueReport | null, lead: Pick<Lead, "websiteCheck">): IssueReport | null {
+  if (!report || report.status !== "no_website_verified" || lead.websiteCheck === "none-verified") return report;
+  return { ...report, status: "no_website_unverified", statusNote: "no website on file and no search has proved there isn't one", issues: [], hook: "", strengths: [] };
+}
+export function readTrustedIssues(db: Database, lead: Pick<Lead, "id" | "websiteCheck">): IssueReport | null {
+  return trustedReport(readIssues(db, lead.id), lead);
+}
+
 /** The stored hook for an opener, or null when there's no report or the lead is off-limits. */
-export function issueHook(db: Database, lead: Pick<Lead, "id" | "status" | "excluded">): string | null {
+export function issueHook(db: Database, lead: Pick<Lead, "id" | "status" | "excluded"> & Partial<Pick<Lead, "websiteCheck">>): string | null {
   if (outreachBlocked(lead)) return null;
-  return readIssues(db, lead.id)?.hook || null;
+  return trustedReport(readIssues(db, lead.id), { websiteCheck: lead.websiteCheck ?? "not-checked" })?.hook || null;
 }
 
 /** Reasons in the CRM's existing shape: verdict first, then each finding with where it was seen.

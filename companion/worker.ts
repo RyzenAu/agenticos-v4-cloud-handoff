@@ -1,8 +1,13 @@
-import type { NextItem, WireCommand } from "../scripts/devices/dispatch";
+import type { NextItem, Observation, ProgressStep, WireCommand } from "../scripts/devices/dispatch";
 import { isExecutorResult, type ExecutorResult } from "../scripts/jarvis-command/contracts";
-import type { PersonId } from "../scripts/devices/types";
-import { defaultExecutors, gate, type Executor } from "./executors";
+import type { DeviceOwner, PersonId } from "../scripts/devices/types";
+import { defaultExecutors, gate, NEEDS_DESKTOP, type Executor } from "./executors";
+import { CommandLedger, type LedgerEntry } from "./ledger";
 import type { MicLock } from "./mic-lock";
+import { desktopInteractive } from "./session";
+
+/** The running program's own version: reported in every heartbeat, shown on the device record. */
+export const COMPANION_VERSION = "0.2.0";
 
 /**
  * The companion worker: runs on a person's own PC, connects OUT to the OS over the tailnet
@@ -19,6 +24,16 @@ import type { MicLock } from "./mic-lock";
  * - microphone: claimMic()/releaseMic() report the change at once; the heartbeat always says
  *   whether this process holds the mic right now (a free lock is re-claimed unless released on purpose);
  * - a revoked/expired pairing → "unpaired": stops for good (onState tells main to exit).
+ *
+ * The wire contract (each command carries jobId, stepId, deviceId, commandKey, expiresAt):
+ *   - expired (by the hub's clock, which the heartbeat teaches this PC) → refused, never run;
+ *   - the same commandKey again → never run twice (the recorded report is re-sent instead); the ledger is on disk,
+ *     written BEFORE the action starts, so a companion killed mid-step says "interrupted" after a restart;
+ *   - a cancel stops a running step (and one that arrives first means it never starts);
+ *   - the hub may ask "what happened to <key>?" (observe): answered from the ledger, never by re-running;
+ *   - a result whose POST was lost is kept and re-sent on the next good heartbeat;
+ *   - the heartbeat reports version, capabilities, and whether an interactive (unlocked) desktop is available;
+ *     while it is locked, executors that need the desktop are refused rather than pretending.
  */
 
 export type CompanionState = "starting" | "online" | "offline" | "unpaired" | "stopped";
@@ -28,7 +43,8 @@ export type WorkerOptions = {
   hubUrl: string;
   token: string;
   deviceId: string;
-  owner: PersonId;
+  /** A person for a personal PC; "shared" for a shared cloud computer (companion/linux). */
+  owner: DeviceOwner;
   executors?: Record<string, Executor>;
   micLock?: MicLock | null;
   heartbeatMs?: number;
@@ -43,6 +59,12 @@ export type WorkerOptions = {
   micAutoClaim?: boolean;
   /** Every state change (main exits on "unpaired"). */
   onState?: (state: CompanionState) => void;
+  /** The command ledger (default: in memory; main gives it a file in the config folder). */
+  ledger?: CommandLedger;
+  /** What this PC runs, for the heartbeat (default: the executors' names). */
+  capabilities?: string[];
+  /** Whether an interactive, unlocked desktop is available (default: the LogonUI check; null = can't tell). */
+  interactive?: () => Promise<boolean | null>;
 };
 
 /** What a finished command posts back to the hub: always an ExecutorResult. Pure. */
@@ -75,7 +97,13 @@ export class CompanionWorker {
   }
   readonly history: HistoryEntry[] = [];
   private stopper = new AbortController();
-  private running?: { id: string; controller: AbortController };
+  private running?: { id: string; key: string; controller: AbortController };
+  private readonly ledger: CommandLedger;
+  /** hub clock minus this PC's clock (from the heartbeat's serverTime), so expiresAt is judged on the hub's time. */
+  private clockOffset = 0;
+  /** Cancels that arrived for a command this PC hasn't started (or seen): it never starts. */
+  private cancelledEarly = new Set<string>();
+  private interactiveSeen?: { at: number; value: boolean | null };
   private misses = 0;
   private micReleased = false;
   private loops: Promise<void>[] = [];
@@ -94,10 +122,20 @@ export class CompanionWorker {
     this.heartbeatMs = opts.heartbeatMs ?? 10_000;
     this.pollWaitMs = opts.pollWaitMs ?? 25_000;
     this.offlineAfter = opts.offlineAfterMisses ?? 2;
+    this.ledger = opts.ledger ?? new CommandLedger();
+  }
+
+  /** Is an interactive, unlocked desktop available? Cached for 10 s (one tasklist call). */
+  private async interactiveNow(): Promise<boolean | null> {
+    const seen = this.interactiveSeen;
+    if (seen && Date.now() - seen.at < 10_000) return seen.value;
+    const value = await (this.opts.interactive ? this.opts.interactive() : desktopInteractive()).catch(() => null);
+    this.interactiveSeen = { at: Date.now(), value };
+    return value;
   }
 
   status() {
-    return { state: this.state, deviceId: this.opts.deviceId, owner: this.opts.owner, micOwned: this.opts.micLock?.owned() ?? false, micHolder: this.opts.micLock?.holder() ?? null, busy: !!this.running, runningCommand: this.running?.id ?? null };
+    return { state: this.state, deviceId: this.opts.deviceId, owner: this.opts.owner, micOwned: this.opts.micLock?.owned() ?? false, micHolder: this.opts.micLock?.holder() ?? null, busy: !!this.running, runningCommand: this.running?.id ?? null, version: this.opts.version ?? COMPANION_VERSION, capabilities: this.capabilities() };
   }
 
   start() {
@@ -131,8 +169,18 @@ export class CompanionWorker {
     return false;
   }
 
-  private beat() {
-    return this.call("POST", "/companion/heartbeat", { micOwned: this.micNow(), busy: !!this.running, version: this.opts.version ?? "0.1.0" }, AbortSignal.timeout(8_000));
+  private capabilities() {
+    return (this.opts.capabilities ?? Object.keys(this.executors)).slice().sort();
+  }
+
+  private async beat() {
+    const interactive = await this.interactiveNow();
+    return this.call(
+      "POST",
+      "/companion/heartbeat",
+      { micOwned: this.micNow(), busy: !!this.running, version: this.opts.version ?? COMPANION_VERSION, capabilities: this.capabilities(), interactive },
+      AbortSignal.timeout(8_000),
+    );
   }
 
   async stop() {
@@ -201,11 +249,14 @@ export class CompanionWorker {
         }
         if (status !== 200) throw new Error(`HTTP ${status}`);
         this.misses = 0;
+        if (typeof json?.serverTime === "number") this.clockOffset = json.serverTime - Date.now();
         if (this.state !== "online" && this.state !== "stopped") {
           this.state = "online";
           this.log(`online as ${this.opts.deviceId} (${this.opts.owner})`);
           this.wakeOnline();
         }
+        // A result whose POST was lost (or that finished while offline) goes out now. The hub decides what it means.
+        if (this.state === "online") void this.flushUnreported();
       } catch (error: any) {
         if (this.stopper.signal.aborted) return;
         this.misses++;
@@ -237,6 +288,7 @@ export class CompanionWorker {
         if (status !== 200) throw new Error(`HTTP ${status}`);
         const item = json?.item as NextItem | null;
         if (item?.type === "cancel") this.cancel(item.commandId);
+        else if (item?.type === "observe") void this.answerObserve(item.commandId, item.commandKey);
         else if (item?.type === "command") {
           // Arrived while this PC counts the hub as lost (a long-poll answering across the drop): the hub
           // fails anything in flight for an offline device, so it never runs late; say so if the hub can hear.
@@ -245,6 +297,9 @@ export class CompanionWorker {
             this.history.push({ id: item.command.id, executor: item.command.executor, outcome: "failed", detail: "arrived across a disconnect; not run" });
             this.log(`not running ${item.command.executor}: it arrived across a disconnect`);
             const said = "This PC was offline when that arrived, so it didn't run.";
+            // Recorded, so a redelivery under the same key is not run either.
+            const key = item.command.commandKey || `c:${item.command.id}`;
+            if (this.ledger.begin({ commandKey: key, commandId: item.command.id, executor: item.command.executor, jobId: item.command.jobId, stepId: item.command.stepId })) this.ledger.finish(key, "refused", { ok: false, said, verified: false, data: { refused: true } }, said);
             void this.call("POST", "/companion/result", { commandId: item.command.id, ok: false, error: said, output: { ok: false, said, verified: false } }).catch(() => undefined);
           } else void this.execute(item.command);
         }
@@ -259,37 +314,103 @@ export class CompanionWorker {
     if (this.running?.id === commandId) {
       this.log(`cancelling ${commandId}`);
       this.running.controller.abort();
+    } else if (!this.ledger.byCommandId(commandId)) {
+      // Not started here (yet): when it arrives it must not run.
+      this.cancelledEarly.add(commandId);
+      if (this.cancelledEarly.size > 100) this.cancelledEarly.delete(this.cancelledEarly.values().next().value as string);
     }
   }
 
-  private async refuse(command: WireCommand, reason: string) {
+  /** Send a finished (or refused) command's report to the hub; it stays in the ledger until the hub has taken it. */
+  private async report(entry: LedgerEntry) {
+    if (!entry.output || this.state !== "online") return;
+    const post = resultPost(entry.commandId, entry.output);
+    try {
+      const { status } = await this.call("POST", "/companion/result", post);
+      // 200: taken. 409/404: the hub already settled or forgot it (e.g. called it uncertain); it keeps this as what this PC says happened.
+      if (status === 200 || status === 409 || status === 404) this.ledger.markReported(entry.commandKey);
+    } catch {
+      /* stays unreported: re-sent on the next good heartbeat */
+    }
+  }
+
+  private async flushUnreported() {
+    for (const e of this.ledger.unreported()) {
+      if (this.state !== "online") return;
+      await this.report(e);
+    }
+  }
+
+  /** The hub asks what happened to a command. Answered from the ledger; nothing is ever re-run to find out. */
+  private async answerObserve(commandId: string, commandKey: string) {
+    const e = this.ledger.get(commandKey) ?? this.ledger.byCommandId(commandId);
+    let observation: Observation;
+    if (!e) observation = { state: "unknown" };
+    else if (e.state === "running") observation = { state: "running" };
+    else if (e.state === "interrupted") observation = { state: "interrupted" };
+    else if (e.state === "cancelled") observation = { state: "cancelled" };
+    else observation = { state: "done", ok: e.state === "done" && e.output?.ok === true, ...(e.output ? { output: e.output } : {}), ...(e.error ? { error: e.error } : {}) };
+    this.log(`observe ${commandKey}: ${observation.state}`);
+    await this.call("POST", "/companion/observation", { commandId, observation }).catch(() => undefined);
+  }
+
+  private async refuse(command: WireCommand, reason: string, data: Record<string, unknown> = {}) {
+    const key = command.commandKey || `c:${command.id}`;
     this.history.push({ id: command.id, executor: command.executor, outcome: "refused", detail: reason });
     this.log(`refused ${command.executor}: ${reason}`);
-    const output: ExecutorResult = { ok: false, said: reason, verified: false, data: { refused: true } };
-    await this.call("POST", "/companion/result", { commandId: command.id, ok: false, error: reason, output }).catch(() => undefined);
+    const output: ExecutorResult = { ok: false, said: reason, verified: false, data: { refused: true, ...data } };
+    this.ledger.begin({ commandKey: key, commandId: command.id, executor: command.executor, jobId: command.jobId, stepId: command.stepId });
+    this.ledger.finish(key, "refused", output, reason);
+    const entry = this.ledger.get(key);
+    if (entry) await this.report(entry);
   }
 
   private async execute(command: WireCommand) {
+    const key = command.commandKey || `c:${command.id}`;
+    // The same action is never run twice: a redelivery gets the recorded report back, not a rerun.
+    const prior = this.ledger.get(key);
+    if (prior) {
+      this.log(`already have ${key} (${prior.state}); not running it again`);
+      if (prior.state !== "running" && prior.output) await this.report(prior);
+      return;
+    }
+    if (this.cancelledEarly.delete(command.id)) return this.refuse(command, "Cancelled before it started.", { cancelled: true });
+    if (typeof command.expiresAt === "number" && Date.now() + this.clockOffset >= command.expiresAt)
+      return this.refuse(command, "That command expired before this PC could run it, so nothing was done.", { expired: true });
     const decision = gate(command, this.opts.owner, this.executors);
     if (!decision.ok) return this.refuse(command, decision.reason);
     // One at a time: never two actions on this PC's screen at once.
-    if (this.running) return this.refuse(command, "This PC is still finishing another command.");
+    if (this.running) return this.refuse(command, "This PC is still finishing another command.", { busy: true });
+    if (NEEDS_DESKTOP.has(command.executor) && (await this.interactiveNow()) === false)
+      return this.refuse(command, "This PC is locked (or at the sign-in screen), so nothing was done on its desktop.", { locked: true });
+    // Written before the action starts: a companion killed mid-step says "interrupted" after a restart.
+    if (!this.ledger.begin({ commandKey: key, commandId: command.id, executor: command.executor, jobId: command.jobId, stepId: command.stepId })) return;
     const controller = new AbortController();
-    this.running = { id: command.id, controller };
+    this.running = { id: command.id, key, controller };
     try {
-      const output = await decision.run(command.args ?? {}, { signal: controller.signal, owner: this.opts.owner, log: this.log });
-      if (controller.signal.aborted) throw new Error("Cancelled.");
+      // Sub-steps of a long executor go to the hub in order, best effort (a dropped one is not retried; the final result is what counts).
+      let chain: Promise<unknown> = Promise.resolve();
+      const progress = (step: ProgressStep) => {
+        if (this.state !== "online") return;
+        chain = chain.then(() => this.call("POST", "/companion/progress", { commandId: command.id, step }, AbortSignal.timeout(5_000)).catch(() => undefined));
+      };
+      const output = await decision.run(command.args ?? {}, { signal: controller.signal, owner: this.opts.owner as PersonId, log: this.log, progress });
+      await chain.catch(() => undefined);
       const post = resultPost(command.id, output);
+      if (controller.signal.aborted && !(post.ok && post.output.verified === true)) throw new Error("Cancelled.");
+      // (Finished and checked before the cancel landed: that is what happened, and it is said as such.)
       this.history.push({ id: command.id, executor: command.executor, outcome: post.ok ? "done" : "failed", ...(post.ok ? {} : { detail: post.output.said }) });
-      if (this.state === "online") await this.call("POST", "/companion/result", post).catch(() => undefined);
+      this.ledger.finish(key, post.ok ? "done" : "failed", post.output, post.ok ? undefined : post.output.said);
     } catch (error: any) {
       const cancelled = controller.signal.aborted;
       this.history.push({ id: command.id, executor: command.executor, outcome: cancelled ? "cancelled" : "failed", detail: error?.message });
       const said = cancelled ? "Cancelled." : String(error?.message ?? "Failed").slice(0, 500);
       const output: ExecutorResult = { ok: false, said, verified: false, ...(cancelled ? { data: { cancelled: true } } : {}) };
-      if (this.state === "online") await this.call("POST", "/companion/result", { commandId: command.id, ok: false, error: said, output }).catch(() => undefined);
+      this.ledger.finish(key, cancelled ? "cancelled" : "failed", output, said);
     } finally {
       if (this.running?.id === command.id) this.running = undefined;
     }
+    const entry = this.ledger.get(key);
+    if (entry) await this.report(entry);
   }
 }

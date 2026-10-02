@@ -22,7 +22,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: #c4d7f1;
   padding: 8px 10px;
   border: 1px solid #9bb5dd36;
@@ -59,11 +59,11 @@
   display: none;
 }
 .jaj-connection strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 .jaj-connection small {
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #c2b6a6;
   margin-left: auto;
 }
@@ -71,7 +71,7 @@
   color: #a4d8cb;
 }
 .jaj-connection p {
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   color: #b6c5dc;
   margin: 12px 0 4px;
@@ -105,7 +105,7 @@
   color: #bdd1ef;
   border: 1px solid #9bbce736;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: #1b2a40;
 }
 .jaj-targets {
@@ -125,7 +125,7 @@
   flex: 1;
   padding: 8px;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #b1c1d9;
 }
 .jaj-targets button[aria-pressed="true"] {
@@ -165,7 +165,7 @@
 }
 .jaj-compose-footer small {
   color: #99afcd;
-  font-size: 10px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   max-width: 250px;
 }
@@ -178,7 +178,7 @@
   border-radius: 9px;
   background: #c2daff;
   color: #142640;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -188,7 +188,7 @@
   border-radius: 9px;
   padding: 11px 12px;
   color: #f0c9cf;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
   margin: 12px 0;
 }
@@ -200,7 +200,7 @@
 .jaj-history-label {
   display: block;
   color: #9fb4d1;
-  font-size: 10px;
+  font-size: var(--text-xs);
   letter-spacing: 1.2px;
   margin-bottom: 8px;
 }
@@ -217,7 +217,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
-  font-size: 11px;
+  font-size: var(--text-xs);
   padding: 8px 10px;
   border: 1px solid #9cbbdf27;
   background: #1a2639;
@@ -253,7 +253,7 @@
   align-items: center;
   gap: 4px;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: var(--text-xs);
   padding: 7px;
   color: #c8bcca;
   border: 1px solid #d6adc127;
@@ -290,7 +290,7 @@
 }
 .jaj-run-status {
   margin-left: auto;
-  font-size: 10px;
+  font-size: var(--text-xs);
   color: #b6c8e4;
   display: flex;
   align-items: center;
@@ -316,7 +316,7 @@
   display: flex;
   gap: 8px;
   color: #b7c9e4;
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -346,13 +346,13 @@
 }
 .jaj-output-details summary {
   color: #b7cbed;
-  font-size: 11px;
+  font-size: var(--text-xs);
   padding: 6px 15px 10px;
   cursor: pointer;
 }
 .jaj-run-error {
   color: #efc5cf;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   padding: 0 15px 12px;
   margin: 0;
@@ -370,7 +370,7 @@
   gap: 5px;
   margin-right: auto;
   color: #b3d2fc;
-  font-size: 11px;
+  font-size: var(--text-xs);
   text-decoration: none;
 }
 .jaj-native-link:hover {
@@ -396,7 +396,7 @@
   max-height: 190px;
   overflow: auto;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   margin: 0 0 12px;
   color: #eddbc4;
@@ -411,7 +411,7 @@
   gap: 5px;
   align-items: center;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #eadbce;
   border: 1px solid #d8bea544;
   border-radius: 8px;
@@ -423,7 +423,7 @@
 }
 .jaj-review .jaj-question {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #e6d3ba;
   margin: 11px 0;
   line-height: 1.5;
@@ -446,7 +446,7 @@
   margin-top: 7px;
 }
 .jaj-answer-options button {
-  font-size: 11px;
+  font-size: var(--text-xs);
   padding: 7px 9px;
   border: 1px solid #c5b28f45;
   border-radius: 7px;
@@ -507,3 +507,15 @@
     align-items: start;
   }
 }
+/* The focused questions surface follows the shared readable detail scale. */
+#agent-questions .jaj-review-detail,
+#agent-questions .jaj-question,
+#agent-questions .jaj-question textarea {
+  font-size: 15px;
+  line-height: 1.55;
+}
+#agent-questions .jaj-review h5 { font-size: 16px; }
+#agent-questions .jaj-run-header,
+#agent-questions .jaj-run-status { font-size: 13px; }
+#agent-questions .jaj-answer-options button,
+#agent-questions .jaj-review-actions button { min-height: 40px; font-size: 14px; }

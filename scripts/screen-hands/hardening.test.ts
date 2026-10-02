@@ -403,6 +403,8 @@ describe("CDP hands", () => {
     expect(els[2]).toMatchObject({ type: "TabItem", selected: true });
     expect(uiaType({ tag: "a", role: "", type: "" })).toBe("Hyperlink");
     expect(uiaType({ tag: "input", role: "", type: "checkbox" })).toBe("CheckBox");
+    const status = cdpElements({ ...page, items: [{ ...page.items[0], tag: "p", role: "status", type: "statictext", name: "Project opened", disabled: true, readOnly: true }] }, { x: 0, y: 0 })[0];
+    expect(status).toMatchObject({ type: "Text", enabled: false, invokable: false, hasValue: false });
   });
   function fakeClient(refNow: () => object | null) {
     const sent: string[] = [];

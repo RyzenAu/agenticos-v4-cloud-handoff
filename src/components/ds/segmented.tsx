@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { PhoneSelect } from "./phone-select";
 
 /**
  * Segmented control for a small, mutually exclusive choice (period, view).
@@ -18,12 +19,16 @@ export function Segmented<T extends string>({
   ariaLabel: string;
   className?: string;
 }) {
+  const phoneSelect = options.length > 3;
   return (
+    <>
+    {phoneSelect && <PhoneSelect label={ariaLabel} value={value} onChange={(v) => onChange(v as T)} options={options.map((o) => ({ value: o.value, text: o.label }))} className={className} />}
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-inset p-1",
+        "max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-inset p-1",
+        phoneSelect ? "hidden sm:inline-flex" : "inline-flex",
         className,
       )}
     >
@@ -61,5 +66,6 @@ export function Segmented<T extends string>({
         );
       })}
     </div>
+    </>
   );
 }

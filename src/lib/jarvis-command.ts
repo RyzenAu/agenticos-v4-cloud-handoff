@@ -210,6 +210,7 @@ export function commandResultText(done: CommandDoneEvent): string {
     outcome: done.outcome,
     verified: done.verified,
     confirm: done.confirm,
+    resumeGoal: done.resumeGoal,
     refused: done.refused,
     navigate: done.navigate?.path,
     url: done.url,
@@ -228,6 +229,13 @@ export type RunJarvisCommandOptions = {
   pageContext?: WirePageContext | null;
   /** The voice pipeline's spoken-yes event id for this utterance, when there is one. */
   spokenYes?: string | null;
+  /**
+   * This event's id: stable for the same utterance across a replay (voice reconnect, early + final call), so the server runs it once.
+   * Omitted: one is minted per call, which still stops a double post of the same call from running twice.
+   */
+  eventId?: string;
+  /** The person's Jarvis conversation (a saved voice transcript's id), when the client has one; else the server's default thread. */
+  conversationId?: string;
   /** The caller's stop (his "stop", talking over, the pill's Stop): cancels the job once. */
   signal?: AbortSignal;
   post?: CommandPost;
@@ -289,6 +297,13 @@ export async function cancelJarvisCommand(jobId: string, opts: { post?: CommandP
  * a stopped done after the caller's abort, or a client-made failure done when the transport failed.
  */
 export async function runJarvisCommand(opts: RunJarvisCommandOptions): Promise<CommandDoneEvent> {
+  // A command may start a job: the idle job-event poll wakes up for the next minute.
+  // Best effort only: a DOM that can't dispatch it (a test DOM, an old WebView) must never stop the command itself.
+  try {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("jobs:nudge"));
+  } catch {
+    /* the poll simply wakes on its own schedule */
+  }
   const post = opts.post ?? defaultCommandPost;
   const get = opts.get ?? defaultCommandGet;
   const graceMs = opts.reconnect?.graceMs ?? RECONNECT_GRACE_MS;
@@ -307,6 +322,8 @@ export async function runJarvisCommand(opts: RunJarvisCommandOptions): Promise<C
     ...(opts.spokenTarget ? { spokenTarget: opts.spokenTarget.slice(0, 80) } : {}),
     ...(pageContext ? { pageContext } : {}),
     ...(opts.spokenYes ? { spokenYes: opts.spokenYes } : {}),
+    eventId: /^[\w:.-]{6,80}$/.test(opts.eventId ?? "") ? opts.eventId! : `cmd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    ...(opts.conversationId ? { conversationId: opts.conversationId } : {}),
   };
 
   // One controller for every request of this run: aborting it ends the run (a stop).

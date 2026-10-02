@@ -11,6 +11,8 @@ import type {
   UsageReceipt,
 } from "../../scripts/coding/contracts";
 
+import type { readableJob } from "../../scripts/coding/job-view";
+
 export type { AgentBinding, CodingEvent, CodingJob, Handoff, JobState, TaskSpec, UsageReceipt };
 
 export type ApprovalView = {
@@ -33,6 +35,10 @@ export type JobView = {
   events: CodingEvent[];
   liveRoles: string[];
   specDigest: string;
+  /** A paused job whose files have newer commits on the base branch: the commit and reason to prefill in "Mark superseded". */
+  supersedeHint?: { ref: string; reason: string; commits: number } | null;
+  /** Plain-words view built by the server (older servers omit it). */
+  readable?: ReturnType<typeof readableJob>;
 };
 
 export type ShapeResponse =
@@ -42,9 +48,26 @@ export type ShapeResponse =
 
 export type CodingRepo = { id: string; description: string; defaultBaseRef: string; checks?: { id: string; kind: string }[] };
 export type AllowanceWindow = { label: string; usedPercent: number | null; resetsAt: string | null };
-export type CodingAccount =
-  | { accountSlot: "claude:max"; installed: boolean; cliVersion: string | null; allowance: { windows: AllowanceWindow[]; limitReached: boolean } | null; models: readonly string[] }
-  | { accountSlot: string; installed: boolean; cliVersion: string | null; plan: string; creditsAllowed: boolean; home: string; reading: { peakPercent: number | null; resetsAt: string | null } | null; models: readonly string[] };
+/** One Claude login (30 Sep 2026: several, each on its own profile). An older server sends only claude:max without `connection`. */
+export type ClaudeCodingAccount = {
+  accountSlot: string;
+  provider?: "anthropic";
+  label?: string;
+  plan?: string;
+  profile?: string;
+  installed: boolean;
+  cliVersion: string | null;
+  /** From `claude auth status` on that profile; "unknown" until checked. A folder or a browser login is never "connected". */
+  connection?: { state: "connected" | "signed-out" | "unknown"; reason: string | null; subscription: string | null; checkedAt: string | null };
+  allowance: { windows: AllowanceWindow[]; limitReached: boolean } | null;
+  models: readonly string[];
+  /** Models a finished job has actually run on this account (receipts). */
+  modelsVerified?: string[];
+};
+export type CodexCodingAccount = { accountSlot: string; installed: boolean; cliVersion: string | null; plan: string; creditsAllowed: boolean; home: string; reading: { peakPercent: number | null; resetsAt: string | null } | null; models: readonly string[] };
+export type CodingAccount = ClaudeCodingAccount | CodexCodingAccount;
+export const isClaudeAccount = (a: CodingAccount): a is ClaudeCodingAccount => a.accountSlot.startsWith("claude:");
+export const claudeAccountLabel = (a: ClaudeCodingAccount) => a.label ?? (a.accountSlot === "claude:max" ? "Claude Max" : a.accountSlot);
 export type CodingAccounts = {
   accounts: CodingAccount[];
   /** Absent on an older server: shown as "not checked". */
@@ -62,7 +85,8 @@ async function token(): Promise<string> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: { Accept: "application/json" } });
+  // A read never waits forever: a sleeping PC or a dropped tailnet must end as an error the page can show.
+  const res = await fetch(`${BASE}${path}`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
   const out = await res.json().catch(() => null);
   if (!res.ok || !out) throw new Error(out?.error ?? `Request failed (HTTP ${res.status})`);
   return out as T;
@@ -87,17 +111,25 @@ export const codingClient = {
   job: (id: string) => get<JobView>(`/jobs/${id}`),
   focus: () => get<{ focus: { jobId: string; tab: string; at: number } | null }>("/focus"),
   repos: () => get<{ repos: CodingRepo[] }>("/repos"),
-  accounts: () => get<CodingAccounts>("/accounts"),
+  accounts: (refresh = false) => get<CodingAccounts>(`/accounts${refresh ? "?refresh=1" : ""}`),
+  /** Before Start only: run a role on another account (and optionally model). Returns the revised draft. */
+  setRoleAccount: (id: string, roleId: string, accountSlot: string, change: { route?: string; model?: string } = {}) =>
+    post<Extract<ShapeResponse, { kind: "draft" }>>(`/jobs/${id}/account`, { roleId, accountSlot, ...change }),
+  /** Before Start only: edit the plan's words (objective, done-when lines, non-goals). A new revision; the old digest can't start. */
+  editPlan: (id: string, patch: { objective?: string; doneWhen?: { id?: string; text: string }[]; nonGoals?: string[] }) =>
+    post<Extract<ShapeResponse, { kind: "draft" }>>(`/jobs/${id}/plan`, patch),
   artefact: async (jobId: string, artefactId: string) => {
     const res = await fetch(`${BASE}/artefacts/${jobId}/${artefactId}`);
     if (!res.ok) throw new Error(`Couldn't load it (HTTP ${res.status}).`);
     return res.text();
   },
-  shape: (utterance: string, extra: { draftId?: string; answer?: string } = {}) => post<ShapeResponse>("/shape", { utterance, channel: "ui", ...extra }),
+  shape: (utterance: string, extra: { draftId?: string; answer?: string; replaces?: string } = {}) => post<ShapeResponse>("/shape", { utterance, channel: "ui", ...extra }),
   start: (jobId: string, specDigest: string) => post<{ job: CodingJob }>("/jobs", { specId: jobId, specDigest, confirmation: "ui" }),
   cancel: (id: string, roleId?: string) => post<{ job: CodingJob }>(`/jobs/${id}/cancel`, roleId ? { roleId } : {}),
+  supersede: (id: string, ref: string, reason: string) => post<{ job: CodingJob }>(`/jobs/${id}/supersede`, { ref, reason }),
+  unsupersede: (id: string) => post<{ job: CodingJob }>(`/jobs/${id}/unsupersede`, {}),
   interrupt: (id: string, roleId?: string) => post<{ job: CodingJob }>(`/jobs/${id}/interrupt`, roleId ? { roleId } : {}),
-  resume: (id: string, extra: { roleId?: string; reassignTo?: { route: string; model: string; accountSlot?: string } } = {}) => post<{ job: CodingJob }>(`/jobs/${id}/resume`, extra),
+  resume: (id: string, extra: { roleId?: string; reassignTo?: { route: string; model: string; accountSlot?: string }; paidAcknowledged?: boolean } = {}) => post<{ job: CodingJob }>(`/jobs/${id}/resume`, extra),
   input: (id: string, roleId: string, inputId: string, decision: "approve" | "deny", answers?: Record<string, string>) =>
     post<{ job: CodingJob }>(`/jobs/${id}/input`, { roleId, inputId, decision, ...(answers ? { answers } : {}) }),
   apply: (id: string, action: "git.merge.protected" | "git.push.production", toRef: string, remote?: string) =>
@@ -183,6 +215,11 @@ export function jobStateLabel(state: JobState): { label: string; tone: Tone } {
   }
 }
 
+/** The label for a whole job: a job closed as superseded reads "Superseded", never "Stopped" or "Needs you". */
+export function jobLabel(job: Pick<CodingJob, "state" | "supersededBy">): { label: string; tone: Tone } {
+  return job.supersededBy ? { label: "Superseded", tone: "neutral" } : jobStateLabel(job.state);
+}
+
 export function runStateLabel(state: string): { label: string; tone: Tone } {
   switch (state) {
     case "queued": return { label: "Queued", tone: "neutral" };
@@ -205,7 +242,7 @@ export const NEEDS_YOU: readonly JobState[] = ["awaiting_confirmation", "needs_o
 export function modelLabel(b: AgentBinding | null | undefined): string {
   if (!b) return "orchestrator (no model)";
   const names: Record<string, string> = {
-    "claude-opus-5-5": "Claude Opus 5.5", "claude-sonnet-5": "Claude Sonnet 5", "claude-fable-5-1": "Claude Fable 5.1", "claude-haiku-4-5": "Claude Haiku 4.5",
+    "claude-opus-5-5": "Claude Opus 5.5", "claude-sonnet-5-5": "Claude Sonnet 5.5", "claude-sonnet-5": "Claude Sonnet 5 (older id)", "claude-fable-5-1": "Claude Fable 5.1", "claude-haiku-4-5": "Claude Haiku 4.5",
     "gpt-6-astra": "Codex GPT-6 Astra", "gpt-5.6-sol": "Codex GPT-5.6 Sol", "gpt-5.5": "Codex GPT-5.5",
   };
   return names[b.model] ?? b.model;

@@ -290,7 +290,15 @@ def llm_chain(profile: dict, env: dict | None = None) -> tuple[list[dict], list[
     return active, skipped
 
 
-def _member_env(prefix: str, m: dict) -> dict:
+def expand_env_refs(value: str, env: dict | None = None) -> str:
+    """Expand %NAME% references (Windows style) from `env` (an explicit env is authoritative, as in
+    tests) or the process environment. Unknown names are left as written. Used for profile paths that
+    differ per machine (the Codex home under %USERPROFILE%), like the env-file path in api_key_ref."""
+    src = {k.upper(): v for k, v in (os.environ if env is None else env).items()}
+    return re.sub(r"%([A-Za-z0-9_]+)%", lambda m: src.get(m.group(1).upper(), m.group(0)), value)
+
+
+def _member_env(prefix: str, m: dict, env: dict | None = None) -> dict:
     out = {prefix + "PROVIDER": m["provider"]}
     if m.get("model"):
         out[prefix + "MODEL"] = m["model"]
@@ -299,7 +307,7 @@ def _member_env(prefix: str, m: dict) -> dict:
     if m.get("base_url"):
         out[prefix + "BASE_URL"] = m["base_url"]
     if m.get("codex_home"):
-        out[prefix + "CODEX_HOME"] = m["codex_home"]
+        out[prefix + "CODEX_HOME"] = expand_env_refs(m["codex_home"], env)
     if m.get("extra_body") is not None:
         out[prefix + "EXTRA_BODY"] = json.dumps(m["extra_body"])
     if m.get("timeout"):
@@ -373,9 +381,9 @@ def build_api_env(profile: dict, key: str, launch_tmp: Path, base_env: dict | No
         raise SystemExit("no usable LLM member: every key reference in the chain is unset")
     # Member 0 is Hindsight's unindexed primary; the rest are HINDSIGHT_API_LLM_<n>_* failover
     # members tried in order (HINDSIGHT_API_LLM_STRATEGY mode "failover").
-    env.update(_member_env("HINDSIGHT_API_LLM_", active[0]))
+    env.update(_member_env("HINDSIGHT_API_LLM_", active[0], base_env))
     for i, m in enumerate(active[1:], start=1):
-        env.update(_member_env(f"HINDSIGHT_API_LLM_{i}_", m))
+        env.update(_member_env(f"HINDSIGHT_API_LLM_{i}_", m, base_env))
     if len(active) > 1:
         env["HINDSIGHT_API_LLM_STRATEGY"] = json.dumps(llm.get("strategy") or {"mode": "failover"})
     if any(m["provider"] == "claude-code" for m in active):

@@ -14,6 +14,10 @@ import { RainbowButton } from "@/components/ui/rainbow-button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { createFileRoute } from "@tanstack/react-router";
+import { PublishApprovalCard } from "@/components/approvals/publish-approval-card";
+import { designCardWords, designReply, postedLines, type PostedResult } from "@/lib/design-publish-client";
+import { postJson } from "@/lib/publish-flow";
+import { usePublishFlow } from "@/lib/use-publish-flow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -681,7 +685,7 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
           <h2 className="text-[16px] font-semibold tracking-[-0.02em] text-white/92">
             Design insights
           </h2>
-          <p className="mt-1 text-[11px] text-white/34">
+          <p className="mt-1 text-xs text-white/34">
             Recorded spend, output volume and live balances from your connected providers.
           </p>
         </div>
@@ -699,7 +703,7 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
           <button
             type="button"
             onClick={onOpenConnections}
-            className="inline-flex h-9 items-center gap-2 rounded-[11px] border border-white/[0.1] bg-white/[0.035] px-3 text-[10.5px] font-medium text-white/58 transition-colors hover:bg-white/[0.07] hover:text-white/86"
+            className="inline-flex h-9 items-center gap-2 rounded-[11px] border border-white/[0.1] bg-white/[0.035] px-3 text-xs font-medium text-white/58 transition-colors hover:bg-white/[0.07] hover:text-white/86"
           >
             <Settings2 className="h-3.5 w-3.5" /> Connections
           </button>
@@ -733,13 +737,13 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
             key={metric.label}
             className="rounded-[15px] border border-white/[0.075] bg-white/[0.025] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
           >
-            <div className="text-[9px] uppercase tracking-[0.16em] text-white/28">
+            <div className="text-xs uppercase tracking-[0.16em] text-white/28">
               {metric.label}
             </div>
             <div className="mt-2 text-[24px] font-semibold tracking-[-0.04em] text-white/90">
               {loading && !ledger ? "…" : metric.value}
             </div>
-            <div className="mt-1 text-[9.5px] text-white/28">{metric.detail}</div>
+            <div className="mt-1 text-xs text-white/28">{metric.detail}</div>
           </div>
         ))}
       </div>
@@ -748,12 +752,12 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
         <section className="rounded-[16px] border border-white/[0.075] bg-[#171c28]/72 p-4">
           <div className="mb-4 flex items-center gap-2">
             <BarChart3 className="h-3.5 w-3.5 text-[#9ce8d7]/70" />
-            <h3 className="text-[11.5px] font-semibold text-white/78">Usage by provider</h3>
+            <h3 className="text-xs font-semibold text-white/78">Usage by provider</h3>
           </div>
           <div className="space-y-3">
             {insight.byProvider.map(([provider, value]) => (
               <div key={provider}>
-                <div className="mb-1.5 flex items-center gap-2 text-[10px]">
+                <div className="mb-1.5 flex items-center gap-2 text-xs">
                   <BrandMark
                     brand={BRANDS[provider] ?? BRANDS.openrouter}
                     className="h-3.5 w-3.5"
@@ -776,7 +780,7 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
               </div>
             ))}
             {!insight.byProvider.length && (
-              <div className="py-8 text-center text-[10.5px] text-white/28">
+              <div className="py-8 text-center text-xs text-white/28">
                 Tracked generations will appear here.
               </div>
             )}
@@ -786,7 +790,7 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
         <section className="rounded-[16px] border border-white/[0.075] bg-[#171c28]/72 p-4">
           <div className="mb-4 flex items-center gap-2">
             <WalletCards className="h-3.5 w-3.5 text-[#aeb6ff]/75" />
-            <h3 className="text-[11.5px] font-semibold text-white/78">Balances and access</h3>
+            <h3 className="text-xs font-semibold text-white/78">Balances and access</h3>
           </div>
           <div className="space-y-1.5">
             {(providers?.engines ?? []).map((engine) => {
@@ -801,12 +805,12 @@ function InsightsTab({ onOpenConnections }: { onOpenConnections: () => void }) {
                     className={cn("h-4 w-4", !engine.configured && "opacity-30 grayscale")}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10.5px] font-medium text-white/65">{engine.label}</div>
-                    <div className="mt-0.5 text-[8.5px] text-white/25">
+                    <div className="text-xs font-medium text-white/65">{engine.label}</div>
+                    <div className="mt-0.5 text-xs text-white/25">
                       {engine.configured ? "Connected" : "Not connected"}
                     </div>
                   </div>
-                  <div className="text-right text-[10px] font-medium tabular-nums text-white/58">
+                  <div className="text-right text-xs font-medium tabular-nums text-white/58">
                     {balance?.ok
                       ? balance.unit === "usd"
                         ? compactUsd(balance.amount)
@@ -1081,7 +1085,7 @@ function DesignStudio() {
             <button
               type="button"
               onClick={toggleFull}
-              className="fixed right-5 top-5 z-50 inline-flex items-center gap-2 rounded-full border border-white/[0.14] bg-black/60 px-4 py-2 text-[12px] font-semibold text-white/85 backdrop-blur transition-colors hover:bg-black/80"
+              className="fixed right-5 top-5 z-50 inline-flex items-center gap-2 rounded-full border border-white/[0.14] bg-black/60 px-4 py-2 text-xs font-semibold text-white/85 backdrop-blur transition-colors hover:bg-black/80"
             >
               <Minimize2 className="h-3.5 w-3.5" />
               Exit fullscreen
@@ -1412,7 +1416,7 @@ function CreateTab({
       />
 
       {framePick && (
-        <div className="mb-3 flex items-center gap-3 rounded-xl border border-violet-300/25 bg-violet-400/[0.08] px-3 py-2.5 text-[12px] text-violet-100">
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-violet-300/25 bg-violet-400/[0.08] px-3 py-2.5 text-xs text-violet-100">
           <span className="flex-1">
             Pick an image below for the {framePick === "start" ? "start" : "end"} frame.
           </span>
@@ -1434,7 +1438,7 @@ function CreateTab({
       {/* Only speaks up when it has something to say: armed is the normal
           state and doesn't need a badge sitting there forever. */}
       {data && !data.armed && (
-        <div className="mb-5 rounded-xl border border-warn/40 bg-warn-soft px-4 py-3 text-[12.5px] text-warn">
+        <div className="mb-5 rounded-xl border border-warn/40 bg-warn-soft px-4 py-3 text-xs text-warn">
           Agent media capture is not set up yet, so media Claude Code and Hermes make isn't recorded here.
           Ask Jarvis to set this up.
         </div>
@@ -1476,22 +1480,22 @@ function CreateTab({
                         : "animate-pulse bg-[#72e0c5] shadow-[0_0_10px_rgba(114,224,197,0.7)]",
                     )}
                   />
-                  <span className="shrink-0 text-[10px] font-medium text-white/58">
+                  <span className="shrink-0 text-xs font-medium text-white/58">
                     {job.status === "cancelling"
                       ? "Cancelling"
                       : `${job.completed}/${job.total} ready`}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[10px] text-white/28">
+                  <span className="min-w-0 flex-1 truncate text-xs text-white/28">
                     {job.prompt}
                   </span>
-                  <span className="hidden shrink-0 text-[9px] text-white/24 md:block">
+                  <span className="hidden shrink-0 text-xs text-white/24 md:block">
                     {job.engineLabel} · {job.modelLabel}
                   </span>
                   <button
                     type="button"
                     onClick={() => void cancelGeneration(job.id)}
                     disabled={job.status === "cancelling"}
-                    className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] border border-white/[0.08] px-2 text-[9.5px] font-medium text-white/38 transition-colors hover:border-rose-300/20 hover:bg-rose-400/[0.06] hover:text-rose-100 disabled:cursor-wait disabled:opacity-35"
+                    className="inline-flex h-6 shrink-0 items-center gap-1 rounded-[7px] border border-white/[0.08] px-2 text-xs font-medium text-white/38 transition-colors hover:border-rose-300/20 hover:bg-rose-400/[0.06] hover:text-rose-100 disabled:cursor-wait disabled:opacity-35"
                   >
                     <X className="h-3 w-3" /> Cancel
                   </button>
@@ -1618,7 +1622,7 @@ function VideoFrameSlots({
                   alt=""
                   className="h-8 w-11 rounded-md border border-white/10 object-cover"
                 />
-                <span className="text-[10.5px] text-white/68">
+                <span className="text-xs text-white/68">
                   {slot === "start" ? "Start frame" : "End frame"}
                 </span>
                 <button
@@ -1641,7 +1645,7 @@ function VideoFrameSlots({
                 ) : (
                   <PanelBottom className="h-4 w-4" />
                 )}
-                <span className="text-[10.5px]">
+                <span className="text-xs">
                   Add {slot === "start" ? "start" : "end"} frame
                 </span>
               </button>
@@ -1649,7 +1653,7 @@ function VideoFrameSlots({
           </div>
         );
       })}
-      <span className="hidden text-[10px] leading-relaxed text-white/27 md:block">
+      <span className="hidden text-xs leading-relaxed text-white/27 md:block">
         Frames are sent in order to supported video models.
       </span>
     </div>
@@ -1697,7 +1701,7 @@ function ReferenceStack({
             </button>
           ))}
           {refs.length > shown.length && (
-            <span className="relative z-10 grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-white/[0.13] bg-[#252b3b] text-[9px] font-medium tabular-nums text-white/72 shadow-[-3px_2px_10px_-5px_rgba(0,0,0,1)]">
+            <span className="relative z-10 grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-white/[0.13] bg-[#252b3b] text-xs font-medium tabular-nums text-white/72 shadow-[-3px_2px_10px_-5px_rgba(0,0,0,1)]">
               +{refs.length - shown.length}
             </span>
           )}
@@ -1707,7 +1711,7 @@ function ReferenceStack({
         type="button"
         onClick={onAdd}
         disabled={adding || refs.length >= 8}
-        className="group/add-reference inline-flex h-7 items-center gap-1.5 rounded-[8px] px-1.5 text-[10.5px] font-medium text-white/52 transition-colors hover:bg-white/[0.055] hover:text-white/88 disabled:cursor-not-allowed disabled:opacity-35"
+        className="group/add-reference inline-flex h-7 items-center gap-1.5 rounded-[8px] px-1.5 text-xs font-medium text-white/52 transition-colors hover:bg-white/[0.055] hover:text-white/88 disabled:cursor-not-allowed disabled:opacity-35"
         aria-label={refs.length ? "Add another reference image" : "Add reference images"}
         title={refs.length >= 8 ? "Maximum 8 reference images" : "Add reference images"}
       >
@@ -1752,20 +1756,20 @@ function HiggsfieldRequestNotice() {
   }, []);
   if (!requests.length) return null;
   return (
-    <details className="mb-5 rounded-xl border border-amber-200/15 bg-amber-200/[0.035] px-4 py-3 text-[12px] text-amber-100/80">
+    <details className="mb-5 rounded-xl border border-amber-200/15 bg-amber-200/[0.035] px-4 py-3 text-xs text-amber-100/80">
       <summary className="cursor-pointer">
         Check{" "}
         {requests.length === 1 ? "a Higgsfield request" : `${requests.length} Higgsfield requests`}{" "}
         before retrying
       </summary>
-      <p className="mt-2 text-[11px] text-white/45">
+      <p className="mt-2 text-xs text-white/45">
         These requests were accepted. The OS could not confirm their final output; they may have
         continued at Higgsfield.
       </p>
       {requests.map((request) => (
         <div
           key={request.requestId}
-          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]"
+          className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
         >
           <span>{request.model}</span>
           <code className="break-all text-white/45">{request.requestId}</code>
@@ -2441,9 +2445,9 @@ function Composer({
           }}
         >
           {provErr ? (
-            <div className="text-[12.5px] text-rose-200">{provErr}</div>
+            <div className="text-xs text-rose-200">{provErr}</div>
           ) : !prov ? (
-            <div className="text-[12.5px] text-muted-foreground">Checking your engines…</div>
+            <div className="text-xs text-muted-foreground">Checking your engines…</div>
           ) : (
             <div>
               <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1" role="group" aria-label="Generation providers">
@@ -2483,7 +2487,7 @@ function Composer({
                         aria-label={`Higgsfield ${mode === "api" ? "API" : "Account"}`}
                         title={`${mode === "api" ? "API key · billed in USD" : "Account connection · Higgsfield credits"} · ${connected ? "Connected" : "Not connected"}`}
                         onClick={() => pickHiggsfieldMode(mode)}
-                        className={cn("flex h-8 items-center gap-2 rounded-lg px-3 text-[12px] font-medium transition-colors", higgsfieldMode === mode ? "bg-white/[0.14] text-white shadow-sm" : "text-white/55 hover:bg-white/[0.06] hover:text-white")}>
+                        className={cn("flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors", higgsfieldMode === mode ? "bg-white/[0.14] text-white shadow-sm" : "text-white/55 hover:bg-white/[0.06] hover:text-white")}>
                         {mode === "api" ? "API" : "Account"}
                         <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", connected ? "bg-emerald-300" : "bg-white/30")} />
                       </button>;
@@ -2538,7 +2542,7 @@ function Composer({
                               : `No ${mediaKind} models from ${engine.label}`
                           }
                           className={cn(
-                            "inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[10.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-25",
+                            "inline-flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-25",
                             kind === mediaKind
                               ? "bg-white/[0.1] font-medium text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]"
                               : "text-white/38 hover:bg-white/[0.05] hover:text-white/74",
@@ -2579,7 +2583,7 @@ function Composer({
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[12px] font-medium text-white/76">
+                    <span className="block text-xs font-medium text-white/76">
                       Connect {engine.label} API to create
                     </span>
                     <span className="mt-0.5 block text-xs text-white/60">
@@ -2592,8 +2596,8 @@ function Composer({
                 </button>
               ) : engine ? (
                 <div>
-                  {isHiggsfieldAccount && refs.length > 0 && <p role="alert" className="mb-2 text-[11px] text-amber-100/80">This Higgsfield account connection currently creates from text. Remove reference images to generate.</p>}
-                  {isHiggsfieldAccount && quoteError && <p role="alert" className="mb-2 text-[11px] text-rose-200">{quoteError}</p>}
+                  {isHiggsfieldAccount && refs.length > 0 && <p role="alert" className="mb-2 text-xs text-amber-100/80">This Higgsfield account connection currently creates from text. Remove reference images to generate.</p>}
+                  {isHiggsfieldAccount && quoteError && <p role="alert" className="mb-2 text-xs text-rose-200">{quoteError}</p>}
                   {kind === "video" ? (
                     <VideoFrameSlots refs={refs} onRemove={onDropRef} onRequest={onRequestFrame} />
                   ) : null}
@@ -2670,10 +2674,10 @@ function Composer({
                         aria-label={`${liveQuote ? "Higgsfield credit quote" : usdEstimate ? "Estimated generation price" : "Published model price"}: ${priceDisplay.label}`}
                       >
                         <div className="min-w-[70px] text-left">
-                          <div className="text-[8px] font-medium uppercase tracking-[0.13em] text-white/28">
+                          <div className="text-xs font-medium uppercase tracking-[0.13em] text-white/28">
                             {usdEstimate || liveQuote ? "This run" : "Model rate"}
                           </div>
-                          <div className="mt-0.5 text-[11.5px] font-semibold tabular-nums text-white/82">
+                          <div className="mt-0.5 text-xs font-semibold tabular-nums text-white/82">
                             {priceDisplay.label}
                           </div>
                         </div>
@@ -2713,13 +2717,13 @@ function Composer({
                             </button>
                             {balanceOpen && (
                               <div className="absolute bottom-full right-0 z-[90] mb-2.5 w-[220px] rounded-[14px] border border-white/[0.11] bg-[#161b27]/[0.98] p-3 text-left shadow-[0_22px_55px_-18px_rgba(0,0,0,0.95)] backdrop-blur-2xl">
-                                <div className="text-[8.5px] font-medium uppercase tracking-[0.16em] text-white/30">
+                                <div className="text-xs font-medium uppercase tracking-[0.16em] text-white/30">
                                   {engine?.label ?? "Provider"} balance
                                 </div>
                                 <div className="mt-1 text-[15px] font-semibold tabular-nums text-white/90">
                                   {balanceDisplay}
                                 </div>
-                                <div className="mt-1.5 text-[9.5px] leading-relaxed text-white/38">
+                                <div className="mt-1.5 text-xs leading-relaxed text-white/38">
                                   {providerBalance?.unit === "usd"
                                     ? "Remaining account spend. The run estimate uses the same currency."
                                     : engine?.id === "higgsfield"
@@ -2748,7 +2752,7 @@ function Composer({
                         <button
                           onClick={generate}
                           disabled={!canGenerate}
-                          className="group/generate relative inline-flex min-h-[42px] min-w-[124px] items-center justify-center overflow-hidden rounded-[14px] border border-black/70 bg-[#07090e] px-6 py-2.5 text-[12.5px] font-semibold tracking-[-0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.13),inset_0_-12px_24px_rgba(0,0,0,0.34)] transition-colors hover:bg-[#0b0e15] disabled:cursor-not-allowed md:text-[13px]"
+                          className="group/generate relative inline-flex min-h-[42px] min-w-[124px] items-center justify-center overflow-hidden rounded-[14px] border border-black/70 bg-[#07090e] px-6 py-2.5 text-xs font-semibold tracking-[-0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.13),inset_0_-12px_24px_rgba(0,0,0,0.34)] transition-colors hover:bg-[#0b0e15] disabled:cursor-not-allowed md:text-[13px]"
                         >
                           <span
                             aria-hidden
@@ -2766,7 +2770,7 @@ function Composer({
                     </div>
                   </div>
                   {genErr && (
-                    <div role="alert" className="mt-1.5 text-[12px] text-rose-200">
+                    <div role="alert" className="mt-1.5 text-xs text-rose-200">
                       {genErr}
                       {engine?.id === "higgsfield" && (
                         <a
@@ -2820,7 +2824,7 @@ function ProviderButton({
     <Dialog open={open} onOpenChange={(next) => { if (next !== open) onToggle(); }}>
       <DialogTrigger asChild>
         <button type="button" aria-label="Connections and pricing"
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-[#151b27] px-3 text-[12px] font-medium text-white hover:bg-[#252c3c]">
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-white/25 bg-[#151b27] px-3 text-xs font-medium text-white hover:bg-[#252c3c]">
           <Settings2 className="h-4 w-4" /> Connections
         </button>
       </DialogTrigger>
@@ -2831,7 +2835,7 @@ function ProviderButton({
         <div className="my-5 grid grid-cols-3 gap-1.5 sm:grid-cols-6" role="group" aria-label="Connection providers">
           {engines.map((item) => <button key={item.id} type="button" onClick={() => onPick(item.id)}
             aria-label={`Configure ${item.label}`} aria-pressed={engine.id === item.id}
-            className={cn("flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-1 py-2 text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-violet-600", engine.id === item.id ? "border-[#a9a0d8] bg-[#e9e5fa] text-[#302255]" : "border-transparent text-[#4d5160] hover:bg-[#ededf4]")}>
+            className={cn("flex min-w-0 flex-col items-center gap-1.5 rounded-xl border px-1 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-violet-600", engine.id === item.id ? "border-[#a9a0d8] bg-[#e9e5fa] text-[#302255]" : "border-transparent text-[#4d5160] hover:bg-[#ededf4]")}>
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#202431]">
               <BrandMark brand={BRANDS[item.id] ?? BRANDS.openrouter} className="h-5 w-5" />
             </span>
@@ -2917,7 +2921,7 @@ function OutputCount({
       aria-label={`Number of ${kind === "image" ? "images" : "clips"}`}
       className="inline-flex h-[38px] shrink-0 items-center gap-1 rounded-[11px] border border-white/[0.14] bg-[#121722] p-1 pl-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)]"
     >
-      <span className="mr-0.5 text-[9px] font-medium uppercase tracking-[0.13em] text-white/28">
+      <span className="mr-0.5 text-xs font-medium uppercase tracking-[0.13em] text-white/28">
         {kind === "image" ? "Images" : "Clips"}
       </span>
       <div className="flex items-center gap-0.5" aria-live="polite">
@@ -2929,7 +2933,7 @@ function OutputCount({
             aria-pressed={value === option}
             aria-label={`${option} ${kind === "image" ? (option === 1 ? "image" : "images") : option === 1 ? "clip" : "clips"}`}
             className={cn(
-              "grid h-7 w-7 place-items-center rounded-[8px] text-[10.5px] font-medium tabular-nums transition-all",
+              "grid h-7 w-7 place-items-center rounded-[8px] text-xs font-medium tabular-nums transition-all",
               value === option
                 ? "bg-[#edf0ff] text-[#121522] shadow-[0_2px_9px_-4px_rgba(200,207,255,0.85)]"
                 : "text-white/34 hover:bg-white/[0.055] hover:text-white/80",
@@ -2993,7 +2997,7 @@ function StyleButton({
           onClick={() => onPick("")}
           aria-label={`Remove ${selected.label} style`}
           title="Remove active style"
-          className="group/active-style inline-flex h-[38px] max-w-[164px] items-center gap-2 rounded-[11px] border border-[#aeb6ff]/25 bg-[#aeb6ff]/[0.075] px-2.5 text-[10.5px] font-medium text-[#e7e9ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] transition-colors hover:border-[#aeb6ff]/40 hover:bg-[#aeb6ff]/[0.12]"
+          className="group/active-style inline-flex h-[38px] max-w-[164px] items-center gap-2 rounded-[11px] border border-[#aeb6ff]/25 bg-[#aeb6ff]/[0.075] px-2.5 text-xs font-medium text-[#e7e9ff] shadow-[inset_0_1px_0_rgba(255,255,255,0.055)] transition-colors hover:border-[#aeb6ff]/40 hover:bg-[#aeb6ff]/[0.12]"
         >
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#aeb6ff] shadow-[0_0_9px_rgba(174,182,255,0.75)]" />
           <span className="min-w-0 truncate">{selected.label}</span>
@@ -3023,8 +3027,8 @@ function StyleButton({
         >
           <div className="flex items-start gap-3 px-2 pb-2 pt-1">
             <div className="min-w-0 flex-1">
-              <div className="text-[12px] font-medium text-white/85">Design recipes</div>
-              <div className="mt-0.5 text-[10.5px] text-white/35">
+              <div className="text-xs font-medium text-white/85">Design recipes</div>
+              <div className="mt-0.5 text-xs text-white/35">
                 Reusable instructions, with reference images only when you need them.
               </div>
             </div>
@@ -3036,7 +3040,7 @@ function StyleButton({
                 setInstructions("");
                 setAdding((current) => !current);
               }}
-              className="inline-flex items-center gap-1 rounded-lg border border-violet-300/25 bg-violet-300/[0.08] px-2 py-1.5 text-[10px] text-violet-100 hover:bg-violet-300/[0.14]"
+              className="inline-flex items-center gap-1 rounded-lg border border-violet-300/25 bg-violet-300/[0.08] px-2 py-1.5 text-xs text-violet-100 hover:bg-violet-300/[0.14]"
             >
               <Plus className="h-3 w-3" /> New
             </button>
@@ -3048,20 +3052,20 @@ function StyleButton({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Recipe name"
-                className="mb-2 w-full rounded-lg border border-white/10 bg-[#141925] px-2.5 py-2 text-[11.5px] text-white outline-none placeholder:text-white/28 focus:border-violet-300/35"
+                className="mb-2 w-full rounded-lg border border-white/10 bg-[#141925] px-2.5 py-2 text-xs text-white outline-none placeholder:text-white/28 focus:border-violet-300/35"
               />
               <textarea
                 value={instructions}
                 onChange={(event) => setInstructions(event.target.value)}
                 placeholder="Describe the visual rules, character, mood or composition"
                 rows={3}
-                className="w-full resize-none rounded-lg border border-white/10 bg-[#141925] px-2.5 py-2 text-[11.5px] leading-relaxed text-white outline-none placeholder:text-white/28 focus:border-violet-300/35"
+                className="w-full resize-none rounded-lg border border-white/10 bg-[#141925] px-2.5 py-2 text-xs leading-relaxed text-white outline-none placeholder:text-white/28 focus:border-violet-300/35"
               />
               <div className="mt-2 rounded-[10px] border border-white/[0.08] bg-[#141925] p-2">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10.5px] font-medium text-white/66">Recipe references</div>
-                    <div className="mt-0.5 text-[9px] text-white/28">
+                    <div className="text-xs font-medium text-white/66">Recipe references</div>
+                    <div className="mt-0.5 text-xs text-white/28">
                       These images load every time you use this recipe.
                     </div>
                   </div>
@@ -3069,7 +3073,7 @@ function StyleButton({
                     type="button"
                     onClick={onAddImages}
                     disabled={addingImages || formReferences.length >= 8}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-[#9ce8d7]/25 bg-[#9ce8d7]/[0.08] px-2 py-1.5 text-[9.5px] font-medium text-[#cafff2] transition-colors hover:bg-[#9ce8d7]/[0.14] disabled:opacity-35"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-[8px] border border-[#9ce8d7]/25 bg-[#9ce8d7]/[0.08] px-2 py-1.5 text-xs font-medium text-[#cafff2] transition-colors hover:bg-[#9ce8d7]/[0.14] disabled:opacity-35"
                   >
                     <ImagePlus className={cn("h-3 w-3", addingImages && "animate-pulse")} />
                     {addingImages ? "Adding…" : formReferences.length ? "Add more" : "Add images"}
@@ -3088,7 +3092,7 @@ function StyleButton({
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-2 rounded-[8px] border border-dashed border-white/[0.09] px-2 py-2 text-[9.5px] text-white/24">
+                  <div className="mt-2 rounded-[8px] border border-dashed border-white/[0.09] px-2 py-2 text-xs text-white/24">
                     Add character, product or mood references if this recipe needs them.
                   </div>
                 )}
@@ -3104,7 +3108,7 @@ function StyleButton({
                   setAdding(false);
                 }}
                 disabled={!name.trim() || !instructions.trim()}
-                className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-white/70 bg-[#f4f1ff] px-3 py-2.5 text-[11px] font-semibold text-[#11131a] shadow-[0_7px_18px_-10px_rgba(210,201,255,0.9),inset_0_1px_0_rgba(255,255,255,1)] transition-all hover:bg-white disabled:border-white/[0.08] disabled:bg-white/[0.055] disabled:text-white/24 disabled:shadow-none"
+                className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-white/70 bg-[#f4f1ff] px-3 py-2.5 text-xs font-semibold text-[#11131a] shadow-[0_7px_18px_-10px_rgba(210,201,255,0.9),inset_0_1px_0_rgba(255,255,255,1)] transition-all hover:bg-white disabled:border-white/[0.08] disabled:bg-white/[0.055] disabled:text-white/24 disabled:shadow-none"
               >
                 <Save className="h-3 w-3" />
                 {name.trim()
@@ -3148,10 +3152,10 @@ function StyleButton({
                       )}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[12px] font-medium text-white/85">
+                      <span className="block text-xs font-medium text-white/85">
                         {option.label}
                       </span>
-                      <span className="mt-0.5 block text-[10.5px] leading-relaxed text-white/35">
+                      <span className="mt-0.5 block text-xs leading-relaxed text-white/35">
                         {option.hint}
                       </span>
                       {recipeReferences.length > 0 && (
@@ -3166,7 +3170,7 @@ function StyleButton({
                             />
                           ))}
                           {recipeReferences.length > 4 && (
-                            <span className="relative z-10 grid h-5 w-5 place-items-center rounded-[6px] border border-white/10 bg-[#303647] text-[7.5px] text-white/62">
+                            <span className="relative z-10 grid h-5 w-5 place-items-center rounded-[6px] border border-white/10 bg-[#303647] text-xs text-white/62">
                               +{recipeReferences.length - 4}
                             </span>
                           )}
@@ -3256,13 +3260,13 @@ function ModelOption({
           <span className="block truncate text-[14px] font-medium text-white">
             {displayLabel}
           </span>
-          <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+          <span className="mt-0.5 block truncate text-xs text-slate-400">
             {MODEL_BLURBS[model.id] ?? `${brand.label} · ${model.kind}`}
           </span>
-          <span className="mt-1 block text-[11px] text-slate-300 sm:hidden">{modelRateLabel(model)}</span>
+          <span className="mt-1 block text-xs text-slate-300 sm:hidden">{modelRateLabel(model)}</span>
         </span>
         <span className="hidden max-w-[150px] shrink-0 text-right sm:block" title={modelRateDetail(model)}>
-          <span className="block text-[12px] font-medium tabular-nums text-slate-200">
+          <span className="block text-xs font-medium tabular-nums text-slate-200">
             {modelRateLabel(model)}
           </span>
         </span>
@@ -3372,9 +3376,9 @@ function ModelButton({
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <h2 className="text-[15px] font-semibold">Choose a model</h2>
-              <p className="mt-1 text-[12px] text-slate-400">{connectionLabel} · {accountMode ? "Higgsfield credits" : engine.id === "higgsfield" ? "Billed in USD" : `${models.length} models`}</p>
+              <p className="mt-1 text-xs text-slate-400">{connectionLabel} · {accountMode ? "Higgsfield credits" : engine.id === "higgsfield" ? "Billed in USD" : `${models.length} models`}</p>
             </div>
-            <span className={cn("mt-1 inline-flex items-center gap-1.5 whitespace-nowrap text-[11px]", connectionReady ? "text-emerald-300" : "text-slate-400")}>
+            <span className={cn("mt-1 inline-flex items-center gap-1.5 whitespace-nowrap text-xs", connectionReady ? "text-emerald-300" : "text-slate-400")}>
               <span className={cn("h-1.5 w-1.5 rounded-full", connectionReady ? "bg-emerald-300" : "bg-slate-500")} />
               {connectionReady ? "Connected" : accountMode ? "Sign in needed" : "Key needed"}
             </span>
@@ -3391,16 +3395,16 @@ function ModelButton({
           {shown.length === 0 ? <div className="px-4 py-7 text-center text-[13px] text-slate-400">{q ? "No matching models." : "Connect this provider to load its models."}</div>
             : q ? shown.map(renderOption) : <>
               {pinned.length > 0 && <div className="mb-2">
-                <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400"><Pin className="h-3 w-3" /> Pinned</div>
+                <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-400"><Pin className="h-3 w-3" /> Pinned</div>
                 {pinned.map(renderOption)}
               </div>}
               {standard.length > 0 && <div>
-                {pinned.length > 0 && <div className="px-3 py-2 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">All models</div>}
+                {pinned.length > 0 && <div className="px-3 py-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-400">All models</div>}
                 {standard.map(renderOption)}
               </div>}
             </>}
         </div>
-        {engine.id === "higgsfield" && <p className="shrink-0 border-t border-white/10 px-4 py-3 text-[11px] leading-relaxed text-slate-400">
+        {engine.id === "higgsfield" && <p className="shrink-0 border-t border-white/10 px-4 py-3 text-xs leading-relaxed text-slate-400">
           {accountMode ? "Uses your Higgsfield account. The credit price is quoted before you generate." : "Nano Banana 2 is available through the Account connection."}
         </p>}
       </PopoverContent>
@@ -3441,7 +3445,7 @@ function RatioControl({
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="inline-flex h-[36px] min-w-[78px] items-center justify-center gap-2 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 text-[11.5px] text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors hover:border-white/25 hover:text-white/90"
+        className="inline-flex h-[36px] min-w-[78px] items-center justify-center gap-2 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 text-xs text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors hover:border-white/25 hover:text-white/90"
       >
         <RatioShape value={value} />
         <span>{value}</span>
@@ -3452,8 +3456,8 @@ function RatioControl({
           role="listbox"
         >
           <div className="px-2 pb-2 pt-1">
-            <div className="text-[11.5px] font-medium text-white/82">Canvas ratio</div>
-            <div className="text-[10px] text-white/32">Pick the frame you are designing for</div>
+            <div className="text-xs font-medium text-white/82">Canvas ratio</div>
+            <div className="text-xs text-white/32">Pick the frame you are designing for</div>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
             {options.map((option) => (
@@ -3466,7 +3470,7 @@ function RatioControl({
                 role="option"
                 aria-selected={value === option}
                 className={cn(
-                  "flex h-[66px] flex-col items-center justify-center gap-1.5 rounded-xl border text-[10.5px] transition-colors",
+                  "flex h-[66px] flex-col items-center justify-center gap-1.5 rounded-xl border text-xs transition-colors",
                   value === option
                     ? "border-[#b6bdff]/45 bg-[#aeb6ff]/14 text-[#e1e4ff]"
                     : "border-white/[0.07] text-white/48 hover:bg-white/[0.05] hover:text-white/85",
@@ -3517,7 +3521,7 @@ function ParamControl({
         aria-pressed={on}
         title={label}
         className={cn(
-          "inline-flex shrink-0 items-center gap-1.5 rounded-[11px] border px-2.5 py-2 text-[11.5px] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors",
+          "inline-flex shrink-0 items-center gap-1.5 rounded-[11px] border px-2.5 py-2 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors",
           on
             ? "border-[#b6bdff]/40 bg-[#aeb6ff]/14 text-[#d8dcff]"
             : "border-white/[0.14] bg-[#121722] text-white/45 hover:border-white/25 hover:bg-white/5 hover:text-white/80",
@@ -3534,7 +3538,7 @@ function ParamControl({
   if (spec.type === "integer") {
     return (
       <label
-        className="inline-flex shrink-0 items-center gap-1.5 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-1.5 text-[11.5px] text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)]"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-1.5 text-xs text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)]"
         title={label}
       >
         <span className="text-muted-foreground">{label}</span>
@@ -3558,7 +3562,7 @@ function ParamControl({
         onClick={() => onChange(next)}
         aria-label={`Format ${selected}`}
         title="Click to change format"
-        className="shrink-0 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-2 text-[11.5px] uppercase text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors hover:border-white/25 hover:text-white/90"
+        className="shrink-0 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-2 text-xs uppercase text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] transition-colors hover:border-white/25 hover:text-white/90"
       >
         {selected}
       </button>
@@ -3571,7 +3575,7 @@ function ParamControl({
         className="inline-flex shrink-0 items-center overflow-hidden rounded-[11px] border border-white/[0.14] bg-[#121722] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)]"
         title={label}
       >
-        <span className="pl-2.5 pr-1 text-[11px]" aria-label="Quality">
+        <span className="pl-2.5 pr-1 text-xs" aria-label="Quality">
           💎
         </span>
         {options.map((opt) => (
@@ -3580,7 +3584,7 @@ function ParamControl({
             onClick={() => onChange(opt)}
             aria-pressed={String(value) === opt}
             className={cn(
-              "px-2 py-2 text-[11.5px] uppercase transition-colors",
+              "px-2 py-2 text-xs uppercase transition-colors",
               String(value) === opt
                 ? "bg-[#aeb6ff]/15 font-medium text-[#d8dcff] shadow-[inset_0_0_0_1px_rgba(174,182,255,0.25)]"
                 : "text-white/45 hover:bg-white/5 hover:text-white/80",
@@ -3599,7 +3603,7 @@ function ParamControl({
         className="inline-flex shrink-0 items-center overflow-hidden rounded-[11px] border border-white/[0.14] bg-[#121722] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)]"
         title="Image quality"
       >
-        <span className="pl-2.5 pr-1 text-[11px]" aria-label="Quality">
+        <span className="pl-2.5 pr-1 text-xs" aria-label="Quality">
           💎
         </span>
         {options.map((option) => (
@@ -3608,7 +3612,7 @@ function ParamControl({
             onClick={() => onChange(option)}
             aria-pressed={String(value) === option}
             className={cn(
-              "px-2.5 py-2 text-[11px] capitalize transition-colors",
+              "px-2.5 py-2 text-xs capitalize transition-colors",
               String(value) === option
                 ? "bg-[#aeb6ff]/15 font-medium text-[#d8dcff] shadow-[inset_0_0_0_1px_rgba(174,182,255,0.25)]"
                 : "text-white/45 hover:bg-white/5 hover:text-white/80",
@@ -3634,7 +3638,7 @@ function ParamControl({
             onClick={() => onChange(opt)}
             aria-pressed={String(value) === opt}
             className={cn(
-              "px-2.5 py-2 text-[11.5px] uppercase transition-colors",
+              "px-2.5 py-2 text-xs uppercase transition-colors",
               String(value) === opt
                 ? "bg-[#aeb6ff]/15 font-medium text-[#d8dcff] shadow-[inset_0_0_0_1px_rgba(174,182,255,0.25)]"
                 : "text-white/45 hover:bg-white/5 hover:text-white/80",
@@ -3652,7 +3656,7 @@ function ParamControl({
       value={String(value ?? "")}
       onChange={(e) => onChange(e.target.value)}
       title={label}
-      className="shrink-0 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-2 text-[11.5px] text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] focus:border-[#aeb6ff]/40 focus:outline-none"
+      className="shrink-0 rounded-[11px] border border-white/[0.14] bg-[#121722] px-2.5 py-2 text-xs text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_8px_-5px_rgba(0,0,0,0.95)] focus:border-[#aeb6ff]/40 focus:outline-none"
     >
       {options.map((opt) => (
         <option key={opt} value={opt}>
@@ -3723,7 +3727,7 @@ function CreationCard({
         />
         <div className="absolute right-2 top-2 flex items-center gap-1">
           {item.kind === "video" && (
-            <span className="rounded-md bg-black/60 backdrop-blur px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/80">
+            <span className="rounded-md bg-black/60 backdrop-blur px-1.5 py-0.5 text-xs uppercase tracking-wider text-white/80">
               Video
             </span>
           )}
@@ -3781,8 +3785,8 @@ function CreationLightbox({
 
   const Row = ({ k, v }: { k: string; v: string }) => (
     <div className="flex items-baseline justify-between gap-3 py-1">
-      <span className="text-[11px] text-white/45">{k}</span>
-      <span className="text-[11.5px] text-white/85 text-right break-words">{v}</span>
+      <span className="text-xs text-white/45">{k}</span>
+      <span className="text-xs text-white/85 text-right break-words">{v}</span>
     </div>
   );
 
@@ -3820,7 +3824,7 @@ function CreationLightbox({
               <button
                 type="button"
                 onClick={() => setZoomed((current) => !current)}
-                className="absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-[10px] border border-white/[0.14] bg-[#0c111a]/75 px-2.5 py-2 text-[10px] font-medium text-white/68 shadow-lg backdrop-blur-md transition-colors hover:bg-[#121925] hover:text-white"
+                className="absolute right-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-[10px] border border-white/[0.14] bg-[#0c111a]/75 px-2.5 py-2 text-xs font-medium text-white/68 shadow-lg backdrop-blur-md transition-colors hover:bg-[#121925] hover:text-white"
                 aria-label={zoomed ? "Fit image to viewer" : "Zoom image"}
               >
                 {zoomed ? (
@@ -3865,12 +3869,12 @@ function CreationLightbox({
           {item.prompt && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[9.5px] uppercase tracking-[0.18em] text-white/40">
+                <span className="text-xs uppercase tracking-[0.18em] text-white/40">
                   Prompt
                 </span>
                 <button
                   onClick={() => copy("prompt", item.prompt!)}
-                  className="inline-flex items-center gap-1 text-[11px] text-white/60 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors"
                 >
                   {copied === "prompt" ? (
                     <Check className="h-3 w-3" />
@@ -3880,7 +3884,7 @@ function CreationLightbox({
                   {copied === "prompt" ? "Copied" : "Copy"}
                 </button>
               </div>
-              <div className="rounded-xl border border-white/10 bg-[#171c29] px-3 py-3 text-[12px] leading-relaxed text-white/82">
+              <div className="rounded-xl border border-white/10 bg-[#171c29] px-3 py-3 text-xs leading-relaxed text-white/82">
                 {item.prompt}
               </div>
             </div>
@@ -3889,10 +3893,10 @@ function CreationLightbox({
           {item.references && item.references.length > 0 && (
             <div className="mb-4">
               <div className="mb-1.5 flex items-center justify-between gap-3">
-                <span className="text-[9.5px] uppercase tracking-[0.18em] text-white/40">
+                <span className="text-xs uppercase tracking-[0.18em] text-white/40">
                   Reference inputs
                 </span>
-                <span className="text-[9.5px] tabular-nums text-white/28">
+                <span className="text-xs tabular-nums text-white/28">
                   {item.references.length} used
                 </span>
               </div>
@@ -3913,7 +3917,7 @@ function CreationLightbox({
                       )}
                     </div>
                     <div
-                      className="mt-1 truncate text-[8.5px] text-white/34"
+                      className="mt-1 truncate text-xs text-white/34"
                       title={reference.name}
                     >
                       {reference.name}
@@ -3927,28 +3931,28 @@ function CreationLightbox({
           {(recordedCost || item.tool === "higgsfield") && (
             <div className="mb-4 rounded-xl border border-[#9ce8d7]/15 bg-[#9ce8d7]/[0.045] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-[#cafff2]/65">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#cafff2]/65">
                   <WalletCards className="h-3.5 w-3.5" /> Generation cost
                 </span>
                 <span className="text-[13px] font-semibold tabular-nums text-white/90">
                   {recordedCost?.value ?? "Checking…"}
                 </span>
               </div>
-              <div className="mt-1 text-right text-[9px] text-white/30">
+              <div className="mt-1 text-right text-xs text-white/30">
                 {recordedCost?.source ?? "Fetching a live provider quote"}
               </div>
             </div>
           )}
 
           <div className="mb-4">
-            <div className="text-[9.5px] uppercase tracking-[0.18em] text-white/40 mb-1">
+            <div className="text-xs uppercase tracking-[0.18em] text-white/40 mb-1">
               Provenance
             </div>
             <div className="divide-y divide-white/8">
               {item.model && (
                 <div className="flex items-baseline justify-between gap-3 py-1">
-                  <span className="text-[11px] text-white/45">Model</span>
-                  <span className="inline-flex items-center gap-1.5 text-[11.5px] text-white/85 text-right">
+                  <span className="text-xs text-white/45">Model</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-white/85 text-right">
                     {brand && <BrandMark brand={brand} className="h-3 w-3" />}
                     {item.model}
                   </span>
@@ -3974,27 +3978,27 @@ function CreationLightbox({
           <div className="grid grid-cols-2 gap-2 border-t border-white/[0.08] pt-4">
             <button
               onClick={onRemix}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-[12px] text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-xs text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Wand2 className="h-3.5 w-3.5" /> Remix
             </button>
             <button
               onClick={onReference}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-[12px] text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-xs text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               <ImageIcon className="h-3.5 w-3.5" /> Reference
             </button>
             <a
               href={fileUrl(item.id)}
               download={item.name}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-[12px] text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-xs text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Download className="h-3.5 w-3.5" /> Download
             </a>
             <button
               onClick={() => copy("path", item.path)}
               title="Copy the local file path so you can paste it into any chat"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-[12px] text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-2 text-xs text-white/75 transition-colors hover:bg-white/10 hover:text-white"
             >
               {copied === "path" ? (
                 <Check className="h-3.5 w-3.5" />
@@ -4017,7 +4021,7 @@ function CreationLightbox({
                 }
               }}
               className={cn(
-                "col-span-2 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-[12px] transition-colors",
+                "col-span-2 inline-flex items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-xs transition-colors",
                 confirmDelete
                   ? "border-rose-300/30 bg-rose-400/10 text-rose-100"
                   : "border-white/10 text-white/42 hover:border-rose-300/25 hover:text-rose-200",
@@ -4044,8 +4048,8 @@ function CreationLightbox({
                       <Film className="h-3.5 w-3.5" />
                     </span>
                     <span>
-                      <span className="block text-[11.5px] font-semibold">Animate image</span>
-                      <span className="mt-0.5 block text-[9px] font-normal text-white/32">
+                      <span className="block text-xs font-semibold">Animate image</span>
+                      <span className="mt-0.5 block text-xs font-normal text-white/32">
                         Use this as the opening frame
                       </span>
                     </span>
@@ -4060,10 +4064,10 @@ function CreationLightbox({
 
           {item.cwd && (
             <div className="mt-4">
-              <div className="text-[9.5px] uppercase tracking-[0.18em] text-white/40 mb-1.5">
+              <div className="text-xs uppercase tracking-[0.18em] text-white/40 mb-1.5">
                 Built in
               </div>
-              <code className="block text-[11px] text-white/70 break-all">{item.cwd}</code>
+              <code className="block text-xs text-white/70 break-all">{item.cwd}</code>
             </div>
           )}
         </div>
@@ -4416,7 +4420,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
           Your library
         </h2>
         {data && (
-          <div className="flex flex-wrap items-center gap-1.5 text-[10.5px] text-white/42">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/42">
             <span className="rounded-lg border border-white/[0.07] bg-white/[0.025] px-2.5 py-1.5">
               <strong className="mr-1 font-medium text-white/76">
                 {data.total.toLocaleString()}
@@ -4449,7 +4453,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
               }}
               onBlur={() => setQuery(draftQuery.trim())}
               placeholder="Search your visuals…"
-              className="w-full rounded-[11px] border border-white/[0.12] bg-[#111816] py-2.5 pl-9 pr-3 text-[12px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none placeholder:text-white/30 focus:border-[#8fdac8]/45"
+              className="w-full rounded-[11px] border border-white/[0.12] bg-[#111816] py-2.5 pl-9 pr-3 text-xs text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none placeholder:text-white/30 focus:border-[#8fdac8]/45"
             />
           </div>
           <Seg
@@ -4464,7 +4468,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
           <select
             value={project}
             onChange={(e) => setProject(e.target.value)}
-            className="max-w-[250px] rounded-[11px] border border-white/[0.12] bg-[#111816] px-3 py-2.5 text-[12px] text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none focus:border-[#8fdac8]/40"
+            className="max-w-[250px] rounded-[11px] border border-white/[0.12] bg-[#111816] px-3 py-2.5 text-xs text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none focus:border-[#8fdac8]/40"
           >
             <option value="all">All folders</option>
             {(data?.projects ?? []).map((p) => (
@@ -4478,7 +4482,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
             onChange={(e) => setSort(e.target.value as LibrarySort)}
             aria-label="Sort visuals"
             title="Sort visuals"
-            className="rounded-[11px] border border-white/[0.12] bg-[#111816] px-3 py-2.5 text-[12px] text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none focus:border-[#8fdac8]/40"
+            className="rounded-[11px] border border-white/[0.12] bg-[#111816] px-3 py-2.5 text-xs text-white/68 shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] outline-none focus:border-[#8fdac8]/40"
           >
             <option value="relevance">Best match</option>
             <option value="newest">Newest first</option>
@@ -4494,15 +4498,15 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold text-white/76">Describe visuals</span>
-                <span className="rounded-full border border-[#79dfc6]/15 bg-[#79dfc6]/[0.055] px-1.5 py-0.5 text-[7.5px] font-medium uppercase tracking-[0.13em] text-[#92ddcb]/58">
+                <span className="text-xs font-semibold text-white/76">Describe visuals</span>
+                <span className="rounded-full border border-[#79dfc6]/15 bg-[#79dfc6]/[0.055] px-1.5 py-0.5 text-xs font-medium uppercase tracking-[0.13em] text-[#92ddcb]/58">
                   Automatic · free
                 </span>
               </div>
-              <p className="mt-1 text-[9.5px] leading-relaxed text-white/34">
+              <p className="mt-1 text-xs leading-relaxed text-white/34">
                 Finds file changes and reads visible words locally. Nothing leaves this machine.
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[8.5px] text-white/29">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-white/29">
                 <span className="font-medium tabular-nums text-[#8ddfca]/65">
                   {(indexStatus?.ocrIndexed ?? 0).toLocaleString()} text searchable
                 </span>
@@ -4513,7 +4517,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
               type="button"
               onClick={() => load()}
               disabled={loading}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] border border-white/[0.09] bg-white/[0.025] px-2.5 text-[9px] font-medium text-white/43 transition-colors hover:border-[#79dfc6]/25 hover:bg-[#79dfc6]/[0.06] hover:text-white/72 disabled:cursor-wait disabled:opacity-40"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] border border-white/[0.09] bg-white/[0.025] px-2.5 text-xs font-medium text-white/43 transition-colors hover:border-[#79dfc6]/25 hover:bg-[#79dfc6]/[0.06] hover:text-white/72 disabled:cursor-wait disabled:opacity-40"
             >
               <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />
               {loading ? "Checking" : "Check now"}
@@ -4526,17 +4530,17 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold text-white/76">
+                <span className="text-xs font-semibold text-white/76">
                   Visual understanding
                 </span>
-                <span className="rounded-full border border-[#aaa8ff]/15 bg-[#aaa8ff]/[0.055] px-1.5 py-0.5 text-[7.5px] font-medium uppercase tracking-[0.13em] text-[#c2c0ff]/55">
+                <span className="rounded-full border border-[#aaa8ff]/15 bg-[#aaa8ff]/[0.055] px-1.5 py-0.5 text-xs font-medium uppercase tracking-[0.13em] text-[#c2c0ff]/55">
                   Optional setup
                 </span>
               </div>
-              <p className="mt-1 text-[9.5px] leading-relaxed text-white/34">
+              <p className="mt-1 text-xs leading-relaxed text-white/34">
                 Adds scene and subject descriptions, so search understands what is actually shown.
               </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[8.5px] text-white/29">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-white/29">
                 <span className="font-medium tabular-nums text-[#c2c0ff]/65">
                   {(indexStatus?.visionIndexed ?? 0).toLocaleString()} understood
                 </span>
@@ -4568,7 +4572,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
                   : "Connect OpenRouter in Connections first"
               }
               className={cn(
-                "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] border px-2.5 text-[9px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35",
+                "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[9px] border px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35",
                 visionRunning
                   ? "border-rose-300/18 bg-rose-300/[0.05] text-rose-100/60 hover:bg-rose-300/[0.09]"
                   : "border-[#aaa8ff]/20 bg-[#aaa8ff]/[0.055] text-[#d3d1ff]/58 hover:border-[#aaa8ff]/35 hover:bg-[#aaa8ff]/[0.1] hover:text-[#efeeff]",
@@ -4593,10 +4597,10 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
             <div className="flex flex-wrap items-center gap-3">
               <BrandMark brand={BRANDS.openrouter} className="h-5 w-5 shrink-0" />
               <div className="min-w-[240px] flex-1">
-                <div className="text-[10.5px] font-semibold text-white/76">
+                <div className="text-xs font-semibold text-white/76">
                   Understand {(visionEstimate?.pending ?? 0).toLocaleString()} new or changed images
                 </div>
-                <p className="mt-1 max-w-3xl text-[9.5px] leading-relaxed text-white/36">
+                <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/36">
                   A 512px copy is sent through OpenRouter to create a private searchable
                   description. Your originals stay where they are, and already-understood images are
                   skipped.
@@ -4604,18 +4608,18 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
               </div>
               <div className="grid min-w-[250px] grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-white/[0.075] bg-white/[0.07]">
                 <div className="bg-[#171b27] px-3 py-2">
-                  <div className="text-[7.5px] uppercase tracking-[0.13em] text-white/25">
+                  <div className="text-xs uppercase tracking-[0.13em] text-white/25">
                     Estimated maximum
                   </div>
-                  <div className="mt-1 text-[11px] font-semibold tabular-nums text-white/76">
+                  <div className="mt-1 text-xs font-semibold tabular-nums text-white/76">
                     {compactUsd(visionEstimate?.estimatedUsd ?? 0)}
                   </div>
                 </div>
                 <div className="bg-[#171b27] px-3 py-2">
-                  <div className="text-[7.5px] uppercase tracking-[0.13em] text-white/25">
+                  <div className="text-xs uppercase tracking-[0.13em] text-white/25">
                     Model
                   </div>
-                  <div className="mt-1 truncate text-[10px] font-medium text-white/64">
+                  <div className="mt-1 truncate text-xs font-medium text-white/64">
                     {visionModelLabel}
                   </div>
                 </div>
@@ -4623,7 +4627,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
               <button
                 type="button"
                 onClick={() => setVisionConfirm(false)}
-                className="h-8 rounded-[9px] px-2.5 text-[9px] text-white/36 transition-colors hover:bg-white/[0.05] hover:text-white/70"
+                className="h-8 rounded-[9px] px-2.5 text-xs text-white/36 transition-colors hover:bg-white/[0.05] hover:text-white/70"
               >
                 Not now
               </button>
@@ -4641,7 +4645,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
                 {indexStatus?.available ? "Start understanding" : "Connect OpenRouter first"}
               </RainbowButton>
             </div>
-            <div className="mt-2 text-right text-[8px] text-white/22">
+            <div className="mt-2 text-right text-xs text-white/22">
               Conservative estimate at {compactUsd(visionEstimate?.perImageUsd ?? 0.0003)} per
               image. OpenRouter reports the actual charge as each image finishes.
             </div>
@@ -4662,7 +4666,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
                 ? "No images or videos found yet"
                 : "Nothing matches"}
           </div>
-          <div className="text-[12.5px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             {searchPending
               ? "Results will appear together when the search is ready."
               : data?.total === 0
@@ -4689,7 +4693,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
 
       {data && (
         <details className="group mt-8 rounded-xl border border-border/50 bg-card/15 px-4 py-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
             <FolderOpen className="h-3.5 w-3.5" />
             Folders scanned automatically
             <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-open:rotate-180" />
@@ -4701,7 +4705,7 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
                   key={s.root}
                   title={s.error ? `${s.error} — ${s.root}` : `${s.found} files`}
                   className={cn(
-                    "text-[11px] rounded border px-2 py-1",
+                    "text-xs rounded border px-2 py-1",
                     s.error
                       ? "bg-amber-500/10 border-amber-300/40 text-amber-100"
                       : "bg-black/30 border-border/50",
@@ -4714,12 +4718,12 @@ function LibraryTab({ onUseAsReference }: { onUseAsReference: (item: MediaItem) 
             )}
           </div>
           {(data.rootStatus ?? []).some((s) => s.error) && (
-            <p className="text-[11.5px] text-amber-100/80 leading-relaxed mb-2">
+            <p className="text-xs text-amber-100/80 leading-relaxed mb-2">
               {data.permHint ??
                 "A folder above couldn't be read. Check its permissions, or point design.roots somewhere readable."}
             </p>
           )}
-          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground">
             These are broad defaults, so expect screenshots and downloads mixed in with real work.
             Narrow it by adding <code className="text-foreground/80">design.roots</code> to{" "}
             <code className="text-foreground/80">~/.claude-os/config.json</code> — an array of
@@ -4767,7 +4771,7 @@ function Seg<T extends string>({
           key={o.v}
           onClick={() => onChange(o.v)}
           className={cn(
-            "px-3 py-2 text-[12.5px] transition-colors",
+            "px-3 py-2 text-xs transition-colors",
             value === o.v
               ? "bg-[#bceedd]/12 font-medium text-[#d8fff4] shadow-[inset_0_0_0_1px_rgba(143,218,200,0.17)]"
               : "text-white/42 hover:bg-white/[0.05] hover:text-white/80",
@@ -4799,12 +4803,12 @@ function Tile({
         aria-label={`Open ${item.name}`}
       >
         <LazyMedia id={item.id} kind={item.kind} name={item.name} eager={index < EAGER_TILES} />
-        <div className="absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/80 backdrop-blur">
+        <div className="absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-xs uppercase tracking-wider text-white/80 backdrop-blur">
           {item.kind === "video" ? "Video" : item.ext.slice(1)}
         </div>
         <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/90 to-black/50 px-2.5 py-2 transition-transform group-hover:translate-y-0">
-          <div className="truncate text-[11.5px] text-white/95">{item.name}</div>
-          <div className="truncate text-[10px] text-white/55">
+          <div className="truncate text-xs text-white/95">{item.name}</div>
+          <div className="truncate text-xs text-white/55">
             {item.project} · {prettyBytes(item.bytes)} · {timeAgo(item.mtime)}
           </div>
         </div>
@@ -4813,7 +4817,7 @@ function Tile({
         <button
           type="button"
           onClick={onUseAsReference}
-          className="absolute right-2 top-2 z-10 inline-flex translate-y-1 items-center gap-1.5 rounded-[9px] border border-white/20 bg-[#101a18]/88 px-2.5 py-1.5 text-[10px] font-medium text-white/85 opacity-0 shadow-[0_8px_20px_-10px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all hover:border-[#9ce8d7]/45 hover:bg-[#173029] group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
+          className="absolute right-2 top-2 z-10 inline-flex translate-y-1 items-center gap-1.5 rounded-[9px] border border-white/20 bg-[#101a18]/88 px-2.5 py-1.5 text-xs font-medium text-white/85 opacity-0 shadow-[0_8px_20px_-10px_rgba(0,0,0,0.95)] backdrop-blur-md transition-all hover:border-[#9ce8d7]/45 hover:bg-[#173029] group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
           aria-label={`Use ${item.name} as a reference`}
         >
           <ImagePlus className="h-3.5 w-3.5 text-[#9ce8d7]" />
@@ -4862,7 +4866,7 @@ function Lightbox({
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="min-w-0">
             <div className="text-[15px] font-medium text-white truncate">{item.name}</div>
-            <div className="text-[12px] text-white/50 truncate">
+            <div className="text-xs text-white/50 truncate">
               {item.project} · {prettyBytes(item.bytes)} · {timeAgo(item.mtime)}
             </div>
           </div>
@@ -4870,7 +4874,7 @@ function Lightbox({
             {item.kind === "image" && (
               <button
                 onClick={onUseAsReference}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#a4ead8]/35 bg-[#9ce8d7]/12 px-3 py-1.5 text-[12px] font-medium text-[#cafff2] transition-colors hover:border-[#a4ead8]/55 hover:bg-[#9ce8d7]/20"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#a4ead8]/35 bg-[#9ce8d7]/12 px-3 py-1.5 text-xs font-medium text-[#cafff2] transition-colors hover:border-[#a4ead8]/55 hover:bg-[#9ce8d7]/20"
               >
                 <ImagePlus className="h-3.5 w-3.5" /> Use as reference
               </button>
@@ -4878,13 +4882,13 @@ function Lightbox({
             <a
               href={fileUrl(item.id)}
               download={item.name}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-3 py-1.5 text-[12px] text-white/80 hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Download
             </a>
             <button
               onClick={copyPath}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-3 py-1.5 text-[12px] text-white/80 hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition-colors"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? "Copied" : "Copy for chat"}
@@ -4895,7 +4899,7 @@ function Lightbox({
                 else void onDelete();
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors",
                 confirmDelete
                   ? "border-rose-300/30 bg-rose-400/10 text-rose-100"
                   : "border-white/20 text-white/60 hover:border-rose-300/25 hover:text-rose-200",
@@ -5438,7 +5442,7 @@ function BeastDoc({ text }: { text: string }) {
       ) : part.startsWith("`") ? (
         <code
           key={i}
-          className="rounded bg-white/[0.07] px-1 py-px font-mono text-[10.5px] text-amber-200/85"
+          className="rounded bg-white/[0.07] px-1 py-px font-mono text-xs text-amber-200/85"
         >
           {part.slice(1, -1)}
         </code>
@@ -5447,14 +5451,14 @@ function BeastDoc({ text }: { text: string }) {
       ),
     );
   return (
-    <div className="space-y-1.5 text-[12px] leading-[1.75] text-white/55">
+    <div className="space-y-1.5 text-xs leading-[1.75] text-white/55">
       {lines.map((line, i) => {
         const t = line.trim();
         if (!t) return <div key={i} className="h-1.5" />;
         if (t === "---") return <hr key={i} className="border-white/[0.07]" />;
         if (t.startsWith("### "))
           return (
-            <div key={i} className="pt-1 text-[11px] font-semibold text-white/80">
+            <div key={i} className="pt-1 text-xs font-semibold text-white/80">
               {inline(t.slice(4))}
             </div>
           );
@@ -5462,7 +5466,7 @@ function BeastDoc({ text }: { text: string }) {
           return (
             <div
               key={i}
-              className="pt-2.5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/75"
+              className="pt-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white/75"
             >
               {inline(t.slice(3))}
             </div>
@@ -5484,7 +5488,7 @@ function BeastDoc({ text }: { text: string }) {
           const m = t.match(/^(\d+)\.\s(.*)$/);
           return (
             <div key={i} className="flex gap-2 pl-1">
-              <span className="shrink-0 font-mono text-[10px] text-white/35">{m?.[1]}.</span>
+              <span className="shrink-0 font-mono text-xs text-white/35">{m?.[1]}.</span>
               <span>{inline(m?.[2] ?? "")}</span>
             </div>
           );
@@ -5954,44 +5958,31 @@ function CarouselStudio() {
     }
   }, [doc, publishBusy]);
 
+  // Posting is outward, so on a server-role hub it goes through a B2 approval (src/lib/publish-flow.ts): the first POST answers 202 and
+  // nothing is posted, the card waits for the approval, and the hub then posts once, bound to exactly what was asked for. On a PC hub
+  // the first POST just posts (200), exactly as before. The request is frozen when it is asked, so ticking another box while waiting
+  // cannot change what the approval covers (a different request is a new approval).
+  const askedBody = useRef<Record<string, unknown> | null>(null);
+  const designFlow = usePublishFlow({
+    resumeKey: `design:${doc?.id ?? "none"}`,
+    send: async (approvalId) => {
+      if (!approvalId || !askedBody.current) {
+        if (!doc) return { status: 400, json: { error: "No deck is open." } };
+        askedBody.current = { carouselId: doc.id, platforms: [...targets], caption: doc.name };
+      }
+      const r = designReply(await postJson("/__design_publish", approvalId ? { ...askedBody.current, approvalId } : askedBody.current));
+      if (r.status === 428) setPublishNeedsKey(true);
+      return r;
+    },
+  });
+  const publishInFlight = ["asking", "waiting", "approved", "running"].includes(designFlow.state.kind);
   const publish = useCallback(async () => {
-    if (!doc || publishBusy) return;
-    setPublishBusy(true);
-    setPublishNote("Checking your Blotato account…");
+    if (!doc || publishBusy || publishInFlight) return;
+    setPublishNote(null);
     setPublishNeedsKey(false);
-    try {
-      const r = await fetch("/__design_publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Claude-OS-Token": await studioToken() },
-        body: JSON.stringify({ carouselId: doc.id, platforms: [...targets], caption: doc.name }),
-      });
-      const d = await r.json();
-      if (r.status === 428) {
-        setPublishNeedsKey(true);
-        setPublishNote(null);
-        return;
-      }
-      if (!d.ok && d.stage === "render") {
-        setPublishNote(
-          "This deck has no finished renders yet. Render it before publishing.",
-        );
-        return;
-      }
-      if (!d.ok && !d.results) {
-        setPublishNote(d.error ?? "publish failed");
-        return;
-      }
-      const lines = (d.results ?? []).map(
-        (x: { platform: string; ok: boolean; detail: string }) =>
-          `${x.platform}: ${x.ok ? "✓ queued" : x.detail}`,
-      );
-      setPublishNote(lines.join(" · ") || "done");
-    } catch (e) {
-      setPublishNote(e instanceof Error ? e.message : String(e));
-    } finally {
-      setPublishBusy(false);
-    }
-  }, [doc, publishBusy, targets]);
+    askedBody.current = null;
+    await designFlow.flow.start();
+  }, [doc, publishBusy, publishInFlight, designFlow.flow]);
 
   const connectBlotato = useCallback(async () => {
     if (!blotatoKey.trim()) return;
@@ -6020,7 +6011,7 @@ function CarouselStudio() {
             <InstagramMark className="h-5 w-5 text-[#E4405F]" />
           </div>
           <div className="text-[15px] font-semibold text-white/85">No carousels yet</div>
-          <p className="mx-auto mt-2 max-w-[420px] text-[12.5px] leading-relaxed text-white/40">
+          <p className="mx-auto mt-2 max-w-[420px] text-xs leading-relaxed text-white/40">
             {err ??
               "Give it a topic and the studio writes the whole deck against your system document — then you change any slide by talking to it."}
           </p>
@@ -6078,10 +6069,10 @@ function CarouselStudio() {
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[12.5px] font-medium text-white/90">
+                      <div className="truncate text-xs font-medium text-white/90">
                         {c.name}
                       </div>
-                      <div className="text-[10px] text-white/35">
+                      <div className="text-xs text-white/35">
                         {c.slides.length} slides · {c.createdAt}
                       </div>
                     </div>
@@ -6093,7 +6084,7 @@ function CarouselStudio() {
                     setPickerOpen(false);
                     setCreating(true);
                   }}
-                  className="mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-white/[0.15] px-3 py-2.5 text-[12.5px] font-medium text-white/60 transition-colors hover:bg-white/[0.05] hover:text-white/90"
+                  className="mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed border-white/[0.15] px-3 py-2.5 text-xs font-medium text-white/60 transition-colors hover:bg-white/[0.05] hover:text-white/90"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   New carousel
@@ -6108,7 +6099,7 @@ function CarouselStudio() {
           >
             <Plus className="h-4 w-4" />
           </button>
-          <div className="text-[11px] text-white/35">
+          <div className="text-xs text-white/35">
             {slides.length} slides · 1080×1350 · {doc.source ?? "saved system"}
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -6118,7 +6109,7 @@ function CarouselStudio() {
                   key={v}
                   onClick={() => setView(v)}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-[11px] font-medium capitalize transition-colors",
+                    "rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
                     view === v ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/70",
                   )}
                 >
@@ -6129,7 +6120,7 @@ function CarouselStudio() {
             <div className="relative" ref={publishRef}>
               <button
                 onClick={() => setPublishOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3.5 py-2 text-[12px] font-medium text-white/85 transition-colors hover:bg-white/[0.08]"
+                className="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3.5 py-2 text-xs font-medium text-white/85 transition-colors hover:bg-white/[0.08]"
               >
                 <img src={blotatoLogo} alt="" className="h-4.5 w-4.5 rounded-[4px]" />
                 Publish
@@ -6137,7 +6128,7 @@ function CarouselStudio() {
               </button>
               {publishOpen && (
                 <div className="absolute right-0 top-full z-40 mt-2 w-[320px] rounded-xl border border-white/[0.12] bg-[#0d1017] p-3 shadow-2xl">
-                  <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/50">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
                     How it leaves
                   </div>
                   <div className="mb-3 space-y-1">
@@ -6165,18 +6156,18 @@ function CarouselStudio() {
                         <span className="min-w-0 flex-1">
                           <span
                             className={cn(
-                              "block text-[11.5px] font-semibold",
+                              "block text-xs font-semibold",
                               route === p2.id ? "text-white" : "text-white/65",
                             )}
                           >
                             {p2.label}
                           </span>
-                          <span className="block text-[9.5px] leading-tight text-white/32">
+                          <span className="block text-xs leading-tight text-white/32">
                             {p2.hint}
                           </span>
                         </span>
                         {p2.kind === "soon" ? (
-                          <span className="shrink-0 text-[8.5px] uppercase tracking-wider text-white/25">
+                          <span className="shrink-0 text-xs uppercase tracking-wider text-white/25">
                             soon
                           </span>
                         ) : (
@@ -6186,7 +6177,7 @@ function CarouselStudio() {
                     ))}
                   </div>
                   {route !== "export" && (
-                    <div className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/50">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/50">
                       Where this deck goes
                     </div>
                   )}
@@ -6205,7 +6196,7 @@ function CarouselStudio() {
                             })
                           }
                           className={cn(
-                            "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[11.5px] font-medium transition-colors",
+                            "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-medium transition-colors",
                             active
                               ? "border-white/[0.22] bg-white/[0.08] text-white"
                               : "border-white/[0.06] text-white/40 hover:text-white/70",
@@ -6214,7 +6205,7 @@ function CarouselStudio() {
                           <PlatformMark id={pl.id} className="h-3.5 w-3.5" />
                           <span className="min-w-0 flex-1 truncate">{pl.label}</span>
                           {pl.max ? (
-                            <span className="text-[8.5px] text-white/30">first {pl.max}</span>
+                            <span className="text-xs text-white/30">first {pl.max}</span>
                           ) : (
                             active && <Check className="h-3 w-3 text-white/60" />
                           )}
@@ -6224,7 +6215,7 @@ function CarouselStudio() {
                   </div>
                   {publishNeedsKey && route === "blotato" && (
                     <div className="mt-3 rounded-lg border border-sky-300/20 bg-sky-400/[0.06] p-2.5">
-                      <div className="mb-1.5 flex items-center gap-2 text-[10.5px] text-sky-100/85">
+                      <div className="mb-1.5 flex items-center gap-2 text-xs text-sky-100/85">
                         <img src={blotatoLogo} alt="" className="h-4 w-4 rounded" />
                         Paste your Blotato API key — stored on this machine only.
                       </div>
@@ -6234,29 +6225,39 @@ function CarouselStudio() {
                           onChange={(e) => setBlotatoKey(e.target.value)}
                           type="password"
                           placeholder="blt_…"
-                          className="min-w-0 flex-1 rounded-md border border-white/[0.1] bg-black/40 px-2.5 py-1.5 font-mono text-[11px] text-white/85 focus:outline-none"
+                          className="min-w-0 flex-1 rounded-md border border-white/[0.1] bg-black/40 px-2.5 py-1.5 font-mono text-xs text-white/85 focus:outline-none"
                         />
                         <button
                           onClick={() => void connectBlotato()}
                           disabled={!blotatoKey.trim()}
-                          className="rounded-md bg-white px-3 text-[11px] font-semibold text-black disabled:opacity-30"
+                          className="rounded-md bg-white px-3 text-xs font-semibold text-black disabled:opacity-30"
                         >
                           Connect
                         </button>
                       </div>
                     </div>
                   )}
+                  {route !== "export" && (
+                    <PublishApprovalCard
+                      studio
+                      state={designFlow.state}
+                      flow={designFlow.flow}
+                      {...designCardWords(doc.name, doc.slides?.length ?? null, PUBLISH_PLATFORMS.filter((pl) => targets.has(pl.id)).map((pl) => pl.label))}
+                      doneText={(r) => postedLines(r as { results?: PostedResult[] }) || "Posted."}
+                      askAgain={() => void publish()}
+                    />
+                  )}
                   {publishNote && (
-                    <div className="mt-3 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[10.5px] leading-relaxed text-white/70">
+                    <div className="mt-3 rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-xs leading-relaxed text-white/70">
                       {publishNote}
                     </div>
                   )}
                   <button
                     onClick={() => (route === "export" ? void exportDeck() : void publish())}
-                    disabled={publishBusy || (route !== "export" && targets.size === 0)}
-                    className="mt-2.5 w-full rounded-lg bg-white py-2 text-[12px] font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
+                    disabled={publishBusy || publishInFlight || (route !== "export" && targets.size === 0)}
+                    className="mt-2.5 w-full rounded-lg bg-white py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
                   >
-                    {publishBusy
+                    {publishBusy || publishInFlight
                       ? route === "export"
                         ? "Saving…"
                         : "Publishing…"
@@ -6264,7 +6265,7 @@ function CarouselStudio() {
                         ? "Save the deck"
                         : `Publish to ${targets.size} platform${targets.size === 1 ? "" : "s"}`}
                   </button>
-                  <p className="mt-1.5 text-center text-[9px] leading-relaxed text-white/28">
+                  <p className="mt-1.5 text-center text-xs leading-relaxed text-white/28">
                     {route === "export"
                       ? "Images and a self-contained page, straight into your designs folder."
                       : "Rides your own account — nothing is sent anywhere until you connect it."}
@@ -6341,7 +6342,7 @@ function CarouselStudio() {
                   key={id}
                   onClick={() => setScope(id)}
                   className={cn(
-                    "rounded-md px-2.5 py-1.5 text-[10.5px] font-medium transition-colors",
+                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
                     scope === id
                       ? "bg-white/[0.12] text-white"
                       : "text-white/40 hover:text-white/70",
@@ -6365,16 +6366,16 @@ function CarouselStudio() {
             <button
               onClick={() => void send()}
               disabled={!feedback.trim() || Boolean(busy)}
-              className="shrink-0 rounded-lg bg-white px-3.5 py-2 text-[12px] font-semibold text-black transition-opacity disabled:opacity-30"
+              className="shrink-0 rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-black transition-opacity disabled:opacity-30"
             >
               {busy ? "Working…" : scope === "slide" ? "Regenerate" : "Amend system"}
             </button>
           </div>
-          {busy && <div className="mt-2 text-center text-[11.5px] text-white/40">{busy}</div>}
+          {busy && <div className="mt-2 text-center text-xs text-white/40">{busy}</div>}
           {flash && !busy && (
-            <div className="mt-2 text-center text-[11.5px] text-emerald-300/85">{flash}</div>
+            <div className="mt-2 text-center text-xs text-emerald-300/85">{flash}</div>
           )}
-          {err && <div className="mt-2 text-center text-[11.5px] text-red-300/85">{err}</div>}
+          {err && <div className="mt-2 text-center text-xs text-red-300/85">{err}</div>}
         </div>
 
         {/* Off-screen at full size: what the exporter copies out. Rendering
@@ -6454,7 +6455,7 @@ function CarouselStudio() {
             <Plus className="h-5 w-5" />
           </button>
         </div>
-        <p className="mt-1.5 text-center text-[10.5px] text-white/22">
+        <p className="mt-1.5 text-center text-xs text-white/22">
           ← → to move through the deck
         </p>
       </div>
@@ -6462,7 +6463,7 @@ function CarouselStudio() {
       {/* the systems — small cards on a rail; one expands into the document */}
       <div className="w-full shrink-0 xl:w-[280px]">
         <div className="mb-2 flex items-center justify-between">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
             Carousel systems
           </div>
           <button
@@ -6488,8 +6489,8 @@ function CarouselStudio() {
               >
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12px] font-semibold text-white/85">{m.name}</div>
-                    <div className="mt-0.5 text-[9.5px] text-white/35">
+                    <div className="truncate text-xs font-semibold text-white/85">{m.name}</div>
+                    <div className="mt-0.5 text-xs text-white/35">
                       {(m.bytes / 1024).toFixed(1)}KB{inUse ? " · in use here" : ""}
                     </div>
                   </div>
@@ -6527,7 +6528,7 @@ function CarouselStudio() {
                 {!inUse && (
                   <button
                     onClick={() => void applySystem(m.id)}
-                    className="mt-2.5 w-full rounded-lg border border-white/[0.09] py-1.5 text-[10.5px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/85"
+                    className="mt-2.5 w-full rounded-lg border border-white/[0.09] py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/85"
                   >
                     Use for this deck
                   </button>
@@ -6541,7 +6542,7 @@ function CarouselStudio() {
         <div className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
           <button
             onClick={() => setAssetsOpen((v) => !v)}
-            className="flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45"
+            className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-[0.16em] text-white/45"
           >
             Reference assets · {assets.length}
             <ChevronDown
@@ -6583,7 +6584,7 @@ function CarouselStudio() {
                   <div className="truncate text-[13px] font-semibold text-white/90">
                     {sysOpen.name}
                   </div>
-                  <div className="truncate font-mono text-[9.5px] text-white/30">
+                  <div className="truncate font-mono text-xs text-white/30">
                     {sysOpen.path}
                   </div>
                 </div>
@@ -6603,7 +6604,7 @@ function CarouselStudio() {
                   <button
                     onClick={() => void saveBeast(beast, sysOpen.id)}
                     disabled={beastSaving}
-                    className="rounded-lg bg-white px-3 py-1.5 text-[11.5px] font-semibold text-black"
+                    className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                   >
                     {beastSaving ? "Saving…" : "Save"}
                   </button>
@@ -6624,13 +6625,13 @@ function CarouselStudio() {
                       setBeastDirty(true);
                     }}
                     spellCheck={false}
-                    className="h-full min-h-[70vh] w-full resize-none rounded-lg border border-white/[0.06] bg-black/30 p-3 font-mono text-[11.5px] leading-[1.7] text-white/75 focus:border-white/[0.16] focus:outline-none"
+                    className="h-full min-h-[70vh] w-full resize-none rounded-lg border border-white/[0.06] bg-black/30 p-3 font-mono text-xs leading-[1.7] text-white/75 focus:border-white/[0.16] focus:outline-none"
                   />
                 ) : (
                   <BeastDoc text={beast} />
                 )}
               </div>
-              <p className="border-t border-white/[0.07] p-3.5 text-[10.5px] leading-relaxed text-white/30">
+              <p className="border-t border-white/[0.07] p-3.5 text-xs leading-relaxed text-white/30">
                 This document is the designer. Agents read the same file — change a rule here (or
                 send one with “Whole set”) and every future carousel obeys it.
               </p>
@@ -6882,7 +6883,7 @@ function NewCarouselComposer({
           </button>
         </div>
 
-        <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
           Name
         </label>
         <input
@@ -6892,7 +6893,7 @@ function NewCarouselComposer({
           className="mb-4 w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 text-[13.5px] text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
         />
 
-        <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
           The brief
         </label>
         <textarea
@@ -6903,7 +6904,7 @@ function NewCarouselComposer({
         />
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
             Written by
           </span>
           {AUTHOR_MODELS.map((m) => (
@@ -6911,7 +6912,7 @@ function NewCarouselComposer({
               key={m.id}
               onClick={() => setModel(m.id)}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-colors",
+                "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
                 model === m.id
                   ? "border-white/[0.3] bg-white/[0.1] text-white"
                   : "border-white/[0.08] text-white/45 hover:text-white/75",
@@ -6939,12 +6940,12 @@ function NewCarouselComposer({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={attaching}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-[11.5px] font-medium text-white/60 transition-colors hover:text-white/90"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-xs font-medium text-white/60 transition-colors hover:text-white/90"
           >
             <ImagePlus className="h-3.5 w-3.5" />
             {attaching ? "Adding…" : "Attach references"}
           </button>
-          <span className="text-[10px] text-white/25">or ⌘V to paste anywhere here</span>
+          <span className="text-xs text-white/25">or ⌘V to paste anywhere here</span>
           {refs.map((r2) => (
             <div
               key={r2.id}
@@ -6975,18 +6976,18 @@ function NewCarouselComposer({
                   />
                 ))}
               </div>
-              <div className="absolute inset-0 flex items-center justify-center text-[11.5px] font-medium text-white/75">
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white/75">
                 {status}
               </div>
             </div>
           </div>
         )}
-        {err && <div className="mb-3 text-[11.5px] text-red-300/85">{err}</div>}
+        {err && <div className="mb-3 text-xs text-red-300/85">{err}</div>}
 
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-xl border border-white/[0.1] px-4 py-2.5 text-[12.5px] font-medium text-white/60 hover:text-white"
+            className="rounded-xl border border-white/[0.1] px-4 py-2.5 text-xs font-medium text-white/60 hover:text-white"
           >
             Cancel
           </button>
@@ -7531,7 +7532,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     onClick={() => setRenaming(null)}
-                    className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-[12.5px] text-white/55 hover:text-white"
+                    className="rounded-xl border border-white/[0.12] px-4 py-2.5 text-xs text-white/55 hover:text-white"
                   >
                     Cancel
                   </button>
@@ -7580,13 +7581,13 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                   <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl border border-white/[0.14] bg-white/[0.05]">
                     <ScanSearch className="h-6 w-6 text-white/80" />
                   </div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
                     Design system found
                   </div>
                   <div className="mt-2 text-[26px] font-semibold tracking-[-0.02em] text-white">
                     {detected.name}
                   </div>
-                  <div className="mx-auto mt-2 max-w-[380px] truncate font-mono text-[10.5px] text-white/35">
+                  <div className="mx-auto mt-2 max-w-[380px] truncate font-mono text-xs text-white/35">
                     {detected.path}
                   </div>
                   <p className="mx-auto mt-4 max-w-[400px] text-[13px] leading-relaxed text-white/50">
@@ -7617,7 +7618,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
           )}
 
         {err && !busy && (
-          <div className="mb-4 rounded-xl border border-red-400/25 bg-red-500/[0.08] px-4 py-3 text-[12.5px] leading-relaxed text-red-100">
+          <div className="mb-4 rounded-xl border border-red-400/25 bg-red-500/[0.08] px-4 py-3 text-xs leading-relaxed text-red-100">
             {err}
           </div>
         )}
@@ -7688,10 +7689,10 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                     </div>
                   </div>
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8">
-                    <div className="truncate text-[11.5px] font-medium text-white/90">
+                    <div className="truncate text-xs font-medium text-white/90">
                       {proj.name}
                     </div>
-                    <div className="text-[9.5px] text-white/45">
+                    <div className="text-xs text-white/45">
                       {proj.format} · {proj.model}
                       {proj.system ? ` · ${proj.system}` : ""}
                     </div>
@@ -7701,7 +7702,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
             </div>
           )}
           {projects.length === 0 && !busy && (
-            <div className="mb-6 mt-10 text-center text-[12px] text-white/25">
+            <div className="mb-6 mt-10 text-center text-xs text-white/25">
               The wall is empty. Describe the first thing to build.
             </div>
           )}
@@ -7746,7 +7747,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                 <div className="relative" ref={popRef}>
                   <button
                     onClick={() => setModelOpen((v) => !v)}
-                    className="flex h-8 items-center gap-2 rounded-[10px] border border-white/[0.11] bg-white/[0.04] px-2.5 text-[12px] font-medium text-white/90 transition-colors hover:bg-white/[0.08]"
+                    className="flex h-8 items-center gap-2 rounded-[10px] border border-white/[0.11] bg-white/[0.04] px-2.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/[0.08]"
                   >
                     {model ? (
                       <>
@@ -7757,7 +7758,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                         />
                         {prettyModelName(model.name)}
                         <span
-                          className="rounded px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider"
+                          className="rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider"
                           style={{
                             color: laneSource(model.provider).tone,
                             background: `${laneSource(model.provider).tone}1a`,
@@ -7783,7 +7784,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                         .map(([provider, group]) => (
                           <div key={provider} className="mb-1">
                             <div
-                              className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-[9px] font-semibold uppercase tracking-[0.16em]"
+                              className="flex items-center gap-1.5 px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-[0.16em]"
                               style={{ color: laneSource(provider).tone }}
                             >
                               <span
@@ -7800,7 +7801,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                                   setModelOpen(false);
                                 }}
                                 className={cn(
-                                  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[12.5px] transition-colors",
+                                  "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition-colors",
                                   m.name === modelId && m.provider === model?.provider
                                     ? "bg-white/[0.1] text-white"
                                     : "text-white/60 hover:bg-white/[0.05]",
@@ -7815,7 +7816,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                                   {prettyModelName(m.name)}
                                 </span>
                                 {m.tier && (
-                                  <span className="text-[9px] uppercase tracking-wider text-white/25">
+                                  <span className="text-xs uppercase tracking-wider text-white/25">
                                     {m.tier}
                                   </span>
                                 )}
@@ -7832,7 +7833,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                   <button
                     onClick={() => setSystemOpen((v) => !v)}
                     className={cn(
-                      "flex h-8 items-center gap-2 rounded-[10px] border px-2.5 text-[12px] font-medium transition-colors",
+                      "flex h-8 items-center gap-2 rounded-[10px] border px-2.5 text-xs font-medium transition-colors",
                       system
                         ? "border-white/[0.2] bg-white/[0.07] text-white"
                         : "border-white/[0.11] bg-white/[0.02] text-white/55 hover:text-white/85",
@@ -7869,7 +7870,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                           setSystemOpen(false);
                         }}
                         className={cn(
-                          "flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px]",
+                          "flex w-full items-center rounded-lg px-3 py-2 text-left text-xs",
                           !systemId
                             ? "bg-white/[0.1] text-white"
                             : "text-white/60 hover:bg-white/[0.05]",
@@ -7881,7 +7882,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                         <div
                           key={sys.id}
                           className={cn(
-                            "group/sys flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] transition-colors",
+                            "group/sys flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition-colors",
                             systemId === sys.id
                               ? "bg-white/[0.1] text-white"
                               : "text-white/60 hover:bg-white/[0.05]",
@@ -7941,7 +7942,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                             );
                           setSystemOpen(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/55 hover:bg-white/[0.05]"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-white/55 hover:bg-white/[0.05]"
                       >
                         <ScanSearch className="h-3.5 w-3.5" />
                         Scan this computer for design systems
@@ -7951,7 +7952,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                           zipRef.current?.click();
                           setSystemOpen(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/55 hover:bg-white/[0.05]"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-white/55 hover:bg-white/[0.05]"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         Add a zip…
@@ -7961,7 +7962,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                           setAuthoring(true);
                           setSystemOpen(false);
                         }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12px] text-white/55 hover:bg-white/[0.05]"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-white/55 hover:bg-white/[0.05]"
                       >
                         <Palette className="h-3.5 w-3.5" />
                         Write a new system…
@@ -7983,7 +7984,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
 
                 {/* how hard Claude thinks — rides the chat lane's effort knob */}
                 <div className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-[10px] border border-white/[0.11] bg-black/15 p-1">
-                  <span className="pl-2 pr-1 font-mono text-[8.5px] uppercase tracking-[0.16em] text-white/30">
+                  <span className="pl-2 pr-1 font-mono text-xs uppercase tracking-[0.16em] text-white/30">
                     Effort
                   </span>
                   {(["low", "medium", "high", "max"] as const).map((lvl) => (
@@ -7992,7 +7993,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                       onClick={() => setEffort(lvl)}
                       aria-pressed={effort === lvl}
                       className={cn(
-                        "inline-flex h-6.5 items-center rounded-[7px] px-2 text-[10.5px] capitalize transition-colors",
+                        "inline-flex h-6.5 items-center rounded-[7px] px-2 text-xs capitalize transition-colors",
                         effort === lvl
                           ? "bg-white/[0.1] font-medium text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]"
                           : "text-white/38 hover:bg-white/[0.05] hover:text-white/74",
@@ -8023,17 +8024,17 @@ function BuildStudio({ active = true }: { active?: boolean }) {
               </div>
 
               <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                <div className="min-w-0 flex-1 truncate px-1 text-[11.5px] text-white/45">
+                <div className="min-w-0 flex-1 truncate px-1 text-xs text-white/45">
                   {stream ?? (busy ? "Working…" : null)}
                 </div>
                 <div className="ml-auto flex shrink-0 items-center gap-2.5">
                   <div className="relative inline-flex min-h-[42px] items-center rounded-[11px] border border-white/[0.09] bg-black/15 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
                     <div className="min-w-[70px] text-left">
-                      <div className="text-[8px] font-medium uppercase tracking-[0.13em] text-white/28">
+                      <div className="text-xs font-medium uppercase tracking-[0.13em] text-white/28">
                         This run
                       </div>
                       <div
-                        className="mt-0.5 text-[11.5px] font-semibold tabular-nums"
+                        className="mt-0.5 text-xs font-semibold tabular-nums"
                         style={{ color: model ? laneSource(model.provider).tone : "#a1a1aa" }}
                       >
                         {model ? laneSource(model.provider).label : "—"}
@@ -8073,7 +8074,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="truncate text-[13px] font-semibold text-white">{open.name}</div>
-                <div className="text-[10.5px] text-white/40">
+                <div className="text-xs text-white/40">
                   {open.format} · {open.model}
                   {open.system ? ` · ${open.system}` : ""} · sandboxed
                 </div>
@@ -8083,7 +8084,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                   href={projectUrl(open.id)}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-lg bg-white px-3.5 py-2 text-[12px] font-semibold text-black"
+                  className="rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-black"
                 >
                   Open in browser
                 </a>
@@ -8148,7 +8149,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
               <div className="flex items-center gap-4 border-b border-white/[0.07] px-6 py-4">
                 <div className="min-w-0">
                   <div className="text-[17px] font-semibold tracking-[-0.01em]">{inspect.name}</div>
-                  <div className="text-[10.5px] text-white/40">
+                  <div className="text-xs text-white/40">
                     imported {inspect.addedAt} · {inspect.colors.length} tokens ·{" "}
                     {inspect.components.length} components · {(inspect.cards ?? []).length} pages
                   </div>
@@ -8165,7 +8166,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                     ))}
                 </span>
                 <div className="ml-auto flex items-center gap-2">
-                  <span className="hidden font-mono text-[10px] text-white/30 md:block">
+                  <span className="hidden font-mono text-xs text-white/30 md:block">
                     {inspect.fonts.join(" · ")}
                   </span>
                   <button
@@ -8191,7 +8192,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                             .getElementById(`ds-group-${group}`)
                             ?.scrollIntoView({ behavior: "smooth", block: "start" })
                         }
-                        className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60 hover:text-white"
+                        className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/60 hover:text-white"
                       >
                         {group}
                       </button>
@@ -8203,7 +8204,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                               .getElementById(`ds-card-${c.file}`)
                               ?.scrollIntoView({ behavior: "smooth", block: "start" })
                           }
-                          className="block w-full truncate py-[3px] text-left text-[11.5px] text-white/40 transition-colors hover:text-white/85"
+                          className="block w-full truncate py-[3px] text-left text-xs text-white/40 transition-colors hover:text-white/85"
                         >
                           {c.name}
                         </button>
@@ -8217,7 +8218,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                       <div className="mb-1 text-[15px] font-semibold tracking-[-0.01em]">
                         The system, live
                       </div>
-                      <div className="mb-3 text-[11.5px] text-white/40">
+                      <div className="mb-3 text-xs text-white/40">
                         Its own example page, running in place
                       </div>
                       <div className="overflow-hidden rounded-2xl border border-white/[0.09]">
@@ -8245,7 +8246,7 @@ function BuildStudio({ active = true }: { active?: boolean }) {
                             {c.name}
                           </div>
                           {c.subtitle && (
-                            <div className="mb-2 text-[11px] text-white/40">{c.subtitle}</div>
+                            <div className="mb-2 text-xs text-white/40">{c.subtitle}</div>
                           )}
                           {!c.subtitle && <div className="mb-2" />}
                           <InspectorCard systemId={inspect.id} card={c} />
@@ -8362,7 +8363,7 @@ function SystemComposer({
             </div>
           )}
           <div
-            className="absolute inset-x-0 bottom-0 flex items-end justify-between px-5 pb-2.5 pt-8 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/70"
+            className="absolute inset-x-0 bottom-0 flex items-end justify-between px-5 pb-2.5 pt-8 text-xs font-semibold uppercase tracking-[0.16em] text-white/70"
             style={{ background: "linear-gradient(to top, rgba(11,14,21,0.92), transparent)" }}
           >
             <span>{colors.length ? `${colors.length} colours` : "paste your palette"}</span>
@@ -8378,7 +8379,7 @@ function SystemComposer({
             </button>
           </div>
 
-          <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
             Name
           </label>
           <input
@@ -8389,17 +8390,17 @@ function SystemComposer({
             className="mb-4 w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 text-[13.5px] text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
           />
 
-          <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
             Palette
           </label>
           <textarea
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
             placeholder="--ember: #d97706;  --ink: #070810;  #f4f4f5 …"
-            className="mb-4 h-20 w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 font-mono text-[12px] leading-relaxed text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
+            className="mb-4 h-20 w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 font-mono text-xs leading-relaxed text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
           />
 
-          <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
             Fonts
           </label>
           <input
@@ -8409,7 +8410,7 @@ function SystemComposer({
             className="mb-4 w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 text-[13.5px] text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
           />
 
-          <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
             House rules
           </label>
           <textarea
@@ -8420,7 +8421,7 @@ function SystemComposer({
           />
 
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-white/30">
+            <span className="text-xs text-white/30">
               Every build in this room will follow it.
             </span>
             <button
@@ -8484,7 +8485,7 @@ function StudioTab({ active }: { active: boolean }) {
               key={m.id}
               onClick={() => setMode(m.id)}
               className={cn(
-                "flex h-9 items-center gap-2 rounded-full border px-4 text-[12.5px] font-semibold transition-all",
+                "flex h-9 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition-all",
                 mode === m.id
                   ? "border-white/[0.25] bg-white/[0.08] text-white"
                   : "border-white/[0.07] text-white/50 hover:border-white/[0.15] hover:text-white/80",
@@ -8521,7 +8522,7 @@ function StudioTab({ active }: { active: boolean }) {
               window.setTimeout(() => setCopied(false), 2400);
             }}
             title="Copy instructions for saving designs to this wall’s folder."
-            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-4 text-[11.5px] font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-4 text-xs font-medium text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white"
           >
             {copied ? (
               <Check className="h-3.5 w-3.5 text-emerald-300" />
@@ -8565,7 +8566,7 @@ function LutStudio({ active }: { active: boolean }) {
           className="h-[calc(100vh-220px)] min-h-[640px] w-full border-0"
         />
       ) : (
-        <div className="grid h-[640px] place-items-center text-[12px] text-white/40">
+        <div className="grid h-[640px] place-items-center text-xs text-white/40">
           Opening the lab…
         </div>
       )}
@@ -8654,12 +8655,12 @@ function CarouselSystemComposer({
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="mb-4 text-[11.5px] leading-relaxed text-white/38">
+        <p className="mb-4 text-xs leading-relaxed text-white/38">
           A system is the written rulebook a deck follows — canvas, colour, type, voice. Name it and
           sketch the idea; you can write the full document straight after.
         </p>
 
-        <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
           Name
         </label>
         <input
@@ -8669,7 +8670,7 @@ function CarouselSystemComposer({
           className="mb-4 w-full rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 text-[13.5px] text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
         />
 
-        <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
           The idea
         </label>
         <textarea
@@ -8679,7 +8680,7 @@ function CarouselSystemComposer({
           className="mb-4 h-24 w-full resize-none rounded-xl border border-white/[0.1] bg-white/[0.03] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90 placeholder:text-white/25 focus:border-white/[0.22] focus:outline-none"
         />
 
-        <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white/45">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
           Show it what good looks like
         </label>
         <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -8694,12 +8695,12 @@ function CarouselSystemComposer({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={attaching}
-            className="flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-[11.5px] font-medium text-white/60 transition-colors hover:text-white/90"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.1] px-3 py-2 text-xs font-medium text-white/60 transition-colors hover:text-white/90"
           >
             <ImagePlus className="h-3.5 w-3.5" />
             {attaching ? "Adding…" : "Add reference images"}
           </button>
-          <span className="text-[10px] text-white/25">or ⌘V to paste them in</span>
+          <span className="text-xs text-white/25">or ⌘V to paste them in</span>
           {refs.map((r) => (
             <div key={r.id} className="group/ref relative h-11 w-11">
               <img
@@ -8717,12 +8718,12 @@ function CarouselSystemComposer({
           ))}
         </div>
 
-        {err && <div className="mb-3 text-[11.5px] text-red-300/85">{err}</div>}
+        {err && <div className="mb-3 text-xs text-red-300/85">{err}</div>}
 
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-xl border border-white/[0.1] px-4 py-2.5 text-[12.5px] font-medium text-white/60 hover:text-white"
+            className="rounded-xl border border-white/[0.1] px-4 py-2.5 text-xs font-medium text-white/60 hover:text-white"
           >
             Cancel
           </button>

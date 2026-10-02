@@ -134,7 +134,7 @@ export type FinanceStep = {
   title: string;
   body: string;
   /** What the step's button does: open the import, retry a read, open a page. */
-  action?: { label: string; kind: "import" | "retry-nab" | "retry-ai" | "link"; to?: string; hash?: string };
+  action?: { label: string; kind: "import" | "retry-nab" | "retry-ai" | "link" | "stripe"; to?: string; hash?: string };
 };
 
 /** The one wording for the first import (owner's words, 29 Sep 2026). */
@@ -157,7 +157,7 @@ export function financeNextSteps(input: { csv: FinanceTile; unpriced: FinanceTil
   if (!unpriced.loading && unpriced.state !== "failed" && n > 0)
     steps.push({ id: "ai-price", tone: "attention", title: `${n} AI ${n === 1 ? "item isn't" : "items aren't"} in the total`, body: "They have no price the OS can read. Set a price on AI usage & spend to include them.", action: { label: "Set prices", kind: "link", to: "/usage", hash: "prices" } });
   if (stripe === "not-connected" || stripe === "key-problem")
-    steps.push({ id: "stripe-connect", tone: "info", title: "Connect Stripe to see revenue", body: stripe === "key-problem" && input.stripeNote ? input.stripeNote : "Add a restricted, read-only Stripe key (rk_…). Nothing here moves money." });
+    steps.push({ id: "stripe-connect", tone: "info", title: "Connect Stripe to see revenue", body: stripe === "key-problem" && input.stripeNote ? input.stripeNote : "Add a restricted, read-only Stripe key (rk_…). Nothing here moves money.", action: { label: "Connect Stripe", kind: "stripe" } });
   return steps.sort((a, b) => (a.tone === b.tone ? 0 : a.tone === "attention" ? -1 : 1));
 }
 

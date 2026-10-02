@@ -101,8 +101,13 @@ async function indexed(id: string, ms = 600_000) {
 
 async function main() {
   // The owner's browser session at this PC.
-  const nav = await raw(`${OS}/memory/vault`, { headers: { ...host, "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", Accept: "text/html" } });
-  session = ([] as string[]).concat((nav.headers["set-cookie"] as string[] | string | undefined) ?? []).map((c) => c.split(";")[0]).find((c) => c.startsWith("mu_session=")) ?? "";
+  // STAGE_D_SESSION: a synthetic copy's session cookie the caller already holds (stage-d-acceptance.ts). A second page load
+  // there would mint a second, PENDING session (S1), which is a program and can't approve a forget.
+  if (/^mu_session=[\w-]+$/.test(process.env.STAGE_D_SESSION ?? "")) session = process.env.STAGE_D_SESSION!;
+  else {
+    const nav = await raw(`${OS}/memory/vault`, { headers: { ...host, "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", Accept: "text/html" } });
+    session = ([] as string[]).concat((nav.headers["set-cookie"] as string[] | string | undefined) ?? []).map((c) => c.split(";")[0]).find((c) => c.startsWith("mu_session=")) ?? "";
+  }
   token = (await raw(`${OS}/__token`, { headers: { ...host, ...(session ? { Cookie: session } : {}) } })).body?.token ?? "";
   show(!!session && !!token, "owner's browser session and page token at this PC", { session: session ? "yes" : "no", token: token ? "yes" : "no" });
 
@@ -174,6 +179,12 @@ async function main() {
   const apr = ask.body?.approval?.id;
   show(ask.status === 202 && !!apr, "forget asks for approval first", ask.body?.message);
   if (!apr) return;
+  if (process.argv.includes("--skip-approval")) {
+    // A confirmed session belongs to the process that loaded the page (B1), so a second process can't press the card's
+    // button even with the cookie. stage-d-acceptance.ts proves the approved single delete from its own process.
+    console.log("SKIP  approval and delete (this process didn't load the page; stage-d-acceptance.ts covers the approved delete)");
+    return;
+  }
   // Track 6's OS: the card's confirm nonce, then its button (the server runs the forget). Stage D's: grant, then forget.
   const card = await post("/approvals/card", { approval_id: apr });
   const withCard = card.status === 200 && !!card.body?.card_nonce;

@@ -1,5 +1,8 @@
 import type { ScreenResult } from "@/lib/screen-result";
 import { useEffect, useRef, useState } from "react";
+import { loadReplyStyle } from "@/lib/voice-style";
+import { loadPersonality } from "@/lib/voice-personality";
+import { VoiceStyleControls } from "./voice-style-controls";
 import { parseCalendarDraft, type ChatCalendarDraft } from "@/lib/chat-calendar";
 import { createPortal } from "react-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -271,6 +274,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
   const [selectedAgentJob, setSelectedAgentJob] = useState<string | undefined>();
   const qc = useQueryClient();
   const transcript = useVoiceTranscript();
+  const backgroundWork = useRef(false);
   const agentJobs = useAgentJobs(open);
   const watchedJobs = useRef(new Set<string>());
   const seenAgentStates = useRef(new Map<string, string>());
@@ -327,7 +331,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     busyRef = useRef(false);
   const pendingPcTask = useRef<PendingTask | null>(null);
   /** A final button screen_act is waiting on his spoken yes for (Submit, Pay, Send, Delete…). */
-  const pendingScreen = useRef<{ button: string; at: number } | null>(null);
+  const pendingScreen = useRef<{ button: string; at: number; goal?: string } | null>(null);
   const hermesVoiceSession = useRef<{ id?: string }>({});
   const [wakeEnabled, setWakeEnabled] = useState(() => {
     try {
@@ -446,6 +450,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         if (!next) return;
         waiting.delete(next.id);
         const claim = await operatorRequest<{ speak: boolean; text?: string; reason?: string }>("/jarvis/events/claim", { id: next.id });
+        // The server claims each line exactly once and persists it, so a reload or another tab cannot make it speak twice; no list is kept here.
         if (stopped) return;
         if (claim.speak && claim.text) {
           current.announce(claim.text);
@@ -1292,7 +1297,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     const controller = new AbortController();
     const history: ChatMessage[] = [{ role: "user", content: request }];
     for (let step = 0; step < 5; step++) {
-      const reply = await voiceRequest<{ content?: string | null; tool_calls?: FreeToolCall[] }>("/voice/free/turn", { messages: history }, controller.signal);
+      const reply = await voiceRequest<{ content?: string | null; tool_calls?: FreeToolCall[] }>("/voice/free/turn", { messages: history, replyStyle: loadReplyStyle(), replyPersonality: loadPersonality() }, controller.signal);
       if (current !== generation.current) return "";
       if (!reply.tool_calls?.length) return reply.content ?? "";
       history.push({ role: "assistant", content: reply.content ?? null, tool_calls: reply.tool_calls });
@@ -1642,6 +1647,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     const goal = typeof args.goal === "string" ? args.goal.trim().slice(0, 600) : "";
     if (!goal) return "Do what on screen?";
     let confirm: string | undefined;
+    let resumeGoal = goal;
     let spokenYes: string | null = null;
     if (args.confirmed === true) {
       const pending = pendingScreen.current;
@@ -1654,21 +1660,24 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       spokenYes = spokenYesFor(latestUserRequest.current);
       if (!spokenYes) return "A final button needs your spoken yes, sir. Say yes out loud and I'll press it.";
       confirm = pending.button;
+      resumeGoal = pending.goal || goal;
       pendingScreen.current = null;
     }
     const controller = new AbortController();
     const abort = () => controller.abort();
     toolSignal.addEventListener("abort", abort, { once: true });
+    if (toolSignal.aborted) controller.abort();
     startDriving(goal, abort);
     note("Jarvis is driving… say stop");
     // startTask masks the title like the screen run log (typed text and files as placeholders).
-    const feedId = startTask({ kind: "screen", title: confirm ? `Press ${confirm} after your yes` : goal, agent: "Screen hands" });
+    const feedId = startTask({ kind: "screen", title: confirm ? `Press ${confirm} after your yes` : goal, agent: "Jarvis" });
+    let lastProgressSpoken = -Infinity;
     let feedOutcome: Parameters<typeof endTask>[1] = { ok: false, result: "Stopped." };
     try {
       // His "Allow" for screen analysis also covers the vision fallback (one in-RAM screenshot).
       const vision = shareState().cloudVision;
-      // A yes re-sends just that one press: a key ("enter", "ctrl+enter") or the named button.
-      const target = confirm ? (/^(?:enter|delete|space|(?:(?:ctrl|alt|shift)\+)+[a-z0-9]+)$/i.test(confirm) ? `press ${confirm}` : `click ${confirm}`) : goal;
+      // Keep the exact pending goal: the server resumes its checkpoint instead of replaying setup.
+      const target = confirm ? resumeGoal : goal;
       const response = await voicePost("/screen/act", { goal: target, ...(confirm ? { confirm, spokenYes } : {}), vision }, controller.signal);
       if (!response.ok || !response.body) {
         const data = (await response.json().catch(() => ({}))) as { said?: string; error?: string };
@@ -1696,9 +1705,14 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
             say?.(event.said);
             addStep(feedId, { kind: "say", text: event.said });
           } else if (event.type === "narrate" && event.text) {
-            // One short spoken line per step (what it's doing); the full detail is in the step log.
-            if (event.speak) say?.(event.text);
-            if (event.stage === "act" || event.stage === "ask") drivingStep(event.text);
+            if (event.speak && event.stage === "act" && Date.now() - lastProgressSpoken >= 6000) {
+              say?.(event.text);
+              lastProgressSpoken = Date.now();
+            }
+            if (event.stage === "act" || event.stage === "ask") {
+              drivingStep(event.text);
+              addStep(feedId, {kind:"progress",text:event.text});
+            }
           } else if (event.type === "step" && event.did) {
             drivingStep(event.did);
             addStep(feedId, { kind: event.verified === false || event.ok === false ? "error" : "tool", text: event.verified === undefined ? event.did : `${event.did} (${event.verified ? "verified" : "unverified"})` });
@@ -1710,7 +1724,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         return JSON.stringify({ type: "screen_result", ok: false, said: "The screen run ended without a report. Treat it as unfinished.", outcome: "unverified" });
       }
       if (done.confirm) {
-        pendingScreen.current = { button: done.confirm, at: Date.now() };
+        pendingScreen.current = { button: done.confirm, at: Date.now(), goal: target };
         note(`Waiting for your yes: ${done.confirm}`);
         // Stopped for his yes: not done. The chip and feed show "Needs your yes" for the confirm window.
         feedOutcome = { ok: false, needsYou: { what: done.confirm, until: Date.now() + CONFIRM_TTL_MS }, result: `Waiting for your yes before pressing “${done.confirm}”. ${done.said}` };
@@ -1811,8 +1825,10 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     const controller = new AbortController();
     const abort = () => controller.abort();
     toolSignal.addEventListener("abort", abort, { once: true });
+    if (toolSignal.aborted) controller.abort();
     const feedId = startTask({ kind: "screen", title: utterance, agent: "Jarvis" });
     let driving = false;
+    let lastProgressSpoken = -Infinity;
     let feedOutcome: Parameters<typeof endTask>[1] = { ok: false, result: "Stopped." };
     try {
       const done = await runJarvisCommand({
@@ -1821,6 +1837,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         spokenTarget,
         pageContext: commandPageContext(),
         spokenYes: spokenYesFor(latestUserRequest.current),
+        ...(typeof args.eventId === "string" ? { eventId: args.eventId } : {}),
         signal: controller.signal,
         post: voicePost,
         onEvent: (event) => {
@@ -1829,12 +1846,16 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
             if (!driving) startDriving(utterance, abort);
             driving = true;
             addStep(feedId, { kind: "progress", text: `On ${event.deviceLabel || event.targetDeviceId}` });
-          } else if (event.type === "decision") {
-            const d = event.decision;
-            addStep(feedId, { kind: "progress", text: `${d.op}${d.target ? ` → ${d.target}` : ""} (${d.policy}, ${Math.round(d.confidence * 100)}%, ${d.source})` });
           } else if (event.type === "narrate") {
-            if (event.speak) say?.(event.text);
-            if (event.stage === "act" || event.stage === "ask") drivingStep(event.text);
+            // Questions and outcomes are spoken once by the final result. Progress is occasional.
+            if (event.speak && event.stage === "act" && Date.now() - lastProgressSpoken >= 6000) {
+              say?.(event.text);
+              lastProgressSpoken = Date.now();
+            }
+            if (event.stage === "act" || event.stage === "ask") {
+              drivingStep(event.text);
+              addStep(feedId, {kind:"progress",text:event.text});
+            }
           } else if (event.type === "slow") {
             say?.(event.said);
             addStep(feedId, { kind: "say", text: event.said });
@@ -1845,6 +1866,8 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         },
       });
       let result = done;
+      // A job left going on the server (linked to the thread): a later "stop" with nothing running here still means it.
+      if ((done.numbers as { conversationId?: string } | undefined)?.conversationId && done.ok && !done.stopped) backgroundWork.current = true;
       if (done.navigate?.path && !done.stopped && !toolSignal.aborted) {
         const path = done.navigate.path;
         const opened = await openCommandPage(path, voiceDestination(path.split("?")[0])?.label ?? path, undefined, toolSignal).catch((error: Error) => ({ ok: false, said: `I couldn't open that page: ${error.message}` }));
@@ -1854,7 +1877,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       else if (result.confirm) {
         // The same pending-button slot screen_act uses: his clear spoken yes re-sends THIS press through
         // /screen/act's server-side spoken-yes gate (free-voice confirmAnswer knows jarvis_command's question).
-        pendingScreen.current = { button: result.confirm, at: Date.now() };
+        pendingScreen.current = { button: result.confirm, at: Date.now(), goal: result.resumeGoal || utterance };
         note(`Waiting for your yes: ${result.confirm}`);
       }
       else note(result.ok ? result.said.slice(0, 80) : "Command not done");
@@ -2027,14 +2050,21 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       try {
         note("Opening it for me to drive");
         const result = await operatorRequest<{ ok: boolean; said: string }>("/screen/cdp", { app: typeof args.target === "string" ? args.target.slice(0, 60) : "" });
-        return result.ok ? `Done: ${result.said}` : `Not done: ${result.said}`;
+        // A launch receipt may only say "is opening"; don't turn that into a
+        // claim that the app is visible or the requested task has completed.
+        return result.ok ? result.said : `Not done: ${result.said}`;
       } catch (error) {
         return `Not done: ${(error as Error).message}`;
       }
     }
     if (name === "pc_act") {
-      // Open an app/folder, media keys, volume, lock: no agent, ~0.3 s.
+      // App launches use the same device-aware job and foreground check as typed commands.
+      // Folders, media keys, volume and lock retain their direct executor.
       try {
+        if (args.action === "open_app" && typeof args.target === "string") {
+          const result = await jarvisCommand({utterance:`open ${args.target.slice(0,80)} app`},toolSignal,say);
+          try { return JSON.parse(result).said || result; } catch { return result; }
+        }
         const result = await operatorRequest<{ ok: boolean; said: string }>("/pc/act", {
           action: typeof args.action === "string" ? args.action : "",
           target: typeof args.target === "string" ? args.target.slice(0, 80) : undefined,
@@ -2206,7 +2236,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
             const last = messages[messages.length - 1];
             const spokenYes = last?.role === "user" && typeof last.content === "string" ? spokenYesFor(last.content) : null;
             // The reply names the brain that answered (rules, jev-router, the Groq model…): the orb's colour.
-            return voiceRequest<{ content: string | null; model?: string }>("/voice/free/turn", { messages, context, sharing: share.sharing && !share.paused, ...(spokenYes ? { spokenYes } : {}) }, signal).then((reply) => {
+            return voiceRequest<{ content: string | null; model?: string }>("/voice/free/turn", { messages, context, replyStyle: loadReplyStyle(), replyPersonality: loadPersonality(), sharing: share.sharing && !share.paused, ...(spokenYes ? { spokenYes } : {}) }, signal).then((reply) => {
               noteBrain(reply?.model);
               return reply;
             });
@@ -2215,6 +2245,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
           ttsStream: ready.free?.tts === "elevenlabs" ? voiceSpeechStream : undefined,
           slowTools: ["control_pc", "delegate_task", "get_recent_emails", "get_recent_meetings"],
           greeting: greetingRef.current,
+          speechSpeed: () => loadPersonality().speed,
           reflex: earlyRef.current
             ? async (partial, signal) =>
                 (await voiceRequest<{ call: { name: string; arguments: Record<string, unknown> } | null }>("/voice/free/reflex", { text: partial }, signal)).call
@@ -2238,10 +2269,24 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
             }
           },
           onTool: (name, args, toolSignal, say) => dispatchTool(current, name, args, toolSignal, say),
+          // Work left going on the server (a computer or coding job) outlives the turn: "stop that task" with nothing running here goes to the one command path.
+          hasBackgroundWork: () => backgroundWork.current,
+          backgroundStop: async (text, signal) => {
+            const stopped = await runJarvisCommand({ utterance: text, source: "voice", pageContext: null, signal, post: voicePost }).catch(() => null);
+            if (!stopped) return null;
+            if (stopped.stopped || /^Stopped/i.test(stopped.said)) backgroundWork.current = false;
+            return stopped.said;
+          },
           // Latency instrumentation only (scripts/voice-latency.ts): fire-and-forget, best-effort.
           // A dropped or failed log entry never affects the conversation.
           onLatency: (entry) => {
             void operatorRequest("/voice/free/latency", entry).catch(() => undefined);
+          },
+          // Device change or a permission blip: the client re-acquires the mic itself; this only shows it.
+          onMicStatus: (status) => {
+            if (current !== generation.current) return;
+            if (status === "lost") note("Microphone lost, reconnecting");
+            else if (status === "restored") note("Microphone reconnected");
           },
         });
         if (current !== generation.current || runtime.current.localModel || engineRef.current !== "free") {
@@ -3208,6 +3253,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
           ) : setup ? (
             <form className="vc-focus-settings" onSubmit={configure}>
               <h2>Voice settings</h2>
+              {engine === "free" && <VoiceStyleControls />}
               <label>
                 Voice engine
                 <select

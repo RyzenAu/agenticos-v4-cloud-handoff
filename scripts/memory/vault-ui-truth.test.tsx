@@ -106,6 +106,35 @@ async function mount(client: MemoryClient) {
   return { host, text, button, click, done: () => act(async () => root.unmount()) };
 }
 
+test("V4.4 detail loading: a late earlier response never replaces the selected memory", async () => {
+  const second = { ...NOTE, id: "second", title: "Second synthetic note" };
+  const { client } = fakeClient({ status: statusOf(), rows: [NOTE, second] });
+  const resolve = new Map<string, (value: MemoryItemDetail) => void>();
+  client.item = (id) => new Promise((done) => resolve.set(id, done));
+  const r = await mount(client);
+  try {
+    await r.click(new RegExp(NOTE.title));
+    expect(r.text()).toContain("Loading memory");
+    await r.click(/Second synthetic note/);
+    await act(async () => resolve.get(second.id)!({ row: second, history: [], forget: [] }));
+    await act(async () => resolve.get(NOTE.id)!({ row: NOTE, history: [], forget: [] }));
+    const detail = r.host.querySelector('[aria-label="Item detail"]');
+    expect(detail?.textContent).toContain("Second synthetic note");
+    expect(detail?.textContent).not.toContain(NOTE.title);
+  } finally { await r.done(); }
+});
+
+test("V4.4 detail failure: network errors are not presented as forgotten records", async () => {
+  const { client } = fakeClient({ status: statusOf(), rows: [NOTE] });
+  client.item = async () => { throw new Error("Synthetic offline"); };
+  const r = await mount(client);
+  try {
+    await r.click(new RegExp(NOTE.title));
+    expect(r.text()).toContain("Couldn't load this memory");
+    expect(r.text()).not.toContain("It may have been forgotten");
+  } finally { await r.done(); }
+});
+
 describe("MEM-5: with Hindsight off the queue isn't shown as 'Pending … Indexed 0 of N'", () => {
   test("off: 'Not sent (Hindsight off)' and the local index count; on: Pending and Indexed as before", async () => {
     const off = await mount(fakeClient({ status: statusOf({ hindsight_enabled: false, hindsight: "disabled", pending: 10 }) }).client);

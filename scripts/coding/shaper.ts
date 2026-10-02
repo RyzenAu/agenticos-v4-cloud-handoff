@@ -1,3 +1,4 @@
+import { unavailableModelWords } from "./model-words";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -5,6 +6,8 @@ import type { JevAnswers, JevOutcome } from "../jev-client";
 import { pickCodexSlot, slotReadings, type AccountsConfig } from "./accounts";
 import type {
   AgentBinding,
+  ClaudeAccountSlot,
+  CodexModelId,
   CommandId,
   DoneCriterion,
   IsoTime,
@@ -20,9 +23,12 @@ import type {
   VerifiedPrincipal,
 } from "./contracts";
 import { redactText } from "./redact";
+import { chooseRoles, choiceSentence, DEFAULT_CODING_PREFS, modelLabel, type ChoiceEnv, type CodingModelPrefs, type RoleChoiceResult } from "./role-choice";
 import { codingMoneyRefusal } from "../jarvis-execution/spoken-money";
 import { reposFor } from "./registry";
 import { claudeBinding, codexBinding, draftSpec, routerBinding, slugOf } from "./spec";
+import { isSiteRequest, siteObjective } from "../../src/lib/site-maker";
+import { siteDraftPlan } from "./site-plan";
 
 /**
  * The shaper (CODING-HARNESS §3.2, task C4): a spoken or typed request → a bounded, UNCONFIRMED TaskSpec,
@@ -58,6 +64,15 @@ export type ShaperDeps = {
   jev?: JevFn | null;
   planner?: PlannerFn | null;
   cliVersions: () => { claude: string; codex: string };
+  /** The owner's paid/free preferences (coding-prefs.json). Default: paid subscription models allowed, free-only off. */
+  prefs?: () => CodingModelPrefs;
+  /** What is known about availability (CLI installed, Codex isolation applied, a stop window); anything unset is assumed available. */
+  choice?: () => Partial<Pick<ChoiceEnv, "claudeAvailable" | "codexAvailable" | "codexReady" | "claudeBlocked" | "route" | "hasKey" | "readings">>;
+  /**
+   * The Claude account a NEW Claude role goes to (30 Sep 2026): the preferred/first connected account
+   * below its stop threshold. `slot` null = none can take work (the reason says why). Absent = "claude:max".
+   */
+  claudeSlot?: (preferred?: ClaudeAccountSlot) => { slot: ClaudeAccountSlot | null; label: string; reason: string };
   now?: () => Date;
 };
 
@@ -81,6 +96,8 @@ type Pending = {
   decisions: JevDecision[];
   jevModel: string;
   jevMs: number;
+  /** Models Jev proposed for a role (only when it acted on them); the words and the prefs still win. */
+  jevModels: { builder?: string | null; reviewer?: string | null };
   at: number;
 };
 
@@ -88,33 +105,125 @@ const TTL = 10 * 60_000;
 
 // ─────────────────────────── words ───────────────────────────
 
-const MODEL_WORDS: Array<{ re: RegExp; binding: (d: ShaperDeps, preferredSlot?: string) => AgentBinding }> = [
-  { re: /\bopus\b/i, binding: (d) => claudeBinding("claude-opus-5-5", d.cliVersions().claude) },
-  { re: /\bsonnet\b/i, binding: (d) => claudeBinding("claude-sonnet-5", d.cliVersions().claude) },
-  { re: /\bfable\b/i, binding: (d) => claudeBinding("claude-fable-5-1", d.cliVersions().claude) },
-  { re: /\bhaiku\b/i, binding: (d) => claudeBinding("claude-haiku-4-5", d.cliVersions().claude) },
-  { re: /\bclaude\b/i, binding: (d) => claudeBinding("claude-opus-5-5", d.cliVersions().claude) },
+/** "Claude account 2", "the second Claude account", "Max 2" / "my first Claude account": the slot the words name, or null. */
+const NUMBER_WORD: Record<string, string> = { one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9" };
+/** How speech-to-text hears "Claude" and spoken numbers ("cloud account two"), for the account words only. */
+export const spokenClaude = (text: string) => text
+  .replace(/\b(?:cloud|clod|clawed|claud)(?=\s+(?:account|max|code)\b)/gi, "claude")
+  .replace(/\b(account|max)\s+(one|two|three|four|five|six|seven|eight|nine)\b/gi, (_m, w: string, n: string) => `${w} ${NUMBER_WORD[n.toLowerCase()]}`);
+
+/**
+ * Which Claude account these words name, or null. Strict on purpose (1 Oct 2026): "max", "account" and a digit
+ * are everyday words ("allow max 3 retries", "the balance in account 2", "open a new account"), so an account
+ * is named only as "Claude Max 2" / "Claude account 2" (any preposition), or after a using-verb ("use / using / via
+ * (the) (Claude) (Max) account 2", "use max 2", "use the second Claude account").
+ */
+export function claudeSlotFromWords(text0: string, config: AccountsConfig): ClaudeAccountSlot | null {
+  const text = spokenClaude(text0);
+  // A bare "account N" counts only after a using-verb ("use / using / via"); "on account two" could be a bank.
+  const USE = String.raw`(?:use|using|via)\s+(?:my\s+|the\s+|our\s+)?`;
+  const END = String.raw`(?=\s*(?:$|[,.;!?]|and\b|for\b|to\b|please\b|then\b|while\b|so\b))`;
+  const num = (re: string) => new RegExp(re, "i").exec(text)?.[1];
+  const n = num(String.raw`\bclaude\s+(?:max|account)\s*(?:number\s*)?([1-9])\b`)
+    ?? num(USE + String.raw`(?:claude\s+)?(?:max\s+)?account\s*(?:number\s*)?([1-9])\b`)
+    ?? num(USE + String.raw`max\s*(?:number\s*)?([1-9])\b` + END)
+    ?? (/\b(?:second|2nd|other)\s+claude\s+(?:max\s+)?account\b|\b(?:second|2nd)\s+max\s+account\b/i.test(text) || new RegExp(USE + String.raw`(?:second|2nd|other|new)\s+(?:claude\s+|max\s+)?account\b`, "i").test(text) ? "2"
+      : /\b(?:first|1st|original|old|main)\s+claude\s+(?:max\s+)?account\b/i.test(text) || new RegExp(USE + String.raw`(?:first|1st|original|old|main)\s+(?:claude\s+|max\s+)?account\b`, "i").test(text) ? "1" : null);
+  if (!n) return null;
+  const slot = (n === "1" ? "claude:max" : `claude:max-${n}`) as ClaudeAccountSlot;
+  return config.claude.some((c) => c.slot === slot) ? slot : null;
+}
+
+/** The account for a Claude role these words name: an explicit account wins, else the automatic pick. */
+function claudeSlotFor(d: ShaperDeps, text: string): ClaudeAccountSlot {
+  const named = claudeSlotFromWords(text, d.accounts());
+  if (named) return named;
+  return d.claudeSlot?.()?.slot ?? "claude:max";
+}
+
+// Without the word "claude" (that rule already reads the account): only an unmistakable account phrase.
+const ACCOUNT_WORDS = /\b(?:second|2nd|new)\s+(?:max\s+)?account\b|\b(?:on|use|with|using)\s+(?:my\s+|the\s+)?(?:max\s+)?account\s+(?:number\s*)?[1-9]\b/i;
+
+const PAID_DEEPSEEK = /\b(?:openrouter|paid|metered)\s+deep[ -]?seek\b|\bdeep[ -]?seek(?:[ -]?v4(?:\.1)?)?[ -]?pro\b|\bdeep[ -]?seek\b[^.,;]{0,24}?\b(?:via|on|through)\s+openrouter\b/i;
+const PAID_MIMO = /\b(?:openrouter|paid|metered)\s+mimo\b|\bmimo(?:[ -]?v?2\.6)?[ -]?pro\b|\bmimo\b[^.,;]{0,24}?\b(?:via|on|through)\s+openrouter\b/i;
+
+/**
+ * An explicit free cue for ONE model family: "free DeepSeek", "MiMo Flash free", "DeepSeek ... free tier", "Cline MiMo",
+ * "MiMo Flash", "DeepSeek via Cline". A bare "free" ("error-free") or "flash" ("flash of unstyled content") is not one.
+ */
+const freeCue = (family: string) => new RegExp(
+  String.raw`\bfree\s+${family}\b|\b${family}(?:[ -]?v?\d[\d.]*)*(?:[ -]?(?:flash|spark))*[ -]+free\b(?!\s+(?:deep[ -]?seek|mimo|muse|cline)\b)|\b${family}\b[^.;]{0,40}?\bfree\s+(?:route|model|tier|version)\b|\bfree\s+(?:route|model|tier|version)\s+(?:of\s+|for\s+)?${family}\b|\bcline\s+${family}\b|\b${family}(?:[ -]?v?\d[\d.]*)?[ -]flash\b|\b${family}\b[^.;]{0,24}?\b(?:via|on|through)\s+cline\b`,
+  "i",
+);
+/** Negation before a paid phrase: "not", "no", "skip", "avoid", "don't want", "rather than"... then up to three plain words ("avoid the paid"). */
+const NEGATED = /(?:\b(?:not|never|avoid|no|skip|don'?t|do not|without|rather than|instead of)(?:\s+(?:want|use|using|need|like))?)\s+(?:[^\s,;.]+\s+){0,3}$/i;
+/** "<paid model> is too pricey": the owner is saying no to it. */
+const TOO_DEAR = /^\s*(?:is\s+|are\s+|seems\s+|looks\s+)?(?:far\s+|way\s+|a bit\s+|really\s+)?too\s+(?:pricey|expensive|costly)\b/i;
+/** The paid route is wanted: a paid match that no negation surrounds, and no free cue for that same model overrides. */
+export function paidWanted(re: RegExp, text: string, family: string): boolean {
+  if (freeCue(family).test(text)) return false;
+  for (const m of text.matchAll(new RegExp(re.source, "gi"))) {
+    const before = text.slice(Math.max(0, m.index - 40), m.index);
+    const after = text.slice(m.index + m[0].length, m.index + m[0].length + 30);
+    if (!NEGATED.test(before) && !TOO_DEAR.test(after)) return true;
+  }
+  return false;
+}
+
+const MODEL_WORDS: Array<{ re: RegExp; binding: (d: ShaperDeps, text: string) => AgentBinding; guard?: (text: string) => boolean }> = [
+  { re: /\bopus\b/i, binding: (d, t) => claudeBinding("claude-opus-5-5", d.cliVersions().claude, claudeSlotFor(d, t)) },
+  { re: /\bsonnet\b/i, binding: (d, t) => claudeBinding("claude-sonnet-5-5", d.cliVersions().claude, claudeSlotFor(d, t)) },
+  { re: /\bfable\b/i, binding: (d, t) => claudeBinding("claude-fable-5-1", d.cliVersions().claude, claudeSlotFor(d, t)) },
+  { re: /\bhaiku\b/i, binding: (d, t) => claudeBinding("claude-haiku-4-5", d.cliVersions().claude, claudeSlotFor(d, t)) },
+  { re: /\bclaude\b/i, binding: (d, t) => claudeBinding("claude-opus-5-5", d.cliVersions().claude, claudeSlotFor(d, t)) },
+  // "Use account 2 for the build": an account named without a model is Opus on that account.
+  { re: ACCOUNT_WORDS, binding: (d, t) => claudeBinding("claude-opus-5-5", d.cliVersions().claude, claudeSlotFor(d, t)) },
   { re: /\bhermes\b|\bgpt[- ]?6[- ]?sol\b/i, binding: () => routerBinding("codex/gpt-6-sol") },
-  { re: /\bdeep ?seek\b/i, binding: () => routerBinding("openrouter/deepseek-v4-pro") },
-  { re: /\bmimo\b/i, binding: () => routerBinding("openrouter/mimo-v2.6-pro") },
+  // A PAID (metered OpenRouter) route is selected only when the words say so ("paid DeepSeek", "OpenRouter MiMo",
+  // "DeepSeek Pro", "MiMo via OpenRouter"). A bare "DeepSeek" or "MiMo" is the free Cline Flash route.
+  { re: PAID_DEEPSEEK, binding: () => routerBinding("openrouter/deepseek-v4-pro"), guard: (t) => paidWanted(PAID_DEEPSEEK, t, "deep[ -]?seek") },
+  { re: PAID_MIMO, binding: () => routerBinding("openrouter/mimo-v2.6-pro"), guard: (t) => paidWanted(PAID_MIMO, t, "mimo") },
+  { re: /\bdeep[ -]?seek\b/i, binding: () => routerBinding("cline/deepseek-v4.1-flash") },
+  { re: /\bmimo\b/i, binding: () => routerBinding("cline/mimo-v2.6-flash") },
+  { re: /\bmuse\b/i, binding: () => routerBinding("cline/muse-spark-1.3") },
   { re: /\bcline\b/i, binding: () => routerBinding("cline/deepseek-v4.1-flash") },
+  // A named Codex model ("gpt-5.6-sol", "gpt-5.5") is that model, never the default Astra (round 6).
+  { re: /\bgpt[ -]?(?:5\.5|5\.6[ -](?:sol|terra|luna))\b/i, binding: (d, t) => codexFor(d, codexModelIn(t)) },
   { re: /\bcodex\b|\bgpt[- ]?6[- ]?astra\b|\bastra\b/i, binding: (d) => codexFor(d) },
 ];
 
-function codexFor(d: ShaperDeps): AgentBinding {
+/** The binding a phrase names ("Use Codex", "Sonnet"), or null. The one place the model words live (voice.ts edits use it too). */
+export function bindingFromWords(text0: string, d: ShaperDeps): AgentBinding | null {
+  const text = spokenClaude(text0);
+  for (const m of MODEL_WORDS) if (m.re.test(text) && m.guard?.(text) !== false) return m.binding(d, text);
+  return null;
+}
+
+/** The Codex model a phrase names ("gpt-5.6-sol", "GPT 5.5"), as the catalogue id. */
+function codexModelIn(text: string): CodexModelId {
+  const m = /\bgpt[ -]?(5\.5|5\.6[ -](?:sol|terra|luna))\b/i.exec(text);
+  return (m ? `gpt-${m[1].toLowerCase().replace(/ /g, "-")}` : "gpt-6-astra") as CodexModelId;
+}
+function codexFor(d: ShaperDeps, model: CodexModelId = "gpt-6-astra"): AgentBinding {
   // Owner decision 1: a NEW job goes to the least-used connected account below the limit.
   const choice = pickCodexSlot(d.accounts(), slotReadings());
   const slot = choice.ok ? choice.slot.slot : d.accounts().codex[0]?.slot ?? "codex:openai-2";
-  return codexBinding("gpt-6-astra", slot, d.cliVersions().codex);
+  return codexBinding(model, slot, d.cliVersions().codex);
 }
 
+const SAME_MODEL_ASKED = /\b(?:another|a second|a separate|fresh|new)\s+(?:opus|sonnet|fable|haiku|codex|claude|hermes|deep[ -]?seek|mimo|muse|cline|astra)(?:\s+(?:session|agent))?\s+(?:reviews?|reviewer)\b/i;
+const ROLE_VERB ="(?:build|builds|building|builder|implement|implements|write|writes|fix|fixes|review|reviews|reviewing|reviewer|check|checks|test|tests|tester|test-author)";
 /** "<model> builds", "have <model> build", "<model> for the build". */
-function roleModel(text: string, role: "build" | "review" | "test", d: ShaperDeps): AgentBinding | null {
+function roleModel(text0: string, role: "build" | "review" | "test", d: ShaperDeps): AgentBinding | null {
+  const text = spokenClaude(text0);
   const verb = role === "build" ? "(?:build|builds|building|builder|implement|implements|write|writes|fix|fixes)" : role === "review" ? "(?:review|reviews|reviewing|reviewer|check|checks)" : "(?:test|tests|tester|test-author|writes? the tests)";
   for (const m of MODEL_WORDS) {
     const name = m.re.source;
-    const near = new RegExp(`(?:${name})[^.,;]{0,24}?\\b${verb}\\b|\\b${verb}\\b[^.,;]{0,24}?(?:with|using|by|on|to)\\s+(?:an?\\s+|another\\s+|the\\s+)?(?:${name})|use\\s+(?:an?\\s+|another\\s+)?(?:${name})\\s+(?:for|as)\\s+(?:the\\s+)?${verb}`, "i");
-    if (near.test(text)) return m.binding(d);
+    // The gap may not hold another role's verb: "DeepSeek builds and MiMo reviews" is DeepSeek-builds, MiMo-reviews.
+    // (Before 1 Oct 2026 the reviewer matched DeepSeek too; two jobs were shaped with one model in both roles.)
+    const GAP = `(?:(?!\\b${ROLE_VERB}\\b)[^.,;]){0,24}?`;
+    const near = new RegExp(`(?:${name})${GAP}\\b${verb}\\b|\\b${verb}\\b${GAP}(?:with|using|by|on|to)\\s+(?:an?\\s+|another\\s+|the\\s+)?(?:${name})|use\\s+(?:an?\\s+|another\\s+)?(?:${name})\\s+(?:for|as)\\s+(?:the\\s+)?${verb}`, "i");
+    if (near.test(text) && m.guard?.(text) !== false) return m.binding(d, text);
   }
   return null;
 }
@@ -122,12 +231,12 @@ function roleModel(text: string, role: "build" | "review" | "test", d: ShaperDep
 export function templateFrom(text: string): RoleTemplate {
   if (/\b(?:just|only)\s+review\b|\breview[- ]only\b|\breview (?:the|my) (?:branch|code|changes)\b/i.test(text)) return "review-only";
   if (/\b(?:add|with) a tester\b|\btest[- ]author\b|\bwrite (?:the )?tests\b/i.test(text)) return "build+review+test-author";
-  if (/\bno review\b|\bbuild[- ]only\b/i.test(text)) return "build-only";
+  if (/\b(?:no|without)\s+(?:a\s+|any\s+)?review(?:er)?\b|\bbuild[- ]only\b/i.test(text)) return "build-only";
   if (/\binvestigate\b|\blook into\b|\bfind out why\b/i.test(text)) return "investigate";
   return "build+review";
 }
 
-const AGENT_WORD = "(?:opus|sonnet|fable|haiku|codex|claude|hermes|deep ?seek|mimo|cline|astra)";
+const AGENT_WORD = "(?:(?:(?:openrouter|paid|metered)\\s+)?(?:opus|sonnet|fable|haiku|codex|claude|hermes|deep[ -]?seek|mimo|muse|cline|astra))";
 /** A sentence that starts with the task itself ("Fix the Claude reviewer badge…"), not with who does it. */
 const TASK_SENTENCE = /^\s*(?:(?:hey\s+)?jarvis[,\s]+)?(?:please\s+)?(?:fix|make|change|update|add|remove|delete|rename|set|move|refactor|rewrite|create|implement|improve|investigate|look into|find out|debug|repair|replace|hide|show|style|colou?r|clean up|tidy|speed up|stop|ensure|align|centre|center|correct|swap|convert|build (?:a|an|the)\b)/i;
 /** One clause that only says who does which role ("Opus builds", "another Opus reviews it", "use Sonnet for the build"). */
@@ -155,20 +264,37 @@ const AGENT_DOES = new RegExp(
 );
 
 /**
+ * "assign a builder to fix X and a reviewer to check it", "have a builder fix X", "get a builder to X and a
+ * second agent to check it" (no model named): the role words only say who does what. The lead-in and the
+ * reviewer tail are stripped so the objective is the task itself.
+ */
+const ROLE_LEAD = new RegExp(`(^|[.!?]\\s+)(?:please\\s+)?(?:assign|get|have|let|put|give me|i want)\\s+(?:an?|the|another|one)\\s+(?:builder|coder|developer|agent)(?:\\s+and\\s+(?:an?|the|another|one)\\s+(?:reviewer|checker|second agent))?(?:\\s+to)?\\s+(?=${TASK_AHEAD})`, "gi");
+const ROLE_NOUN = "(?:second agent|another agent|second reviewer|reviewer|checker)";
+const ROLE_TAIL = new RegExp(`(?:\\s*[,;]\\s*|\\s+(?:and|then|plus|with)\\s+)(?:(?:an?|the|another|one)\\s+)?${ROLE_NOUN}\\s+(?:(?:should|will|can|must|to)\\s+)?(?:check|checks|review|reviews|verify|verifies)\\b(?:\\s+(?:it|this|that|them|the (?:build|code|changes?|work|diff|fix)|after(?:wards)?|too|as well))*(?=\\s*(?:[.!,;]|$|\\b(?:and|then)\\b))`, "gi");
+/** A whole sentence that is only the reviewer's job: "Then a reviewer checks it." */
+const ROLE_SENTENCE = new RegExp(`(^|[.!?]\\s+)(?:(?:and|then)\\s+)?(?:(?:an?|the|another|one)\\s+)?${ROLE_NOUN}\\s+(?:(?:should|will|can|must|to)\\s+)?(?:check|checks|review|reviews|verify|verifies)\\b(?:\\s+(?:it|this|that|them|the (?:build|code|changes?|work|diff|fix)|after(?:wards)?|too|as well))*\\s*[.!]?(?=\\s|$)`, "gi");
+
+/**
  * The request with the team/model/show-me phrasing stripped: what's left is the objective.
  * Agent-first lead-ins ("Codex, fix X…", "ask Codex to fix X and Claude to review") are stripped first.
  * A sentence about who builds/reviews is dropped whole; but a sentence that starts with the task keeps it,
  * even when the task names an agent or a role ("Fix the Claude reviewer badge colour", REVIEW-T3 R5), and
  * only its team clauses ("…, Opus builds, Codex reviews") are dropped.
  */
+const JOB_LEAD = /^\s*(?:please\s+)?(?:start|begin|kick off|create|open|set up|run|spin up|queue|make)\s+(?:me\s+)?(?:a|an|the|another)?\s*(?:new\s+)?coding\s+(?:job|task|run)\s*(?:to|for|that|which|so (?:that )?it|:|,|-)?\s*/i;
+
 export function objectiveFrom(text: string): string {
   return text
     .replace(/^\s*(?:hey\s+)?jarvis[,\s]+/i, "")
+    .replace(JOB_LEAD, "")
     .replace(LEAD_IN, "$1")
+    .replace(ROLE_LEAD, "$1")
+    .replace(ROLE_TAIL, "")
+    .replace(ROLE_SENTENCE, "$1")
     .replace(AGENT_DOES, (_m, lead: string, verb: string) => `${lead}${verb.toLowerCase()} `)
     // A sentence ends at a full stop followed by a space (or the end), so "src/a.ts" doesn't split one.
     .replace(/(?:[^.]|\.(?=\S))*\b(?:builds?|reviews?|reviewer|builder|tester)\b(?:[^.]|\.(?=\S))*\.?/gi, (s) => {
-      if (!/\b(?:opus|sonnet|codex|claude|hermes|deepseek|mimo|cline|another|agent)\b/i.test(s)) return s;
+      if (!/\b(?:opus|sonnet|codex|claude|hermes|deepseek|mimo|muse|cline|another|agent)\b/i.test(s)) return s;
       if (!TASK_SENTENCE.test(s)) return "";
       const parts = s.split(/(\s*[,;]\s*|\s+and\s+)/i);
       const kept: string[] = [parts[0]];
@@ -189,6 +315,7 @@ export function objectiveComplete(objective: string): boolean {
   const words = objective.split(/\s+/).filter(Boolean);
   if (words.length < 4) return false;
   if (words.length >= 9) return true;
+  if (words.length >= 6 && /^(?:fix|change|update|add|remove|rename|refactor|rewrite|improve|debug|repair|replace|hide|show|style|clean up|speed up|correct|implement|build|create|make)\b/i.test(objective) && /\b(?:in|on|of|for)\s+(?:the\s+|our\s+|my\s+|a\s+)?[\w'-]+/i.test(objective)) return true;
   return /\b(?:so that|because|when|shows?|should|to\s+\w+|instead of|wrong|broken|missing|error|fails?|set|add|rename|remove|change|make)\b/i.test(objective) && words.length >= 5;
 }
 
@@ -198,7 +325,7 @@ function repoByWords(text: string, repos: readonly RepoRegistryEntry[]): { id: s
   const t = text.toLowerCase();
   return repos
     .map((r) => {
-      const idWords = r.id.split("-").filter((w) => w.length > 2);
+      const idWords = r.id.split("-").filter((w) => w.length > 2 && w !== "muv");
       let score = t.includes(r.id) ? 3 : 0;
       for (const w of idWords) if (new RegExp(`\\b${w}`, "i").test(t)) score += 1;
       for (const w of r.description.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 4)) if (t.includes(w)) score += 0.25;
@@ -222,6 +349,9 @@ async function askJev(deps: ShaperDeps, text: string, repos: readonly RepoRegist
     repo: { type: "choice", instructions: "Which code repository is this coding request about?", criteria: Object.fromEntries(repos.map((r) => [r.id, r.description])) },
     complete: { type: "score", instructions: "Does the request say concretely what should change or what is wrong (not just which area)?" },
     consequential: { type: "score", instructions: "Does the request ask to merge, push, deploy, publish or release anything?" },
+    // Jev may delegate: which model is best for each role. Its pick is used only if that model is available and allowed.
+    builder: { type: "choice", instructions: "Which model should BUILD this change (write the code)?", criteria: MODEL_CRITERIA },
+    reviewer: { type: "choice", instructions: "Which model should independently REVIEW the change? It must not be the builder's model.", criteria: MODEL_CRITERIA },
   };
   try {
     const out = await deps.jev({ state: { request: redactText(text, 1000) }, questions });
@@ -230,6 +360,13 @@ async function askJev(deps: ShaperDeps, text: string, repos: readonly RepoRegist
   } catch { return { answers: null, model: "jev-error", ms: 0 }; }
 }
 
+const MODEL_CRITERIA: Record<string, string> = {
+  "claude-opus-5-5": "Opus: the strongest general coder; large or subtle changes",
+  "claude-sonnet-5-5": "Sonnet: lighter and faster; small, well-scoped changes",
+  "gpt-6-astra": "Codex: strong at test and typecheck repair and mechanical refactors",
+};
+const isFreeBinding = (b: AgentBinding) => b.route === "model-router" && b.model.startsWith("cline/");
+
 // ─────────────────────────── the shaper ───────────────────────────
 
 export function createShaper(deps: ShaperDeps) {
@@ -237,22 +374,62 @@ export function createShaper(deps: ShaperDeps) {
   const now = () => (deps.now?.() ?? new Date());
   const sweep = () => { const t = Date.now(); for (const [k, p] of pending) if (t - p.at > TTL) pending.delete(k); };
 
+  const choiceEnv = (): ChoiceEnv => {
+    const base: ChoiceEnv = { cliVersions: deps.cliVersions(), accounts: deps.accounts(), readings: slotReadings(), ...deps.choice?.() };
+    const pick = deps.claudeSlot?.();
+    if (!pick) return base;
+    // No Claude account can take work: Claude isn't an automatic pick (another provider is chosen, said aloud).
+    if (!pick.slot) return { ...base, claudeBlocked: base.claudeBlocked ?? pick.reason };
+    return { ...base, claudeSlot: pick.slot, claudeSlotWhy: pick.reason };
+  };
+  /** Builder and an independent reviewer for these words (named models win; the prefs and Jev's pick fill the rest). */
+  function pickRoles(text: string, template: RoleTemplate, jevModels: Pending["jevModels"], prefs: CodingModelPrefs, override?: { builder?: AgentBinding | null; reviewer?: AgentBinding | null }): RoleChoiceResult {
+    const first = pickRolesOnce(text, template, jevModels, prefs, override);
+    // A draft never pairs the builder and the reviewer on one model (the /account route refuses the same edit).
+    // However the words were read, the reviewer is picked again as a DIFFERENT model; if nothing else can run, say so.
+    if (!first.ok || !first.reviewer || first.reviewer.binding.model !== first.builder.binding.model) return first;
+    // The one exception is the owner asking for it in so many words: "Opus builds, another Opus reviews it" is a fresh
+    // session of the same model, said aloud and named on purpose. A model merely read twice from the words is not.
+    if (first.reviewer.choice.basis === "named" && SAME_MODEL_ASKED.test(text)) return first;
+    const again = pickRolesOnce(text, template, jevModels, prefs, { builder: first.builder.binding, reviewer: null }, true);
+    if (again.ok && (!again.reviewer || again.reviewer.binding.model !== again.builder.binding.model)) return again;
+    return { ok: false, reason: `The builder and the reviewer would both be ${modelLabel(first.builder.binding.model)}, and no other model can review it right now. Name a different reviewer, or connect another account.` };
+  }
+  function pickRolesOnce(text: string, template: RoleTemplate, jevModels: Pending["jevModels"], prefs: CodingModelPrefs, override?: { builder?: AgentBinding | null; reviewer?: AgentBinding | null }, ignoreNamedReviewer = false): RoleChoiceResult {
+    // An account named in the words applies to every Claude role of the job (the reviewer too), so "…using account two
+    // and another agent review it" doesn't quietly put the review on a different login.
+    const named = claudeSlotFromWords(text, deps.accounts());
+    const env = named ? { ...choiceEnv(), claudeSlot: named, claudeSlotWhy: "the account you named", claudeBlocked: undefined } : choiceEnv();
+    return chooseRoles({
+      text, template, prefs, env, jev: jevModels,
+      named: { builder: override?.builder ?? roleModel(text, "build", deps), reviewer: ignoreNamedReviewer ? null : override?.reviewer ?? roleModel(text, "review", deps) },
+    });
+  }
+
   async function finish(p: Pending): Promise<ShapeResult> {
     const registry = deps.registry();
     const entry = registry.repos.find((r) => r.id === p.repoId);
     if (!entry) return { kind: "refused", reason: "That repo isn't in the coding registry." };
     const text = [p.utterance, ...p.clarifications.map((c) => c.answer)].join(". ");
     const template = templateFrom(p.utterance);
-    const builder = roleModel(text, "build", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
-    const reviewer = template === "build-only" ? null : roleModel(text, "review", deps) ?? claudeBinding("claude-opus-5-5", deps.cliVersions().claude);
-    const tester = template === "build+review+test-author" ? roleModel(text, "test", deps) ?? codexFor(deps) : null;
-    const objective = p.objective ?? objectiveFrom(p.utterance);
+    const prefs = deps.prefs?.() ?? DEFAULT_CODING_PREFS;
+    // The words the owner said win; who does what when they don't is role-choice.ts (an independent reviewer,
+    // the owner's paid/free prefs), and each pick carries the reason the draft says aloud.
+    const chosen = pickRoles(text, template, p.jevModels, prefs);
+    if (!chosen.ok) return { kind: "refused", reason: chosen.reason };
+    const { builder, reviewer } = { builder: chosen.builder.binding, reviewer: chosen.reviewer?.binding ?? null };
+    const namedTester = roleModel(text, "test", deps);
+    const tester = template === "build+review+test-author" ? namedTester ?? (prefs.freeOnly ? builder : codexFor(deps)) : null;
+    if (tester && namedTester && prefs.freeOnly && !isFreeBinding(namedTester)) return { kind: "refused", reason: `Free-only is on, so I won't run ${modelLabel(namedTester.model)}; it uses a paid plan or metered API. Name a free model or turn free-only off in coding-prefs.json.` };
+    const site = isSiteRequest(p.utterance);
+    const objective = p.objective ?? (site ? siteObjective(p.utterance) : objectiveFrom(p.utterance));
     const specId = randomUUID() as Uuid;
     let plan: PlannerDraft | { question: string } | null = null;
-    if (deps.planner && p.usePlanner) {
+    if (site) plan = siteDraftPlan(entry, p.utterance);
+    if (!plan && deps.planner && p.usePlanner) {
       try { plan = await deps.planner({ entry, objective, utterance: text, specId }); }
       catch (e) { return { kind: "refused", reason: `The planner couldn't draft this: ${redactText((e as Error).message, 200)}` }; }
-    } else plan = heuristicPlan(entry, objective, text);
+    } else if (!plan) plan = heuristicPlan(entry, objective, text);
     if (!plan) {
       p.asked = "planner";
       pending.set(p.draftId, { ...p, at: Date.now() });
@@ -274,12 +451,13 @@ export function createShaper(deps: ShaperDeps) {
       nonGoals: plan.nonGoals,
       doneWhen: plan.doneWhen,
       roleTemplate: template === "investigate" || template === "review-only" ? "build+review" : template,
-      builders: plan.builders.map((b) => ({ binding: builder, owns: b.owns, instructions: b.instructions })),
+      builders: plan.builders.map((b) => ({ binding: builder, owns: repoOwns(entry, b.owns), instructions: b.instructions })),
       testAuthor: tester && plan.testAuthorOwns ? { binding: tester, owns: plan.testAuthorOwns } : null,
       reviewer: reviewer ? { binding: reviewer } : null,
       checks: plan.checks,
       approvalPoints: CONSEQUENTIAL_WORDS.test(p.utterance) ? [{ action: "git.merge.protected", describe: `merge into ${entry.defaultBaseRef} of ${entry.id} (asked after completion)`, when: "after-completion" }] : [],
       jev,
+      roleChoices: [chosen.builder.choice, ...(chosen.reviewer ? [chosen.reviewer.choice] : [])],
       planner: plan.plannerSession ?? null,
       now: deps.now,
     });
@@ -300,6 +478,8 @@ export function createShaper(deps: ShaperDeps) {
       // A money order is never turned into a coding job, whatever lane sent it (REVIEW S2d-2).
       const moneyAnswer = codingMoneyRefusal(`${p.utterance}. ${answer}`);
       if (moneyAnswer) return { kind: "refused", reason: moneyAnswer };
+      const noModelAnswer = unavailableModelWords(answer);
+      if (noModelAnswer) return { kind: "refused", reason: noModelAnswer.reason };
       if (!answer) return { kind: "ask", draftId: p.draftId, question: "I didn't catch that. " + (p.asked === "repo" ? `Which repo: ${p.options.join(" or ")}?` : "What should change?") };
       p.clarifications.push({ question: p.asked ?? "", answer, at: now().toISOString() as IsoTime });
       if (p.asked === "repo") {
@@ -321,10 +501,27 @@ export function createShaper(deps: ShaperDeps) {
     // and the Coding page all come through here (REVIEW S2d-2).
     const money = codingMoneyRefusal(utterance);
     if (money) return { kind: "refused", reason: money };
-    const p: Pending = { draftId: randomUUID() as Uuid, principal: input.principal, usePlanner: input.usePlanner !== false, channel: input.channel, utterance, repoId: null, objective: null, asked: null, options: [], clarifications: [], decisions: [], jevModel: "none", jevMs: 0, at: Date.now() };
+    // A model the words name that this harness can't run is said, never replaced by another (round 6).
+    const noModel = unavailableModelWords(utterance);
+    if (noModel) return { kind: "refused", reason: noModel.reason };
+    const p: Pending = { draftId: randomUUID() as Uuid, principal: input.principal, usePlanner: input.usePlanner !== false, channel: input.channel, utterance, repoId: null, objective: null, asked: null, options: [], clarifications: [], decisions: [], jevModel: "none", jevMs: 0, jevModels: {}, at: Date.now() };
+    // F1: a site request already says what to build; its first sentence is the objective, so nothing is asked.
+    if (isSiteRequest(utterance)) p.objective = siteObjective(utterance);
+    // A repo that exists but isn't registered is said plainly, not guessed between two other repos.
+    const unregistered = unregisteredRepoMention(utterance, repos);
+    if (unregistered) return { kind: "refused", reason: unregistered };
     const jev = await askJev(deps, utterance, repos);
     p.jevModel = jev.model;
     p.jevMs = jev.ms;
+    for (const role of ["builder", "reviewer"] as const) {
+      const pick = jev.answers?.[role];
+      const probs2 = pick?.probabilities ? Object.entries(pick.probabilities).sort((a, b) => b[1] - a[1]) : [];
+      if (!pick?.choice || !probs2.length) continue;
+      const m2 = probs2.length > 1 ? probs2[0][1] - probs2[1][1] : probs2[0][1];
+      const policy = jevPolicy(probs2[0][1], m2);
+      p.decisions.push({ question: "modelFor", subject: role, choice: pick.choice, confidence: probs2[0][1], probabilities: pick.probabilities ?? undefined, policy });
+      if (policy === "act") p.jevModels[role] = pick.choice;
+    }
     // Repo: the owner's explicit words, else Jev, else ask.
     const byWords = repoByWords(utterance, repos);
     const probs = jev.answers?.repo?.probabilities ?? null;
@@ -363,20 +560,81 @@ export function createShaper(deps: ShaperDeps) {
     return finish(p);
   }
 
-  return { shape, pending: () => pending.size };
+  return { shape, pending: () => pending.size, pickRoles: (text: string, template: RoleTemplate, override?: { builder?: AgentBinding | null; reviewer?: AgentBinding | null }) => pickRoles(text, template, {}, deps.prefs?.() ?? DEFAULT_CODING_PREFS, override), bindingFromWords: (text: string) => bindingFromWords(text, deps), prefs: () => deps.prefs?.() ?? DEFAULT_CODING_PREFS };
+}
+
+// A Windows drive path ("C:/Users/Nebula PC/.../BRIEF.md"). A folder name may hold spaces ("Nebula PC") when the next
+// word starts with a capital or a digit; a lower-case word ("and fix src/a.ts") ends the path, so a relative file
+// named after it is never swallowed. The last segment (the file) holds no space.
+const EXT = "ts|tsx|js|jsx|mjs|cjs|py|md|json|css|html|txt|sql|prisma|yml|yaml";
+// "*" is allowed so a glob ("C:/x/app/src/**") stays one token.
+const PATH_WORD = String.raw`[^\s\\/"'<>|?,;]+`;
+// A continuation word never holds ":" so a second drive path ("And C:/x.ts") starts a new match instead of joining this one.
+const PATH_CONT = String.raw`(?: [A-Z0-9][^\s\\/:"'<>|?,;]*)`;
+const PATH_SEG = String.raw`${PATH_WORD}${PATH_CONT}*`;
+// The file name may hold spaces too ("Read Me.md": capitalised words up to a known extension). A path cut short takes one
+// following capitalised word with it, so that word is never re-read as a file at the repo root.
+const WIN_ABS = new RegExp(
+  String.raw`([A-Za-z]:[\\/](?:${PATH_SEG}[\\/])*(?:(?!${PATH_WORD}\.(?:${EXT})(?![\w-]))${PATH_WORD}${PATH_CONT}{1,3}(?<=\.(?:${EXT}))(?![\w-])|${PATH_WORD})?)(?: [A-Z0-9][\w-]*(?![\w./\\:-]))?`,
+  "g",
+);
+const POSIX_ABS = /(?<![\w.~:/\\-])~?(?:\/[\w.@-]+)+\/?/g;
+
+/**
+ * Absolute paths named in the words: taken out of the text (so a space in one never splits it into a relative
+ * file), and kept only when they sit inside the repo (as a repo-relative path). One outside the repo is never owned.
+ */
+export function absolutePathsIn(entry: Pick<RepoRegistryEntry, "canonicalPath">, text: string): { rest: string; inside: string[]; outside: string[] } {
+  const root = entry.canonicalPath.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const inside: string[] = [], outside: string[] = [];
+  const take = (m: string) => {
+    const norm = m.replace(/\\/g, "/").replace(/[.,;:!?)]+$/, "");
+    const low = norm.toLowerCase();
+    if (low.startsWith(root + "/") && !norm.includes("..")) inside.push(norm.slice(root.length + 1));
+    else outside.push(norm);
+    return " ";
+  };
+  const rest = text.replace(WIN_ABS, (_m: string, path: string) => take(path)).replace(POSIX_ABS, (m: string) => take(m));
+  return { rest, inside, outside };
 }
 
 /** A plan from the request's own words: only when it names files (else the planner or a question decides). */
-export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text: string): PlannerDraft | null {
-  const files = [...new Set([...text.matchAll(/\b((?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|md|json|css|html|txt|sql|prisma|yml|yaml))\b/g)].map((m) => m[1]))];
-  const dirs = [...new Set([...text.matchAll(/\b((?:[\w.-]+\/)+)(?:\*\*)?(?=[\s,.]|$)/g)].map((m) => `${m[1]}**`))];
+/** Whatever drafted the plan (words, planner), an absolute path is owned only when it is inside the repo, and then as a repo-relative path. */
+export function repoOwns(entry: Pick<RepoRegistryEntry, "canonicalPath">, owns: { globs: readonly string[]; newFiles: readonly string[] }): { globs: string[]; newFiles: string[] } {
+  const fix = (list: readonly string[]) => list.flatMap((f) => {
+    if (!/^(?:[A-Za-z]:[\\/]|[\\/]|~)/.test(f)) return [f];
+    const abs = absolutePathsIn(entry, f);
+    return abs.inside;
+  });
+  return { globs: fix(owns.globs).filter(Boolean), newFiles: fix(owns.newFiles).filter(Boolean) };
+}
+
+export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text0: string): PlannerDraft | null {
+  const FILE = /\b((?:[\w.-]+\/)*[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|py|md|json|css|html|txt|sql|prisma|yml|yaml))\b/g;
+  const DIR = /\b((?:[\w.-]+\/)+)(?:\*\*)?(?=[\s,.]|$)/g;
+  // "Leave src/a.test.ts alone" / "don't touch src/legacy/": what a clause says to leave is off limits, not owned. Read clause by clause, so
+  // "Fix src/a.ts but leave src/a.test.ts alone" gives a plan that owns a.ts and excludes the test, for files, folders and absolute paths alike (round 6).
+  const LEAVE = /\b(?:leave|don'?t (?:touch|change|edit|modify)|do not (?:touch|change|edit|modify)|without (?:touching|changing|editing|modifying))\b/i;
+  const CLAUSES = /(?<=[.!?])\s+|;\s*|,?\s+\bbut\b\s+|,\s*(?:and\s+)?(?=(?:leave|don'?t|do not|without)\b)|\s+and\s+(?=(?:leave|don'?t|do not|without)\b)/i;
+  const wanted = new Set<string>(), wantedDirs = new Set<string>(), offLimits = new Set<string>();
+  for (const clause of text0.split(CLAUSES)) {
+    const abs = absolutePathsIn(entry, clause);
+    const into = LEAVE.test(clause) ? offLimits : wanted;
+    const intoDirs = LEAVE.test(clause) ? offLimits : wantedDirs;
+    for (const p of abs.inside) { if (!p) continue; if (p.includes("*") || p.endsWith("/")) intoDirs.add(p.endsWith("/") ? `${p}**` : p); else into.add(p); }
+    for (const m of abs.rest.matchAll(FILE)) into.add(m[1]);
+    for (const m of abs.rest.matchAll(DIR)) intoDirs.add(`${m[1]}**`);
+  }
+  for (const f of [...wanted, ...wantedDirs]) offLimits.delete(f);
+  const files = [...wanted];
+  const dirs = [...wantedDirs];
   if (!files.length && !dirs.length) return null;
   const tests = entry.commands.filter((c) => c.kind === "test").map((c) => c.id);
   const typecheck = entry.commands.filter((c) => c.kind === "typecheck").map((c) => c.id);
   const checks = [...tests.slice(0, 1), ...typecheck.slice(0, 1)] as CommandId[];
   return {
     objective,
-    nonGoals: ["No changes outside the owned files", "No dependency changes"],
+    nonGoals: ["No changes outside the owned files", "No dependency changes", ...[...offLimits].map((f) => `Do not change ${f.replace(/\*\*$/, "")}`)],
     doneWhen: [
       ...checks.map((id, i) => ({ id: `c${i + 1}`, text: `${id} passes at the integrated commit`, evidence: (entry.commands.find((c) => c.id === id)?.kind === "typecheck" ? "typecheck" : "test") as DoneCriterion["evidence"], ref: id })),
       { id: `c${checks.length + 1}`, text: objective, evidence: "reviewer-confirms" as const },
@@ -387,24 +645,45 @@ export function heuristicPlan(entry: RepoRegistryEntry, objective: string, text:
   };
 }
 
-const MODEL_NAME: Record<string, string> = {
-  "claude-opus-5-5": "Opus", "claude-sonnet-5": "Sonnet", "claude-fable-5-1": "Fable", "claude-haiku-4-5": "Haiku",
-  "gpt-6-astra": "Codex", "codex/gpt-6-sol": "Hermes (GPT-6 Sol)", "openrouter/deepseek-v4-pro": "DeepSeek", "openrouter/mimo-v2.6-pro": "MiMo", "cline/deepseek-v4.1-flash": "Cline DeepSeek",
-};
-export const modelName = (b: AgentBinding | null) => (b ? MODEL_NAME[b.model] ?? b.model : "nobody");
+export function unregisteredRepoMention(text: string, repos: readonly RepoRegistryEntry[]): string | null {
+  if (repos.some((r) => /receptionist/i.test(r.id))) return null;
+  if (/\bmu-receptionist\b/i.test(text) || /\b(?:mu[- ]?)?receptionist (?:app|repo|repository|project|codebase|dashboard)\b/i.test(text))
+    return "The receptionist app isn't in the coding registry yet, so I can't draft that. Add mu-receptionist to .operator-data/coding/repos.json (its base branch and check commands) and ask again.";
+  return null;
+}
+
+export const START_PROMPT = "Start it?";
+export const STARTS_WITH_PROMPT = /(?:\bStart it\?|Say start when you want it built\.)\s*$/i;
+
+export function draftTitle(spec: Pick<TaskSpec, "objective" | "repo">): string {
+  let t = spec.objective
+    .replace(/\s*\([^)]*\)/g, "")
+    .replace(/,?\s+(?:in|on) the [a-z0-9-]+ repo\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.:;,\s]+$/, "");
+  if (t.length > 90) t = t.slice(0, 90).replace(/\s+\S*$/, "").replace(/[.:;,\s]+$/, "") + "…";
+  t = t || "coding job";
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** The paid OpenRouter routes by name (role-choice's table calls them plain "DeepSeek"/"MiMo", which sounds free). */
+const paidName = (model: string) => (model === "openrouter/deepseek-v4-pro" ? "DeepSeek Pro (paid)" : model === "openrouter/mimo-v2.6-pro" ? "MiMo Pro (paid)" : `${model} (paid)`);
+export const modelName = (b: AgentBinding | null) => (b ? (b.model.startsWith("openrouter/") ? paidName(b.model) : modelLabel(b.model)) : "nobody");
 
 /** "Draft ready: receptionist app, Opus builds, Opus reviews, tests and typecheck. Start it?" */
 export function spokenSummary(spec: TaskSpec): string {
-  const builders = spec.roles.filter((r) => r.role === "builder");
-  const reviewer = spec.roles.find((r) => r.role === "reviewer");
-  const tester = spec.roles.find((r) => r.role === "test-author");
-  const who = [
-    `${[...new Set(builders.map((b) => modelName(b.agent)))].join(" and ")} build${builders.length === 1 ? "s" : ""}`,
-    tester ? `${modelName(tester.agent)} writes tests` : null,
-    reviewer ? `${modelName(reviewer.agent)} reviews` : "no review",
-  ].filter(Boolean).join(", ");
-  const files = builders.flatMap((b) => [...b.owns.globs, ...b.owns.newFiles]).slice(0, 3).join(", ");
-  return `Draft ready: ${spec.repo.repoId}, branch ${spec.repo.jobBranch}. ${who}. It may change ${files || "nothing yet"}. Checks: ${spec.checks.join(" and ") || "none"}. Start it?`;
+  const roles = spec.roles ?? [];
+  // A Claude role on another account than the original says which (the original stays unannounced, as before).
+  const routes = roles.filter((r) => r.agent).map((r) => `${r.roleId}: ${r.agent!.model}${r.agent!.route === "claude-code-cli" && r.agent!.accountSlot !== "claude:max" ? ` on Claude account ${r.agent!.accountSlot.split("-").pop()}` : ""}${r.agent!.model.startsWith("cline/") ? " (free only)" : r.agent!.model.startsWith("openrouter/") ? " (PAID: metered per token through OpenRouter)" : r.agent!.route === "model-router" ? " (automatic fallback may use metered models)" : ""}`);
+  // A paid route is said before Start, in plain words, in addition to the route list.
+  const paid = [...new Set(roles.filter((r) => r.agent?.route === "model-router" && r.agent.model.startsWith("openrouter/")).map((r) => paidName(r.agent!.model)))];
+  const snapshot = spec.repo?.baseSha ? `Source snapshot: ${spec.repo.baseRef} at ${spec.repo.baseSha.slice(0, 12)}; uncommitted checkout changes are excluded. ` : "";
+  const who = choiceSentence(spec.roleChoices);
+  const namedRoles = who ? "" : roles.filter((r) => r.agent).map((r) => `${modelName(r.agent)} ${r.role === "builder" ? "builds" : r.role === "reviewer" ? "reviews" : "writes tests"}`).join(", ");
+  const roleText = (who || namedRoles).replace(/[.!?\s]+$/, "");
+  const repo = spec.repo?.repoId ? `${spec.repo.repoId} — ` : "";
+  return "Draft ready: " + repo + draftTitle(spec) + ". " + snapshot + (routes.length ? `Selected routes: ${routes.join("; ")}. ` : "") + (paid.length ? `Paid route: ${paid.join(" and ")} costs money per token through OpenRouter, so check that is what you want before you say start. ` : "") + (roleText ? `${roleText}. ` : "") + START_PROMPT;
 }
 
 export { slugOf };

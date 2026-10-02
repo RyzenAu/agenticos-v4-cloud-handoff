@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFil
 import { join } from "node:path";
 import { peopleFile, readPeople, type Person } from "./remote-access";
 import { DEFAULT_SHORTHAND } from "./shorthand";
+import { dataDirFor } from "./cloud/data-dir";
 
 /**
  * What the owner can customise about Jarvis from Settings → Jarvis: his shorthand, who can
@@ -16,7 +17,7 @@ const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i;
 const TELEGRAM_ID = /^\d{5,15}$/;
 
 function dataDir(root: string) {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   mkdirSync(dir, { recursive: true });
   return dir;
 }

@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { findLead, listLeads, logActivity, type Lead, type Status } from "./crm";
+import { dataDirFor } from "../cloud/data-dir";
 
 /** Same closed-for-good set as crm.ts's own CLOSED (not exported there) -- a closed lead's site
  *  is no longer worth watching for a buying-signal call. */
@@ -76,7 +77,7 @@ function blankState(): WatchState {
 }
 
 export function watchStatePath(root: string): string {
-  return join(root, ".operator-data", "watch-state.json");
+  return join(dataDirFor(root), "watch-state.json");
 }
 
 function readState(file: string): WatchState {

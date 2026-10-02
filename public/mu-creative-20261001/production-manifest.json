@@ -1,0 +1,242 @@
+{
+  "campaignId": "mu-creative-20261001",
+  "status": "rendered",
+  "generationBudgetUsd": 25,
+  "generationSpentUsd": null,
+  "generationSpendNote": "Footage: the four clips were generated through the Higgsfield API from the Studio on 1 Oct 2026 (4 Seedance 2.5 requests, 1 of them needing attention, and 1 Kling v3.0), before this round; their US$ cost is not readable from this PC (no balance endpoint) and must be read in the Higgsfield API console. Round 6 made no Higgsfield request. Narration: 1,865 characters of ElevenLabs speech (Scotty) on 2 Oct 2026; the key cannot read the account's quota or billing.",
+  "voice": {
+    "provider": "ElevenLabs",
+    "name": "Scotty",
+    "voiceId": "hIreuBly94QFepU63yel",
+    "model": "eleven_multilingual_v2",
+    "displayName": "Scotty - the friendly Australian male conversational narrator",
+    "category": "professional",
+    "recorded": true
+  },
+  "builtBy": {
+    "model": "claude-opus-5-5",
+    "account": "Claude Max 2",
+    "note": "Scripts, previews and manifest prepared. No speech, footage or paid generation was produced in this build."
+  },
+  "presentation": "public/mu-creative-20261001/index.html",
+  "claimEvidenceStatusKey": {
+    "scene-setting": "Story context only; makes no product claim.",
+    "illustrative-demonstration": "Shows how a configured client could work. Carries the Illustrative demonstration label; not a live product capture.",
+    "approved-positioning": "Matches the approved all-hours front desk positioning.",
+    "confirmed-only-after-calendar": "The word booked is used only after the calendar confirms. Needs per-client calendar integration tested during setup.",
+    "request-not-booking": "Shows a recorded request, clearly separate from a confirmed appointment.",
+    "approved-public-promise": "Matches the approved promise: booking, routing and texts are set up and tested before going live.",
+    "call-to-action": "Approved call to action: Book a 15-minute demo."
+  },
+  "films": [
+    {
+      "id": "main-receptionist",
+      "title": "The front desk that always answers",
+      "sector": "dental",
+      "targetSeconds": 90,
+      "allowedRangeSeconds": [
+        75,
+        95
+      ],
+      "story": "One weekday call to a busy dental practice: answered, qualified, booked only after the calendar confirms, and visible to the team.",
+      "scenes": [
+        {
+          "id": "main-01",
+          "durationSeconds": 7,
+          "narration": "It's Tuesday morning. The front desk is with a patient, and the phone rings again.",
+          "visual": "Shot dental-hero: slow forward dolly down an empty daylit dental corridor. Small ivory time stamp fades in: Tue 10:40 am. Small corner label: Illustrative demonstration.",
+          "claimEvidenceStatus": "scene-setting"
+        },
+        {
+          "id": "main-02",
+          "durationSeconds": 10,
+          "narration": "This time, it's answered straight away. The receptionist greets the caller in the practice's name, listens, and works out what they need.",
+          "visual": "Clean vector call card slides in over the corridor: Incoming call, then Answered. A thin gold line traces from the card towards the right of frame, starting the handoff path.",
+          "claimEvidenceStatus": "illustrative-demonstration"
+        },
+        {
+          "id": "main-03",
+          "durationSeconds": 14,
+          "narration": "A new patient, a chipped tooth, mornings only. It asks what your team would ask: the kind of visit, how soon, which times suit, and checks the answers against the practice's rules.",
+          "visual": "Three answers settle into the card one at a time as short typeset rows: New patient. Chipped tooth. Mornings. A small tag, Practice rules applied, ticks on after the third row.",
+          "claimEvidenceStatus": "illustrative-demonstration"
+        },
+        {
+          "id": "main-04",
+          "durationSeconds": 12,
+          "narration": "Then it checks the calendar. Only when the calendar confirms the slot does it say booked. Thursday, nine fifteen. Confirmed.",
+          "visual": "Gold line runs to a minimal week calendar. Status reads Checking calendar, pauses, then the Thursday 9:15 slot fills and the badge changes to Confirmed by calendar. The word Booked appears only after the badge.",
+          "claimEvidenceStatus": "confirmed-only-after-calendar"
+        },
+        {
+          "id": "main-05",
+          "durationSeconds": 11,
+          "narration": "At the desk, the team can see it all: who called, why, what was booked, and a short summary, without stopping what they're doing.",
+          "visual": "Line continues to a simple team view: caller, reason, confirmed booking and a two-line summary. Generous spacing, no invented metrics or staff names.",
+          "claimEvidenceStatus": "illustrative-demonstration"
+        },
+        {
+          "id": "main-06",
+          "durationSeconds": 12,
+          "narration": "And it works the way your practice does. Every call, or just overflow. Business hours, after hours, or alongside your staff. You choose.",
+          "visual": "A single 24-hour bar with four labelled settings lighting in turn: All calls, Alongside staff, After hours, Overflow. Each setting holds long enough to read.",
+          "claimEvidenceStatus": "approved-positioning"
+        },
+        {
+          "id": "main-07",
+          "durationSeconds": 14,
+          "narration": "Before anything goes live, we set up and test your booking, your call routing and your texts. Booking systems vary, so we confirm yours first.",
+          "visual": "Three-line checklist ticks in sequence: Booking tested, Routing tested, Texts tested. Beneath, one short readable line: Booking-system compatibility varies; we confirm yours during setup.",
+          "claimEvidenceStatus": "approved-public-promise"
+        },
+        {
+          "id": "main-08",
+          "durationSeconds": 10,
+          "narration": "M&U Ventures. An all-hours front desk for your business. Book a fifteen-minute demo.",
+          "visual": "Shot mu-brand-loop: gold light moving across black architectural material. M&U logo and Book a 15-minute demo typeset in the negative space during editing.",
+          "claimEvidenceStatus": "call-to-action"
+        }
+      ]
+    },
+    {
+      "id": "lead-capture",
+      "title": "From enquiry to a useful handoff",
+      "sector": "property",
+      "targetSeconds": 78,
+      "allowedRangeSeconds": [
+        65,
+        85
+      ],
+      "story": "A homeowner's selling enquiry on a Sunday evening becomes one structured handoff for an estate agent, with the request clearly recorded and nothing falsely booked.",
+      "scenes": [
+        {
+          "id": "lead-01",
+          "durationSeconds": 8,
+          "narration": "It's Sunday evening. A homeowner is thinking about selling, and they ring the agency they drove past this morning.",
+          "visual": "Shot property-hero: restrained lateral glide across an unbranded residential interior. Small time stamp: Sun 7:20 pm. Small corner label: Illustrative demonstration.",
+          "claimEvidenceStatus": "scene-setting"
+        },
+        {
+          "id": "lead-02",
+          "durationSeconds": 11,
+          "narration": "The receptionist answers in the agency's name. It's friendly, it listens, and it keeps the conversation on track.",
+          "visual": "Vector call card appears over the interior: Incoming call, then Answered. Card styling follows the agency concept palette, not M&U black and gold.",
+          "claimEvidenceStatus": "illustrative-demonstration"
+        },
+        {
+          "id": "lead-03",
+          "durationSeconds": 15,
+          "narration": "It gathers what an agent actually needs: the suburb, the kind of home, when they're hoping to sell, and the best way to get back to them.",
+          "visual": "A structured form fills field by field: Suburb, Property type, Timing, Preferred contact. Values are generic placeholders, never a real address.",
+          "claimEvidenceStatus": "illustrative-demonstration"
+        },
+        {
+          "id": "lead-04",
+          "durationSeconds": 12,
+          "narration": "Then it's straight with the caller. Their request is recorded. Nothing is booked yet, and no one has promised a price or a time.",
+          "visual": "Two status rows side by side. Request recorded: lit with a tick. Appointment booked: visibly empty and labelled Not booked. No valuation figure appears anywhere.",
+          "claimEvidenceStatus": "request-not-booking"
+        },
+        {
+          "id": "lead-05",
+          "durationSeconds": 13,
+          "narration": "When the agent next checks in, there's one tidy handoff waiting, not a vague voicemail: who called, about which property, how soon, and what they asked.",
+          "visual": "The form collapses into a single handoff card that travels along a line into the agency team view. Card fields: caller, suburb, timing, questions asked, status Request recorded.",
+          "claimEvidenceStatus": "request-not-booking"
+        },
+        {
+          "id": "lead-06",
+          "durationSeconds": 10,
+          "narration": "If your calendar is connected and tested, it can book the meeting too. If not, it records the request, and says so.",
+          "visual": "Split frame. Left: Calendar connected and tested, then Confirmed by calendar. Right: No calendar connected, then Request recorded. Equal visual weight.",
+          "claimEvidenceStatus": "confirmed-only-after-calendar"
+        },
+        {
+          "id": "lead-07",
+          "durationSeconds": 9,
+          "narration": "Every enquiry, turned into a useful next step. Book a fifteen-minute demo with M&U Ventures.",
+          "visual": "Shot mu-brand-loop with M&U logo and Book a 15-minute demo typeset in the negative space during editing.",
+          "claimEvidenceStatus": "call-to-action"
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "shot-dental",
+      "filename": "assets/dental-hero.mp4",
+      "purpose": "Opening shot of the main receptionist film and hero loop of the dental website preview.",
+      "aspectRatio": "16:9",
+      "durationSeconds": 5,
+      "prompt": "Empty contemporary dental practice, reception opening into a treatment corridor. Eye-level framing, centred one-point perspective, corridor leading towards soft window light. Materials: pale oak joinery, matte white walls, warm limestone floor, brushed stainless details, one green plant. Light: clear Australian morning daylight through large windows, soft natural shadows, neutral white balance. Camera: one slow, steady forward dolly of about one metre, no cuts, no shake. Realistic photographic look, 35mm lens, readable depth of field.",
+      "negativeRequirements": [
+        "No people, patients or staff",
+        "No dental treatment, instruments in use or clinical procedures",
+        "No logos, brand marks, readable signage or text",
+        "No lens flare, glow effects or particles",
+        "No warped or distorted architecture"
+      ]
+    },
+    {
+      "id": "shot-property",
+      "filename": "assets/property-hero.mp4",
+      "purpose": "Opening shot of the lead-capture film and hero loop of the property website preview.",
+      "aspectRatio": "16:9",
+      "durationSeconds": 5,
+      "prompt": "Unbranded contemporary Australian residential living room opening to a covered deck and garden. Composed architectural framing at chest height, level horizon, true verticals. Materials: light timber floor, off-white rendered walls, linen sofa, stone benchtop in the background, large sliding glass doors. Light: late-afternoon warm natural light with gentle falloff. Camera: one restrained lateral glide left to right of about half a metre, no cuts, no shake. Realistic architectural photography look, 24mm lens.",
+      "negativeRequirements": [
+        "No people",
+        "No for-sale signs, agency boards, logos or readable text",
+        "No recognisable real address, street or landmark",
+        "No exaggerated HDR, glow or particles",
+        "No warped furniture or bending lines"
+      ]
+    },
+    {
+      "id": "shot-trades",
+      "filename": "assets/trades-hero.mp4",
+      "purpose": "Hero loop of the trades website preview; available as a cutaway for later trades films.",
+      "aspectRatio": "16:9",
+      "durationSeconds": 5,
+      "prompt": "Clean, organised electrical trades workshop. Waist-height framing along a workbench with neatly coiled cable, unlabelled storage drawers, a pegboard of hand tools, a closed switchboard enclosure, and a ute tray just visible through an open roller door. Materials: galvanised steel, plywood benchtop, matte grey concrete floor. Light: bright, even daylight from the roller door with soft fill. Camera: one slow lateral move of about half a metre, no cuts, no shake. Realistic documentary look, 35mm lens.",
+      "negativeRequirements": [
+        "No people",
+        "No unsafe work, exposed live wiring, sparks or smoke",
+        "No logos, brand marks, readable signage or text",
+        "No clutter, mess or damaged equipment",
+        "No glow effects or particles"
+      ]
+    },
+    {
+      "id": "shot-brand",
+      "filename": "assets/mu-brand-loop.mp4",
+      "purpose": "M&U end card and brand background; typography is added during editing.",
+      "aspectRatio": "16:9",
+      "durationSeconds": 5,
+      "prompt": "Abstract architectural close-up: warm metallic gold light slowly sweeping across a near-black surface of fluted stone or brushed black metal. The left two-thirds of the frame stay dark and calm as negative space for typography. Colour: deep black near #08090b with restrained gold highlights near #c7a35a. Camera: locked off or an almost imperceptible drift; the motion comes from the light. Photographic material realism.",
+      "negativeRequirements": [
+        "No baked-in text, letters, numbers or logos",
+        "No robot heads, faces, figures or generic AI imagery",
+        "No particle clouds, bokeh, sparks or lens flares",
+        "No saturated or rainbow colour",
+        "No fast motion or cuts"
+      ]
+    }
+  ],
+  "rendered": {
+    "date": "2026-10-02",
+    "films": {
+      "main-receptionist": "assets/films/main-receptionist.mp4",
+      "lead-capture": "assets/films/lead-capture.mp4"
+    },
+    "captioned": {
+      "main-receptionist": "assets/films/main-receptionist-captioned.mp4",
+      "lead-capture": "assets/films/lead-capture-captioned.mp4"
+    },
+    "outstanding": [
+      "Owner watch-through with sound",
+      "Real M&U logo file on the end cards (typeset wordmark used)",
+      "No music bed: none is licensed"
+    ]
+  }
+}

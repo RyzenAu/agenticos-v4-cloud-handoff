@@ -31,6 +31,9 @@ export type Approval = {
   source: string;
   /** Live progress where one exists, e.g. "0 of 5 owner retest calls". */
   progress?: string;
+  /** File-backed business decision; live readiness gates use their own evidence controls. */
+  recordable?: boolean;
+  revision?: string;
 };
 
 export type ApprovalsFile = {

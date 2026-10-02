@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildDashboard } from "../receptionist/dashboard";
 import type { AgencyFeedState } from "../receptionist/types";
+import type { Route } from "playwright-core";
 import { draftDir, draftInvoice, draftProposal, invoiceData } from "../leads/sales-backoffice";
 import type { Lead } from "../leads/crm";
 import { receptionistConsistencyFixture } from "../../src/lib/business-economics";
@@ -31,10 +32,12 @@ const feed: AgencyFeedState = {
     bookings: { byStatus: { CONFIRMED: 200 }, total: 200, madeOnCalls: 200, sandbox: 0, upcoming: 20 },
     handoffs: { transfersByStatus: {}, alertsByReason: { NEW_BOOKING: 200 }, alertsByStatus: { SENT: 200 } },
     minutesThisMonth: { monthStart: new Date(NOW - 20 * 86_400_000).toISOString(), calls: 480, callMinutes: 1200, billableMinutesCurrentPeriod: 1200 },
-    readiness: { agentMapped: true, inboundNumberSet: true, calendarRequested: "GOOGLE", calendarInUse: "GOOGLE", calendarReason: "configured", liveCalendar: true, demoDiaryConfirmed: false, bookingOutcome: "confirmed", alertMailboxSet: true, transferEnabled: false, smsEnabled: false, retentionDays: 90, retellRetentionAligned: "unverified" },
+    readiness: { agentMapped: true, inboundNumberSet: true, calendarRequested: "GOOGLE", calendarInUse: "GOOGLE", calendarReason: "configured", liveCalendar: true, demoDiaryConfirmed: false, bookingOutcome: "confirmed", alertMailboxSet: true, transferEnabled: false, smsEnabled: false, retentionDays: 90, retellRetentionAligned: "unverified", goLive: null },
   }],
   deployment: { retellWebhookSecretSet: true, alertEmailChannelLive: true, cronSecretValid: true, trustProxyHeaders: true, transferExecutionEnabled: false },
-} as AgencyFeedState;
+  // A synthetic feed makes no go-live or QA claim: null is the contract's "feed didn't send it".
+  goLive: null, qaFlags: null,
+};
 const agent = { ok: true as const, name: "Synthetic Agent", voice: "voice-x", language: "en-AU", model: "model-x", published: true, webhook: true, webhookHost: "rx.example.test", webhookProbe: "protected" as const, modified: new Date(NOW - 3 * 86_400_000).toISOString(), prompt000: true, disclosure: true, recording: true, overseas: true, transfer: false, promptKnown: true, version: 3, llmVersion: 5 };
 const model = buildDashboard({
   now: NOW, providersReadAt: NOW, feed, agent,
@@ -59,7 +62,7 @@ const inv = invoiceData(lead, issued, "receptionist-professional");
 const fixture = receptionistConsistencyFixture();
 const codePath = {
   dashboardCommercial: model.commercial,
-  dashboardClients: (model as unknown as { clients: unknown }).clients,
+  dashboardClients: model.clients,
   invoiceDraft: { lines: inv.lines, notInvoiced: inv.notInvoiced, subtotal: inv.subtotal, gst: inv.gst, total: inv.total },
   fixture: { packageId: fixture.customer.packageId, billableMinutes: fixture.usage.billableMinutes, lines: fixture.expectedInvoice.lines, totals: fixture.expectedInvoice.totals, setupFee: fixture.expectedInvoice.setupFee, transfers: fixture.usage.transfers },
 };
@@ -67,7 +70,7 @@ writeFileSync(join(OUT, "code-path.json"), JSON.stringify(codePath, null, 2));
 console.log("code path written");
 
 // ── 2. Rendered ───────────────────────────────────────────────────────────────────────────────
-const { chromium } = await import("file:///C:/Users/Nebula%20PC/source/repos/AgenticOS-v4/node_modules/playwright-core/index.mjs");
+const { chromium } = await import("playwright-core");
 const WT = join(import.meta.dir, "..", "..");
 const home = mkdtempSync(join(tmpdir(), "mu-synthetic-home-"));
 const env = { ...process.env, ARGENTIC_PREVIEW: "1", AGENTIC_OS_NO_BACKGROUND: "1", USERPROFILE: home, HOME: home };
@@ -124,7 +127,7 @@ try {
   await workbench("after-hard-refresh");
   // Receptionist with the synthetic model.
   const r = await browser.newPage({ viewport: { width: 1440, height: 1000 }, colorScheme: "dark" });
-  await r.route("**/__receptionist/dashboard", (route: { fulfill: (o: unknown) => Promise<void> }) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...model, generatedAt: new Date().toISOString() }) }));
+  await r.route("**/__receptionist/dashboard", (route: Route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...model, generatedAt: new Date().toISOString() }) }));
   await r.goto(`${BASE}/receptionist`, { waitUntil: "commit" });
   await r.getByText("Commercial", { exact: true }).first().waitFor({ timeout: 60_000 });
   await r.waitForTimeout(1200);

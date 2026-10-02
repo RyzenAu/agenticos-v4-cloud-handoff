@@ -251,8 +251,8 @@ describe("AUDIT-F4 rows owned by Track 2 (pure)", () => {
   });
   test("F14 a whole-request stop is a stop; a longer request isn't", async () => {
     const { STOP_WORDS } = await import("./service");
-    for (const u of ["stop", "cancel that", "never mind", "Jarvis, stop.", "hold on"]) expect(STOP_WORDS.test(u)).toBe(true);
-    for (const u of ["stop the music and open notepad", "cancel my 3pm meeting"]) expect(STOP_WORDS.test(u)).toBe(false);
+    for (const u of ["stop", "cancel that", "never mind", "Jarvis, stop.", "hold on", "stop that task", "cancel the task", "stop the job."]) expect(STOP_WORDS.test(u)).toBe(true);
+    for (const u of ["stop the music and open notepad", "cancel my 3pm meeting", "stop everything"]) expect(STOP_WORDS.test(u)).toBe(false);
   });
 });
 
@@ -328,5 +328,17 @@ describe("REVIEW-T2 R4 optional: politeness after a URL isn't a step", () => {
     expect(planRules("open https://example.com please")).toMatchObject({ lane: "executor" });
     expect(planRules("open https://example.com, thanks")).toMatchObject({ lane: "executor" });
     expect(planRules("open https://example.com please and scroll down")).toMatchObject({ lane: "unsupported" });
+  });
+});
+
+describe("blankTabIn: the whole request is one blank tab", () => {
+  test("the phrasings that mean it, with or without the polite words", async () => {
+    const { blankTabIn, planRules } = await import("./plan");
+    for (const t of ["open Chrome and create a new tab", "Open Chrome, then make a new tab", "please open google chrome and open a new tab.", "open chrome and create a new tab please", "create a new tab", "open a new Chrome tab", "open a new tab in Chrome", "Jarvis, can you open Chrome and create a new tab?"]) expect(blankTabIn(t)).toBe(true);
+    expect(planRules("open Chrome and create a new tab")).toMatchObject({ lane: "executor", executor: "browser.navigate", args: { blank: true } });
+  });
+  test("anything more in the same breath is not this rule", async () => {
+    const { blankTabIn } = await import("./plan");
+    for (const t of ["open a new Chrome tab, go to YouTube and search for Sydney weather", "open Chrome and go to example.com", "create a new tab and send an email", "open Chrome", "open a new tab for the lead's website"]) expect(blankTabIn(t)).toBe(false);
   });
 });

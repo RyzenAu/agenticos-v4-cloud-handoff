@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ChevronRight } from "lucide-react";
-import { Section, StatusDot, type Tone } from "@/components/ds";
+import { StatusDot, type Tone } from "@/components/ds";
 import { useOperator } from "@/lib/operator";
 import { cn } from "@/lib/utils";
 import { HONEST_LABEL, HONEST_MEANING, sourceLine, tileHonestState, type HonestState } from "@/lib/honest-state";
@@ -60,7 +60,11 @@ export function HonestBadge({ state, className }: { state: HonestState; classNam
 /** "Source · last success 3 min ago" under a metric that isn't a SignalTile. */
 export function MetricSource({ source, lastSuccess, now, className }: { source?: string; lastSuccess?: string | number | null; now: number; className?: string }) {
   const line = sourceLine(source, lastSuccess, now);
-  return line ? <span className={cn("block text-xs leading-snug text-muted-foreground", className)}>{line}</span> : null;
+  return line ? (
+    <span className={cn("block text-xs leading-snug text-muted-foreground", className)}>
+      {line}
+    </span>
+  ) : null;
 }
 
 /**
@@ -110,20 +114,27 @@ export function SignalTile({
   quiet?: boolean;
 }) {
   // Setup required keeps a word the source gave ("Not connected") but never a number.
-  const stateText = state === "setup-required" ? (typeof value === "number" || value === null || value === undefined || value === "" ? STATE_TEXT[state] : undefined) : state ? STATE_TEXT[state] : undefined;
+  const stateText =
+    state === "setup-required"
+      ? typeof value === "number" || value === null || value === undefined || value === "" ? STATE_TEXT[state] : undefined
+      : state ? STATE_TEXT[state] : undefined;
   const empty = !stateText && (value === null || value === undefined || value === "");
   const freshAt = lastSuccess !== undefined ? lastSuccess : updatedAt;
   // The badge follows the tile's REAL state (REVIEW-T1 fix 5): no value is never "Live", and data older
   // than its stale limit is "Stale" whatever the fetch said.
   const honest = tileHonestState(state, { empty, at: freshAt, now, staleAfterMs });
   // A failed or unknown read never carries a tone; a stale one never claims success.
-  const shownTone = stateText ? (state === "failed" ? "danger" : undefined) : empty ? undefined : (honest === "stale" || honest === "simulated" || honest === "unknown") && tone === "success" ? undefined : tone;
+  const shownTone = stateText
+    ? state === "failed" ? "danger" : undefined
+    : empty ? undefined : (honest === "stale" || honest === "simulated" || honest === "unknown") && tone === "success" ? undefined : tone;
   const shown = stateText ?? (empty ? "—" : value);
   const body = (
     <>
       <span className="sh-signal-label">
         <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
-        {honest && !loading && !(quiet && honest === "live") && <HonestBadge state={honest} className="ml-auto shrink-0" />}
+        {honest && !loading && !(quiet && (honest === "live" || stateText)) && (
+          <HonestBadge state={honest} className="ml-auto shrink-0" />
+        )}
         {to && !quiet && <ArrowUpRight className="h-3 w-3 shrink-0" aria-hidden="true" />}
       </span>
       {loading ? (
@@ -138,16 +149,22 @@ export function SignalTile({
         </span>
       )}
       {hint && <span className="sh-signal-hint">{hint}</span>}
-      {source && !loading && <span className="sh-signal-hint sh-signal-source">Source: {source}</span>}
+      {source && !loading && (
+        <span className="sh-signal-hint sh-signal-source">Source: {source}</span>
+      )}
       {state === "failed" && !loading ? (
         // A failed read shows when the source last answered, never the failure time as "Updated just now".
         lastSuccess ? (
-          <span className="sh-signal-hint">{sourceLine(undefined, lastSuccess, now ?? Date.now())}</span>
+          <span className="sh-signal-hint">
+            {sourceLine(undefined, lastSuccess, now ?? Date.now())}
+          </span>
         ) : (
           <span className="sh-signal-hint">No successful read yet</span>
         )
       ) : (
-        freshAt !== undefined && now !== undefined && !loading && !(quiet && honest !== "stale") && <Freshness at={freshAt} now={now} staleAfterMs={staleAfterMs} className="sh-signal-hint" />
+        freshAt !== undefined && now !== undefined && !loading && !(quiet && honest !== "stale") && (
+          <Freshness at={freshAt} now={now} staleAfterMs={staleAfterMs} className="sh-signal-hint" />
+        )
       )}
     </>
   );
@@ -156,13 +173,18 @@ export function SignalTile({
     // Widget-grid form (L1): one card, the facts on top and ONE action at the foot, inside the card,
     // bottom-aligned like the Inbox source cards: the recovery when the read isn't ok, else Open.
     const pill = "ds-interactive inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-4 text-sm font-medium text-foreground hover:bg-surface-raised";
-    const action = needsRecovery && recovery ? (
-      recovery.to ? (
-        <Link to={recovery.to as never} className={pill}>{recovery.label}</Link>
-      ) : (
-        <button type="button" onClick={recovery.onClick} className={pill}>{recovery.label}</button>
-      )
-    ) : to ? (
+    const action =
+      needsRecovery && recovery ? (
+        recovery.to ? (
+          <Link to={recovery.to as never} className={pill}>
+            {recovery.label}
+          </Link>
+        ) : (
+          <button type="button" onClick={recovery.onClick} className={pill}>
+            {recovery.label}
+          </button>
+        )
+      ) : to ? (
       <Link to={to as never} search={search as never} className={pill} aria-label={`Open ${label}`}>
         Open <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
       </Link>
@@ -209,7 +231,14 @@ export function ExceptionList({ items }: { items: Exception[] }) {
         const inner = (
           <>
             <span className="mt-1.5 shrink-0">
-              <StatusDot tone={e.tone} label={<span className="sr-only">{e.tone === "danger" ? "Urgent" : e.tone === "warn" ? "Needs attention" : "Note"}</span>} />
+              <StatusDot
+                tone={e.tone}
+                label={
+                  <span className="sr-only">
+                    {e.tone === "danger" ? "Urgent" : e.tone === "warn" ? "Needs attention" : "Note"}
+                  </span>
+                }
+              />
             </span>
             <span className="min-w-0 flex-1 text-sm leading-snug text-foreground">{e.text}</span>
             {e.to && (
@@ -249,24 +278,28 @@ export function DrilldownList({ id, title }: { id: DestinationId; title?: string
   const items = visibleDrilldowns(destination, state.settings);
   if (!items.length) return null;
   return (
-    <Section title={title ?? `In ${destination.label}`}>
-      <ul className="sh-drill-grid">
+    <nav
+      aria-label={title ?? `${destination.label} tools`}
+      className="mt-8 border-t border-border pt-4"
+    >
+      <ul className="flex flex-wrap gap-x-5 gap-y-1">
         {items.map((d) => (
           <li key={`${d.to}${d.view ?? ""}`}>
-            <Link to={d.to as never} search={(d.view ? { view: d.view } : d.to === "/business" ? {} : undefined) as never} className="sh-row-link items-center">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-card text-muted-foreground">
+            <Link
+              to={d.to as never}
+              search={(d.view ? { view: d.view } : d.to === "/business" ? {} : undefined) as never}
+              title={d.purpose}
+              className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="shrink-0 text-muted-foreground">
                 <d.icon className="h-4 w-4" aria-hidden="true" />
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-foreground">{d.label}</span>
-                <span className="block line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">{d.purpose}</span>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span>{d.label}</span>
             </Link>
           </li>
         ))}
       </ul>
-    </Section>
+    </nav>
   );
 }
 

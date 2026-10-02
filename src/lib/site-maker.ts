@@ -69,6 +69,12 @@ export type SiteSkill = {
   label: string;
   /** One line: what it adds to the site. */
   does: string;
+  /**
+   * What the skill tells the builder, in one or two sentences. This is the brief the coding draft carries
+   * (siteBrief below), so the job doesn't depend on the builder's own session having the skill installed.
+   * Never mentions push, merge, deploy, publish or release: a role's instructions can't ask for those.
+   */
+  directive: string;
   group: SkillGroup;
   /** In the "top-tier" preset. */
   preset: boolean;
@@ -100,6 +106,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "mu-business-evidence",
     label: "Business evidence",
     does: "Every claim from public evidence; unknowns stay marked placeholders",
+    directive:
+      "Every claim comes from public evidence about this business (its own site, its listing, public registers). Anything you cannot verify stays a clearly marked placeholder: never invent staff, reviews, awards, prices or opening hours.",
     group: "craft",
     preset: true,
   },
@@ -107,6 +115,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "mu-art-direction",
     label: "Art direction",
     does: "A distinctive direction, not the generic AI look",
+    directive:
+      "Choose one distinctive art direction for this business (a specific type pairing, palette and layout idea) and hold it on every page. Avoid the generic AI-site look: purple gradients, a stock hero, three identical cards.",
     group: "craft",
     preset: true,
   },
@@ -114,6 +124,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "frontend-design",
     label: "Frontend design",
     does: "Intentional type, layout and colour choices",
+    directive:
+      "Make intentional type, spacing and colour choices; no template defaults.",
     group: "craft",
     preset: true,
   },
@@ -121,6 +133,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "impeccable",
     label: "Impeccable",
     does: "Polish: hierarchy, spacing, states and edge cases",
+    directive:
+      "Polish hierarchy, spacing, states (hover, focus, empty, error) and edge cases before you finish.",
     group: "craft",
     preset: true,
   },
@@ -128,6 +142,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "ui-ux-pro-max",
     label: "UI/UX Pro Max",
     does: "Palettes, type pairings and UX rules by industry",
+    directive:
+      "Use palette, type pairing and UX rules that suit this industry.",
     group: "craft",
     preset: false,
   },
@@ -135,6 +151,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "mu-concept-qa",
     label: "Concept QA",
     does: "Checks the rendered site at desktop and phone before handoff",
+    directive:
+      "Check the rendered pages at 1440 px and 390 px wide: no sideways scroll, no clipped text, readable contrast. Describe what you checked in your summary.",
     group: "craft",
     preset: true,
   },
@@ -142,6 +160,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "motion-ui",
     label: "Motion UI",
     does: "Purposeful transitions and micro-interactions",
+    directive:
+      "Motion is purposeful: transitions and micro-interactions that explain state, and a prefers-reduced-motion fallback for every animation.",
     group: "motion",
     preset: true,
   },
@@ -149,6 +169,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "motion-kit",
     label: "M&U motion kit",
     does: "Stat ring, CTA pulse, map pin, before/after wipe from the Motion library",
+    directive:
+      "Use the M&U motion kit (stat ring, CTA pulse, map pin, before/after wipe) where it fits; if the repo has none, build small equivalents locally.",
     group: "motion",
     preset: false,
   },
@@ -156,6 +178,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "anim-clip",
     label: "Animated clip",
     does: "Branded motion graphics from an approved script",
+    directive:
+      "Branded motion graphics only from an approved script; without one, leave a clearly marked placeholder for the clip.",
     group: "motion",
     preset: false,
   },
@@ -163,6 +187,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "copywriting",
     label: "Copywriting",
     does: "Headlines and sections that say why to book",
+    directive:
+      "Write headlines and section copy that say why to book, in plain Australian English.",
     group: "words",
     preset: true,
   },
@@ -170,6 +196,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "cro",
     label: "Conversion",
     does: "A clear path from first screen to booking",
+    directive:
+      "Give one clear path from the first screen to booking or calling, with one primary action per section.",
     group: "words",
     preset: false,
   },
@@ -177,6 +205,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "seo",
     label: "SEO",
     does: "Local search basics: titles, schema, speed",
+    directive:
+      "Local search basics: a title and description per page, LocalBusiness schema from verified facts only, fast images.",
     group: "words",
     preset: false,
   },
@@ -184,6 +214,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "accessibility",
     label: "Accessibility",
     does: "WCAG 2.2 AA: contrast, keyboard, screen readers",
+    directive:
+      "WCAG 2.2 AA: contrast, keyboard use, visible focus, alt text and form labels.",
     group: "words",
     preset: true,
   },
@@ -191,6 +223,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "generate-asset",
     label: "Generate assets",
     does: "Images or short clips from a connected provider",
+    directive:
+      "Paid image or clip generation is not available in this job: leave clearly marked placeholders and list in your summary what would be generated.",
     group: "assets",
     preset: false,
     paid: true,
@@ -199,6 +233,8 @@ export const SITE_SKILLS: readonly SiteSkill[] = [
     id: "mu-killer-site",
     label: "Killer site",
     does: "Generated hero film and photography (Higgsfield, GPT Image)",
+    directive:
+      "Generated hero film and photography (paid providers) are not run in this job: place labelled placeholders and describe the intended shots in your summary.",
     group: "assets",
     preset: false,
     paid: true,
@@ -214,6 +250,45 @@ const skillById = (id: string) => SITE_SKILLS.find((s) => s.id === id) ?? null;
 export function orderedSkills(ids: readonly string[]): SiteSkill[] {
   const set = new Set(ids);
   return SITE_SKILLS.filter((s) => set.has(s.id));
+}
+
+/**
+ * The brief a site draft gives its builder: one line per chosen skill (the skill's own directive), then the
+ * fixed limits. Pure. This is what "pre-filled from the skills" means for a coding draft: the builder gets
+ * the guidance in its instructions, not just the skill names.
+ */
+export function siteBrief(ids: readonly string[]): string {
+  const skills = orderedSkills(ids);
+  const lines = skills.map((s) => `- ${s.id}: ${s.directive}`);
+  return [
+    "Site brief, from the skills chosen for this job (apply every line):",
+    ...lines,
+    "Stay inside your owned files. Nothing goes live and nothing touches DNS.",
+  ].join("\n");
+}
+
+/** The skill ids a site request names ("Apply these skills: a, b."), in catalogue order. Pure. */
+export function skillsInRequest(request: string): string[] {
+  const m = /Apply these skills:\s*([a-z0-9,\s-]+?)\./i.exec(request);
+  if (!m) return [];
+  const asked = new Set(m[1].split(",").map((x) => x.trim().toLowerCase()));
+  return SITE_SKILLS.filter((s) => asked.has(s.id)).map((s) => s.id);
+}
+
+/**
+ * Is this request one the site maker built (or its spoken twin)? "Make a top-tier dental website for X …",
+ * "Make the Lantern Dental site top-tier …". The coding shaper then drafts it with the site plan. Pure.
+ */
+export function isSiteRequest(request: string): boolean {
+  const t = String(request ?? "").trim();
+  return /^Make (?:a top-tier .{1,60}? (?:website|site)\b|the .{1,90}? site top-tier\b)/.test(t) && /Stay local: nothing goes live, no DNS\./.test(t);
+}
+
+/** The first sentence of a site request: who it's for and where it's built. It becomes the job's objective. Pure. */
+export function siteObjective(request: string): string {
+  const t = String(request ?? "").replace(/\s+/g, " ").trim();
+  const end = /\.\s+(?=[A-Z])/.exec(t);
+  return (end ? t.slice(0, end.index) : t).replace(/[.\s]+$/, "").slice(0, 400);
 }
 
 // ── who it's for ─────────────────────────────────────────────────────────

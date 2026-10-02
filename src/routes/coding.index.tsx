@@ -12,5 +12,5 @@ export const Route = createFileRoute("/coding/")({
 
 function CodingIndex() {
   const { request } = Route.useSearch();
-  return <CodingList request={request} />;
+  return <CodingList key={request ?? "manual"} request={request} />;
 }

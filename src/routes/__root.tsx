@@ -12,15 +12,15 @@ import {
 import operatorCss from "../operator.css?url";
 import { MessageSquare } from "lucide-react";
 import { docTitle } from "@/components/shell/destinations";
-import { askOperator } from "@/lib/operator";
 import appCss from "../styles.css?url";
 import { AppSidebar, MobileNav } from "@/components/app-sidebar";
 // Overlays that poll the server start once the page's own data has arrived (shell/late.tsx).
 import { Late, LateAccountsHub, LateFloatingOracle, SettleWatcher } from "@/components/shell/late";
-import { JarvisChipSlot } from "@/components/shell/jarvis-slot";
+import { JarvisChipSlot, openJarvisText } from "@/components/shell/jarvis-slot";
 import { EARLY_REQUEST_TIMING_SCRIPT, InspectorDrawer, InspectorProvider } from "@/components/shell/inspector";
 import { HeaderMore } from "@/components/shell/header-more";
 import { HYDRATION_GUARD_SCRIPT, markHydrated } from "@/lib/hydration-click-guard";
+import { installMotionGuards } from "@/lib/ui-motion";
 import { useEffect } from "react";
 import { Breadcrumb } from "@/components/shell/breadcrumb";
 import { OperatorJobs } from "@/components/operator-jobs";
@@ -148,6 +148,9 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // First effect after hydration commits: replay any click the hydration guard caught.
   useEffect(markHydrated, []);
+  // One motion language (src/lib/ui-motion.ts): a hidden tab pauses every loop.
+  useEffect(() => installMotionGuards(), []);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const setupWorkspace = useRouterState({
     select: (state) => state.location.pathname === "/setup",
   });
@@ -194,16 +197,21 @@ function RootComponent() {
             <AppSidebar />
             <div className="flex flex-1 min-w-0 flex-col">
               <header className="sh-header sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur-md md:px-6">
-                <div className="flex min-w-0 items-center gap-2 text-sm">
+                <div className="flex shrink-0 items-center gap-2 text-sm">
                   <MobileNav />
                   <Breadcrumb />
                 </div>
-                <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+                <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
                   <CommandPaletteButton />
                   {/* The one Jarvis entry on every page: live progress, click to talk. */}
                   <JarvisChipSlot />
-                  <button className="op-header-ask" onClick={() => askOperator()} aria-label="Chat">
-                    <MessageSquare size={16} aria-hidden="true" /> <span className="hidden xl:inline">Chat</span>
+                  <button
+                    className="op-header-ask"
+                    onClick={openJarvisText}
+                    aria-label="Type a request"
+                  >
+                    <MessageSquare size={16} aria-hidden="true" />{" "}
+                    <span className="hidden xl:inline">Type a request</span>
                   </button>
                   {/* Live state stays in the bar. Below md these live in the navigation drawer (MobileNav mirrors them). */}
                   <div className="hidden items-center gap-1 md:flex">
@@ -221,7 +229,8 @@ function RootComponent() {
               <div className="ar-workspace-layout">
                 <main
                   id="op-main-content"
-                  className={websiteWorkspace ? "op-website-main flex-1 min-h-0" : "flex-1 overflow-x-hidden p-4 md:p-6"}
+                  key={pathname}
+                  className={websiteWorkspace ? "op-website-main flex-1 min-h-0" : "mo-enter flex-1 overflow-x-hidden p-4 md:p-6"}
                 >
                   <Outlet />
                 </main>

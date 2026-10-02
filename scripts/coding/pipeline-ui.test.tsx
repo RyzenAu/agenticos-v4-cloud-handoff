@@ -139,14 +139,36 @@ describe("rendering", () => {
         }}
       />,
     );
-    expect(html).toContain("Claude Code · Max subscription");
+    // An older server sends no sign-in check: the Claude row says unknown, never connected.
+    expect(html).toContain("Claude Max");
+    expect(html).toContain("Connection unknown");
+    expect(html).not.toContain(">Connected<");
     expect(html).toContain("Codex · openai-2 (Plus)");
-    expect(html).toContain("allowance not read yet");
+    expect(html).toContain("Usage and reset: unknown");
     expect(html).toContain("window not read");
     expect(html).toContain("Codex paused until --apply");
     expect(html).toContain('data-isolation="paused"');
     // An older server that doesn't report it: "not checked", never "protected".
     expect(renderToStaticMarkup(<AgentsCard error={null} data={{ accounts: [] }} />)).toContain("Codex isolation: not checked");
+  });
+  test("two Claude accounts: each shows its own connection, models and usage; unread usage is unknown", () => {
+    const html = renderToStaticMarkup(
+      <AgentsCard
+        error={null}
+        data={{
+          accounts: [
+            { accountSlot: "claude:max", provider: "anthropic", label: "Claude Max", plan: "claude-max-20x", profile: "default ~/.claude", installed: true, cliVersion: "2.1.280", connection: { state: "connected", reason: null, subscription: "max", checkedAt: null }, allowance: { windows: [{ label: "5-hour", usedPercent: 42, resetsAt: "2026-09-30T12:00:00Z" }], limitReached: false }, models: ["claude-opus-5-5", "claude-sonnet-5"], modelsVerified: ["claude-opus-5-5"] },
+            { accountSlot: "claude:max-2", provider: "anthropic", label: "Claude Max 2", plan: "claude-max-20x", profile: "own CLAUDE_CONFIG_DIR", installed: true, cliVersion: "2.1.280", connection: { state: "signed-out", reason: "not signed in on this profile", subscription: null, checkedAt: null }, allowance: null, models: ["claude-opus-5-5"], modelsVerified: [] },
+          ],
+        }}
+      />,
+    );
+    expect(html).toContain('data-account="claude:max" data-connection="connected"');
+    expect(html).toContain('data-account="claude:max-2" data-connection="signed-out"');
+    expect(html).toContain("Not connected: not signed in on this profile");
+    expect(html).toContain("ran here: Opus 5.5");
+    expect(html).toContain("none run on this account yet");
+    expect(html).toContain("Usage and reset: unknown");
   });
   test("repos: an empty registry says no job can start and where to add them", () => {
     expect(renderToStaticMarkup(<ReposCard repos={[]} error={null} />)).toContain("No repos are registered yet, so no job can start");
@@ -189,9 +211,26 @@ describe("the Coding page", () => {
     expect(html).toContain("Merge approval");
     expect(needsYouLine(j)).toContain("Not merged yet");
   });
+  test("the queue puts decisions before running work and recent completed jobs", async () => {
+    const { sortJobsForAction } = await import("../../src/components/coding/coding-list");
+    const done = job("completed", { id: "done", updatedAt: "2026-09-29T12:00:00Z" });
+    const working = job("building", { id: "working", updatedAt: "2026-09-29T10:00:00Z" });
+    const decision = job("awaiting_confirmation", { id: "decision", updatedAt: "2026-09-29T09:00:00Z" });
+    const ordered = sortJobsForAction([done, working, decision]);
+    expect(ordered.map((j) => j.id)).toEqual(["decision", "working", "done"]);
+    expect([done, working, decision].map((j) => j.id)).toEqual(["done", "working", "decision"]);
+  });
+  test("a failed refresh says the data is the last successful read (list and detail), never silently stale", () => {
+    const list = readFileSync(join(ROOT, "src/components/coding/coding-list.tsx"), "utf8");
+    const detail = readFileSync(join(ROOT, "src/components/coding/job-detail.tsx"), "utf8");
+    expect(list).toContain("The list below is the last successful read.");
+    expect(list).toContain("Job status unavailable");
+    expect(detail).toContain("Showing the last successful read");
+    expect(detail).toContain("showing {shown.length} of {history.length}");
+  });
   test("starting stays a person's clear Start bound to the digest (T3 rules unchanged)", () => {
     const src = readFileSync(join(ROOT, "src/components/coding/coding-list.tsx"), "utf8");
-    expect(src).toContain("codingClient.start(result.jobId, result.specDigest)");
+    expect(src).toContain("codingClient.start(currentResult.jobId, currentResult.specDigest)");
     expect(src).toContain("Start this job");
     // The example never drafts or starts on its own.
     expect(/useExample[\s\S]{0,200}codingClient\.(shape|start)/.test(src)).toBe(false);

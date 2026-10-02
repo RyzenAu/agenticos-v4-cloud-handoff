@@ -21,6 +21,7 @@ import {
   Landmark,
   ListChecks,
   Map as MapIcon,
+  Monitor,
   MessageSquare,
   Network,
   Orbit,
@@ -90,7 +91,7 @@ export const DESTINATIONS: readonly Destination[] = [
     label: "Jarvis",
     icon: AudioLines,
     to: "/jarvis",
-    purpose: "Talk, hand off work and watch it run. Jev decides; sends, payments and deletions wait for you.",
+    purpose: "Give your assistant a task by voice or text.",
     drilldowns: [
       { to: "/chat", label: "Chat", icon: MessageSquare, purpose: "Typed conversations and history." },
       { to: "/agents/hermes", label: "Hermes", icon: Bot, purpose: "The executor: sessions, skills, missions and models." },
@@ -106,7 +107,7 @@ export const DESTINATIONS: readonly Destination[] = [
     label: "Receptionist",
     icon: PhoneCall,
     to: "/receptionist",
-    purpose: "Is it safe to sell, what the calls flagged and what needs follow-up.",
+    purpose: "Calls, clients and launch readiness.",
     drilldowns: [
       { to: "/operations", label: "Packages & economics", icon: Receipt, purpose: "Package prices, margins, receipts and delivery checks." },
     ],
@@ -142,7 +143,7 @@ export const DESTINATIONS: readonly Destination[] = [
     label: "Finance",
     icon: Wallet,
     to: "/finance",
-    purpose: "Cash, invoices, costs and margins from authorised sources only.",
+    purpose: "Cash, invoices, costs and margins.",
     drilldowns: [
       { to: "/business", view: "finance", label: "Finances", icon: Landmark, purpose: "Stripe revenue and the finance snapshot." },
       { to: "/usage", label: "AI usage & spend", icon: Gauge, purpose: "Plan limits and AUD spend for every AI account." },
@@ -169,6 +170,7 @@ export const DESTINATIONS: readonly Destination[] = [
     purpose: "Models, tools, devices, usage and diagnostics.",
     drilldowns: [
       { to: "/models", label: "Models", icon: Cpu, purpose: "Every model route: free, subscription or metered, health, usage, cost and failures." },
+      { to: "/computers", label: "Computers", icon: Monitor, purpose: "Your paired PCs and the shared computers agents work on: state, who controls them, what they do." },
       { to: "/skills", label: "Skills", icon: Wand2, purpose: "Installed skills and what they do." },
       { to: "/skill-drafts", label: "Skill drafts", icon: ListChecks, purpose: "Skills waiting for review." },
       { to: "/settings", label: "Settings", icon: Settings, purpose: "Profile, connections and preferences." },
@@ -263,4 +265,3 @@ export function drilldownFor(to: string): Drilldown | undefined {
 
 /** Pages removed from the top level and where they went, for the brief and the redirect test. */
 export const REDIRECTS: Readonly<Record<string, string>> = { "/": "/business", "/today": "/business", "/workspace": "/business" };
-

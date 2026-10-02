@@ -26,9 +26,8 @@
 .os-setup-kicker {
   display: block;
   color: #c3b1dd;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 550;
-  letter-spacing: 0.24em;
   margin-bottom: 8px;
 }
 .os-setup-invitation h2 {
@@ -58,7 +57,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #bcb0cc;
 }
 .os-setup-stages i {
@@ -69,7 +68,7 @@
   place-items: center;
   border: 1px solid #b89cd344;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: #c9b1e4;
 }
 .os-setup-stages .done i {
@@ -169,7 +168,7 @@
     gap: 10px;
   }
   .os-setup-stages > span {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 @media (max-width: 650px) {
@@ -197,7 +196,7 @@
     gap: 18px;
   }
   .os-setup-stages > span {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 @media (prefers-reduced-motion: no-preference) {

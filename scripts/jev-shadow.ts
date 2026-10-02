@@ -14,6 +14,7 @@
 import { createHash } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** The one shared record shape from the Ministry report's "shared shadow-mode method". */
 export type ShadowRecord<TDecision = unknown, TAnswers = unknown> = {
@@ -39,7 +40,7 @@ export type ShadowRecord<TDecision = unknown, TAnswers = unknown> = {
 };
 
 export function shadowDir(root: string): string {
-  return join(root, ".operator-data", "jev-shadow");
+  return join(dataDirFor(root), "jev-shadow");
 }
 
 /** A short, stable, irreversible fingerprint of an input — never the input itself. */

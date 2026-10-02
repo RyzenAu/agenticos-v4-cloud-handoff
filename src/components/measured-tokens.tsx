@@ -191,7 +191,7 @@ export function MeasuredTokens({
                 />
               </div>
               <div>
-                <div className="mb-1.5 flex justify-between text-xs uppercase tracking-wider text-muted-foreground">
+                <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
                   <span>Token flow</span>
                   <span className="normal-case tracking-normal tabular-nums">
                     <span className="text-foreground/80">{tok(open.inputTokens)} in</span>

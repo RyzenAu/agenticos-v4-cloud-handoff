@@ -152,9 +152,40 @@ function writeVerdict(ctx: PolicyContext, place: (raw: string) => Place, raw: un
 /** Things only run time knows: never guessed at. */
 const RUNTIME = [
   /\$\(/, /`/, /\$\{/, /\$[A-Za-z_][A-Za-z0-9_]*/, /%[A-Za-z_][A-Za-z0-9_()]*%/, /\$env:/i,
-  /(?:^|\s)-(?:EncodedCommand|enc|ec)(?:\s|$)/i, /\bInvoke-Expression\b|\biex\b/i, /\beval\b/, /\bsource\b\s/,
+  /(?:^|\s)-(?:EncodedCommand|enc|ec)(?:\s|$)/i,
   /\[Environment\]::/i, /\bGetFolderPath\b/i, /\bPush-Location\s+\$/i,
 ];
+/**
+ * Words that run code only as a command (`eval x`, `source f.sh`, `iex ...`). They are checked with plain
+ * double-quoted text blanked out: a commit message or echo argument saying "source note" is data, and refusing
+ * it stranded a coding job's staged commit (674f43, 1 Oct). A double-quoted string containing `$` or a backtick
+ * is left in place, and those are refused by the patterns above, so nothing that expands is hidden.
+ */
+const RUNTIME_WORDS = [/\bInvoke-Expression\b|\biex\b/i, /\beval\b/, /\bsource\b\s/];
+/**
+ * Blank quoted text with the SAME quote state machine splitSegments uses (a quote opens at the first quote character and closes at the
+ * same character; the other kind inside is plain text), so what is called data here is exactly what the splitter keeps whole.
+ * Single-quoted spans become '' always. Double-quoted spans become "" unless they hold $ or a backtick (they expand: left in place for
+ * the RUNTIME patterns). Returns null when a quote is left open. Backslash-escaped quotes are refused before this runs.
+ */
+export function blankQuoted(text: string): { expandable: string; commandText: string } | null {
+  let expandable = "", commandText = "", quote: string | null = null, span = "";
+  for (const c of text) {
+    if (quote) {
+      if (c === quote) {
+        if (quote === "'") { expandable += "''"; commandText += "''"; }
+        else { const kept = '"' + span + '"'; expandable += kept; commandText += /[$`]/.test(span) ? kept : '""'; }
+        quote = null; span = "";
+      } else span += c;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; continue; }
+    expandable += c; commandText += c;
+  }
+  return quote ? null : { expandable, commandText };
+}
+/** A backslash before a quote: bash escapes it, PowerShell and cmd do not, so the two readings disagree. Refused outright. */
+const ESCAPED_QUOTE = /\\["']/;
 /** Interpreters given code inline (`python -c`, `node -e` …): the code can do anything. */
 const INLINE_CODE = /^(?:python|python3|py|node|bun|deno|perl|ruby|php|lua)$/i;
 const INLINE_FLAGS = new Set(["-c", "-e", "--eval", "-p", "--print", "-r", "--exec"]);
@@ -537,8 +568,13 @@ export function commandVerdict(ctx: PolicyContext, text: string): PolicyVerdict 
     if (refusal) return deny("live-checkout", target, MESSAGES.live);
   }
   // Single-quoted text is literal in bash and PowerShell; PowerShell's constants aren't paths.
-  const expandable = inner.replace(/'[^']*'/g, "''").replace(/\$(?:null|true|false|LASTEXITCODE)\b|\$\?/gi, "");
-  if (RUNTIME.some((re) => re.test(expandable))) return deny("runtime-path", target, MESSAGES.runtime);
+  if (ESCAPED_QUOTE.test(inner)) return deny("runtime-path", target, MESSAGES.runtime);
+  const blanked = blankQuoted(inner);
+  if (!blanked) return deny("runtime-path", target, MESSAGES.runtime);
+  const constants = (t: string) => t.replace(/\$(?:null|true|false|LASTEXITCODE)\b|\$\?/gi, "");
+  const expandable = constants(blanked.expandable);
+  const commandText = constants(blanked.commandText);
+  if (RUNTIME.some((re) => re.test(expandable)) || RUNTIME_WORDS.some((re) => re.test(commandText))) return deny("runtime-path", target, MESSAGES.runtime);
   const segments = splitSegments(inner);
   if (!segments) return deny("runtime-path", target, MESSAGES.runtime);
   const place = placer(ctx);

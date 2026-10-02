@@ -6,24 +6,33 @@
 // orchestrator's own runs only; unknown usage is "unknown", never 0; a blocked role shows its reset time.
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, CircleSlash, GitBranch, Pause, Play, Square, XCircle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, EmptyState, Notice, Section, Segmented, StatusDot, Surface, fmtCount, fmtRelative } from "@/components/ds";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Badge, Button, Disclosure, EmptyState, Notice, ConnectionState, Section, Segmented, StatusDot, Surface, fmtCount, fmtRelative } from "@/components/ds";
 import {
   ACTIVE_STATES,
   codingClient,
   elapsed,
   followJob,
-  jobStateLabel,
+  jobLabel,
   modelLabel,
   runStateLabel,
   testsSummary,
+  type CodingAccounts,
   type CodingEvent,
   type JobView,
 } from "@/lib/coding-client";
+import { glanceOf, nextLabel, reassignChoices } from "@/lib/coding-glance";
+import { FailedTests } from "./failed-tests";
 import { pipelineFor } from "@/lib/coding-pipeline";
 import { PipelineLane } from "./pipeline-lane";
+import { JobGlance } from "./job-glance";
+import { isPaidBinding } from "../../../scripts/coding/pause-reason";
+import { JobSummary } from "./job-summary";
+import { SupersedeControl } from "./supersede-control";
+import { CodingWorkspace } from "./job-workspace";
 import { NotFoundPanel } from "@/components/shell/not-found-panel";
 import { fmtTime } from "@/lib/format";
+import { ACTIVITY_FILTERS, codingActivity, type ActivityFilter } from "@/lib/coding-activity";
 
 export type CodingTab = "plan" | "progress" | "changes" | "tests" | "review" | "usage" | "handoff";
 const TABS: readonly { value: CodingTab; label: string }[] = [
@@ -37,6 +46,10 @@ const TABS: readonly { value: CodingTab; label: string }[] = [
 ];
 
 export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string }) {
+  return <CodingJobSession key={jobId} jobId={jobId} tab={tab} />;
+}
+
+function CodingJobSession({ jobId, tab }: { jobId: string; tab?: string }) {
   const [view, setView] = useState<JobView | null>(null);
   const [events, setEvents] = useState<CodingEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +58,14 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
   const [notice, setNotice] = useState<string | null>(null);
   // Stop is two clicks (REVIEW-T3): it ends every agent, and on a pending merge it withdraws the approval.
   const [confirmStop, setConfirmStop] = useState(false);
+  // Accounts for the reassign-on-Resume choice, read only while the job waits on the owner.
+  const [accounts, setAccounts] = useState<CodingAccounts | null>(null);
+  const [choiceKey, setChoiceKey] = useState<string | null>(null);
+  // One click is one request: a double click never starts a second Resume.
+  const inFlight = useRef(false);
+  const [paidOk, setPaidOk] = useState(false);
+  // Events, prompts and diagnostics sit behind Details; a deep link to a tab opens them.
+  const [detailsOpen, setDetailsOpen] = useState(!!tab);
   const current = (TABS.some((t) => t.value === tab) ? tab : "progress") as CodingTab;
   const navigate = useNavigate();
 
@@ -61,6 +82,14 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
 
   useEffect(() => { void reload(); }, [reload]);
 
+  const waitingState = view?.job.state;
+  useEffect(() => {
+    if (waitingState !== "needs_owner" && waitingState !== "blocked_allowance") return;
+    let live = true;
+    codingClient.accounts().then((a) => { if (live) setAccounts(a); }, () => { if (live) setAccounts(null); });
+    return () => { live = false; };
+  }, [waitingState, jobId]);
+
   // Live events; each new state/diff/test/review/gate/apply refreshes the job document.
   useEffect(() => {
     if (!view) return;
@@ -74,6 +103,8 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
   }, [jobId, !!view]);
 
   async function act(label: string, fn: () => Promise<unknown>, done?: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(label);
     setNotice(null);
     try {
@@ -83,6 +114,30 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
     } catch (e) {
       setNotice((e as Error).message);
     } finally {
+      inFlight.current = false;
+      setBusy(null);
+    }
+  }
+
+  // Unlike act(), a refusal is thrown back to the form so what the owner typed stays put.
+  async function supersede(ref: string, reason: string) {
+    if (inFlight.current) throw new Error("Another action is still running. Try again in a moment.");
+    inFlight.current = true;
+    setBusy("supersede");
+    setNotice(null);
+    try {
+      await codingClient.supersede(jobId, ref, reason);
+      try {
+        setView(await codingClient.job(jobId));
+        setError(null);
+        setNotice(`Marked superseded by ${ref}. The history is kept.`);
+      } catch {
+        // The mark is recorded; the page just could not re-read it. Say that, not a success that may be stale.
+        setNotice(null);
+        setError("It was marked superseded, but this page could not re-read the job. Reload to see it.");
+      }
+    } finally {
+      inFlight.current = false;
       setBusy(null);
     }
   }
@@ -92,27 +147,35 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
   if (error && !view) return <Notice tone="danger" title="Couldn't load this coding job">{error}</Notice>;
   if (!view) return <div role="status" aria-busy="true" className="text-sm text-muted-foreground">Loading the coding job…</div>;
   const job = view.job;
-  const state = jobStateLabel(job.state);
+  const state = jobLabel(job);
   const running = (ACTIVE_STATES as string[]).includes(job.state);
   const resumable = ["interrupted", "blocked_allowance", "needs_owner"].includes(job.state);
   const pendingInputs = job.runs.filter((r) => r.state === "needs_input" && r.pendingInput);
+  const glance = glanceOf(view);
+  const paidModels = [...new Set(job.spec.roles.filter((r) => isPaidBinding(r.agent)).map((r) => r.agent!.model))];
+  const options = glance.moveRole && accounts ? reassignChoices(job, glance.moveRole, accounts, Date.now(), view.events) : null;
+  const chosen = options?.options.find((o) => o.key === choiceKey) ?? options?.options.find((o) => o.key === options.defaultKey) ?? null;
+  const resumeText = nextLabel(job, chosen);
+  const doResume = () => act("resume", () => (glance.moveRole && chosen && !chosen.same
+    ? codingClient.resume(job.id, { roleId: glance.moveRole, reassignTo: { route: chosen.route, model: chosen.model, accountSlot: chosen.accountSlot } })
+    : codingClient.resume(job.id)), chosen && !chosen.same ? `Moved to ${chosen.accountLabel}. Continuing from the step that needs work.` : "Continuing from the step that needs work.");
   const setTab = (t: CodingTab) => void navigate({ to: "/coding/$jobId", params: { jobId }, search: { tab: t } as never, replace: true });
 
   const actions = (
     <>
       {job.state === "awaiting_confirmation" && (
-        <Button disabled={!!busy} onClick={() => act("start", () => codingClient.start(job.id, view.specDigest), "Started.")}>
+        <Button disabled={!!busy || (paidModels.length > 0 && !paidOk)} onClick={() => act("start", () => codingClient.start(job.id, view.specDigest), "Started.")}>
           <Play className="h-4 w-4" aria-hidden="true" /> Start this job
         </Button>
       )}
       {running && view.liveRoles.length > 0 && (
         <Button variant="outline" disabled={!!busy} onClick={() => act("pause", () => codingClient.interrupt(job.id), "Paused. Resume continues the same agent sessions.")}>
-          <Pause className="h-4 w-4" aria-hidden="true" /> Pause
+          <Pause className="h-4 w-4" aria-hidden="true" /> Pause to take over
         </Button>
       )}
       {resumable && (
-        <Button disabled={!!busy} onClick={() => act("resume", () => codingClient.resume(job.id), "Resumed. Nothing that already ran is repeated.")}>
-          <Play className="h-4 w-4" aria-hidden="true" /> Resume
+        <Button className="lg:hidden" disabled={!!busy} onClick={doResume}>
+          <Play className="h-4 w-4" aria-hidden="true" /> {resumeText}
         </Button>
       )}
       {!["completed", "failed", "cancelled"].includes(job.state) && !confirmStop && (
@@ -135,14 +198,14 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
   );
 
   return (
-    <div className="min-w-0 max-w-[1320px] pb-24 [overflow-wrap:anywhere] lg:pb-0">
+    <div className="ds-detail min-w-0 max-w-[1320px] pb-24 [overflow-wrap:anywhere] lg:pb-0">
       <Link to="/coding" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Coding
       </Link>
       <header className="mb-6 flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={state.tone}>{state.label}</Badge>
-          <StatusDot tone={live === "live" ? "success" : live === "polling" ? "info" : "neutral"} label={live === "live" ? "Live" : live === "polling" ? "Updating every 2 s" : "Reconnecting…"} />
+          <ConnectionState state={live === "live" || live === "polling" ? "live" : "reconnecting"} label={live === "live" ? "Live" : live === "polling" ? "Updating every 2 s" : "Reconnecting…"} />
           <span className="text-xs text-muted-foreground">Elapsed {elapsed(job.createdAt, ["completed", "failed", "cancelled"].includes(job.state) ? job.updatedAt : null)} · updated {fmtRelative(job.updatedAt)}</span>
         </div>
         <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em]">{job.spec.objective}</h1>
@@ -157,15 +220,32 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
           <li><button type="button" className="ds-interactive rounded-full bg-inset px-3 py-1 hover:bg-surface-raised" onClick={() => setTab("tests")}>Tests: {testsSummary(job).text}</button></li>
           <li><button type="button" className="ds-interactive rounded-full bg-inset px-3 py-1 hover:bg-surface-raised" onClick={() => setTab("review")}>Review: {job.review ? (job.review.verdict === "approve" ? "approved" : job.review.verdict === "request-changes" ? "changes requested" : "couldn't assess") : "none yet"}</button></li>
         </ul>
-        <div className="hidden flex-wrap gap-2 lg:flex">{actions}</div>
         {notice && <Notice tone="info">{notice}</Notice>}
+        {error && <Notice tone="warn" title="Couldn't refresh this job">{error} Showing the last successful read; it retries when you act or the job changes.</Notice>}
         {job.state === "interrupted" && <Notice tone="warn" title="Interrupted: nothing was replayed">The OS restarted or the job was paused. Resume continues on the same agent sessions after they re-read the worktree.</Notice>}
-        {job.state === "blocked_allowance" && (
-          <Notice tone="warn" title="Paused at an account limit">
-            {job.runs.filter((r) => r.state === "blocked_allowance").map((r) => `${r.roleId} on ${r.binding.accountSlot}: ${r.error?.message ?? "limit reached"}`).join(" ")} Resume after the reset, or resume with another model.
-          </Notice>
-        )}
       </header>
+
+      {job.state === "awaiting_confirmation" && paidModels.length > 0 && (
+        <Notice tone="warn" title="This job uses a paid route" className="mb-6">
+          <span data-testid="paid-notice">{paidModels.join(", ")} costs money per token through OpenRouter.</span>
+          <label className="mt-3 flex min-h-11 items-center gap-3 text-sm text-foreground">
+            <input type="checkbox" className="size-5" checked={paidOk} onChange={(e) => setPaidOk(e.target.checked)} />
+            I understand this route is paid
+          </label>
+        </Notice>
+      )}
+      {job.supersededBy && (
+        <Notice tone="info" title={`Superseded by ${job.supersededBy.ref}`} className="mb-6">
+          <span data-testid="superseded-note">{job.supersededBy.reason}. Marked {fmtRelative(job.supersededBy.at)} by {job.supersededBy.by}. The history and worktrees are kept; this job can no longer be resumed or applied.</span>
+          <div className="mt-3"><Button variant="outline" disabled={!!busy} onClick={() => act("unsupersede", () => codingClient.unsupersede(job.id), "Took the superseded mark back.")}>Unmark superseded</Button></div>
+        </Notice>
+      )}
+      <JobGlance glance={glance} state={job.state} choices={options ? options.options : glance.moveRole ? null : []} choiceKey={chosen?.key ?? null} onChoice={setChoiceKey} nextLabel={resumeText} onNext={doResume} busy={!!busy} resumable={resumable} />
+      <SupersedeControl view={view} busy={!!busy} onSupersede={supersede} />
+
+      <CodingWorkspace view={view} events={events} actions={<span className="hidden flex-wrap gap-2 lg:contents">{actions}</span>} onOpenTab={(t) => { setDetailsOpen(true); setTab(t); }}>
+        <JobSummary bare view={view} onOpenTab={(t) => { setDetailsOpen(true); setTab(t); }} />
+      </CodingWorkspace>
 
       {/* The job's lane: draft → plan → builder → tests → independent review → merge approval (W-B). */}
       <section className="mb-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6" aria-label="Where this job is">
@@ -186,6 +266,7 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
+          <Disclosure summary={<span className="font-medium">Details: events, prompts and diagnostics</span>} meta={TABS.find((t) => t.value === current)?.label} open={detailsOpen} onOpenChange={setDetailsOpen}>
           <Segmented value={current} options={TABS} onChange={setTab} ariaLabel="Coding job sections" className="mb-4 max-w-full overflow-x-auto" />
           {current === "progress" && <Progress events={events} />}
           {current === "plan" && <Plan view={view} />}
@@ -194,6 +275,7 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
           {current === "review" && <Review view={view} />}
           {current === "usage" && <Usage view={view} />}
           {current === "handoff" && <HandoffView view={view} events={events} />}
+          </Disclosure>
         </div>
         <aside className="flex min-w-0 flex-col gap-4" aria-label="Agents and approvals">
           <Agents view={view} />
@@ -207,26 +289,42 @@ export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string })
   );
 }
 
-function Progress({ events }: { events: CodingEvent[] }) {
-  const shown = events.filter((e) => ["state", "step", "spoken", "policy", "input_request", "input_resolved", "error", "recovery", "gate", "approval_request", "apply", "handoff", "text"].includes(e.type)).slice(-200).reverse();
-  if (!shown.length) return <EmptyState title="No progress yet" body="Events appear here as the job runs." />;
+export function Progress({ events }: { events: CodingEvent[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState<ActivityFilter>("milestones");
+  const history = useMemo(() => codingActivity(events, filter), [events, filter]);
+  const shown = showAll ? history : history.slice(0, 20);
   return (
-    <ol className="flex flex-col gap-1.5" aria-label="Progress timeline">
-      {shown.map((e) => (
-        <li key={e.seq} className="flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm odd:bg-inset/60 sm:flex-row sm:gap-3">
-          <span className="shrink-0 text-xs text-muted-foreground sm:w-20">{fmtTime(new Date(e.at), { seconds: true })}<span className="sm:hidden"> · {e.roleId ?? "orchestrator"}</span></span>
-          <span className="hidden w-24 shrink-0 truncate text-xs text-muted-foreground sm:inline">{e.roleId ?? "orchestrator"}</span>
-          <span className="min-w-0 flex-1">{describe(e)}</span>
-        </li>
-      ))}
-    </ol>
+    <section aria-label="Progress timeline">
+      <Segmented ariaLabel="Activity detail" value={filter} options={ACTIVITY_FILTERS} onChange={(value) => { setFilter(value); setShowAll(false); }} className="mb-3 max-w-full overflow-x-auto" />
+      <p className="mb-3 text-sm text-muted-foreground" role="status">Newest first · showing {shown.length} of {history.length} matching loaded events</p>
+      {!history.length && <EmptyState title={events.length ? "No matching updates" : "No progress yet"} body={events.length ? "Choose All activity to see other recorded events." : "Updates appear here as the job runs."} />}
+      <ol className="flex flex-col gap-1.5">
+        {shown.map((e) => (
+          <li key={e.seq} className="flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1.5 text-sm odd:bg-inset/60 sm:flex-row sm:gap-3">
+            <span className="shrink-0 text-xs text-muted-foreground sm:w-20">{fmtTime(new Date(e.at), { seconds: true })}<span className="sm:hidden"> · {e.roleId ?? "orchestrator"}</span></span>
+            <span className="hidden w-24 shrink-0 truncate text-xs text-muted-foreground sm:inline">{e.roleId ?? "orchestrator"}</span>
+            <span className="min-w-0 flex-1">{describe(e)}</span>
+          </li>
+        ))}
+      </ol>
+      {history.length > 20 && (
+        <Button variant="outline" className="mt-4" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Show recent updates" : `Show all ${history.length} updates`}
+        </Button>
+      )}
+    </section>
   );
 }
 
 function describe(e: CodingEvent): string {
   const p = e.payload as any;
   switch (e.type) {
-    case "state": return p.scope === "job" ? `Job: ${p.from} → ${p.to}` : `Agent: ${p.from} → ${p.to} (${String(p.reason).replace(/_/g, " ")})`;
+    case "plan": return `Plan revision ${p.revision}: ${p.summary}`;
+    case "test": return `Test result recorded. Open Tests for the command and result.`;
+    case "review": return "Review recorded. Open Review for the findings.";
+    case "approval_resolved": return `Approval ${String(p.state).replace(/_/g, " ")}`;
+    case "state": return p.scope === "job" ? `Job moved to ${String(p.to).replace(/_/g, " ")}` : `Agent is ${runStateLabel(String(p.to)).label.toLowerCase()}${p.reason ? ` (${String(p.reason).replace(/_/g, " ")})` : ""}`;
     case "step": return p.detail ? `${p.label} — ${p.detail}` : p.label;
     case "spoken": return `Jarvis: “${p.line}”`;
     case "policy": return `Policy ${p.decision === "auto-allow" ? "allowed" : p.decision === "auto-deny" ? "refused" : "asked you about"} ${p.nativeKind} (${String(p.rule).replace(/-/g, " ")}): ${p.target}`;
@@ -339,10 +437,11 @@ function Tests({ view, onRerun, busy }: { view: JobView; onRerun: (id: string) =
                 <span className="text-xs text-muted-foreground">{t.sha === job.spec.repo.baseSha ? "baseline (base commit)" : `at ${t.sha.slice(0, 7)}`} · {(t.durationMs / 1000).toFixed(1)} s</span>
               </div>
               <code className="break-all text-xs text-muted-foreground">{t.argv.join(" ")}</code>
-              <p className="text-sm">{t.counts.passed ?? "unknown"} passed · {t.counts.failed ?? "unknown"} failed{t.counts.skipped !== null ? ` · ${t.counts.skipped} skipped` : ""}{t.failedTests?.length ? ` — failing: ${t.failedTests.join("; ")}` : ""}</p>
+              <p className="text-sm">{t.counts.passed ?? "unknown"} passed · {t.counts.failed ?? "unknown"} failed{t.counts.skipped !== null ? ` · ${t.counts.skipped} skipped` : ""}</p>
+              {t.exitCode !== 0 && <FailedTests failures={t.failures} names={t.failedTests} total={t.counts.failed} />}
               {t.baseline && <p className="text-xs text-muted-foreground">Baseline on {t.baseline.sha.slice(0, 7)}: exit {t.baseline.exitCode ?? "none"}, {t.baseline.failed ?? "unknown"} failed.</p>}
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={async () => { const k = `${t.output}`; if (open === k) return setOpen(null); setOpen(k); setOut(await codingClient.artefact(job.id, t.output).catch((e) => (e as Error).message)); }}>{open === t.output ? "Hide output" : "Show output"}</Button>
+                <Button variant="outline" size="sm" onClick={async () => { const k = `${t.output}`; if (open === k) return setOpen(null); setOpen(k); setOut(await codingClient.artefact(job.id, t.output).catch((e) => (e as Error).message)); }}>{open === t.output ? "Hide the full output" : "Show the full output"}</Button>
                 {t.sha === job.headSha && <Button variant="outline" size="sm" disabled={busy} onClick={() => onRerun(t.commandId)}>Run again</Button>}
               </div>
               {open === t.output && <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-inset p-2 text-xs" tabIndex={0}>{out.slice(-20_000)}</pre>}
@@ -425,11 +524,13 @@ function Agents({ view }: { view: JobView }) {
                   <StatusDot tone={s.tone} pulse={run?.state === "running"} label={s.label} />
                 </div>
                 <p className="text-xs text-muted-foreground">{modelLabel(run?.binding ?? role.agent)}{(run?.binding ?? role.agent) ? ` · ${(run?.binding ?? role.agent)!.accountSlot}` : ""}{run && run.attempt > 1 ? ` · attempt ${run.attempt}` : ""}</p>
-                {role.owns.globs.length + role.owns.newFiles.length > 0 && <p className="text-xs">Owns: <code className="break-all">{[...role.owns.globs, ...role.owns.newFiles].join(", ")}</code></p>}
-                {role.access === "read-only" && <p className="text-xs">Read-only</p>}
                 {lastStep && run?.state === "running" && <p className="text-xs">Now: {(lastStep.payload as { label: string }).label}</p>}
                 {run?.error && <p className="text-xs text-danger">{run.error.message}</p>}
-                {run?.nativeSessionId && <p className="text-xs text-muted-foreground">Session {run.nativeSessionId.slice(0, 8)}…{run.binding.route === "claude-code-cli" ? " (claude --resume)" : run.binding.route === "codex-app-server" ? " (Codex thread)" : ""}</p>}
+                <details className="mt-2"><summary className="cursor-pointer text-sm text-muted-foreground">Agent details</summary>
+                  {role.owns.globs.length + role.owns.newFiles.length > 0 && <p className="mt-2 text-sm">Owns: <code className="break-all">{[...role.owns.globs, ...role.owns.newFiles].join(", ")}</code></p>}
+                  <p className="mt-2 text-sm">{role.access === "read-only" ? "Read-only" : "Can edit its assigned files"}</p>
+                  {run?.nativeSessionId && <p className="mt-2 text-sm text-muted-foreground">Session {run.nativeSessionId.slice(0, 8)}…{run.binding.route === "claude-code-cli" ? " (claude --resume)" : run.binding.route === "codex-app-server" ? " (Codex thread)" : ""}</p>}
+                </details>
               </Surface>
             </li>
           );

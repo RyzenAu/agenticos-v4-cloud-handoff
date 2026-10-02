@@ -6,10 +6,10 @@ import type { TargetDevice } from "./types";
 // Long-poll edge cases, synthetic devices only.
 const pc: TargetDevice = { id: "mehroz-pc", owner: "mehroz", kind: "companion", label: "Mehroz's PC", aliases: ["pc"], primary: true };
 
-function setup() {
+function setup(observeWaitMs = 50) {
   const registry = staticRegistry([defaultHub(), pc]);
   registry.heartbeat(pc.id);
-  return new Dispatcher(registry);
+  return new Dispatcher(registry, Date.now, observeWaitMs);
 }
 
 test("a reconnecting companion's new poll releases the old one empty; the command goes to the new one", async () => {
@@ -50,6 +50,7 @@ test("only the device a command was sent to can complete it", async () => {
   const pending = d.submit({ personId: "mehroz", executor: "echo" }, { timeoutMs: 300 });
   const item = await d.next(pc.id, 0);
   expect(d.complete("usman-pc", (item as any).command.id, { ok: true, output: "forged" })).toBe(false);
-  expect(await pending).toMatchObject({ ok: false, reason: "Timed out waiting for the device." });
+  // Delivered, then silence (no result, no answer to "what happened?"): uncertain, never "done" and never "it didn't run".
+  expect(await pending).toMatchObject({ ok: false, uncertain: true, reason: expect.stringContaining("Timed out") });
   d.close();
 });

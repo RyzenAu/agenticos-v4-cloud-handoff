@@ -36,6 +36,7 @@ import { openCrm, crmPath } from "./crm";
 import type { DiscoveryDeps } from "./discovery";
 import { allWebsiteFindings, markWebsiteFlagDone, pendingWebsiteFlags } from "./phone-finder";
 import { rescanLead, type RescanChange } from "./rescan";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const CONCURRENCY = 3;
@@ -46,7 +47,7 @@ const CONCURRENCY = 3;
 const FROZEN_TOP_20 = new Set([194, 509, 532, 164, 188, 211, 218, 231, 292, 308, 309, 328, 330, 346, 409, 413, 429, 463, 479, 486]);
 
 function progressPath(root: string): string {
-  return join(root, ".operator-data", "reaudit-progress.json");
+  return join(dataDirFor(root), "reaudit-progress.json");
 }
 
 type Progress = { version: 1; startedAt: string; updatedAt: string; processedIds: number[]; total: number };
@@ -64,7 +65,7 @@ function loadProgress(root: string): Progress {
 }
 
 function saveProgress(root: string, progress: Progress): void {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   mkdirSync(dir, { recursive: true });
   progress.updatedAt = new Date().toISOString();
   const file = progressPath(root);

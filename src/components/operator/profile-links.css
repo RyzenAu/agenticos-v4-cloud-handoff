@@ -23,7 +23,7 @@
 .ws-profile-link-list small,
 .ws-profile-link-suggestion small {
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   overflow-wrap: anywhere;
 }
 .ws-profile-link-list a,
@@ -31,7 +31,7 @@
   color: var(--foreground);
   text-decoration: underline;
   text-underline-offset: 2px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   overflow-wrap: anywhere;
 }
 .ws-profile-link-list button {
@@ -52,7 +52,7 @@
   gap: 6px;
   min-width: 0;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ws-public-profiles :is(input, select) {
   width: 100%;
@@ -62,7 +62,7 @@
   background: var(--card);
   padding: 10px 11px;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ws-public-profiles :is(input, select, button, summary, a):focus-visible {
   outline: 2px solid var(--ring);
@@ -79,7 +79,7 @@
 }
 .ws-profile-link-finder > summary {
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
   padding: 8px 0;
 }
@@ -92,7 +92,7 @@
   border-top: 1px solid var(--border);
 }
 .ws-profile-link-suggestions > strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 .ws-profile-link-suggestions > p {

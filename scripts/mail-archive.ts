@@ -6,6 +6,7 @@ import { parseHTML } from "linkedom";
 import { classifyMessage } from "./account-connections";
 import { addressList } from "./gmail-mailbox";
 import type { InboxItem } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 type Provider = "gmail" | "outlook";
 type Sql = string | number | null;
@@ -137,7 +138,7 @@ export function mailArchive(root: string, options: { cacheBudgetBytes?: number; 
   const cacheBudgetBytes = options.cacheBudgetBytes ?? 100 * 1024 * 1024;
   const cacheTtlMs = options.cacheTtlMs ?? 7 * 86400000;
   const now = options.now || Date.now;
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const path = join(dir, "mail-archive.sqlite");
   const moduleName = process.versions.bun ? "bun:sqlite" : "node:sqlite";
@@ -347,7 +348,17 @@ export function mailArchive(root: string, options: { cacheBudgetBytes?: number; 
       // close(true) finalizes every prepared statement now; the default close()
       // leaves a zombie connection that keeps the file locked on Windows until
       // each Statement wrapper is garbage-collected.
-      if (!closed) { db.close(true); closed = true; }
+      if (closed) return;
+      try {
+        db.close(true);
+      } catch (error) {
+        // Bun on Linux throws "database is locked" from close(true) whenever a statement was prepared (reproduced with a bare
+        // table and one unrun prepare), with nothing else holding the file. Every write here is its own committed transaction,
+        // so nothing is pending. Fall back to the plain close, which succeeds there; if that also fails, the failure is real.
+        if (!/locked|busy/i.test((error as Error).message)) throw error;
+        db.close();
+      }
+      closed = true;
     },
   };
 }

@@ -8,13 +8,14 @@ import { join } from "node:path";
 import { ApprovalService } from "../approvals/service";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { JobService } from "./service";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type JobsRuntime = { approvals: ApprovalService; jobs: JobService; owner: boolean; recovered: { approvals: ReturnType<ApprovalService["recover"]> | null; jobs: ReturnType<JobService["recover"]> | null } };
 
 const runtimes = new Map<string, JobsRuntime>();
 
 export function storePaths(root: string) {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   return { approvals: join(dir, "approvals.sqlite"), jobs: join(dir, "jobs.sqlite") };
 }
 

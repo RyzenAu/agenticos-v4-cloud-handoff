@@ -7,6 +7,12 @@
  *   claude   one job: a Claude Opus builder edits ONE owned file, the orchestrator runs the check, an
  *            Opus reviewer reviews the exact sha, the done gate decides. Real receipts are printed.
  *   codex    the same job with a Codex builder, through the harness (A1-6 preflight applies).
+ *   claude2  (1 Oct 2026) one job on the account named by CODING_SMOKE_SLOT (default claude:max-2, read from
+ *            CODING_ACCOUNTS_FILE), a Sonnet 5.5 builder and a DIFFERENT-model reviewer (CODING_SMOKE_REVIEWER,
+ *            default claude-opus-5-5), in a throwaway repo whose check is a real `bun test`. The shared brief
+ *            (CODING_SHARED_CONTEXT_FILE) is injected exactly as the OS does. Nothing is merged or pushed.
+ *            CODING_SMOKE_TASK=bugfix runs it as a BUG FIX on a seeded repo with a real reproducible symptom (2 Oct 2026, track K):
+ *            the engineering guidance (guidance.ts) is delivered to each role and named in the receipts.
  *   resume   Codex thread/resume after an app-server restart: a text-only turn (every command denied by
  *            policy, read-only sandbox), the app-server exits, a NEW app-server resumes the same thread.
  *
@@ -16,8 +22,11 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { DEFAULT_ACCOUNTS } from "./accounts";
+import { DEFAULT_ACCOUNTS, loadAccounts } from "./accounts";
+import { loadSharedContext } from "./shared-context";
+import type { ClaudeAccountSlot, ClaudeModelId } from "./contracts";
 import type { RepoRegistry, RepoRegistryEntry, Uuid } from "./contracts";
+import { withGuidance } from "./guidance";
 import { createOrchestrator } from "./orchestrator";
 import { buildReceipt } from "./receipts";
 import { claudeRunner } from "./runners/claude";
@@ -64,6 +73,100 @@ function syntheticRepo(): RepoRegistryEntry {
   };
 }
 
+/** The throwaway repo for the claude2 job: a tiny TypeScript module with a REAL bun test as the check. */
+function bunRepo(): RepoRegistryEntry {
+  const canonical = join(base, "canonical");
+  mkdirSync(join(canonical, "src"), { recursive: true });
+  gitIn(canonical, "init", "-q", "-b", "main");
+  writeFileSync(join(canonical, ".gitignore"), "node_modules/\n");
+  writeFileSync(join(canonical, "package.json"), JSON.stringify({ name: "prog-d-throwaway", private: true, type: "module" }, null, 2) + "\n");
+  writeFileSync(join(canonical, "src", "greet.ts"), 'export const greet = (name: string): string => `Hello, ${name}!`;\n');
+  writeFileSync(join(canonical, "src", "greet.test.ts"), 'import { expect, test } from "bun:test";\nimport { greet } from "./greet";\n\ntest("greet", () => {\n  expect(greet("Ada")).toBe("Hello, Ada!");\n});\n');
+  writeFileSync(join(canonical, "README.md"), "# Throwaway repo for a harness job\nOnly src/greet.ts and src/greet.test.ts may change.\n");
+  gitIn(canonical, "add", "-A");
+  gitIn(canonical, "commit", "-q", "-m", "throwaway base");
+  mkdirSync(join(base, "wt"), { recursive: true });
+  return {
+    id: "throwaway" as never, description: "throwaway repo for a harness job", canonicalPath: canonical, defaultBaseRef: "main", worktreeParent: join(base, "wt"),
+    protectedBranches: ["main", "master", "production"], remotes: [],
+    commands: [{ id: "tw.test" as never, kind: "test", argv: ["bun", "--no-env-file", "test"], cwd: ".", timeoutMs: 120_000, counts: "bun" }],
+    nodeModules: "none", allowedPeople: ["usman" as never],
+  };
+}
+
+/** A throwaway TypeScript repo with a REAL, reproducible bug: the GST line of a GST-inclusive invoice (symptom: scripts/symptom.ts). */
+function bugRepo(): RepoRegistryEntry {
+  const canonical = join(base, "canonical");
+  mkdirSync(join(canonical, "src"), { recursive: true });
+  mkdirSync(join(canonical, "scripts"), { recursive: true });
+  gitIn(canonical, "init", "-q", "-b", "main");
+  const put = (path: string, lines: string[]) => writeFileSync(join(canonical, path), `${lines.join("\n")}\n`);
+  put(".gitignore", ["node_modules/"]);
+  put("package.json", [JSON.stringify({ name: "prog-k-invoice", private: true, type: "module" }, null, 2)]);
+  put("AGENTS.md", [
+    "# Invoice library",
+    "",
+    "- Money is always integer cents. Never use floating-point dollars.",
+    "- Every rounding goes through `roundCents` in src/money.ts; do not call Math.round on money anywhere else.",
+    "- Tests live beside the code as `*.test.ts` and call the public functions only.",
+  ]);
+  put("README.md", ["# Invoice library (throwaway repo for a harness job)", "", "Run the symptom: `bun scripts/symptom.ts`."]);
+  put("src/money.ts", [
+    "/** The one place money is rounded: half away from zero, to whole cents. */",
+    "export const roundCents = (value: number): number => Math.sign(value) * Math.round(Math.abs(value));",
+    "",
+    "export const formatMoney = (cents: number): string => `$${(cents / 100).toFixed(2)}`;",
+  ]);
+  put("src/invoice.ts", [
+    'import { formatMoney, roundCents } from "./money";',
+    "",
+    "export type Line = { sku: string; unitCents: number; qty: number; discountPct?: number };",
+    "export type Summary = { totalCents: number; gstCents: number; text: string };",
+    "",
+    "/** The line's price in cents after its percentage discount. Prices are GST-inclusive. */",
+    "export function lineTotalCents(line: Line): number {",
+    "  const gross = line.unitCents * line.qty;",
+    "  return roundCents(gross - (gross * (line.discountPct ?? 0)) / 100);",
+    "}",
+    "",
+    "/** Totals for an invoice. Australian GST is 10%, and every price here already includes it. */",
+    "export function invoiceSummary(lines: readonly Line[]): Summary {",
+    "  const totalCents = lines.reduce((sum, line) => sum + lineTotalCents(line), 0);",
+    "  const gstCents = roundCents(totalCents * 0.1);",
+    "  return { totalCents, gstCents, text: `Total ${formatMoney(totalCents)} (includes GST ${formatMoney(gstCents)})` };",
+    "}",
+  ]);
+  put("src/invoice.test.ts", [
+    'import { expect, test } from "bun:test";',
+    'import { lineTotalCents } from "./invoice";',
+    "",
+    'test("a discounted line is priced in whole cents", () => {',
+    '  expect(lineTotalCents({ sku: "A", unitCents: 1999, qty: 3, discountPct: 10 })).toBe(5397);',
+    "});",
+    "",
+    'test("a line with no discount is unit price times quantity", () => {',
+    '  expect(lineTotalCents({ sku: "B", unitCents: 500, qty: 2 })).toBe(1000);',
+    "});",
+  ]);
+  put("scripts/symptom.ts", [
+    'import { invoiceSummary } from "../src/invoice";',
+    "",
+    "// The customer's invoice: one line, 11000 cents ($110.00) GST-inclusive. Their accountant says the GST inside it is $10.00.",
+    'const s = invoiceSummary([{ sku: "CONSULT-1H", unitCents: 11000, qty: 1 }]);',
+    "console.log(s.text);",
+    'process.exit(s.text === "Total $110.00 (includes GST $10.00)" ? 0 : 1);',
+  ]);
+  gitIn(canonical, "add", "-A");
+  gitIn(canonical, "commit", "-q", "-m", "invoice library base");
+  mkdirSync(join(base, "wt"), { recursive: true });
+  return {
+    id: "invoice" as never, description: "throwaway invoice library for a harness bug fix", canonicalPath: canonical, defaultBaseRef: "main", worktreeParent: join(base, "wt"),
+    protectedBranches: ["main", "master", "production"], remotes: [],
+    commands: [{ id: "inv.test" as never, kind: "test", argv: ["bun", "--no-env-file", "test"], cwd: ".", timeoutMs: 120_000, counts: "bun" }],
+    nodeModules: "none", allowedPeople: ["usman" as never],
+  };
+}
+
 const OWNER = { personId: "usman" as never, via: "local" as const, deviceId: "usman-pc" as never, sessionId: "smoke" };
 
 async function job(builder: "claude" | "codex") {
@@ -73,7 +176,7 @@ async function job(builder: "claude" | "codex") {
   const liveBefore = canonicalSnapshot(LIVE_ROOT);
   const orch = createOrchestrator({
     store, registry: () => registry, accounts: () => DEFAULT_ACCOUNTS,
-    runners: { claude: claudeRunner(), codex: codexRunner(), router: routerRunner() },
+    runners: { claude: withGuidance(claudeRunner()), codex: withGuidance(codexRunner()), router: withGuidance(routerRunner()) },
     approvals: () => null, liveRoot: LIVE_ROOT, memory: null, fleetSink: null, inputTimeoutMs: 60_000,
     wallMsFor: () => 15 * 60_000,
   });
@@ -115,6 +218,82 @@ async function job(builder: "claude" | "codex") {
   store.close();
 }
 
+async function claude2() {
+  const slot = (process.env.CODING_SMOKE_SLOT ?? "claude:max-2") as ClaudeAccountSlot;
+  const reviewerModel = (process.env.CODING_SMOKE_REVIEWER ?? "claude-opus-5-5") as ClaudeModelId;
+  const builderModel = (process.env.CODING_SMOKE_BUILDER ?? "claude-sonnet-5-5") as ClaudeModelId;
+  const accountsFile = process.env.CODING_ACCOUNTS_FILE;
+  if (!accountsFile) throw new Error("Set CODING_ACCOUNTS_FILE to the accounts.json that names the slot (it is only read).");
+  const accounts = loadAccounts(accountsFile);
+  if (!accounts.claude.some((c) => c.slot === slot)) throw new Error(`${slot} is not in ${accountsFile}`);
+  if (slot === "claude:max") throw new Error("Refusing claude:max (its weekly window is full; this smoke is for the second account).");
+  const sharedFile = process.env.CODING_SHARED_CONTEXT_FILE;
+  const bugfix = process.env.CODING_SMOKE_TASK === "bugfix";
+  const entry = bugfix ? bugRepo() : bunRepo();
+  const registry: RepoRegistry = { version: 1, repos: [entry] };
+  const store = CodingStore.open(join(base, "coding-data"));
+  const liveBefore = canonicalSnapshot(LIVE_ROOT);
+  const orch = createOrchestrator({
+    store, registry: () => registry, accounts: () => accounts,
+    runners: { claude: withGuidance(claudeRunner()), codex: withGuidance(codexRunner()), router: withGuidance(routerRunner()) },
+    approvals: () => null, liveRoot: LIVE_ROOT, memory: null, fleetSink: null, inputTimeoutMs: 60_000,
+    wallMsFor: () => 15 * 60_000,
+    sharedContext: () => (sharedFile ? loadSharedContext(sharedFile) : null),
+  });
+  const spec = bugfix ? draftSpec({
+    requestedBy: OWNER, channel: "typed", utterance: "Fix this bug: the GST on our invoices is wrong.", entry,
+    objective: "Fix the bug where an invoice's GST line is wrong: a GST-inclusive $110.00 invoice says it includes GST $11.00, but it should say $10.00 (`bun scripts/symptom.ts` shows it and exits 1 until fixed).",
+    nonGoals: ["No refactors or renames", "Do not change how lines are priced"],
+    doneWhen: [
+      { id: "c1", text: "`bun scripts/symptom.ts` prints 'Total $110.00 (includes GST $10.00)' and exits 0", evidence: "reviewer-confirms" },
+      { id: "c2", text: "a regression test in src/invoice.test.ts covers the GST of a GST-inclusive invoice and inv.test passes", evidence: "test", ref: "inv.test" },
+    ],
+    roleTemplate: "build+review",
+    builders: [{ binding: claudeBinding(builderModel, "live", slot), owns: { globs: ["src/invoice.ts", "src/invoice.test.ts", "src/money.ts"], newFiles: [] } }],
+    reviewer: { binding: claudeBinding(reviewerModel, "live", slot) },
+    checks: ["inv.test" as never], dataClass: "synthetic",
+  }) : draftSpec({
+    requestedBy: OWNER, channel: "typed", utterance: "throwaway: add a farewell function with a test", entry,
+    objective: 'In src/greet.ts add an exported function farewell(name: string): string that returns `Goodbye, ${name}!` (keep greet unchanged), and add a test for it in src/greet.test.ts.',
+    nonGoals: ["No other files", "Do not change greet"],
+    doneWhen: [
+      { id: "c1", text: "src/greet.ts exports farewell(name) returning Goodbye, <name>!", evidence: "reviewer-confirms" },
+      { id: "c2", text: "src/greet.test.ts tests farewell and tw.test passes", evidence: "test", ref: "tw.test" },
+    ],
+    roleTemplate: "build+review",
+    builders: [{ binding: claudeBinding(builderModel, "live", slot), owns: { globs: ["src/greet.ts", "src/greet.test.ts"], newFiles: [] } }],
+    reviewer: { binding: claudeBinding(reviewerModel, "live", slot) },
+    checks: ["tw.test" as never], dataClass: "synthetic",
+  });
+  const { job: drafted, validation } = orch.draft(spec);
+  console.log("validation:", JSON.stringify(validation));
+  orch.confirmAndStart(drafted.id, OWNER, "typed", specDigest(spec));
+  const t0 = Date.now();
+  let last = 0;
+  for (;;) {
+    const j = store.getJob(drafted.id)!;
+    for (const e of store.events(drafted.id, last, 500)) {
+      last = e.seq;
+      if (["state", "step", "policy", "error", "spoken", "gate"].includes(e.type)) console.log(`[${e.seq}] ${e.type} ${e.roleId ?? ""} ${JSON.stringify(e.payload).slice(0, 220)}`);
+    }
+    if (!orch.running(drafted.id) && ["completed", "needs_owner", "failed", "cancelled", "blocked_allowance", "interrupted"].includes(j.state)) break;
+    if (Date.now() - t0 > 30 * 60_000) { orch.cancel(drafted.id); break; }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+  const done = store.getJob(drafted.id)!;
+  const receipts = store.events(drafted.id, 0, 5000).filter((e) => e.type === "usage").map((e) => e.payload);
+  const liveAfter = canonicalSnapshot(LIVE_ROOT);
+  console.log(JSON.stringify({
+    jobId: done.id, state: done.state, head: done.headSha, gate: done.gate, diff: done.diff, tests: done.tests.map((t) => ({ sha: t.sha, exitCode: t.exitCode, counts: t.counts })),
+    review: done.review && { verdict: done.review.verdict, findings: done.review.findings, criteria: done.review.criteria },
+    runs: done.runs.map((r) => ({ roleId: r.roleId, state: r.state, account: r.binding.accountSlot, requested: r.binding.model, session: r.nativeSessionId, error: r.error })),
+    receipts, liveCheckoutUntouched: sameSnapshot(liveBefore, liveAfter), canonicalStatus: gitIn(entry.canonicalPath, "status", "--porcelain").trim(),
+    patch: done.headSha ? gitIn(entry.canonicalPath, "diff", done.diff?.baseSha ?? "main", done.headSha) : null,
+  }, null, 2));
+  orch.close();
+  store.close();
+}
+
 async function resumeProbe() {
   const cwd = join(base, "probe");
   mkdirSync(cwd, { recursive: true });
@@ -142,5 +321,6 @@ async function resumeProbe() {
 mkdirSync(base, { recursive: true });
 console.log(`SYNTHETIC smoke dir: ${base}`);
 if (which === "claude" || which === "codex") await job(which);
+else if (which === "claude2") await claude2();
 else if (which === "resume") await resumeProbe();
-else console.error("claude | codex | resume");
+else console.error("claude | claude2 | codex | resume");

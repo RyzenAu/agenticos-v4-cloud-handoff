@@ -129,7 +129,7 @@ describe("F1-14 / F1-15 / F1-16: the deal block and the server check what they'r
     const ok = await api.handle("/leads/deal", "POST", { lead: l.id, expectedClose: "2026-10-15", by: "usman" }, P, false) as any;
     expect(ok.deal.record.expectedClose).toBe("2026-10-15");
     expect(() => validateLogBody({ lead: 1, outcome: "no_answer", next: "2026-02-30" })).toThrow("That follow-up date isn't valid.");
-    expect(validateLogBody({ lead: 1, outcome: "call_back", next: "2026-10-01" }).next).toBe(new Date("2026-10-01").toISOString());
+    expect(validateLogBody({ lead: 1, outcome: "call_back", next: "2026-10-01" }, new Date("2026-09-30T00:00:00Z")).next).toBe(new Date("2026-10-01").toISOString());
   }));
 
   test("call back needs a date; excluded and closed leads get no proposal or invoice", () => withApi(async (api, db, root) => {

@@ -12,6 +12,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { hermesRun, hudServices, redact } from "./hud-feed";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** Every action the rail knows. The client holds the wiring; the server only validates ids. */
 export const QUICK_ACTION_IDS = [
@@ -58,7 +59,7 @@ export function resolveBy(remote: { name: string } | null, requested: unknown) {
 }
 
 export function quickActionStore(root: string) {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   const file = join(dir, "quick-actions.json");
   const read = (): Stored => {
     try {

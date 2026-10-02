@@ -373,11 +373,11 @@ export default function DreamReplay({
       <div className="absolute top-0 inset-x-0 flex items-center justify-between px-6 py-4 z-10">
         <div className="inline-flex items-center gap-2 text-violet-200/80">
           <Moon className="h-4 w-4" />
-          <span className="text-[11px] uppercase tracking-[0.3em]">
+          <span className="text-xs">
             Dream Replay {date ? `· ${date}` : ""}
           </span>
           <span
-            className="text-[11px] px-2 py-0.5 rounded-full border uppercase tracking-wider"
+            className="text-xs px-2 py-0.5 rounded-full border"
             style={
               engineAccent
                 ? {
@@ -412,7 +412,7 @@ export default function DreamReplay({
       {act === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-between pointer-events-none py-24 px-6">
           <div className="text-center animate-in fade-in duration-1000">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-violet-300/70 mb-3">
+            <div className="text-xs text-violet-300/70 mb-3">
               Act I · While you slept
             </div>
             <div className="text-3xl md:text-5xl font-semibold tracking-tight text-violet-50">
@@ -425,7 +425,7 @@ export default function DreamReplay({
                 <div className="text-2xl md:text-4xl font-semibold text-violet-50">
                   <TickCounter target={c.value} />
                 </div>
-                <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/60 mt-1">
+                <div className="text-xs text-violet-300/60 mt-1">
                   {c.label}
                 </div>
               </div>
@@ -438,7 +438,7 @@ export default function DreamReplay({
       {act === 1 && (
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-28 pointer-events-none px-6">
           <div className="text-center animate-in fade-in duration-700">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-violet-300/70 mb-3">
+            <div className="text-xs text-violet-300/70 mb-3">
               Act II · The pattern hunt
             </div>
             <div className="text-2xl md:text-4xl font-semibold tracking-tight text-violet-50 max-w-[26ch]">
@@ -464,7 +464,7 @@ export default function DreamReplay({
           >
             <div className="flex items-center gap-2.5 mb-4">
               <span
-                className="text-[11px] tracking-[0.24em] px-2 py-1 rounded border uppercase"
+                className="text-xs px-2 py-1 rounded border"
                 style={{
                   color: TONE_HEX[prescriptions[rxIdx].tone],
                   borderColor: `${TONE_HEX[prescriptions[rxIdx].tone]}66`,
@@ -473,7 +473,7 @@ export default function DreamReplay({
               >
                 {prescriptions[rxIdx].cat}
               </span>
-              <span className="text-[11px] uppercase tracking-[0.24em] text-violet-300/60">
+              <span className="text-xs text-violet-300/60">
                 Prescription {rxIdx + 1} of {prescriptions.length}
               </span>
             </div>
@@ -481,7 +481,7 @@ export default function DreamReplay({
               {prescriptions[rxIdx].headline}
             </div>
             {prescriptions[rxIdx].evidence[0] && (
-              <div className="text-[12px] md:text-[13px] text-violet-200/75 font-mono border-l-2 pl-3 mb-5"
+              <div className="text-xs md:text-[13px] text-violet-200/75 font-mono border-l-2 pl-3 mb-5"
                 style={{ borderColor: `${TONE_HEX[prescriptions[rxIdx].tone]}88` }}
               >
                 {prescriptions[rxIdx].evidence[0]}
@@ -495,7 +495,7 @@ export default function DreamReplay({
                       $<TickCounter target={prescriptions[rxIdx].dollarImpact!} duration={1600} />
                       <span className="text-sm text-emerald-300/70">/mo</span>
                     </div>
-                    <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/50 mt-0.5">
+                    <div className="text-xs text-violet-300/50 mt-0.5">
                       Est. impact
                     </div>
                   </div>
@@ -507,7 +507,7 @@ export default function DreamReplay({
                       <TickCounter target={prescriptions[rxIdx].timeImpactMins!} duration={1600} />
                       <span className="text-sm text-violet-200/60"> min</span>
                     </div>
-                    <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/50 mt-0.5">
+                    <div className="text-xs text-violet-300/50 mt-0.5">
                       Saved / month
                     </div>
                   </div>
@@ -521,7 +521,7 @@ export default function DreamReplay({
       {isFinal && (
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-6">
           <div className="text-center animate-in fade-in zoom-in-95 duration-1000">
-            <div className="text-[11px] uppercase tracking-[0.35em] text-violet-300/70 mb-4 inline-flex items-center gap-2">
+            <div className="text-xs text-violet-300/70 mb-4 inline-flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5" /> Good morning
             </div>
             <div className="text-4xl md:text-6xl font-semibold tracking-tight text-violet-50 mb-6">
@@ -534,7 +534,7 @@ export default function DreamReplay({
                     $<TickCounter target={totals.dollars} duration={1800} />
                     <span className="text-base text-emerald-300/70">/mo</span>
                   </div>
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/50 mt-1">
+                  <div className="text-xs text-violet-300/50 mt-1">
                     Combined impact
                   </div>
                 </div>
@@ -545,7 +545,7 @@ export default function DreamReplay({
                     <TickCounter target={totals.mins} duration={1800} />
                     <span className="text-base text-violet-200/60"> min</span>
                   </div>
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/50 mt-1">
+                  <div className="text-xs text-violet-300/50 mt-1">
                     Time back / month
                   </div>
                 </div>
@@ -555,7 +555,7 @@ export default function DreamReplay({
                   {stats.candidates}
                   <span className="text-base text-violet-200/60"> → {prescriptions.length}</span>
                 </div>
-                <div className="text-[11px] uppercase tracking-[0.24em] text-violet-300/50 mt-1">
+                <div className="text-xs text-violet-300/50 mt-1">
                   Patterns distilled
                 </div>
               </div>
@@ -565,7 +565,7 @@ export default function DreamReplay({
                 e.stopPropagation();
                 onClose();
               }}
-              className="pointer-events-auto inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-violet-300/40 bg-violet-500/20 text-violet-50 text-[12px] uppercase tracking-[0.24em] hover:bg-violet-500/35 transition-colors backdrop-blur"
+              className="pointer-events-auto inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-violet-300/40 bg-violet-500/20 text-violet-50 text-xs hover:bg-violet-500/35 transition-colors backdrop-blur"
               style={{ boxShadow: "0 12px 40px -12px rgba(167,139,250,0.6)" }}
             >
               Enter the day <ChevronRight className="h-4 w-4" />
@@ -589,7 +589,7 @@ export default function DreamReplay({
             />
           ))}
         </div>
-        <div className="text-[11px] uppercase tracking-[0.3em] text-violet-300/40">
+        <div className="text-xs text-violet-300/40">
           Click / space to advance · esc to close
         </div>
       </div>

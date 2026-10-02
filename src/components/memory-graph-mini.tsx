@@ -191,7 +191,7 @@ export function MemoryGraphMini() {
                         ? "SESSION"
                         : "SKILL";
             return `<div style="font:500 11px ui-sans-serif,system-ui;padding:6px 9px;background:rgba(11,14,19,0.92);border:1px solid #2a2f3a;border-radius:6px;color:#fff">
-              <div style="font-size:12px;letter-spacing:.18em;color:#8a93a3;margin-bottom:2px">${cap}</div>
+              <div style="font-size:var(--text-xs);letter-spacing:.18em;color:#8a93a3;margin-bottom:2px">${cap}</div>
               <div style="font-weight:600">${n.name}</div>
             </div>`;
           }}
@@ -245,7 +245,7 @@ export function MemoryGraphMini() {
           }}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-[12px] text-muted-foreground">
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
           Loading…
         </div>
       )}

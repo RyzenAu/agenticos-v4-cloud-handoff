@@ -23,7 +23,7 @@ function Mark({ status, n, size = "md" }: { status: StepStatus; n: number; size?
       aria-hidden="true"
       className={cn(
         "grid shrink-0 place-items-center rounded-full border ds-num font-semibold",
-        size === "md" ? "size-9 text-sm" : "size-5 text-[11px]",
+        size === "md" ? "size-9 text-sm" : "size-5 text-xs",
         m.ring,
       )}
     >
@@ -56,7 +56,7 @@ export function PipelineLane({ steps, className, ariaLabel = "Coding pipeline" }
 }
 
 /** Six dots and the step that matters now, for a job card. */
-export function PipelineDots({ steps }: { steps: readonly PipelineStep[] }) {
+export function PipelineDots({ steps, quiet = false }: { steps: readonly PipelineStep[]; quiet?: boolean }) {
   const focus = steps.find((s) => s.status !== "done" && s.status !== "todo") ?? [...steps].reverse().find((s) => s.status === "done") ?? steps[0];
   const summary = steps.map((s) => `${s.label}: ${stepStatusWord(s.status)}`).join(", ");
   return (
@@ -69,9 +69,11 @@ export function PipelineDots({ steps }: { steps: readonly PipelineStep[] }) {
           </span>
         ))}
       </span>
-      <span className="text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{focus.label}</span> · {focus.detail}
-      </span>
+      {!quiet && (
+        <span className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{focus.label}</span> · {focus.detail}
+        </span>
+      )}
     </div>
   );
 }

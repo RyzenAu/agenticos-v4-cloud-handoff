@@ -18,6 +18,7 @@ import type { FlagCode, LineSource, ReceptionistSnapshot } from "./types";
 import { getReceptionistPackage, LEGACY_PACKAGE_ALIASES, RECEPTIONIST_PACKAGES } from "../../src/lib/receptionist-packages";
 import { pageTokenMatches, requestPrincipal } from "../identity/gate";
 import { authorise, type Principal } from "../identity/principal";
+import { dataDirFor } from "../cloud/data-dir";
 export type ReceptionistOptions = {
   root: string;
   token: string;
@@ -164,8 +165,8 @@ export function createReceptionistService(
   const line = resolveLine(options);
   const o = { ...defaults, ...options, agentId: line.agentId, number: line.number },
     now = deps.now ?? Date.now;
-  const file = join(o.root, ".operator-data/receptionist-readiness.json");
-  const clientPackagesFile = join(o.root, ".operator-data/receptionist-client-packages.json");
+  const file = join(dataDirFor(o.root), "receptionist-readiness.json");
+  const clientPackagesFile = join(dataDirFor(o.root), "receptionist-client-packages.json");
   const flagCache = new Map<string, FlagCode[]>();
   const summary = createSummaries(o.root, { fetch: o.fetch });
   // Server-only: the feed's token stays in this closure and its Authorization header.
@@ -214,7 +215,7 @@ export function createReceptionistService(
         agencyFeedRead: agencyFeed.status(),
         legal: readLegalTemplate(o.receptionistRoot),
         leads: readLeads(
-          process.env.RECEPTIONIST_CRM_FILE || join(o.root, ".operator-data/crm.sqlite"),
+          process.env.RECEPTIONIST_CRM_FILE || join(dataDirFor(o.root), "crm.sqlite"),
         ),
         signoffs: readSignoffs(file),
         fx: fx.ok ? fx.fx : null,

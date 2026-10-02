@@ -57,7 +57,7 @@ import "./workspace-onboarding.css";
 import "./workspace-onboarding-calm.css";
 import "./workspace-onboarding-frame.css";
 import { docTitle } from "@/components/shell/destinations";
-import { fmtMoney } from "@/lib/format";
+import { fmtMoney, fmtTime } from "@/lib/format";
 
 const steps = [
   {
@@ -476,7 +476,7 @@ export function ToolDiscovery({
               ? "Checking this computer…"
               : compact
                 ? "Installed apps. Connections checked separately."
-                : "Installed apps and available connections are checked separately."}
+                : `Installed apps and available connections are checked separately${discovery.dataUpdatedAt ? ` · checked ${fmtTime(discovery.dataUpdatedAt)}` : ""}.`}
           </p>
         </div>
         <button
@@ -1049,7 +1049,7 @@ export function WorkspaceOnboarding() {
           </button>
         </div>
       </header>
-      <main className="ws-calm-shell">
+      <div className="ws-calm-shell">
         <div className="ws-calm-art">
           <SetupLandscape src="/onboarding/welcome-loop-v4.mp4" poster="/onboarding/welcome-loop-v4-poster.jpg" />
         </div>
@@ -1246,7 +1246,7 @@ export function WorkspaceOnboarding() {
             {busy ? "Saving…" : connectionBusy && step === 1 ? connectionBusy === "scan" ? "Scanning…" : "Importing…" : step === steps.length - 1 ? "Build my OS" : step === 1 && connectionsScanned ? (connectionStage < 3 ? `Next: ${connectionStages[connectionStage + 1].name}` : pendingImports ? `Import ${pendingImports} & continue` : "Continue") : "Continue"}
           </FlowButton>
         </footer>
-      </main>
+      </div>
       <Dialog
         open={panel !== null}
         onOpenChange={(open) => {

@@ -287,17 +287,14 @@ for t in TS:
             fail(f"catalogue: {t['shortName']} {k} incl-GST {catalogue_incl} != ex GST + 10% ({incl_gst(d['exGstCents'])})")
 if "registered" not in CATALOGUE.get("gstBasis", "") or "pending" in CATALOGUE.get("gstBasis", ""):
     fail(f"catalogue: gstBasis {CATALOGUE.get('gstBasis')!r} no longer says M&U is registered; documents add 10% GST")
-all_calls = [t["shortName"] for t in TS if "All calls" in t["inclusions"]["coverModes"]]
-if all_calls != ["Professional", "Premium"]:
-    fail(f"catalogue: 'All calls' cover is now {all_calls}; update call-forwarding-guide.md and 01-offer.md wording")
-# Decision (a) lives in the catalogue itself (Essential audience + answer label, OWNER_DECISION_A in
-# src/lib/receptionist-packages.ts). Open there <=> open here; the texts must match exactly.
+# Decision (a) settled 1 Oct 2026 (owner brief 1 Oct 2026): every tier has every cover mode, no placeholder.
 ess_cat = pkg("Essential")
 ess_texts = [ess_cat["audience"], next(f["label"] for f in ess_cat["scope"] if f["id"] == "answer")]
-if "a" in OWNER_DECISIONS and not all(DECISION_A in x for x in ess_texts):
-    fail("catalogue: decision (a) is open in build/common.py but the Essential audience/answer label lacks the exact placeholder")
-if "a" not in OWNER_DECISIONS and any("OWNER DECISION (a)" in x for x in ess_texts):
-    fail("catalogue: decision (a) is closed in build/common.py but the catalogue still carries its placeholder")
+if any("OWNER DECISION" in x for x in ess_texts):
+    fail("catalogue: decision (a) is settled but the Essential audience/answer label still carries a placeholder")
+for t in TS:
+    if t["inclusions"]["coverModes"] != ["After hours", "When busy / no answer", "All calls"]:
+        fail(f"catalogue: {t['shortName']} coverModes {t['inclusions']['coverModes']} differ; plans differ by minutes and rate, not cover mode")
 for t in TS:
     scan_decisions(f"catalogue {t['shortName']}", json.dumps(t, ensure_ascii=False), count=False)
     if t["shortName"] != "Premium":
@@ -337,11 +334,11 @@ for p in CALL_PACK.rglob("*.md"):
     if len(rel) > 1 and rel[0] not in HISTORICAL_DIRS:
         fail(f"{p}: new sub-folder not covered by this check")
 # Where an open owner decision must be flagged (the places that state Essential's cover or billing timing).
-MD_DECISIONS = {"01-offer.md": "ab", "10-qualification.md": "a", "11-package-comparison.md": "ab", "12-closing.md": "ab",
-                "14-onboarding.md": "b", "00-START-HERE.md": "ab"}
+MD_DECISIONS = {"01-offer.md": "b", "10-qualification.md": "", "11-package-comparison.md": "b", "12-closing.md": "b",
+                "14-onboarding.md": "b", "00-START-HERE.md": "b"}
 for name, keys in MD_DECISIONS.items():
     require_decisions(name, (CALL_PACK / name).read_text(encoding="utf-8"), keys)
-require_decisions("README.md", (PACK / "README.md").read_text(encoding="utf-8"), "ab")
+require_decisions("README.md", (PACK / "README.md").read_text(encoding="utf-8"), "b")
 # prospects.csv openers (A3 #36): cover choice and booking; no website-only or missed-call opener.
 import csv
 with open(CALL_PACK / "prospects.csv", encoding="utf-8", newline="") as fh:
@@ -359,17 +356,17 @@ for i, r in enumerate(_rows, 2):
 DOCS_EXPECT = {
     "proposal-template": {"kind": "docx", "need": [MONTHLY["Essential"], aud(incl_gst(pkg("Essential")["pricing"]["monthly"]["cents"])),
                                                    OVERAGE["Essential"] + "/min", SETUP_LINE.split(": ")[1].capitalize(), "10% GST", PROMISE]
-                          + list(MONTHLY.values()) + EXAMPLE_AMOUNTS, "decisions": "ab"},
+                          + list(MONTHLY.values()) + EXAMPLE_AMOUNTS, "decisions": "b"},
     "service-agreement-draft": {"kind": "docx", "need": list(MONTHLY.values()) + [o + "/min" for o in OVERAGE.values()]
-                                + ["Quoted separately once approved", "registered for GST", "DRAFT FOR QUALIFIED LEGAL REVIEW"], "decisions": "ab"},
+                                + ["Quoted separately once approved", "registered for GST", "DRAFT FOR QUALIFIED LEGAL REVIEW"], "decisions": "b"},
     "demo-guide": {"kind": "docx", "need": list(MONTHLY.values()) + [GST_SHORT, PROMISE, DEMO_LABEL]},
     "client-setup-checklist": {"kind": "docx", "need": ["all calls, alongside your team"]},
     "call-forwarding-guide": {"kind": "docx", "need": ["All calls, alongside the team", "16 September 2026"]},
     "sales-presentation": {"kind": "pptx", "need": list(MONTHLY.values()) + [f"{o} per extra minute" for o in OVERAGE.values()]
                            + [GST_SHORT, PROMISE, DIRECT_BOOKING, DEMO_LABEL, "Google Calendar or Cal.com"] + [aud(EX["ex"]), aud(EX["gst"]), aud(EX["total"])],
-                           "extra": internal_econ_amounts(), "decisions": "a"},
+                           "extra": internal_econ_amounts(), "decisions": ""},
     "onboarding-deck": {"kind": "pptx", "need": list(MONTHLY.values()) + list(OVERAGE.values()) + [aud(EX["ex"]), aud(EX["gst"]), aud(EX["total"]), GST_SHORT],
-                        "decisions": "ab"},
+                        "decisions": "b"},
 }
 for stem in STALE:
     entry = MANIFEST_DATA[stem]

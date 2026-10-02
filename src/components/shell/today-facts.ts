@@ -154,6 +154,8 @@ export type TileFact = {
   key: TodayKey;
   label: string;
   to: string;
+  /** Search params for the link (Calls to make opens Leads on its Today workspace). */
+  search?: Record<string, string>;
   state: SignalState | undefined;
   value: string | number | null;
   tone?: SignalTone;
@@ -235,6 +237,7 @@ export function todayTiles(src: TodaySources, facts: TodayFacts, now: number): T
       key: "callQueue",
       label: "Calls to make",
       to: "/leads",
+      search: { view: "today" },
       // An empty CRM can't say "0 to call" (REVIEW-T1 B9).
       state: calls && calls.crmLeads === 0 ? "unknown" : tileState(src.callQueue, now, { zero: calls ? calls.total === 0 : false }),
       value: calls && calls.crmLeads !== 0 ? calls.total : null,

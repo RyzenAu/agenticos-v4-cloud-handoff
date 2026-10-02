@@ -200,6 +200,16 @@ describe("generate → deploy → take down", () => {
     expect(redact("key: sk-1 ok")).toBe("[redacted] ok");
   });
 
+  test("a successful upload serving another build is not reported as live", async () => {
+    const { root, draftsRoot, db, lead } = fixtureWorld();
+    writeFileSync(join(draftsRoot, "_templates", "legal", "index.html"), await legalTemplate(), "utf8");
+    await generatePreview(db, lead.id, { root, draftsRoot, by: "synthetic", evidence: evidenceFor({ leadId: lead.id }) });
+    const record = await deployPreview(db, lead.id, { root, confirm: "harbour-and-co-lawyers.muventures.com.au", by: "synthetic", shell: async () => ({ ok: true, out: "MU_DONE" }), check: async () => ({ status: 200, banner: true, noindexHeader: true, matchesPreview: false }), retryMs: 0 });
+    expect(record.status).toBe("failed");
+    expect(record.lastError).toContain("Check the domain mapping");
+    db.close();
+  });
+
   test("never more than the live cap, and never for excluded or opted-out leads", async () => {
     const { root, draftsRoot, db, lead } = fixtureWorld();
     writeFileSync(join(draftsRoot, "_templates", "legal", "index.html"), await legalTemplate(), "utf8");

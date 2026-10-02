@@ -23,6 +23,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { NabCsvRejected, inspectNabCsvExport, sanitiseLabel, type KeyStrength, type ManualKind, type ManualRow, type NabCsvFormat, type NabCsvIssue } from "./manual-nab-csv";
 import { vendorRule } from "./manual-vendors";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const MANUAL_SOURCE = "nab-csv-manual" as const;
 /** The one business ledger both founders share (V7). */
@@ -34,7 +35,7 @@ export const SCHEMA_VERSION = "2";
 const OWNER_RE = /^[a-z][a-z0-9-]{0,39}$/;
 
 export function manualFinanceDbPath(root: string): string {
-  return join(root, ".operator-data", "finance-manual.sqlite");
+  return join(dataDirFor(root), "finance-manual.sqlite");
 }
 
 export function assertOwner(owner: unknown): string {

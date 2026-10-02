@@ -8,8 +8,8 @@ import type { ScreenHands } from "./screen-hands/index";
 import { createJarvisEntry, type JarvisEntry } from "./jev-command";
 import { providerKey } from "./provider-config";
 import { APP_BROWSER_DIR, groqSummariser, loadAppChromium, openAppBrowser, type AppBrowser } from "./browser/app-browser";
-import { pcAct, startApps } from "./pc-hands";
-import { windowIsApp } from "./jarvis-skills/windows";
+import { pcAct, startAppsReady } from "./pc-hands";
+import { openVerifiedApp } from "./jarvis-command/verified-app";
 import { createWindowsExecutors, liveWindowsDeps, type WindowsDeps } from "./executors/windows";
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
@@ -37,6 +37,8 @@ export function createLiveEntry(options: { screen: ScreenHands; root?: string; h
       return b;
     }));
   const hands = options.screen.hands;
+  // Warm the Start-menu catalogue once; routine screen actions do not wait for it.
+  void startAppsReady();
   // Track 2: the SAME Windows executors a companion runs (scripts/executors/windows.ts), started on first use.
   let windowsDeps: WindowsDeps | null = null;
   let windows: ReturnType<typeof createWindowsExecutors> | null = null;
@@ -46,7 +48,7 @@ export function createLiveEntry(options: { screen: ScreenHands; root?: string; h
     jevKey: () => key("TYPESAFE_API_KEY") || key("JEV_API_KEY"),
     front: async () => {
       const w = await hands.foreground().catch(() => null);
-      return w ? { process: w.process, title: w.title } : null;
+      return w ? { process: w.process, title: w.title, handle: w.handle } : null;
     },
     browser: getBrowser,
     activeVideo: async () => {
@@ -58,26 +60,13 @@ export function createLiveEntry(options: { screen: ScreenHands; root?: string; h
       open: openWithDefaultApp,
       titles: async () => (await hands.windows().catch(() => [])).map((w) => w.title),
     },
-    apps: () => startApps(),
+    apps: () => startAppsReady(),
     notepad: (text, signal) => windowsExec()["notepad.type"]({ text }, { signal }),
     deckBlank: (title, signal) => windowsExec()["deck.blank"]({ title }, { signal }),
-    // Open, then check a window of that app actually appeared (not just that Start-Process returned).
-    // Honours the stop (REVIEW-T2 R2): before the launch nothing starts; after it, the wait for the window ends
-    // at once and says Windows may still open it (never "opened").
-    openApp: async (name, signal) => {
-      if (signal.aborted) return { ok: false, said: "Stopped before anything opened." };
-      const before = new Set((await hands.windows().catch(() => [])).map((w) => w.handle));
-      if (signal.aborted) return { ok: false, said: "Stopped before anything opened." };
-      const r = await pcAct({ action: "open_app", target: name });
-      if (!r.ok) return { ok: false, said: r.said };
-      for (let i = 0; i < 30; i++) {
-        if (signal.aborted) return { ok: false, said: `Stopped. I'd already asked Windows to start ${name}, so it may still open.` };
-        await new Promise((res) => setTimeout(res, 300));
-        const fresh = (await hands.windows().catch(() => [])).find((w) => !before.has(w.handle) && (windowIsApp(name.toLowerCase(), w.process) || w.title.toLowerCase().includes(name.toLowerCase())));
-        if (fresh) return { ok: true, said: `Opened ${name}.`, checkedAt: Date.now() };
-      }
-      return { ok: false, said: `I started ${name}, but no new ${name} window appeared, so I can't say it opened.` };
-    },
+    openApp: (name, signal) => openVerifiedApp(name, signal, {
+      windows: () => hands.windows(), foreground: () => hands.foreground(),
+      focus: handle => hands.focus(handle), launch: target => pcAct({action:"open_app",target}),
+    }),
   });
   return {
     entry,

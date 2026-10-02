@@ -15,6 +15,7 @@ import { routerRunner } from "./runners/router";
 import { createShaper } from "./shaper";
 import { claudeBinding, draftSpec, specDigest } from "./spec";
 import { CodingStore } from "./store";
+import { writeFileSync } from "node:fs";
 import { cleanup, fixtureRepo } from "./test-fixtures";
 
 /** The /__operator/coding routes over a SYNTHETIC store (no agent runs here). */
@@ -169,4 +170,142 @@ describe("GET /coding/accounts reports Codex isolation (W-B)", () => {
     // Paths themselves never leave the server: only the count.
     expect(JSON.stringify(ok.body)).not.toContain("C:/synthetic/a");
   }, 120_000);
+  test("a repeated Resume click (same requestId) reaches the orchestrator once; a new requestId is a new request the orchestrator itself must refuse", async () => {
+    const job = draft();
+    let calls = 0;
+    const counting: CodingRuntime = { ...rt, orch: { ...orch, resume: (() => { calls++; return rt.store.getJob(job.id)!; }) as never } as never };
+    const requestId = crypto.randomUUID();
+    const send = (id: string) => codingRoute({ method: "POST", path: `/coding/jobs/${job.id}/resume`, url: new URL(`http://x/coding/jobs/${job.id}/resume`), body: { requestId: id, roleId: "reviewer" }, principal: OWNER }, counting);
+    const first = (await send(requestId)) as { status: number };
+    const again = (await send(requestId)) as { status: number };
+    expect([first.status, again.status]).toEqual([200, 200]);
+    expect(calls).toBe(1);
+    await send(crypto.randomUUID());
+    expect(calls).toBe(2);
+  }, 120_000);
+  test("review fix 1: Resume refuses a paid openrouter/ reassignment without an explicit acknowledgement", async () => {
+    const job = draft();
+    let calls = 0;
+    const counting: CodingRuntime = { ...rt, orch: { ...orch, resume: (() => { calls++; return rt.store.getJob(job.id)!; }) as never } as never };
+    const send = (extra: Record<string, unknown>) => codingRoute({ method: "POST", path: `/coding/jobs/${job.id}/resume`, url: new URL(`http://x/coding/jobs/${job.id}/resume`), body: { requestId: crypto.randomUUID(), roleId: "reviewer", reassignTo: { route: "model-router", model: "openrouter/deepseek-v4-pro" }, ...extra }, principal: OWNER }, counting) as Promise<{ status: number; body: any }>;
+    const refused = await send({});
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toContain("costs money per token");
+    expect(calls).toBe(0);
+    expect((await send({ paidAcknowledged: true })).status).toBe(200);
+    expect(calls).toBe(1);
+  }, 120_000);
+  test("review fix 1: an account edit returns the shaper's summary so a revised draft still discloses", async () => {
+    const job = draft();
+    const edited = (await call("POST", `/coding/jobs/${job.id}/account`, { requestId: crypto.randomUUID(), roleId: "builder-1", accountSlot: "claude:max", model: "claude-sonnet-5-5" })) as { status: number; body: any };
+    expect(edited.status).toBe(200);
+    expect(String(edited.body.spokenSummary).length).toBeGreaterThan(10);
+  }, 120_000);
+
+  describe("superseded jobs (2 Oct 2026)", () => {
+    const pause = (job: { id: string }) => { for (const to of ["preparing", "building", "needs_owner"] as const) rt.store.transitionJob(job.id, to); };
+    const supersede = (id: string, body: unknown, principal: Principal | null = OWNER) => call("POST", `/coding/jobs/${id}/supersede`, { requestId: crypto.randomUUID(), ...(body as object) }, principal);
+
+    test("only a signed-in person can mark a job superseded; a program holding the page token can't", async () => {
+      const job = draft(); pause(job);
+      const program: Principal = { personId: "usman", via: "loopback-owner", actor: "process", deviceId: "usman-pc" };
+      const refused = (await supersede(job.id, { ref: "abc1234", reason: "landed another way" }, program)) as { status: number; body: any };
+      expect(refused.status).toBe(403);
+      expect(refused.body.error).toContain("needs you, signed in");
+      expect(rt.store.getJob(job.id)!.state).toBe("needs_owner");
+      expect(rt.store.getJob(job.id)!.supersededBy).toBeUndefined();
+    });
+
+    test("a draft or a missing reason or a bad ref is refused in plain words and nothing changes", async () => {
+      const drafted = draft();
+      const notPaused = (await supersede(drafted.id, { ref: "abc1234", reason: "landed another way" })) as { status: number; body: any };
+      expect(notPaused.status).toBe(409);
+      expect(notPaused.body.error).toMatch(/only a paused job can/);
+      const job = draft(); pause(job);
+      expect(((await supersede(job.id, { ref: "abc1234", reason: "" })) as any).body.error).toMatch(/Say why/);
+      expect(((await supersede(job.id, { ref: "--force; rm", reason: "landed another way" })) as any).body.error).toMatch(/Name the commit or branch/);
+      expect(rt.store.getJob(job.id)!.state).toBe("needs_owner");
+    });
+
+    test("marking keeps the history, reads Superseded (not Needs you), and Resume, Apply and a second mark are refused with the reason", async () => {
+      const job = draft(); pause(job);
+      const before = rt.store.events(job.id, 0, 5000).length;
+      const ok = (await supersede(job.id, { ref: "main", reason: "the finished successor landed in the live branch" })) as { status: number; body: any };
+      expect(ok.status).toBe(200);
+      const after = rt.store.getJob(job.id)!;
+      expect(after.state).toBe("cancelled");
+      expect(after.supersededBy).toMatchObject({ ref: "main", by: "usman" });
+      expect(after.supersededBy!.reason).toContain("successor");
+      // History is only added to: every earlier event is still there, and the marking is a recorded step.
+      const events = rt.store.events(job.id, 0, 5000);
+      expect(events.length).toBeGreaterThan(before);
+      expect(events.some((e) => e.type === "step" && /Marked superseded by main/.test((e.payload as any).label))).toBe(true);
+      const resume = (await call("POST", `/coding/jobs/${job.id}/resume`, { requestId: crypto.randomUUID() })) as { status: number; body: any };
+      expect(resume.status).toBe(409);
+      expect(resume.body.error).toMatch(/superseded by main.*could overwrite newer work/);
+      const apply = (await call("POST", `/coding/jobs/${job.id}/apply`, { requestId: crypto.randomUUID(), action: "git.merge.protected", toRef: "main" })) as { status: number; body: any };
+      expect(apply.status).toBe(409);
+      expect(apply.body.error).toMatch(/superseded by main/);
+      expect(((await supersede(job.id, { ref: "abc1234", reason: "again, for no reason" })) as any).body.error).toMatch(/already marked superseded by main/);
+      // The page's read view carries the marking.
+      const view = (await call("GET", `/coding/jobs/${job.id}`)) as { body: any };
+      expect(view.body.job.supersededBy.ref).toBe("main");
+    });
+
+    test("newer commits on the base branch to the job's files prefill the reason; unrelated commits don't", async () => {
+      const job = draft(); pause(job);
+      const { gitIn } = await import("./test-fixtures");
+      // A commit to a file the job doesn't own: no hint.
+      writeFileSync(join(fx.canonical, "docs", "readme.md"), "# Fixture, edited" + String.fromCharCode(10));
+      gitIn(fx.canonical, "commit", "-q", "--only", "-m", "docs only", "--", "docs/readme.md");
+      const quiet = (await call("GET", `/coding/jobs/${job.id}`)) as { body: any };
+      expect(quiet.body.supersedeHint).toBeNull();
+      // A commit to src/a.ts, which the job owns: the hint names it.
+      const other = draft(); pause(other);
+      writeFileSync(join(fx.canonical, "src", "a.ts"), "export const a = 99;" + String.fromCharCode(10));
+      gitIn(fx.canonical, "commit", "-q", "--only", "-m", "set a to 99 by hand", "--", "src/a.ts");
+      const hinted = (await call("GET", `/coding/jobs/${other.id}`)) as { body: any };
+      expect(hinted.body.supersedeHint.ref).toMatch(/^[0-9a-f]{7,}$/);
+      expect(hinted.body.supersedeHint.reason).toMatch(/1 newer commit on main touch the folders this job owns; the latest is "set a to 99 by hand". Check before marking/);
+      expect(hinted.body.supersedeHint.basis).toBe("folders");
+    });
+
+    test("when the job has a diff the hint compares only those files: an unrelated commit under the same folder says nothing", async () => {
+      const job = draft(); pause(job);
+      const files = (paths: string[]) => ({ baseSha: job.spec.repo.baseSha, headSha: "a".repeat(40), totals: { files: paths.length, additions: 1, deletions: 0 }, files: paths.map((path) => ({ path, status: "modified", additions: 1, deletions: 0 })), outsideOwnership: [], patch: "" });
+      rt.store.updateJob(job.id, { diff: files(["lib/c.ts"]) as never });
+      const other = draft(); pause(other);
+      // The base is the head at draft time, so the newer commit comes after both drafts.
+      const { gitIn } = await import("./test-fixtures");
+      writeFileSync(join(fx.canonical, "src", "a.ts"), "export const a = 100;" + String.fromCharCode(10));
+      gitIn(fx.canonical, "commit", "-q", "--only", "-m", "set a to 100", "--", "src/a.ts");
+      rt.store.updateJob(other.id, { diff: files(["src/a.ts"]) as never });
+      const none = (await call("GET", `/coding/jobs/${job.id}`)) as { body: any };
+      expect(none.body.supersedeHint).toBeNull();
+
+      const some = (await call("GET", `/coding/jobs/${other.id}`)) as { body: any };
+      expect(some.body.supersedeHint.basis).toBe("files");
+      expect(some.body.supersedeHint.reason).toContain("touch the same files");
+      expect(some.body.supersedeHint.reason).toContain("Check before marking");
+    });
+
+    test("a ref that isn't a commit in the repo is refused, and a mark can be taken back", async () => {
+      const job = draft(); pause(job);
+      expect(((await supersede(job.id, { ref: "deadbeefdeadbeef", reason: "landed another way" })) as any).body.error).toMatch(/isn't a commit or branch/);
+      expect(((await supersede(job.id, { ref: "main..main", reason: "landed another way" })) as any).body.error).toMatch(/Name the commit or branch/);
+      expect(rt.store.getJob(job.id)!.state).toBe("needs_owner");
+      expect(((await call("POST", `/coding/jobs/${job.id}/unsupersede`, { requestId: crypto.randomUUID() })) as any).body.error).toMatch(/isn't marked superseded/);
+      expect(((await supersede(job.id, { ref: "main", reason: "landed another way" })) as any).status).toBe(200);
+      const program: Principal = { personId: "usman", via: "loopback-owner", actor: "process", deviceId: "usman-pc" };
+      expect(((await call("POST", `/coding/jobs/${job.id}/unsupersede`, { requestId: crypto.randomUUID() }, program)) as any).status).toBe(403);
+      const back = (await call("POST", `/coding/jobs/${job.id}/unsupersede`, { requestId: crypto.randomUUID() })) as { status: number; body: any };
+      expect(back.status).toBe(200);
+      expect(back.body.job.supersededBy).toBeUndefined();
+      expect(rt.store.events(job.id, 0, 5000).some((e) => e.type === "step" && /taken back/.test((e.payload as any).label))).toBe(true);
+      // A stopped job's tests are not re-run, marked or not.
+      const rerun = (await call("POST", `/coding/jobs/${job.id}/tests/rerun`, { requestId: crypto.randomUUID(), commandId: "fx.test" })) as { status: number; body: any };
+      expect(rerun.status).toBe(409);
+      expect(rerun.body.error).toMatch(/stopped job does not run tests/);
+    });
+  });
 });

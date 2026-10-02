@@ -138,7 +138,7 @@ describe("coding done gate (§3.7)", () => {
     expect(same.input.tests[0].baseline).toMatchObject({ exitCode: 1, failed: 1, failedTests: ["alpha"], sha: same.input.spec.repo.baseSha });
     const ok = runDoneGate(same.input);
     expect(check(ok, "checks-pass").passed).toBe(true);
-    expect(ok.baselineFailures).toEqual([{ commandId: CHECK, failed: 1 }]);
+    expect(ok.baselineFailures).toEqual([{ commandId: CHECK, failed: 1, names: ["alpha"] }]);
     expect(ok.passed).toBe(true);
 
     const t = same.input.tests[0];
@@ -172,11 +172,54 @@ describe("coding done gate (§3.7)", () => {
     expect(named("handles the dental case", "(pass) handles the dental case [1.00ms]\n(fail) retry > handles the dental case\n")).toBe(false);
     expect(named("dental", "(pass) handles the dental case [1.00ms]\n")).toBe(false);
     expect(named("handles the dental case", "(pass) handles the dental case [1.00ms]\n")).toBe(true);
-    // A command-level criterion needs the command to exit 0, not just baseline credit.
+    // A command-level criterion is evidenced WITH A BASELINE when every failing test also failed on the base sha (1 Oct 2026):
+    // the gate names them ("only pre-existing failures"); a NEW failing test still blocks both checks.
     const failing = { ...input.tests[0], exitCode: 1, counts: { passed: 2, failed: 1, skipped: 0 }, failedTests: ["alpha"], baseline: { sha: input.spec.repo.baseSha, exitCode: 1, failed: 1, failedTests: ["alpha"] } };
-    const withBaseline = runDoneGate({ ...input, tests: [failing] });
+    const commandCriterion = { ...input.spec, doneWhen: [{ id: "c1", text: "the suite passes", evidence: "test" as const, ref: CHECK }] };
+    const withBaseline = runDoneGate({ ...input, spec: commandCriterion, tests: [failing] });
     expect(check(withBaseline, "checks-pass").passed).toBe(true);
-    expect(check(withBaseline, "done-when-evidenced").passed).toBe(false);
+    expect(check(withBaseline, "checks-pass").detail).toContain("only pre-existing failures: " + CHECK + " (alpha)");
+    expect(check(withBaseline, "done-when-evidenced").passed).toBe(true);
+    expect(check(withBaseline, "done-when-evidenced").detail).toContain("c1 with only pre-existing test failures");
+    expect(withBaseline.baselineFailures).toEqual([{ commandId: CHECK, failed: 1, names: ["alpha"] }]);
+    const fresh = runDoneGate({ ...input, spec: commandCriterion, tests: [{ ...failing, counts: { passed: 1, failed: 2, skipped: 0 }, failedTests: ["alpha", "delta"] }] });
+    expect(check(fresh, "checks-pass").passed).toBe(false);
+    expect(check(fresh, "done-when-evidenced").passed).toBe(false);
+    expect(fresh.passed).toBe(false);
+  });
+
+  test("review fix 3: baseline credit never completes a task whose point is fixing the baseline failure", async () => {
+    const same = await build({ "src/a.ts": "export const a = 10;\n" }, { setupBase: failWith("alpha\n"), runBaseline: true, doneWhen: [{ id: "c1", text: "the suite passes", evidence: "test", ref: CHECK }] });
+    const ordinary = runDoneGate({ ...same.input, spec: { ...same.input.spec, objective: "Change a to 10" } });
+    expect(check(ordinary, "done-when-evidenced").passed).toBe(true);
+    const named = runDoneGate({ ...same.input, spec: { ...same.input.spec, objective: "Fix the failing alpha test" } });
+    expect(check(named, "checks-pass").passed).toBe(true);
+    expect(check(named, "done-when-evidenced").passed).toBe(false);
+    expect(check(named, "done-when-evidenced").detail).toContain("baseline credit refused for c1");
+    const criterion = runDoneGate({ ...same.input, spec: { ...same.input.spec, objective: "Tidy", doneWhen: [{ id: "c1", text: "alpha passes again", evidence: "test", ref: CHECK }] } });
+    expect(check(criterion, "done-when-evidenced").passed).toBe(false);
+    expect(named.passed).toBe(false);
+  });
+
+  test("review fix 4: bun failure names are keyed by file, so the same name failing in another file is NEW", async () => {
+    const output = ["scripts/a.test.ts:", "(fail) dup name [1.00ms]", "", "scripts\\b.test.ts:", "(fail) dup name [2.00ms]", "(fail) only b", " 2 pass", " 3 fail", ""].join("\n");
+    expect(parseFailedTests("bun", output, 3)).toEqual(["scripts/a.test.ts :: dup name", "scripts/b.test.ts :: dup name", "scripts/b.test.ts :: only b"]);
+    expect(parseFailedTests("bun", "(fail) bare\n 1 fail\n", 1)).toEqual(["bare"]);
+    const { input } = await build({ "src/a.ts": "export const a = 10;\n" }, { setupBase: failWith("alpha\n"), runBaseline: true });
+    const t = input.tests[0];
+    const failing = { ...t, exitCode: 1, counts: { passed: 1, failed: 1, skipped: 0 }, failedTests: ["scripts/b.test.ts :: dup name"], baseline: { sha: input.spec.repo.baseSha, exitCode: 1, failed: 1, failedTests: ["scripts/a.test.ts :: dup name"] } };
+    const result = runDoneGate({ ...input, tests: [failing] });
+    expect(check(result, "checks-pass").passed).toBe(false);
+    expect(check(result, "checks-pass").detail).toContain("1 new failing test");
+    // Backward compatible: a baseline recorded in the old bare-name format against a new file-keyed head.
+    const oldBase = { ...failing, baseline: { ...failing.baseline, failedTests: ["dup name"] } };
+    const sameBare = runDoneGate({ ...input, tests: [{ ...oldBase, failedTests: ["scripts/b.test.ts :: dup name"] }] });
+    expect(check(sameBare, "checks-pass").passed).toBe(true);
+    expect(check(sameBare, "checks-pass").detail).toContain("only pre-existing failures");
+    const otherBare = runDoneGate({ ...input, tests: [{ ...oldBase, failedTests: ["scripts/b.test.ts :: different name"] }] });
+    expect(check(otherBare, "checks-pass").passed).toBe(false);
+    const samefile = runDoneGate({ ...input, tests: [{ ...failing, failedTests: ["scripts/a.test.ts :: dup name"] }] });
+    expect(check(samefile, "checks-pass").passed).toBe(true);
   });
 
   test("a check that wasn't run by the orchestrator at this sha doesn't count", async () => {
@@ -278,5 +321,18 @@ describe("runner output parsing", () => {
     expect(testOutcome(out, "dental booking works")).toBe("passed");
     expect(testOutcome(out, "tz edge")).toBe("failed");
     expect(testOutcome("(pass) a > b\n(fail) c > b\n", "b")).toBe("failed");
+  });
+});
+
+describe("coding done gate: usage receipts", () => {
+  test("a finished run with no usage receipt fails the gate (no model is claimed without a receipt); with them it passes", async () => {
+    const { input } = await build({ "src/a.ts": "export const a = 10;\n" });
+    const missing = runDoneGate({ ...input, unreceipted: ["reviewer (attempt 1)"] });
+    expect(check(missing, "receipts-recorded")).toMatchObject({ passed: false });
+    expect(check(missing, "receipts-recorded").detail).toContain("reviewer (attempt 1)");
+    expect(missing.passed).toBe(false);
+    const present = runDoneGate({ ...input, unreceipted: [] });
+    expect(check(present, "receipts-recorded").passed).toBe(true);
+    expect(present.passed).toBe(true);
   });
 });

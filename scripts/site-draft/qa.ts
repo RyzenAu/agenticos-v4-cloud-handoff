@@ -66,7 +66,7 @@ export function defaultRunner(bin: string, timeoutMs: number): Runner {
 // prices, guarantees, before/after, or a named individual presented as staff. This is the
 // automated half of mu-business-evidence's "never manufacture" rule.
 const FORBIDDEN_CLAIM_PATTERNS: { re: RegExp; label: string }[] = [
-  { re: /★|⭐|\b\d(\.\d)?\s*\/\s*5\b|\d+\s*star/i, label: "star rating" },
+  { re: /★|⭐|\b\d(\.\d)?\s*\/\s*5\b|\b\d+(?:\.\d+)?[\s-]*stars?\b/i, label: "star rating" },
   { re: /\$\s?\d|\d+%\s*off/i, label: "price or discount" },
   { re: /award[- ]winning|voted (?:best|number ?one)/i, label: "award claim" },
   { re: /guarantee[ds]?\b/i, label: "guarantee claim" },

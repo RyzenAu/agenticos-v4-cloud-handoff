@@ -163,7 +163,7 @@ export function DreamMorningReport({ dream }: { dream: DreamData | null | undefi
           {r.summaryLine && <p className="mb-4 text-sm text-foreground">{r.summaryLine}</p>}
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-inset p-4 lg:col-span-2">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Three highest-leverage actions today</div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">Three highest-leverage actions today</div>
               {r.topActions?.length ? (
                 <ol className="space-y-3 text-sm">
                   {r.topActions.map((a, i) => (
@@ -182,7 +182,7 @@ export function DreamMorningReport({ dream }: { dream: DreamData | null | undefi
               )}
             </div>
             <div className="rounded-xl border border-border bg-inset p-4">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Client deadlines</div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">Client deadlines</div>
               {r.clientDeadlines?.length ? (
                 <ul className="space-y-2 text-sm">
                   {r.clientDeadlines.map((c, i) => (
@@ -198,15 +198,15 @@ export function DreamMorningReport({ dream }: { dream: DreamData | null | undefi
               )}
             </div>
             <div className="rounded-xl border border-border bg-inset p-4">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">What improved</div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">What improved</div>
               <List items={r.improved} empty="Nothing measurable." />
             </div>
             <div className="rounded-xl border border-border bg-inset p-4">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">What broke</div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">What broke</div>
               <List items={r.broke} empty="Nothing broke." />
             </div>
             <div className="rounded-xl border border-border bg-inset p-4">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Sales coaching</div>
+              <div className="mb-2 text-xs font-medium text-muted-foreground">Sales coaching</div>
               <p className="text-sm text-foreground">{r.salesCoaching || "No scored calls in the window."}</p>
             </div>
           </div>

@@ -131,6 +131,13 @@ export function callOpener(lead: { name: string; vertical: keyof typeof WHAT; re
 export const DEMO_CTA = "Book a 15-minute demo";
 export const RECEPTIONIST_PROMISE = "Each business's booking, routing and texts are set up and tested before they go live.";
 
+export type EmailPitch = "website" | "redesign" | "receptionist" | "both" | "audit_pending";
+
+/** The CRM stores `pitch` as free text (default ''); the email wording has five. Anything else reads as a website pitch. */
+export function emailPitch(pitch: string): EmailPitch {
+  return pitch === "receptionist" || pitch === "both" || pitch === "redesign" || pitch === "audit_pending" ? pitch : "website";
+}
+
 /** A founder's contact note that rules email out ("phone only", "no emails", "don't email"). */
 export function prefersNoEmail(contactPref: string | null | undefined): boolean {
   // Review R8: the negation must be about email itself ("no emails", "don't email"), not a

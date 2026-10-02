@@ -14,6 +14,7 @@ import { fileNameIn } from "../jev-files";
 import { parseMarginQuery } from "../jev-margin";
 import { youtubeSteps } from "../jev-command";
 import { referenceIn } from "./context";
+import { planContinuation } from "./continuation";
 import { planRules, splitSpokenTarget } from "./plan";
 import { parsePriceQuery } from "./answers";
 import { codingDraftFor } from "./coding";
@@ -33,6 +34,7 @@ export function commandIntent(utterance: string, options: { sharing?: boolean } 
   if (split.spokenTarget && split.spokenTarget !== "this pc") return out("a device was named");
   // Coding work is Track 3's: when its detector is loaded, the entry opens its draft page (same as typed).
   if (codingDraftFor(u)) return out("coding: Track 3's coding workspace");
+  if (planContinuation(u)) return out("verified setup followed by screen work");
   const rule = planRules(u);
   if (rule?.lane === "executor") return out(`executor ${rule.executor}`);
   // "type 'hi' then email it": the entry says which step it won't do (never half-done and called done).

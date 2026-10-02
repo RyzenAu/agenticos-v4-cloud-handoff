@@ -25,6 +25,7 @@ import type {
   AgentRunInput,
   AgentStatus,
 } from "./agent-jobs-types";
+import { dataDirFor } from "./cloud/data-dir";
 
 const ACTIVE = new Set(["queued", "running", "needs_input"]);
 const CHECK_TEXT = "JARVIS_AGENT_CHECK_OK";
@@ -52,7 +53,7 @@ type Options = {
  * with `..`, and the project files Claude loads from it are never the OS repo or its .operator-data. */
 export const AGENT_TASKS_ROOT = join(homedir(), ".agentic-os", "agent-tasks");
 export function agentJobs(root: string, options: Options = {}) {
-  const base = join(root, ".operator-data"),
+  const base = join(dataDirFor(root)),
     folder = options.tasksRoot ?? AGENT_TASKS_ROOT,
     file = join(base, "agent-jobs.json");
   if (insidePath(realResolve(folder), realResolve(root)))

@@ -224,10 +224,10 @@ test("Windows harness paths: venv Scripts\\python.exe, hermes.exe, and the sign-
   expect(hermesInstalled(home, "", { platform: "win32", env: windowsEnv, exists: (candidate) => candidate === "C:\\Users\\example\\.local\\bin\\hermes.exe" })).toBe(true);
   expect(hermesInstalled(home, "", { platform: "win32", env: windowsEnv, exists: () => false })).toBe(false);
   const runs: Array<{ file: string; args: string[]; options: any }> = [];
-  const status = await claudeSignInStatus("C:\\Users\\example\\AppData\\Roaming\\npm\\claude.cmd", async (file, args, options) => { runs.push({ file, args, options }); return { stdout: '{"loggedIn":true}' }; }, { platform: "win32", env: windowsEnv });
+  const status = await claudeSignInStatus("C:\\Users\\example\\AppData\\Roaming\\npm\\claude.cmd", async (file, args, options) => { runs.push({ file, args, options }); return { stdout: '{"loggedIn":true}' }; }, { platform: "win32", env: windowsEnv }, {});
   expect(status).toMatchObject({ installed: true, ready: true });
   expect(runs).toEqual([{ file: "C:\\Windows\\System32\\cmd.exe", args: ["/d", "/s", "/c", '"C:\\Users\\example\\AppData\\Roaming\\npm\\claude.cmd auth status --json"'], options: { timeout: 4000, maxBuffer: 32000, windowsHide: true, windowsVerbatimArguments: true } }]);
-  const native = await claudeSignInStatus("C:\\Users\\example\\.local\\bin\\claude.exe", async (file, args) => { runs.push({ file, args, options: {} }); return { stdout: '{"loggedIn":false}' }; }, { platform: "win32", env: windowsEnv });
+  const native = await claudeSignInStatus("C:\\Users\\example\\.local\\bin\\claude.exe", async (file, args) => { runs.push({ file, args, options: {} }); return { stdout: '{"loggedIn":false}' }; }, { platform: "win32", env: windowsEnv }, {});
   expect(native.ready).toBe(false);
   expect(runs[1]).toMatchObject({ file: "C:\\Users\\example\\.local\\bin\\claude.exe", args: ["auth", "status", "--json"] });
 });

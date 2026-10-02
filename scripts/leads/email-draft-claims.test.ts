@@ -1,10 +1,17 @@
 // F1-03 / F1-33: the cold-email draft claims only what's true (catalogue + A3 claims audit), says
 // "noticed" only about evidence, asks for the approved demo, and respects the contact note.
 import { describe, expect, test } from "bun:test";
-import { DEMO_CTA, emailDraft, prefersNoEmail, RECEPTIONIST_PROMISE } from "./outreach";
+import { DEMO_CTA, emailDraft, emailPitch, prefersNoEmail, RECEPTIONIST_PROMISE } from "./outreach";
 
 const base = { name: "Harbour Synthetic Dental", vertical: "dental" as const, reasons: [] as string[] };
 const SCORE_ONLY = ["missed calls after hours", "no online booking"];
+
+describe("emailPitch (shared by the CLI and API draft paths)", () => {
+  test("keeps the four non-default pitches and reads anything else, including the CRM's empty default, as a website pitch", () => {
+    for (const p of ["receptionist", "both", "redesign", "audit_pending"]) expect(emailPitch(p)).toBe(p as never);
+    for (const p of ["", "website", "something-new"]) expect(emailPitch(p)).toBe("website");
+  });
+});
 
 describe("cold-email draft", () => {
   test("receptionist: configurable cover, Google Calendar or Cal.com at go-live, the promise and the 15-minute demo", () => {

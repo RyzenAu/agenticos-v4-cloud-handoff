@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { youtubeConfiguration, youtubeChannelSelector } from "./business-integrations";
 import { youtubeDurationSeconds } from "./business-content";
 import type { CompetitorWatchData, WatchChannel, WatchVideo } from "../src/lib/competitor-watch";
+import { dataDirFor } from "./cloud/data-dir";
 
 const defaults = ["@NetworkChuck", "@mreflow", "@LiamOttley"];
 const number = (value: unknown) => {
@@ -39,7 +40,7 @@ export function competitorWatch(
   root: string,
   options: { homeDir?: string; request?: typeof fetch } = {},
 ) {
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "competitor-watch.json");
   let pending = false;
   function read(): CompetitorWatchData {

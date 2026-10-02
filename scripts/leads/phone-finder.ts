@@ -35,9 +35,12 @@ import { join } from "node:path";
 import { crawl4aiAvailable, crawl4aiFetch } from "./crawl4ai";
 import { crmPath, isOptedOut, listLeads, openCrm, type Lead } from "./crm";
 import { hostnameMatchesBusiness, NOT_A_WEBSITE, SEARXNG_URL } from "./discovery";
+import { SearchUnavailable, searxngQuery } from "../search/searxng";
 import { robotsDisallowed } from "./enrich";
 import { jevAnswers } from "../jev-client";
 import { providerKey } from "../provider-config";
+import { dataDirFor } from "../cloud/data-dir";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 // ─── 1. Parsing and normalisation ──────────────────────────────────────────────────────────────
 
@@ -557,7 +560,7 @@ const searchState: { p: Promise<void> } = { p: Promise.resolve() };
 
 /** Every upstream engine refused (rate-limited, CAPTCHA). An empty answer then means "couldn't
  *  look", not "no number exists" — the batch leaves the lead for later and backs off. */
-export class SearchUnavailable extends Error {}
+export { SearchUnavailable } from "../search/searxng";
 
 /** Asked for explicitly: 25 Sep 2026 the default set (Brave, DuckDuckGo, Google CSE) was
  *  suspended/CAPTCHA'd after a few dozen queries, while Yahoo still answered and honours quoted
@@ -566,22 +569,11 @@ export const SEARCH_ENGINES = "yahoo,brave,duckduckgo";
 
 export async function searxngResults(query: string, request: typeof fetch = fetch): Promise<SearchResult[]> {
   await spaced(SEARCH_GAP_MS, () => lastSearchAt, (n) => (lastSearchAt = n), searchState);
-  const url = new URL("/search", SEARXNG_URL);
-  url.searchParams.set("q", query);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("engines", SEARCH_ENGINES);
-  url.searchParams.set("language", "en-AU");
-  const response = await request(url.href, { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok) throw new SearchUnavailable(`SearXNG HTTP ${response.status}`);
-  const data = (await response.json().catch(() => null)) as { results?: { url?: string; title?: string; content?: string }[]; unresponsive_engines?: [string, string][] } | null;
-  if (!data) throw new SearchUnavailable("SearXNG returned no JSON");
-  const down = data.unresponsive_engines ?? [];
-  if (!(data.results ?? []).length && down.length >= SEARCH_ENGINES.split(",").length) {
-    throw new SearchUnavailable(`every search engine refused (${down.map(([e, why]) => `${e}: ${why}`).join("; ")})`);
-  }
-  return (data.results ?? [])
-    .filter((r): r is { url: string; title?: string; content?: string } => typeof r.url === "string")
-    .map((r) => ({ url: r.url, title: r.title ?? "", content: r.content ?? "" }));
+  const outcome = await searxngQuery(query, { request, engines: SEARCH_ENGINES, language: "en-AU", timeoutMs: 30_000 });
+  // "Unavailable" is thrown (the batch backs off and leaves the lead for later); "no_results" is a genuine empty answer.
+  if (outcome.status === "unavailable") throw new SearchUnavailable(`SearXNG: ${outcome.reason}`, outcome.kind);
+  if (outcome.status === "no_results") return [];
+  return outcome.results.map((r) => ({ url: r.url, title: r.title, content: r.content }));
 }
 
 const hostLast = new Map<string, number>();
@@ -970,7 +962,7 @@ type Progress = {
 };
 
 export function progressPath(root: string) {
-  return join(root, ".operator-data", "phone-finder-progress.json");
+  return join(dataDirFor(root), "phone-finder-progress.json");
 }
 
 export function loadProgress(root: string): Progress {
@@ -986,7 +978,7 @@ export function loadProgress(root: string): Progress {
 }
 
 function saveProgress(root: string, progress: Progress) {
-  mkdirSync(join(root, ".operator-data"), { recursive: true });
+  mkdirSync(join(dataDirFor(root)), { recursive: true });
   progress.updatedAt = new Date().toISOString();
   const file = progressPath(root);
   const temp = `${file}.${process.pid}.tmp`;
@@ -1014,7 +1006,7 @@ export function pilotSample(leads: Lead[], n: number): Lead[] {
 
 export async function meetingActive(request: typeof fetch = fetch): Promise<boolean> {
   try {
-    const response = await request("http://127.0.0.1:8081/__operator/meeting/status", { signal: AbortSignal.timeout(3000) });
+    const response = await request("http://127.0.0.1:8081/__operator/meeting/status", { signal: AbortSignal.timeout(3000), headers: localOwnerHeaders() });
     if (!response.ok) return false;
     const s = (await response.json()) as { phase?: string };
     return s.phase === "listening" || s.phase === "consent";
@@ -1051,7 +1043,7 @@ export async function runPhoneFinder(opts: {
     const deps = opts.deps ?? defaultFinderDeps(opts.root, request);
     if (!deps.jev) log("  (no Jev key — only the 2-independent-sources rule can write a phone this run)");
     if (!deps.crawl) log("  (Crawl4AI not installed — snippets only)");
-    const pauseFile = join(opts.root, ".operator-data", "phone-finder.pause");
+    const pauseFile = join(dataDirFor(opts.root), "phone-finder.pause");
     const paused = opts.isPaused ?? (async () => existsSync(pauseFile) || (await meetingActive(request)));
     const pollMs = opts.pollMs ?? 30_000;
     let cursor = 0;

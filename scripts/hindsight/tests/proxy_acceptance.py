@@ -291,10 +291,33 @@ def main() -> int:
     names = sorted(t["name"] for t in (data or {}).get("result", {}).get("tools", []))
     check("MCP tools exclude delete/clear/async retain", st == 200 and names and not set(names) & {"delete_bank", "clear_memories", "delete_document", "retain"},
           tools=names)
-    st, _, data = mcp(sid, "tools/call", {"name": "sync_retain", "arguments": {"content": f"The Lark{RUN} studio closes at 5pm."}}, rid=3)
-    check("MCP save (sync_retain) through the proxy", st == 200 and data and "error" not in data and not (data.get("result") or {}).get("isError"), status=st)
+    # SUPPORTED behaviour since a1ec9053 (REVIEW-STAGE-D B3): Hindsight's MCP is READ-ONLY. sync_retain,
+    # update_memory and invalidate_memory are no longer enabled (HINDSIGHT_API_MCP_ENABLED_TOOLS), so agents
+    # save through the AgenticOS memory API; the one save path HERE is REST retain through the proxy
+    # (forced synchronous, writes ON, write bank only).
+    check("MCP tools/list does not offer sync_retain, update_memory or invalidate_memory (read-only MCP, a1ec9053)",
+          st == 200 and bool(names) and not set(names) & {"sync_retain", "update_memory", "invalidate_memory"}, tools=names)
+    canary = f"Zebra{RUN}"
+    st, _, data = mcp(sid, "tools/call", {"name": "sync_retain", "arguments": {"content": f"The {canary} depot opens at 4am."}}, rid=3)
+    res = (data or {}).get("result") or {}
+    stored = int(sql(f"select count(*) from memory_units where text ilike '%{canary}%'") or 0)
+    check("MCP tools/call sync_retain is refused: HTTP 200 + isError 'Unknown tool' (not enabled upstream), nothing stored",
+          st == 200 and res.get("isError") is True and "unknown tool" in json.dumps(res).lower() and stored == 0,
+          status=st, is_error=res.get("isError"), stored=stored)
+    r = retain(f"mem-lark-{RUN}", f"The Lark{RUN} studio closes at 5pm.")
+    lark_rows = int(sql(f"select count(*) from async_operations where bank_id='{BANK}' and task_payload::text ilike '%Lark{RUN}%'") or 0)
+    check("supported save path: REST retain through the proxy (writes ON, write bank) -> 200, forced synchronous (no async payload row)",
+          r.status_code == 200 and r.json().get("async") is False and lark_rows == 0, status=r.status_code, async_rows=lark_rows)
     st, _, data = mcp(sid, "tools/call", {"name": "recall", "arguments": {"query": f"When does the Lark{RUN} studio close?"}}, rid=4)
-    check("MCP recall through the proxy finds it", st == 200 and f"lark{RUN}".lower() in json.dumps(data).lower(), status=st)
+    blob = json.dumps(data).lower()
+    check("MCP recall finds the REST-saved item with its source (text, document_id and chunk_id)",
+          st == 200 and f"lark{RUN}" in blob and f"mem-lark-{RUN}" in blob and f"_mem-lark-{RUN}_0" in blob, status=st)
+    r = C.post(f"{PROXY}/v1/default/banks/{BANK}/memories/recall", json={"query": f"When does the Lark{RUN} studio close?", "max_tokens": 600})
+    hits = [x for x in (r.json().get("results", []) if r.status_code == 200 else []) if f"lark{RUN}" in x.get("text", "").lower()]
+    check("REST recall finds the same item with its source (document_id and chunk_id)",
+          r.status_code == 200 and bool(hits) and hits[0].get("document_id") == f"mem-lark-{RUN}"
+          and str(hits[0].get("chunk_id", "")).endswith(f"_mem-lark-{RUN}_0"), status=r.status_code,
+          document_id=hits[0].get("document_id") if hits else None)
     st, _, data = mcp(sid, "tools/call", {"name": "delete_bank", "arguments": {}}, rid=5)
     check("MCP delete_bank is not callable", st == 200 and ("error" in (data or {}) or (data or {}).get("result", {}).get("isError")), status=st)
 
@@ -303,8 +326,10 @@ def main() -> int:
     r = retain(f"mem-c-{RUN}", "Synthetic canary should not be stored.")
     st, _, data = mcp(sid, "tools/call", {"name": "sync_retain", "arguments": {"content": "Synthetic canary should not be stored."}}, rid=6)
     st2, _ = recall(f"When does the Wren{RUN} clinic open?")
-    check("writes OFF: REST retain -> 403, MCP save refused, recall still works",
-          r.status_code == 403 and data and "error" in data and st2 == 200, rest=r.status_code, recall=st2)
+    err = (data or {}).get("error") or {}
+    check("writes OFF: REST retain -> 403, MCP sync_retain -> JSON-RPC error -32001 'memory writes are OFF' (proxy gate), recall still works",
+          r.status_code == 403 and err.get("code") == -32001 and "writes are off" in str(err.get("message", "")).lower() and st2 == 200,
+          rest=r.status_code, mcp_error=err.get("code"), recall=st2)
     writes("on")
 
     # clean up with the OPERATOR command (bank delete is never exposed through the proxy)
@@ -327,7 +352,7 @@ def main() -> int:
                     continue
                 if any(s in txt for s in secrets_):
                     hits.append(f"{f.name}:secret")
-                words = ("Wren", "Finch", "Lark", "Heron", "Otterly", "Wombatreflect")
+                words = ("Wren", "Finch", "Lark", "Heron", "Otterly", "Wombatreflect", "Zebra")
                 if RUN in txt:
                     for line in txt.splitlines():
                         if RUN in line and any(w + RUN in line for w in words):

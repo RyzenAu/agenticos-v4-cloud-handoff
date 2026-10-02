@@ -9,6 +9,7 @@ import { basename, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { coachingSummary } from "../leads/crm";
 import { clientBuildDir } from "./core";
+import { localOwnerHeaders } from "../identity/local-owner-token";
 
 type Section = Record<string, unknown> | unknown[] | string | null;
 const DAY = 86_400_000;
@@ -254,7 +255,7 @@ export function meetingDigest(dir: string, now = Date.now()): Section {
 
 export async function fetchAiUsage(url = "http://127.0.0.1:8081/__ai_usage", timeoutMs = 45_000): Promise<any | null> {
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    const r = await fetch(url, { signal: AbortSignal.timeout(timeoutMs), headers: localOwnerHeaders() });
     return r.ok ? await r.json() : null;
   } catch {
     return null;

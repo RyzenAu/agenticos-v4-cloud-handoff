@@ -28,11 +28,11 @@ and no Tailscale settings have been changed. The first real test happens when Me
    refuses his requests with "Local host required".
 3. **Integrate the devices track.** Make sure the `/__devices` route and the Profile page are
    in the running OS (lead patch, below). Without them, the pairing screens don't exist.
-4. **Build the companion** from the merged AgenticOS repo on Usman's PC:
+4. **Build the companion** from the merged AgenticOS repo on Usman's PC (short version: `docs/MEHROZ-ENROL.md`):
    ```powershell
-   bun build --compile companion/main.ts --outfile mu-companion.exe
+   bun companion\build-exe.ts        # D:\prog-scratch\dist\mu-companion.exe + mu-companion.exe.sha256
    ```
-   This makes one self-contained file of about 85 MB, so Mehroz doesn't need Bun. Copy it to
+   This makes one self-contained file of about 83 MB, so Mehroz doesn't need Bun, and a SHA-256 to read out to him. Copy it to
    Mehroz's PC, for example with `tailscale file cp mu-companion.exe <mehroz-pc>:`. The file
    is unsigned, so Windows SmartScreen will warn about it.
 
@@ -63,8 +63,8 @@ To pair another browser, like your phone: on a device that's already paired, go 
    ```
 3. In the OS, go to **Profile → Paired devices**. It should show *"Mehroz's PC · Mehroz's
    machine · online · mic held here"*.
-4. Optional: to start the companion at sign-in, put a shortcut to `mu-companion.exe run` in
-   `shell:startup`.
+4. Optional: to start the companion at sign-in, use `companion\install-autostart.ps1 -Exe <path to mu-companion.exe>`
+   (per user, no admin; `-DryRun` first; remove with `uninstall-autostart.ps1`).
 
 Other companion commands:
 - `.\mu-companion.exe status` shows the pairing and the days left.
@@ -88,10 +88,10 @@ Windows account can read.
 | Jarvis controlling **Usman's** PC | Never | Never |
 | Send, pay, delete or publish | Needs **your own spoken yes** through Jarvis. A button click is not enough. | No such action is on the companion's allow-list yet |
 
-What the companion can run today (`companion/executors.ts`) is limited: `echo`, `notify` (a
-line in the companion log), `open-url` (only `http`/`https` links, in your default browser) and
-`wait`. Full desktop control (screen-hands / pc-hands) has **not** been ported to the companion
-yet. Until it is, Jarvis cannot click or type on your PC.
+What the companion runs (`companion/executors.ts`, all with a post-action check): `app.open`, `app.focus`, `open-url`,
+`browser.navigate`, `file.open` (only `Documents\MU-Jarvis`), `deck.blank`, `notepad.type`, `observe.window` (read-only),
+`screen.goal` (a compound or open-ended goal run by the same Jarvis screen loop as Usman's PC; it asks for your spoken yes
+before any final button) and `echo`, `notify`, `wait`. The packaged exe has no app browser. Details: `docs/programme-20261001/worker-companion.md`.
 
 Microphone: the companion claims this PC's microphone lock
 (`%LOCALAPPDATA%\mu-companion\mic.lock`) so only one Jarvis voice process uses it. Audio never

@@ -287,12 +287,12 @@ describe("Hermes demo mode stays offline (F3-19)", () => {
 });
 
 describe("Honest copy on Jarvis and OpenClaw (F3-21, F3-22)", () => {
-  test("Jarvis doesn't point to a text box that isn't there", () => {
+  test("Jarvis has a real request box wired to the existing assistant", () => {
     const src = read("src/components/shell/pages/jarvis-page.tsx");
     expect(src.includes("or type below")).toBe(false);
-    // Integration with T1: typing goes to Jarvis Text mode ("Type to Jarvis" opens the panel in Text).
-    expect(src.includes("openJarvisText")).toBe(true);
-    expect(src.includes("Type to Jarvis")).toBe(true);
+    expect(src.includes('id="assistant-request"')).toBe(true);
+    expect(src.includes("submitJarvisRequest(request)")).toBe(true);
+    expect(src.includes("Send request")).toBe(true);
   });
   test("OpenClaw's header describes the device bridge, and no coding swarm is presented (W-B: the concept cards are gone)", () => {
     const src = read("src/routes/agents.openclaw.tsx");

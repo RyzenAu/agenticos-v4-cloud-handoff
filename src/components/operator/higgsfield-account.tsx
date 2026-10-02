@@ -95,7 +95,7 @@ export function HiggsfieldAccountConnection({ compact = false }: { compact?: boo
   };
 
   if (compact) {
-    const actionClass = "inline-flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[#eee9ff] px-4 py-2.5 text-[12px] font-semibold text-[#191423] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-200 disabled:opacity-60";
+    const actionClass = "inline-flex min-h-[42px] shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[#eee9ff] px-4 py-2.5 text-xs font-semibold text-[#191423] transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-200 disabled:opacity-60";
     return (
       <Popover open={Boolean(error)} onOpenChange={(open) => { if (!open) setError(null); }}>
         <PopoverTrigger asChild>
@@ -113,7 +113,7 @@ export function HiggsfieldAccountConnection({ compact = false }: { compact?: boo
         </PopoverTrigger>
         <PopoverContent side="top" align="end" sideOffset={10} collisionPadding={12}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          className="z-[100] w-72 max-w-[calc(100vw-24px)] rounded-xl border-rose-300/20 bg-[#171d28] p-3 text-[12px] text-rose-100"
+          className="z-[100] w-72 max-w-[calc(100vw-24px)] rounded-xl border-rose-300/20 bg-[#171d28] p-3 text-xs text-rose-100"
           role="alert">
           {error}
         </PopoverContent>
@@ -126,25 +126,25 @@ export function HiggsfieldAccountConnection({ compact = false }: { compact?: boo
       <div className="flex items-center gap-3">
         <img src={higgsfieldLogo} alt="Higgsfield" className="h-7 w-7 rounded-lg object-contain" />
         <div className="min-w-0 flex-1">
-          <div className="text-[12px] font-medium text-white/90">Higgsfield account</div>
-          <p className="mt-0.5 text-[10.5px] leading-relaxed text-white/50">
+          <div className="text-xs font-medium text-white/90">Higgsfield account</div>
+          <p className="mt-0.5 text-xs leading-relaxed text-white/50">
             Nano Banana 2 · your Higgsfield credits
           </p>
         </div>
         {connected ? (
-          <button onClick={() => void disconnect()} disabled={busy} title="Disconnect this OS from Higgsfield" className="flex items-center gap-1.5 rounded-lg border border-emerald-300/20 px-2.5 py-2 text-[10.5px] text-emerald-200">
+          <button onClick={() => void disconnect()} disabled={busy} title="Disconnect this OS from Higgsfield" className="flex items-center gap-1.5 rounded-lg border border-emerald-300/20 px-2.5 py-2 text-xs text-emerald-200">
             <Check className="h-3.5 w-3.5" /> Disconnect
           </button>
         ) : (
-          <button onClick={() => void connect()} disabled={busy || waiting} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#eee9ff] px-3 py-2 text-[11px] font-medium text-[#191423] disabled:opacity-60">
+          <button onClick={() => void connect()} disabled={busy || waiting} className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#eee9ff] px-3 py-2 text-xs font-medium text-[#191423] disabled:opacity-60">
             {busy || waiting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
             {waiting ? "Finish sign-in" : busy ? "Opening…" : "Connect Higgsfield"}
           </button>
         )}
       </div>
-      {!connected && <p className="mt-2 text-[10px] leading-relaxed text-white/40">Sign in once with Higgsfield to use Nano Banana 2 here. API usage is billed separately.</p>}
-      {waiting && authorizationUrl && <a className="mt-2 inline-flex text-[11px] text-violet-200 underline underline-offset-4" href={authorizationUrl} target="_blank" rel="noreferrer">Open Higgsfield sign-in</a>}
-      {error && <p role="alert" className="mt-2 text-[11px] text-rose-200">{error}</p>}
+      {!connected && <p className="mt-2 text-xs leading-relaxed text-white/40">Sign in once with Higgsfield to use Nano Banana 2 here. API usage is billed separately.</p>}
+      {waiting && authorizationUrl && <a className="mt-2 inline-flex text-xs text-violet-200 underline underline-offset-4" href={authorizationUrl} target="_blank" rel="noreferrer">Open Higgsfield sign-in</a>}
+      {error && <p role="alert" className="mt-2 text-xs text-rose-200">{error}</p>}
     </div>
   );
 }

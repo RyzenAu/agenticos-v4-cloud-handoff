@@ -1,0 +1,157 @@
+[
+  {
+    "at": "+0.8s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+1.7s",
+    "step": "before the hub dies",
+    "data": {
+      "job": "48ad3a7d",
+      "state": "running",
+      "steps": 5,
+      "artifactsBefore": 29,
+      "counts": {
+        "companion": 2,
+        "xvfb": 2,
+        "x11vnc": 2,
+        "browserMain": 1,
+        "git": 0
+      }
+    }
+  },
+  {
+    "at": "+2.4s",
+    "step": "hub killed (hard, process tree)",
+    "data": {
+      "out": "r6-hub.ps1 kill: exit 0"
+    }
+  },
+  {
+    "at": "+6.8s",
+    "step": "hub is down",
+    "data": {
+      "health": "down",
+      "ryzenCountsWhileDown": {
+        "companion": 2,
+        "xvfb": 2,
+        "x11vnc": 2,
+        "browserMain": 1,
+        "git": 0
+      }
+    }
+  },
+  {
+    "at": "+7.2s",
+    "step": "hub starting again",
+    "data": {
+      "out": "r6-hub.ps1 start: exit 0"
+    }
+  },
+  {
+    "at": "+23.2s",
+    "step": "computers back after the restart",
+    "data": {
+      "ms": 47,
+      "states": [
+        {
+          "name": "research",
+          "state": "online",
+          "recoveries": 5
+        },
+        {
+          "name": "builder",
+          "state": "online",
+          "recoveries": 5
+        }
+      ]
+    }
+  },
+  {
+    "at": "+25.7s",
+    "step": "the job's status afterwards is accurate: not re-run, outcome not invented",
+    "data": {
+      "state": "unknown",
+      "note": "Interrupted by a restart: the outcome is unknown and it was not re-run.",
+      "steps": 8,
+      "stepsBefore": 5,
+      "lastStep": [
+        "ok audit: sub-goal 1 of 5, open the site: done. the local demo clinic fixture (synthetic) is open (1 of 5 done)",
+        "note audit: sub-goal 2 of 5, desktop: started. Measuring at 1280 x 800 (1 of 5 done)"
+      ]
+    }
+  },
+  {
+    "at": "+25.8s",
+    "step": "the conversation, once",
+    "data": {
+      "entries": [
+        "started: Started: audit the demo clinic fixture (job 48ad3a7d).",
+        "7: Website audit, step 1 of 5 (open the site): done.",
+        "unknown: Ended without a confirmed outcome: audit the demo clinic fixture. Interrupted by a restart: the outcome is unk"
+      ],
+      "ends": 1,
+      "reports": 0
+    }
+  },
+  {
+    "at": "+25.8s",
+    "step": "artifacts persist across the restart",
+    "data": {
+      "before": 29,
+      "after": 29,
+      "same": true,
+      "opens": [
+        200,
+        200,
+        200
+      ]
+    }
+  },
+  {
+    "at": "+29.9s",
+    "step": "a new job after the restart: succeeded in 1.3 s",
+    "data": {
+      "jobId": "cb12b109",
+      "ack": "Started on builder: prepare a comparison table of three website packages. It runs there whether or not your PC is on; say \"show me the builder computer\" to follow it, or stop to cancel. (job cb12b109)",
+      "note": "Done on builder: 1 step, each checked.",
+      "steps": 14,
+      "artifact": {
+        "id": "cb12b109-fdef-437e-81a1-a0bd813cd7e3",
+        "title": "Comparison: Starter / Standard / Plus",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "builder",
+        "main": "comparison.md",
+        "files": [
+          "comparison.md 965",
+          "comparison.csv 261",
+          "data.json 1495"
+        ]
+      },
+      "entries": [
+        "cb12b109-fdef-437e-81a1-a0bd813cd7e3:started | Started: prepare a comparison table of three website pac… (job cb12b109).",
+        "step:2 | Business preparation, step 1 of 5 (gather): done.",
+        "step:5 | Business preparation, step 2 of 5 (draft): done.",
+        "step:7 | Business preparation, step 3 of 5 (check): done.",
+        "step:10 | Business preparation, step 4 of 5 (save on the computer): done.",
+        "report:1 | Business preparation: Comparison: Starter / Standard / Plus Comparison table of 3 synthetic options (Starter $690, Standard $1,090, Plus $1,990 ex GST), every figure recomputed and matched. All inform",
+        "step:12 | Business preparation, step 5 of 5 (return result): done.",
+        "cb12b109-fdef-437e-81a1-a0bd813cd7e3:succeeded | Finished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job cb12b109)"
+      ]
+    }
+  },
+  {
+    "at": "+29.9s",
+    "step": "a fresh job after the restart",
+    "data": {
+      "state": "succeeded",
+      "artifact": "Comparison: Starter / Standard / Plus"
+    }
+  }
+]

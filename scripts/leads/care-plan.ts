@@ -13,6 +13,7 @@ import { callMimo } from "../llm/mimo";
 import type { Lead } from "./crm";
 import { readSeoAudit, runSeoAudit, type SeoAuditRecord } from "./seo-audit";
 import { auditSite, type SiteAudit } from "./site-audit";
+import { dataDirFor } from "../cloud/data-dir";
 
 export function carePlanClientSlug(lead: Lead): string {
   return previewSlug(lead.name || `lead-${lead.id}`, lead.id);
@@ -23,11 +24,11 @@ export function carePlanMonth(now = new Date()): string {
 }
 
 export function carePlanDir(root: string, slug: string, month: string) {
-  return join(root, ".operator-data", "drafts", "care-plan", slug, month);
+  return join(dataDirFor(root), "drafts", "care-plan", slug, month);
 }
 
 function changesFilePath(root: string, slug: string): string {
-  return join(root, ".operator-data", "care-plan", slug, "CHANGES.md");
+  return join(dataDirFor(root), "care-plan", slug, "CHANGES.md");
 }
 
 /** Changes for the month from a per-client CHANGES.md (one `- ` bullet per change, founders keep

@@ -1,0 +1,71 @@
+{
+  "$comment": "Every Python environment this OS depends on, and which kind it is. Operational = something the hub, lead discovery or memory needs running (a break stops real work). Experimental = a pilot, trial or throwaway (a break must never reach anything operational). scripts/ops/python-envs.ts validates this file in the test suite; docs/programme-20261001/DEPENDENCY-ISOLATION.md explains the rules and why (the OpenShell experiment's Python 3.13 to 3.14 upgrade orphaned SearXNG's venv on 2 Oct 2026). Paths use forward slashes.",
+  "environments": [
+    {
+      "id": "searxng",
+      "class": "operational",
+      "where": "wsl:kali-linux",
+      "path": "~/searxng-venv",
+      "usedBy": ["search for lead discovery", "search for bounded research", "phone finder"],
+      "interpreterPinned": false,
+      "knownRisk": "Built with virtualenv on the distro's python3, so a distro Python upgrade orphans it. Rebuild it from a pinned interpreter (see DEPENDENCY-ISOLATION.md) the next time it is touched.",
+      "verifiedBy": "bun scripts/ops/check-search.ts"
+    },
+    {
+      "id": "hindsight",
+      "class": "operational",
+      "where": "windows",
+      "path": "D:/hindsight/venv",
+      "usedBy": ["shared memory (Hindsight)"],
+      "interpreterPinned": true,
+      "verifiedBy": "GET /__health (dependencies); docs/HINDSIGHT-OPS.md"
+    },
+    {
+      "id": "changedetection",
+      "class": "operational",
+      "where": "windows",
+      "path": "~/.venvs/changedetection",
+      "usedBy": ["prospect monitoring"],
+      "interpreterPinned": false
+    },
+    {
+      "id": "notebooklm",
+      "class": "operational",
+      "where": "windows",
+      "path": "~/.notebooklm-venv",
+      "usedBy": ["NotebookLM research"],
+      "interpreterPinned": false
+    },
+    {
+      "id": "laya",
+      "class": "operational",
+      "where": "windows",
+      "path": "D:/laya/venv",
+      "usedBy": ["Laya speech"],
+      "interpreterPinned": false
+    },
+    {
+      "id": "meeting-mode",
+      "class": "operational",
+      "where": "windows",
+      "path": "D:/meeting-mode/venv",
+      "usedBy": ["meeting mode"],
+      "interpreterPinned": false
+    },
+    {
+      "id": "openshell-pilot",
+      "class": "experimental",
+      "where": "wsl:kali-linux",
+      "path": "~/experiments/openshell/venv",
+      "usedBy": ["OpenShell pilot (branch prog/os-openshell-20261001, unmerged)"],
+      "interpreterPinned": false,
+      "rule": "Lives under ~/experiments/, never installs into the distro Python, and never upgrades or replaces the distro's python3."
+    }
+  ],
+  "rules": {
+    "experimentalNeverUnderOperationalPath": true,
+    "operationalPathsAreDistinct": true,
+    "noSystemPythonInstallsFromRepoScripts": true,
+    "experimentalWslEnvsLiveUnder": "~/experiments/"
+  }
+}

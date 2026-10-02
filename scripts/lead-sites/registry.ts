@@ -3,6 +3,7 @@
 // "Preview live / expires in N days / expired — take it down" state.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type PreviewStatus = "generated" | "deploying" | "live" | "taken_down" | "failed";
 
@@ -34,7 +35,7 @@ export type PreviewRecord = {
 };
 
 export function registryPath(root: string) {
-  return join(root, ".operator-data", "lead-sites.json");
+  return join(dataDirFor(root), "lead-sites.json");
 }
 
 export function readRegistry(root: string): PreviewRecord[] {

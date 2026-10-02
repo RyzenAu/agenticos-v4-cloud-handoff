@@ -5,9 +5,10 @@
 // limit, server restarts); the model providers and the tools that need a look as two list widgets;
 // one widget per plan limit; devices and people behind one click. "N not verified" is said in one
 // plain line. Version and freshness are one line at the foot.
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Cpu, Gauge, MonitorSmartphone, RefreshCw, Wrench } from "lucide-react";
-import { Badge, Disclosure, EmptyState, PageFoot, PageHeader, Skeleton, StatusDot, Widget, WidgetEmpty, WidgetGrid, WidgetList } from "@/components/ds";
+import { Badge, Disclosure, EmptyState, Notice, PageFoot, PageHeader, Skeleton, StatusDot, Widget, WidgetEmpty, WidgetGrid, WidgetList } from "@/components/ds";
 import { useNow } from "@/components/workspace/panel-shell";
 import { honestFromQuery, payloadTime } from "@/lib/honest-state";
 import { operatorRequest } from "@/lib/operator";
@@ -74,7 +75,15 @@ export function SystemPage() {
 
   const check = modelCheckView(models.data, models.dataUpdatedAt);
   // Asking the providers starts Codex and Claude, so it is a click (T8c); the answer shows "checking" and polls.
-  const checkModels = () => void operatorRequest<ModelSnapshot>("/models/refresh", { background: true }).then(() => models.refetch(), () => models.refetch());
+  // A check that could not even start used to change nothing on screen; now it says why.
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const checkModels = () => {
+    setCheckError(null);
+    void operatorRequest<ModelSnapshot>("/models/refresh", { background: true }).then(
+      () => models.refetch(),
+      (e: unknown) => { setCheckError(e instanceof Error && e.message ? e.message : "The check could not start."); void models.refetch(); },
+    );
+  };
   const providers = check.phase === "ready" ? providerSummary(models.data?.statuses ?? []) : null;
   const perProvider = modelCountsByProvider(models.data?.models ?? []);
   const modelTotal = distinctModelCount(models.data?.models ?? []);
@@ -199,26 +208,24 @@ export function SystemPage() {
           title="Nearest plan limit"
           loading={usage.isLoading}
           state={honestFromQuery(usage, now)}
-          lastSuccess={usage.data ? payloadTime(usage.data) ?? usage.dataUpdatedAt : null}
+          lastSuccess={usage.data ? (payloadTime(usage.data) ?? usage.dataUpdatedAt) : null}
           now={now}
           value={peak[0] ? `${Math.round(peak[0].peakPercent ?? 0)}%` : null}
-          tone={peak[0] ? (pressureTone(peak[0].peakPercent) === "danger" ? "danger" : pressureTone(peak[0].peakPercent) === "warn" ? "warn" : undefined) : undefined}
+          tone={
+            peak[0]
+              ? pressureTone(peak[0].peakPercent) === "danger" ? "danger" : pressureTone(peak[0].peakPercent) === "warn" ? "warn" : undefined
+              : undefined
+          }
           // F3-07: while usage is loading there is no answer yet, so no "No limits reported".
           line={usage.isLoading ? undefined : peak[0] ? `${peak[0].owner} · ${peak[0].plan}` : usage.error ? "Usage unavailable" : "No limits reported"}
           link={{ to: "/usage", label: "AI usage & spend" }}
         />
-        <SignalWidget
-          icon={RefreshCw}
-          title="Server restarts"
-          loading={restart.isLoading}
-          value={restartFacts.value}
-          tone={restartFacts.tone}
-          line={restartFacts.hint}
-          state={restartFacts.failed ? "failed" : honestFromQuery(restart, now)}
-          updatedAt={restart.data ? restart.dataUpdatedAt : undefined}
-          now={now}
-        />
       </WidgetGrid>
+      {(restartFacts.failed || restartFacts.tone === "warn") && (
+        <p role="status" className="mb-4 text-sm text-danger">
+          {restartFacts.hint}
+        </p>
+      )}
 
       <WidgetGrid className="mb-6" aria-label="Models and tools">
         {models.isLoading ? (
@@ -246,8 +253,17 @@ export function SystemPage() {
             span={2}
             badge={check.rechecking ? "Re-checking…" : undefined}
             data-models-state="ready"
-            action={check.rechecking ? undefined : <WidgetButton onClick={checkModels}>Check again</WidgetButton>}
+            action={
+              check.rechecking ? undefined : (
+                <WidgetButton onClick={checkModels}>Check again</WidgetButton>
+              )
+            }
           >
+            {checkError && (
+              <li className="py-3 first:pt-0">
+                <Notice tone="danger" title="The model check didn't run">{checkError} Press Check again to retry.</Notice>
+              </li>
+            )}
             {(models.data?.statuses ?? []).map((s) => {
               const view = providerView(s);
               const count = perProvider[s.id];
@@ -259,10 +275,14 @@ export function SystemPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-medium text-foreground">{PROVIDER[s.id] ?? s.id}</span>
+                      <span className="text-base font-medium text-foreground">
+                        {PROVIDER[s.id] ?? s.id}
+                      </span>
                       <Badge tone={view.tone}>{view.label}</Badge>
                     </span>
-                    <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">{s.detail}</span>
+                    <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+                      {s.detail}
+                    </span>
                   </span>
                   <span className="ds-num shrink-0 text-sm text-muted-foreground" title={count ? `${count} models` : undefined}>
                     {count ? `${count} models` : ""}
@@ -289,11 +309,19 @@ export function SystemPage() {
             ))}
             {attentionTools.length > 3 && (
               <li className="py-2">
-                <Disclosure className="-mx-3" summary={<span className="text-sm font-medium">{attentionTools.length - 3} more {attentionTools.length - 3 === 1 ? "tool needs" : "tools need"} a look</span>}>
+                <Disclosure
+                  className="-mx-3"
+                  summary={
+                    <span className="text-sm font-medium">
+                      {attentionTools.length - 3} more{" "}
+                      {attentionTools.length - 3 === 1 ? "tool needs" : "tools need"} a look
+                    </span>
+                  }
+                >
                   <ul className="divide-y divide-border">
                     {attentionTools.slice(3, 10).map((c) => (
-                      <ToolRow key={c.id} c={c} />
-                    ))}
+              <ToolRow key={c.id} c={c} />
+            ))}
                   </ul>
                 </Disclosure>
               </li>
@@ -313,17 +341,34 @@ export function SystemPage() {
         )}
       </WidgetGrid>
 
-      <WidgetDeck
-        className="mb-10"
-        lead={
-          usage.isLoading ? (
+      <details className="mb-6 border-t border-border py-2">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+          Plan usage, devices & runtime
+        </summary>
+        <WidgetGrid className="my-4">
+          <SignalWidget
+          icon={RefreshCw}
+          title="Server restarts"
+          loading={restart.isLoading}
+          value={restartFacts.value}
+          tone={restartFacts.tone}
+          line={restartFacts.hint}
+          state={restartFacts.failed ? "failed" : honestFromQuery(restart, now)}
+          updatedAt={restart.data ? restart.dataUpdatedAt : undefined}
+          now={now}
+        />
+        </WidgetGrid>
+        <WidgetDeck
+          className="mb-10"
+          lead={
+            usage.isLoading ? (
             <Skeleton className="col-span-full h-44 rounded-2xl md:col-span-2" />
           ) : peak.length ? (
-            peak.slice(0, 5).map((s) => {
-              const top = s.status.ok ? [...s.status.windows].sort((a, b) => b.usedPercent - a.usedPercent)[0] : null;
-              const value = Math.round(s.peakPercent ?? 0);
-              return (
-                <Widget
+              peak.slice(0, 5).map((s) => {
+                const top = s.status.ok ? [...s.status.windows].sort((a, b) => b.usedPercent - a.usedPercent)[0] : null;
+                const value = Math.round(s.peakPercent ?? 0);
+                return (
+                  <Widget
                   key={s.id}
                   icon={Gauge}
                   title={s.owner}
@@ -332,15 +377,17 @@ export function SystemPage() {
                   line={s.plan}
                   data-plan={s.id}
                 >
-                  {top && <MeterBar label={planWindowLine(top.label, fmtResetIn(top.resetsAt))} percent={top.usedPercent} right={`${Math.round(top.usedPercent)}%`} />}
-                </Widget>
-              );
-            })
-          ) : (
+                    {top && (
+                      <MeterBar label={planWindowLine(top.label, fmtResetIn(top.resetsAt))} percent={top.usedPercent} right={`${Math.round(top.usedPercent)}%`} />
+                    )}
+                  </Widget>
+                );
+              })
+            ) : (
             <Widget icon={Gauge} title="Plan limits" value={null} line={usage.error ? (usage.error as Error).message : "No plan limits reported. Connect an AI account on AI usage & spend."} action={<WidgetLink to="/usage">AI usage & spend</WidgetLink>} />
           )
-        }
-        items={[
+          }
+          items={[
           {
             id: "system-devices",
             icon: MonitorSmartphone,
@@ -362,7 +409,8 @@ export function SystemPage() {
             ),
           },
         ]}
-      />
+        />
+      </details>
       <DrilldownList id="system" />
       <PageFoot title="Model catalogue snapshot, capability registry, AI usage plan limits and the dev server restart policy.">
         {foot || "Reads are live; each block says when it was checked."}. Nothing here changes a setting.
@@ -380,7 +428,11 @@ function ToolRow({ c }: { c: ReturnType<typeof toolCounts>["attention"][number] 
           <span className="text-base font-medium text-foreground">{c.name}</span>
           <Badge tone={view.tone}>{view.label}</Badge>
         </span>
-        {c.ownerAction && <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">{c.ownerAction}</span>}
+        {c.ownerAction && (
+          <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+            {c.ownerAction}
+          </span>
+        )}
         {/* F3-06: the reason, not just a red badge (3 of 4 broken rows said nothing). */}
         {c.evidence && (
           <span className="mt-0.5 block text-sm leading-snug text-muted-foreground" data-tool-evidence>

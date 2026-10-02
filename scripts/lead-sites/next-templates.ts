@@ -19,6 +19,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync,
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { templatesRoot, type Vertical } from "./templates";
+import { assertPreviewDesign, DENTAL_PREVIEW_DESIGN } from "./design";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPOS = "C:\\Users\\Nebula PC\\source\\repos";
@@ -41,6 +42,7 @@ export type NextTemplateSpec = {
   css: string;
   /** Extra <head> HTML, e.g. preloading the first screen's image (mobile Lighthouse LCP). */
   head: string;
+  design?: string;
 };
 
 /** The preview banner goes INSIDE the React tree (PreviewBanner.tsx), so hydration keeps it. */
@@ -62,6 +64,7 @@ const DENTAL: NextTemplateSpec = {
 section[id]{scroll-margin-top:calc(var(--mu-banner-h,0px) + 96px)}
 [data-mu-marquee]{color:var(--navy,#143a62)}`,
   head: '<link rel="preload" as="image" imagesrcset="/_img/640/img/generated/r15/lantern-room-wide.webp 640w, /_img/1080/img/generated/r15/lantern-room-wide.webp 1080w, /_img/1600/img/generated/r15/lantern-room-wide.webp 1600w, /_img/2400/img/generated/r15/lantern-room-wide.webp 2400w" imagesizes="100vw" fetchpriority="high">',
+  design: DENTAL_PREVIEW_DESIGN,
   edits: [
     // Header: the treatments menu lists the verified services; every action stays on the page.
     { file: "src/components/Header.tsx", from: 'import { nav, site, treatments } from "@/lib/site";', to: 'import { nav, site } from "@/lib/site";\nimport { PreviewServiceLinks } from "./PreviewServices";' },
@@ -305,6 +308,7 @@ export type NextTemplateManifest = {
   tokens: string[];
   css: string;
   head: string;
+  design?: string;
 };
 
 export async function buildNextTemplate(vertical: "dental" | "real-estate", draftsRoot: string, buildRoot = DEFAULT_BUILD_ROOT, log: (s: string) => void = () => {}) {
@@ -360,6 +364,7 @@ export async function buildNextTemplate(vertical: "dental" | "real-estate", draf
   const residue = exportResidue(dir, spec);
   if (residue.length) throw new Error(`The ${vertical} export still carries flagship content: ${residue.slice(0, 8).join("; ")}`);
   const html = readFileSync(join(dir, "index.html"), "utf8");
+  assertPreviewDesign(vertical, html);
   const unsafe = tokensInRscTextRows(html);
   if (unsafe.length) throw new Error(`Tokens inside RSC text rows (would corrupt on fill): ${unsafe.join(", ")}`);
   const tokens = new Set<string>();
@@ -373,6 +378,7 @@ export async function buildNextTemplate(vertical: "dental" | "real-estate", draf
     tokens: [...tokens].sort(),
     css: spec.css,
     head: spec.head,
+    ...(spec.design ? { design: spec.design } : {}),
   };
   writeFileSync(join(dir, "template.json"), JSON.stringify(manifest, null, 2), "utf8");
   return { dir, manifest, buildLog: built.out.slice(-1200) };

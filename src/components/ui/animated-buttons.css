@@ -11,7 +11,7 @@
   max-width: 100%;
   min-height: 44px;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   isolation: isolate;
@@ -181,6 +181,6 @@
 .design-index-rainbow.rainbow-button {
   --action-ink: #f3edf8;
   --action-paper: #19171d;
-  font-size: 11px;
+  font-size: var(--text-xs);
   padding: 9px 18px;
 }

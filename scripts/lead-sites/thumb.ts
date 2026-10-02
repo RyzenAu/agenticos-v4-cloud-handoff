@@ -4,9 +4,10 @@
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { defaultAgentBrowserBin, defaultRunner, type Runner } from "../site-draft/qa";
+import { dataDirFor } from "../cloud/data-dir";
 
 export function thumbPath(root: string, leadId: number) {
-  return join(root, ".operator-data", "lead-thumbs", `${leadId}.png`);
+  return join(dataDirFor(root), "lead-thumbs", `${leadId}.png`);
 }
 
 export function thumbInfo(root: string, leadId: number): { exists: boolean; at: string | null } {
@@ -32,7 +33,7 @@ export async function captureThumb(root: string, leadId: number, website: string
   const url = publicSiteUrl(website);
   if (!url) throw new Error("This lead has no public website to capture.");
   const file = thumbPath(root, leadId);
-  mkdirSync(join(root, ".operator-data", "lead-thumbs"), { recursive: true });
+  mkdirSync(join(dataDirFor(root), "lead-thumbs"), { recursive: true });
   // `open` launches the browser daemon, which keeps the pipes open, so its exit status isn't a
   // reliable signal (site-draft QA ignores it too): judge by whether the screenshot saved.
   const run = runner ?? defaultRunner(defaultAgentBrowserBin(), 30_000);

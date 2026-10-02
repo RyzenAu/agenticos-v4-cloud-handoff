@@ -1,8 +1,11 @@
 // Job events on the client (Stage B2): the Jarvis chip and the Inspector step log read the ONE durable
 // job history (/__jobs), and `jarvis:progress` / `jarvis:decision` are emitted FROM job events, not from
-// each surface's private state. The mapping functions are pure (unit-tested with bun); the bridge polls.
+// each surface's private state. The mapping functions are pure (unit-tested with bun). The bridge FOLLOWS the live
+// activity stream (/__events, one connection per browser) and keeps a slow safety poll; with no stream it polls
+// /__jobs/events as before (S-stream: the stream replaced the 2 s / 15 s poll, never the fallback).
 import type { JarvisPhase, JarvisProgress } from "@/components/shell/jarvis-progress";
 import type { Job, JobEvent, JobState, JobSummary, Step } from "../../scripts/jobs/types";
+import { activityHub, type ActivityMessage, type ActivitySnapshot } from "./activity-stream";
 import { maskGoal, maskLine } from "./agent-feed";
 
 export type { Job, JobEvent, JobState, JobSummary, Step };
@@ -104,9 +107,12 @@ let last = 0;
 let users = 0;
 let timer: number | undefined;
 let onVisible: (() => void) | undefined;
+let onNudge: (() => void) | undefined;
 let backoffUntil = 0;
 let lastProgressKey = "";
 let seeded = false;
+let offActivity: (() => void) | undefined;
+let releaseActivity: (() => void) | undefined;
 const listeners = new Set<(jobs: readonly (JobSummary & { steps: Step[] })[]) => void>();
 
 export function readJobs() {
@@ -137,15 +143,80 @@ function publish(events: readonly JobEvent[]) {
   for (const l of listeners) l(list);
 }
 
+/** The stream is the reliable source right now: connected, and the hub has spoken lately. */
+function streamIsHealthy() {
+  try {
+    return typeof window !== "undefined" && activityHub().healthy();
+  } catch {
+    return false;
+  }
+}
+
+/** A read got an answer while the stream is down or waiting out a backoff: the hub is back, so reconnect now. */
+function hubAnswered() {
+  if (streamIsHealthy()) return;
+  try {
+    activityHub().retryNow();
+  } catch {
+    /* no stream here */
+  }
+}
+
+/** Fold a stream message into the job map: a snapshot replaces it (durable truth), an event extends it. Idempotent. */
+export function applyActivityToJobs(
+  state: ReadonlyMap<string, JobSummary & { steps: Step[] }>,
+  cursor: number,
+  m: ActivityMessage,
+): { jobs: Map<string, JobSummary & { steps: Step[] }>; cursor: number; events: JobEvent[]; refetch: boolean } {
+  if (m.kind === "snapshot") {
+    const list = (m.snapshot.jobs ?? []) as JobSummary[];
+    return {
+      jobs: new Map(list.map((j) => [j.id, { ...j, steps: state.get(j.id)?.steps ?? (j.lastStep ? [j.lastStep] : []) }])),
+      cursor: m.snapshot.jobsHead ?? cursor,
+      events: [],
+      refetch: false,
+    };
+  }
+  if (m.event.topic !== "job") return { jobs: new Map(state), cursor, events: [], refetch: false };
+  if (m.event.truncated || !m.event.data?.event) return { jobs: new Map(state), cursor, events: [], refetch: true };
+  const seq = Number(m.event.data.jobSeq);
+  // A replay or an overlapping poll can hand over an event already folded: the job log's own seq says so.
+  if (Number.isFinite(seq) && seq <= cursor) return { jobs: new Map(state), cursor, events: [], refetch: false };
+  const event = m.event.data.event as JobEvent;
+  return { jobs: applyJobEvents(state, [event]), cursor: Number.isFinite(seq) ? seq : cursor, events: [event], refetch: false };
+}
+
+function onActivity(m: ActivityMessage) {
+  const r = applyActivityToJobs(jobs, last, m);
+  jobs = r.jobs;
+  last = r.cursor;
+  if (m.kind === "snapshot") seeded = true;
+  if (r.events.length) lastActivityAt = Date.now();
+  if (m.kind === "snapshot" || r.events.length) publish(r.events);
+  if (r.refetch) void poll(false);
+}
+
 async function poll(first: boolean) {
   // The first load always happens (a page opened in the background must not claim "no jobs"); only the
   // repeat polls pause while the page is hidden.
   if (!first && typeof document !== "undefined" && document.visibilityState === "hidden") return;
   if (Date.now() < backoffUntil) return;
   try {
+    if (!first && streamIsHealthy()) {
+      // The stream is carrying the changes: this is only the slow safety read, the same scoped snapshot a reconnect gets.
+      const r = await fetch("/__events/snapshot");
+      if (!r.ok) throw new Error(String(r.status));
+      const snap = (await r.json()) as ActivitySnapshot;
+      const applied = applyActivityToJobs(jobs, last, { kind: "snapshot", snapshot: snap });
+      jobs = applied.jobs;
+      last = applied.cursor;
+      seeded = true;
+      return publish([]);
+    }
     if (first) {
       const [list, head] = await Promise.all([fetch("/__jobs?limit=20"), fetch("/__jobs/events?tail=1")]);
       if (!list.ok || !head.ok) throw new Error(String(list.status));
+      hubAnswered();
       const seed = ((await list.json()) as { jobs: JobSummary[] }).jobs ?? [];
       jobs = new Map(seed.map((j) => [j.id, { ...j, steps: j.lastStep ? [j.lastStep] : [] }]));
       last = ((await head.json()) as { last: number }).last ?? 0;
@@ -154,10 +225,12 @@ async function poll(first: boolean) {
     }
     const r = await fetch(`/__jobs/events?after=${last}`);
     if (!r.ok) throw new Error(String(r.status));
+    hubAnswered();
     const data = (await r.json()) as { events: JobEvent[]; last: number };
     if (data.last < last) return void (seeded = false); // the store was reset: reseed next tick
     last = data.last;
     if (data.events.length) {
+      lastActivityAt = Date.now();
       jobs = applyJobEvents(jobs, data.events);
       publish(data.events);
     }
@@ -167,26 +240,80 @@ async function poll(first: boolean) {
   }
 }
 
+/** Idle polling is slow (15 s: 4 requests a minute); anything running or just changed polls fast. */
+export const JOB_IDLE_POLL_MS = 15_000;
+const JOB_BUSY_WINDOW_MS = 60_000;
+let lastActivityAt = 0;
+
+/** Pure: how long to wait before the next poll. */
+export const JOB_SAFETY_POLL_MS = 60_000;
+export function nextPollDelay(fastMs: number, jobList: readonly Pick<JobSummary, "state">[], sinceActivityMs: number, streamHealthy = false): number {
+  // With a healthy stream the changes arrive by themselves: one safety read a minute, busy or not.
+  if (streamHealthy) return JOB_SAFETY_POLL_MS;
+  const busy = jobList.some((j) => j.state === "running" || j.state === "queued" || j.state === "awaiting-approval") || sinceActivityMs < JOB_BUSY_WINDOW_MS;
+  return busy ? fastMs : Math.max(fastMs, JOB_IDLE_POLL_MS);
+}
+
+/** Something just started a job (the voice companion, a button): poll now and fast for a minute. */
+export function nudgeJobEvents() {
+  lastActivityAt = Date.now();
+  try {
+    window.dispatchEvent(new CustomEvent("jobs:nudge"));
+  } catch {
+    /* best effort: lastActivityAt already makes the next poll fast */
+  }
+}
+
 /** Start following job events (ref-counted; the chip and the Inspector both call it). */
 export function startJobEventBridge(intervalMs = 2_000): () => void {
   if (typeof window === "undefined") return () => {};
   users++;
   if (users === 1) {
     const tick = () => poll(!seeded);
+    const loop = () => {
+      timer = window.setTimeout(() => {
+        void tick().finally(() => {
+          if (users > 0) loop();
+        });
+      }, nextPollDelay(intervalMs, readJobs(), Date.now() - lastActivityAt, streamIsHealthy()));
+    };
     void tick();
-    timer = window.setInterval(() => void tick(), intervalMs);
-    // Catch up at once when the page comes back into view, not on the next interval.
+    loop();
+    try {
+      const hub = activityHub();
+      releaseActivity = hub.acquire();
+      offActivity = hub.subscribe(onActivity);
+    } catch {
+      /* no stream available: polling carries on */
+    }
+    // Catch up at once when the page comes back into view, or when something starts a job.
     onVisible = () => {
       if (document.visibilityState === "visible") void tick();
     };
+    onNudge = () => {
+      lastActivityAt = Date.now();
+      // A healthy stream brings the new job's events by itself; only poll when it can't.
+      if (!streamIsHealthy()) void tick();
+    };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("jobs:nudge", onNudge);
+    window.addEventListener("jarvis:protocol", onVisible);
   }
   return () => {
     users = Math.max(0, users - 1);
+    if (users === 0) {
+      offActivity?.();
+      releaseActivity?.();
+      offActivity = releaseActivity = undefined;
+    }
     if (users === 0 && timer !== undefined) {
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
       timer = undefined;
-      if (onVisible) document.removeEventListener("visibilitychange", onVisible);
+      if (onVisible) {
+        document.removeEventListener("visibilitychange", onVisible);
+        if (onNudge) window.removeEventListener("jobs:nudge", onNudge);
+        window.removeEventListener("jarvis:protocol", onVisible);
+      }
       onVisible = undefined;
     }
   };

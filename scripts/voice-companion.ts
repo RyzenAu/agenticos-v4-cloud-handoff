@@ -15,6 +15,7 @@ import { defaultReceiptSink } from "./model-router/defaults";
 import { MemoryHealthStore, type HealthStore } from "./model-router/health";
 import type { ReceiptSink } from "./model-router/receipts";
 import { ProviderError as RouterError, runRouted } from "./model-router/router";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** The router task for a realtime voice session (scripts/model-router/catalogue.json). */
 const COMPANION_TASK = "voice.companion";
@@ -195,7 +196,7 @@ function routerFailure(error: unknown): RouterError {
 }
 
 export function voiceCompanion(root: string, dependencies: Dependencies = {}) {
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "voice-companion.json");
   const environment = dependencies.env ?? process.env;
   const home = dependencies.home ?? homedir();

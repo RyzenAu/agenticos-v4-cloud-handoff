@@ -14,10 +14,11 @@ export { PayloadTooLarge, ServiceUnavailable };
  * caller's fault" or "too big" map elsewhere. `conflict` and `localOnly` are the plugin's own
  * classes, passed in so this module doesn't import the whole plugin graph.
  */
-export function operatorErrorStatus(error: unknown, known: { conflict?: Function; localOnly?: Function } = {}): number {
+export function operatorErrorStatus(error: unknown, known: { conflict?: Function; localOnly?: Function; forbidden?: Function } = {}): number {
   if (error instanceof PayloadTooLarge) return 413;
   if (known.conflict && error instanceof known.conflict) return 409;
   if (known.localOnly && error instanceof known.localOnly) return 403;
+  if (known.forbidden && error instanceof known.forbidden) return 403;
   if (error instanceof ServiceUnavailable || error instanceof HermesApiUnavailable || error instanceof SearchUnavailable) return 503;
   return 400;
 }

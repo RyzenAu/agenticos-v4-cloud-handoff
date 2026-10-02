@@ -61,6 +61,8 @@ export async function agentJobsRoute(input: {
   body: unknown;
   /** Truthy when the request came in over the tailnet (not the loopback owner). */
   remote: boolean;
+  /** MU_HUB_ROLE=server: the identity layer admitted a confirmed human founder session, so a Serve relay header is expected. */
+  serverWork?: boolean;
   /** The raw request headers: any relay header makes the request remote. */
   headers?: Record<string, unknown>;
   service: Pick<ReturnType<typeof agentJobs>, "list" | "status" | "create" | "respond" | "cancel">;
@@ -72,7 +74,7 @@ export async function agentJobsRoute(input: {
 }): Promise<boolean> {
   const { path, method, body, remote, service, send } = input;
   if (!isAgentJobsPath(path)) return false;
-  if (remote || relayed(input.headers)) {
+  if (!input.serverWork && (remote || relayed(input.headers))) {
     send({ error: REMOTE_AGENT_JOBS_REFUSAL }, 403);
     return true;
   }

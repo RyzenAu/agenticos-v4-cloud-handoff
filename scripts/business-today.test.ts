@@ -76,3 +76,35 @@ test("an unknown city reports a clear weather error and still returns news", asy
   const result = await businessToday({ request, city: () => ({ name: "Atlantis", source: "timezone" }) }).read();
   expect(result.weather).toBeNull(); expect(result.weatherError).toContain("could not be found"); expect(result.weatherCity?.source).toBe("timezone"); expect(result.news).toHaveLength(1);
 });
+
+test("an expired read is served at once, labelled stale, and refreshed in the background (never a blocked page)", async () => {
+  let clock = 1_000_000, calls = 0, release: () => void = () => undefined;
+  const gate = new Promise<void>((r) => (release = r));
+  const raw = { current: { temperature_2m: 20, apparent_temperature: 19, weather_code: 0, is_day: 1, time: 1790000000 }, daily: { temperature_2m_max: [24], temperature_2m_min: [14] } };
+  const request = (async (url: string) => {
+    calls++;
+    if (calls > 2) await gate; // the refresh is slow
+    return url.includes("open-meteo") ? Response.json(raw) : Response.json({ articles: [{ id: "a", title: "A source", source_url: "https://example.com/a", published_at: "2026-09-17T07:00:00Z" }] });
+  }) as typeof fetch;
+  const service = businessToday({ request, now: () => clock, ttlMs: 1000, weatherLocation: { name: "Example city", latitude: 1, longitude: 2 } });
+  const first = await service.read();
+  expect(first.stale).toBeUndefined();
+  clock += 5000; // expired
+  const second = await Promise.race([service.read(), new Promise<"blocked">((r) => setTimeout(() => r("blocked"), 200))]);
+  expect(second).not.toBe("blocked");
+  expect((second as typeof first).stale).toBe(true);
+  expect((second as typeof first).updatedAt).toBe(first.updatedAt); // it says how old it is
+  expect(calls).toBe(4); // one background refresh for both feeds
+  release();
+  await new Promise((r) => setTimeout(r, 30));
+  const third = await service.read();
+  expect(third.stale).toBeUndefined();
+  expect(third.updatedAt).not.toBe(first.updatedAt);
+});
+
+test("the brief page shows the age of a stale read and reads once more (the server's stale flag is not left unused)", () => {
+  const src = require("node:fs").readFileSync(require("node:path").join(import.meta.dir, "..", "src/components/business/daily-brief.tsx"), "utf8");
+  expect(src).toContain("today.data?.stale");
+  expect(src).toContain("Weather as of");
+  expect(src).toMatch(/if \(!todayStale\) return;[\s\S]{0,200}refetchToday/);
+});

@@ -17,6 +17,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type Priority = "low" | "normal" | "urgent";
 export type Delivery = "speak" | "hud" | "flash";
@@ -35,6 +36,8 @@ export type JarvisEvent = {
   spokenAt?: string;
   /** Set when no voice client had polled recently, so this also went out as a Windows toast. */
   toastedAt?: string;
+  /** Set for a line about one founder's own conversation (a job end): only that person's HUD list returns it. */
+  person?: string;
 };
 export type QuietMode = { on: boolean; until: string | null };
 export type GateState = {
@@ -64,6 +67,12 @@ export type GateOptions = {
    * `onFallbackToast: (event) => showWindowsToast(event.source, event.text)`.
    */
   onFallbackToast?: (event: JarvisEvent) => void;
+  /**
+   * Called after anything that changes what the HUD shows (an event submitted or claimed, quiet or call mode
+   * changed). The live stream (/__events) turns it into a hint so open HUDs refetch at once instead of waiting
+   * for their safety poll. A notification only: it can't send, speak or change anything.
+   */
+  onChange?: () => void;
 };
 
 export const DAILY_SPEECH_BUDGET = 12;
@@ -108,7 +117,7 @@ export function inQuietHours(ms: number, hours = QUIET_HOURS) {
 /** Validated input for POST /jarvis/events. Throws a plain message on anything off. */
 export function parseEventInput(body: unknown, now: number) {
   const input = (body && typeof body === "object" && !Array.isArray(body) ? body : {}) as Record<string, unknown>;
-  const allowed = ["source", "text", "priority", "dedupeKey", "expiresAt"];
+  const allowed = ["source", "text", "priority", "dedupeKey", "expiresAt", "person"];
   if (Object.keys(input).some((key) => !allowed.includes(key))) throw new Error(`Events take only ${allowed.join(", ")}.`);
   const source = typeof input.source === "string" ? clean(input.source).toLowerCase() : "";
   if (!/^[a-z0-9][a-z0-9 ._:-]{0,39}$/.test(source)) throw new Error("source must be a short name such as watchdog or crm-coach.");
@@ -127,7 +136,9 @@ export function parseEventInput(body: unknown, now: number) {
     if (at <= now) throw new Error("expiresAt is already in the past.");
     expires = Math.min(at, now + MAX_TTL);
   }
-  return { source, text, priority: priority as Priority, dedupeKey, expiresAt: expires };
+  const person = input.person === "usman" || input.person === "mehroz" ? input.person : undefined;
+  if (input.person !== undefined && !person) throw new Error("person must be usman or mehroz.");
+  return { source, text, priority: priority as Priority, dedupeKey, expiresAt: expires, ...(person ? { person } : {}) };
 }
 
 function blank(): GateState {
@@ -140,7 +151,7 @@ export function createJarvisEvents(root: string, options: GateOptions = {}) {
   const hours = options.quietHours ?? QUIET_HOURS;
   const pollFallbackMs = options.pollFallbackMs ?? POLL_FALLBACK_MS;
   const onFallbackToast = options.onFallbackToast ?? (() => {});
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   const file = join(directory, "jarvis-events.json");
   // Not persisted: purely a live "is anyone listening" signal for this process. Losing it on
   // restart just means the next eligible event assumes nobody's connected — the safe default.
@@ -224,6 +235,7 @@ export function createJarvisEvents(root: string, options: GateOptions = {}) {
       expiresAt: new Date(input.expiresAt).toISOString(),
       delivery,
       reason,
+      ...(input.person ? { person: input.person } : {}),
     };
     // Windows-toast fallback: this event would have been spoken, but no voice client has
     // polled recently enough to assume the panel is open — so it would otherwise vanish.
@@ -237,12 +249,16 @@ export function createJarvisEvents(root: string, options: GateOptions = {}) {
     return { accepted: true, duplicate: false, event, ...mode(state, at) };
   }
 
-  function list(since: unknown) {
+  /**
+   * `viewer`: who is asking and whether they are at this PC. A line about one person's own conversation is returned only to that person, and only a
+   * GET from this PC counts as "a voice client is listening" (a remote GET must not suppress the toast fallback).
+   */
+  function list(since: unknown, viewer?: { person?: string; local?: boolean }) {
     const at = now();
-    lastPolledAt = at; // a GET here is what "a voice client is listening" means.
+    if (viewer?.local !== false) lastPolledAt = at; // a GET here is what "a voice client is listening" means.
     const state = prune(read(), at);
     const after = Number.isFinite(Number(since)) ? Number(since) : 0;
-    return { seq: state.seq, events: state.events.filter((e) => e.seq > after), ...mode(state, at) };
+    return { seq: state.seq, events: state.events.filter((e) => e.seq > after && (!e.person || !viewer?.person || e.person === viewer.person)), ...mode(state, at) };
   }
 
   /**
@@ -307,7 +323,38 @@ export function createJarvisEvents(root: string, options: GateOptions = {}) {
     return mode(prune(read(), at), at);
   }
 
-  return { submit, list, claim, setQuiet, setCallMode, status, file };
+  const changed = () => {
+    try {
+      options.onChange?.();
+    } catch {
+      /* a hint never breaks the gate */
+    }
+  };
+  return {
+    submit: (...args: Parameters<typeof submit>) => {
+      const result = submit(...args);
+      changed();
+      return result;
+    },
+    list,
+    claim: (...args: Parameters<typeof claim>) => {
+      const result = claim(...args);
+      changed();
+      return result;
+    },
+    setQuiet: (...args: Parameters<typeof setQuiet>) => {
+      const result = setQuiet(...args);
+      changed();
+      return result;
+    },
+    setCallMode: (...args: Parameters<typeof setCallMode>) => {
+      const result = setCallMode(...args);
+      changed();
+      return result;
+    },
+    status,
+    file,
+  };
 }
 
 export type JarvisEvents = ReturnType<typeof createJarvisEvents>;

@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { getPreview } from "../lead-sites/registry";
 import { LOCAL_RECEIVABLES, receivablesSummary, type LocalReceivable } from "../finance/receivables";
 import { callList, dayReport, findLead, getKickoff, goal, logActivity, recordWin, sydneyDate, type Activity, type Lead } from "./crm";
-import { readIssues } from "./issues";
+import { readTrustedIssues } from "./issues";
 import { callWindow } from "./outreach";
 import { leadPipeline, STAGES, type PipelineView, type Stage } from "./lead-pipeline";
 import { getReceptionistPackage, RECEPTIONIST_PACKAGES, type PackageId } from "../../src/lib/receptionist-packages";
@@ -371,7 +371,7 @@ export function stageTimeline(root: string, db: Database, lead: Lead, view: Pipe
   const kickoff = getKickoff(db, lead.id);
   const doneAt = (name: string) => kickoff?.milestones.find((m) => m.name === name && m.state === "done")?.completedAt ?? null;
   const latest = (...xs: (string | null)[]) => xs.filter((x): x is string => !!x).sort().at(-1) ?? null;
-  const issues = readIssues(db, lead.id);
+  const issues = readTrustedIssues(db, lead);
   const audit = readSeoAudit(root, lead.id);
   const preview = getPreview(root, lead.id);
   const proposalFile = fileTime(join(draftDir(root, lead.id), "proposal.md"));
@@ -466,9 +466,10 @@ export function dealRow(root: string, db: Database, lead: Lead, ctx: Ctx): DealR
   const deal = ctx.deals ? ctx.deals.get(lead.id) ?? { ...EMPTY_DEAL } : readDeal(db, lead.id);
   const timeline = stageTimeline(root, db, lead, view, acts);
   const age = daysInStage(timeline, ctx.now);
-  const report = readIssues(db, lead.id);
+  const report = readTrustedIssues(db, lead);
   const issues = (report?.issues ?? []).slice(0, 3).map((i) => ({ code: i.code, finding: i.finding, severity: i.severity, url: i.evidence.url }));
   return {
+    // A saved report only counts as a verified absence while the lead itself says none-verified: older reports were built from a bare check date.
     websiteStatus: report?.website === lead.website ? report.status : undefined,
     stage: view.stage, closed: view.closed, evidence: view.evidence, nextAction: view.nextAction, owner: view.owner,
     stageSince: age.since, daysInStage: age.days, daysInferred: age.inferred,

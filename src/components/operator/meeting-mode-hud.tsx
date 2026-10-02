@@ -50,7 +50,7 @@ export function MeetingModeControl({ labels = "xl" }: { labels?: "xl" | "always"
   if (listening)
     return (
       <div
-        className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 py-1 pl-2.5 pr-1 text-[11px] text-red-300"
+        className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 py-1 pl-2.5 pr-1 text-xs text-red-300"
         role="status"
         aria-live="polite"
         title="Meeting mode is listening (the other party agreed). Nothing is recorded to disk."

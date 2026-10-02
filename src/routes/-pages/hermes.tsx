@@ -1554,7 +1554,7 @@ function HermesConnectionsStrip() {
               title={`${r.kindLabel} · ${r.name}`}
             >
               <ConnectionLogo slug={r.slug} name={r.name} color={r.color} />
-              <span className="max-w-[160px] truncate font-mono text-sm tracking-[0.04em] text-foreground">
+              <span className="max-w-[160px] truncate font-mono text-sm text-foreground">
                 {r.name}
               </span>
               <span className="inline-flex shrink-0 items-center">
@@ -6276,7 +6276,7 @@ function AddPersonaTile({ existingIds }: { existingIds: string[] }) {
               onBlur={(e) => (e.currentTarget.style.borderColor = "color-mix(in srgb, var(--foreground) 40%, transparent)")}
             />
             <span
-              className="font-mono text-[13px] tracking-[0.12em]"
+              className="font-mono text-[13px]"
               style={{ color: "color-mix(in srgb, var(--foreground) 40%, transparent)" }}
             >
               {promptDraft.length} / 20000
@@ -6759,7 +6759,7 @@ function PersonaEditModal({
               onBlur={(e) => (e.currentTarget.style.borderColor = "color-mix(in srgb, var(--foreground) 40%, transparent)")}
             />
             <span
-              className="font-mono text-[13px] tracking-[0.12em]"
+              className="font-mono text-[13px]"
               style={{ color: "color-mix(in srgb, var(--foreground) 40%, transparent)" }}
             >
               {promptDraft.length} / 20000
@@ -7172,7 +7172,7 @@ function EffortDial({
         })}
       </div>
       <span
-        className="font-mono text-[13px] tracking-[0.12em]"
+        className="font-mono text-[13px]"
         style={{ color: "color-mix(in srgb, var(--foreground) 40%, transparent)" }}
       >
         {EFFORT_HINT[value]}
@@ -8581,7 +8581,7 @@ function SkillTile({
 // (SkillCell + SkillRow superseded by SkillTile above.)
 
 // Reusable section header — bigger, bolder, with a clear meta on the right.
-// Replaces the small uppercase eyebrow used previously so section titles
+// Replaces the small eyebrow used previously so section titles
 // like "Bundled Skill Library" actually read as headers.
 // Same h2 recipe as the shared `Section` primitive (docs/DESIGN-SYSTEM.md
 // § 3–4): text-lg semibold heading, meta/actions at the right, mb-4 below.

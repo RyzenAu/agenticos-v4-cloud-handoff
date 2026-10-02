@@ -317,6 +317,28 @@ class ChainTests(unittest.TestCase):
             active, skipped = sv.llm_chain(self.profile(chain), base)
             self.assertEqual([m["provider"] for m in skipped], ["gemini"])
 
+    def test_codex_home_expands_userprofile_per_machine(self):
+        """The shipped profile must not name one machine's user: %USERPROFILE% is expanded from the
+        supervisor's environment (an explicit env is authoritative), like api_key_ref.file."""
+        raw = json.loads(CONFIG.read_text(encoding="utf-8"))
+        pilot = sv.load_profile(CONFIG, "pilot")
+        codex = [m for m in raw["defaults"]["llm"]["chain"] if m["provider"] == "openai-codex"][0]
+        self.assertEqual(codex["codex_home"], r"%USERPROFILE%\.codex")
+        self.assertNotIn("Nebula", CONFIG.read_text(encoding="utf-8"))
+        base = {"PATH": "p", "OPENROUTER_API_KEY": "synthetic-or", "GROQ_API_KEY": "synthetic-groq",
+                "USERPROFILE": r"C:\Users\mkhan"}
+        env = sv.build_api_env(pilot, FAKE_KEY, Path("D:/t"), base_env=base)
+        self.assertEqual(env["HINDSIGHT_API_LLM_2_CODEX_HOME"], r"C:\Users\mkhan\.codex")
+        self.assertNotIn("%", env["HINDSIGHT_API_LLM_2_CODEX_HOME"])
+        # case-insensitive name, another user, and an unset name is left as written (not silently blank)
+        self.assertEqual(sv.expand_env_refs(r"%userprofile%\.codex", {"UserProfile": r"C:\Users\other"}),
+                         r"C:\Users\other\.codex")
+        self.assertEqual(sv.expand_env_refs(r"%NOPE_ZZ%\.codex", {}), r"%NOPE_ZZ%\.codex")
+        self.assertEqual(sv.expand_env_refs(r"C:\x", {}), r"C:\x")
+        # a different machine's profile expands to ITS home, with no change to the JSON
+        env2 = sv.build_api_env(pilot, FAKE_KEY, Path("D:/t"), base_env=dict(base, USERPROFILE=r"C:\Users\Nebula PC"))
+        self.assertEqual(env2["HINDSIGHT_API_LLM_2_CODEX_HOME"], r"C:\Users\Nebula PC\.codex")
+
     def test_chain_members_cannot_be_overridden_via_api_env(self):
         p = self.profile([{"provider": "openai-codex", "model": "x"}])
         for bad in ("HINDSIGHT_API_LLM_1_API_KEY", "HINDSIGHT_API_LLM_PROVIDER", "HINDSIGHT_API_LLM_STRATEGY"):

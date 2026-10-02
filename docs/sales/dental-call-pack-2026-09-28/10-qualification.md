@@ -22,7 +22,7 @@ Dentally publishes a public developer API (`https://developer.dentally.co/`, che
 
 | # | Question | Fit | Not a fit yet |
 |---|---|---|---|
-| 1 | "Which calls would you want answered and booked: after hours, overflow when the desk is busy, or all calls alongside your team?" | At least one cover mode they want (after hours, overflow, or all calls on Professional and Premium; Essential: [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]) | They want none of those covered |
+| 1 | "Which calls would you want answered and booked: after hours, overflow when the desk is busy, or all calls alongside your team?" | At least one cover mode they want (after hours, overflow, or all calls; every package covers all three) | They want none of those covered |
 | 2 | "Where do bookings live?" | Google Calendar or Cal.com already, **or** willing to release some appointment types into a dedicated booking calendar and copy bookings into their practice software | Practice software only, and unwilling to use a separate calendar — **still a fit for Booking request / lead capture**, just say which mode they're getting |
 | 3 | "Which appointments may someone book without your team?" | At least one type (e.g. new-patient check-up, clean, cosmetic consult) with a fixed length | "Nothing can be booked without a clinician deciding" |
 | 4 | "Are you comfortable with callers hearing an automated assistant that says so?" | Yes | No |

@@ -1,7 +1,12 @@
+import { createHash } from "node:crypto";
+import { lstatSync } from "node:fs";
+import { join } from "node:path";
 import { catalogue } from "../model-router/catalogue";
 import type { ReceiptSink, RouterReceipt } from "../model-router/receipts";
-import type { AgentBinding, AllowanceSnapshot, IsoTime, PersonId, RoleId, RoleKind, UsageReceipt, Uuid } from "./contracts";
+import { allowanceReading } from "./accounts";
+import type { AgentBinding, AllowanceSnapshot, ContextSource, ExecutionLocation, IsoTime, PersonId, RoleId, RoleKind, UsageReceipt, Uuid } from "./contracts";
 import type { RunnerOutcome } from "./runners/types";
+import { sameClaudeModel } from "./spec";
 
 /**
  * One UsageReceipt per role turn (CODING-HARNESS §3.11, owner decisions 1 and 2):
@@ -61,6 +66,8 @@ export type ReceiptInput = {
   roleId: RoleId;
   role: RoleKind;
   turn: number;
+  /** The run record this turn belongs to; receipts match their run by this, not by role and turn alone. */
+  runId?: Uuid;
   person: PersonId;
   binding: AgentBinding;
   dataClass: "synthetic" | "business-internal";
@@ -68,7 +75,58 @@ export type ReceiptInput = {
   /** The allowance read before the turn (cached for Claude, live for Codex). */
   allowanceStart: AllowanceSnapshot | null;
   queueMs: number | null;
+  /** Where the agent ran; "this-pc" unless the caller says otherwise. */
+  executionLocation?: ExecutionLocation;
+  executionDevice?: string;
+  /** What context went into this turn (see boundContextSources). */
+  contextSources?: readonly ContextSource[];
+  /** Clock for allowance staleness (tests). */
+  now?: () => number;
 };
+
+const MAX_CONTEXT_SOURCES = 12;
+/** Bound a context-source list for a receipt: at most 12 entries, short names, no control characters. */
+export function boundContextSources(sources: readonly ContextSource[] | undefined): ContextSource[] {
+  return (sources ?? []).slice(0, MAX_CONTEXT_SOURCES).map((s) => ({
+    kind: s.kind,
+    name: Array.from(String(s.name), (c) => (c.charCodeAt(0) < 32 ? " " : c)).join("").slice(0, 200),
+    chars: typeof s.chars === "number" && Number.isFinite(s.chars) ? Math.max(0, Math.floor(s.chars)) : null,
+    sha256: typeof s.sha256 === "string" ? s.sha256.replace(/[^0-9a-f]/gi, "").slice(0, 12) || null : null,
+    ...(s.truncated ? { truncated: true } : {}),
+  }));
+}
+
+/**
+ * The context sources one role turn was given, for its receipt: the shared brief (path, size, digest as
+ * loaded), the repo's own agent-instruction files present in the worktree (name and size only), and the task
+ * text the orchestrator wrote (objective, done-when, owned paths). Never contents.
+ */
+export function contextSourcesFor(input: { shared: { sources: readonly { name: string; path?: string; chars: number; sha256: string }[]; truncated: boolean } | null; worktree: string | null; taskText: string }): ContextSource[] {
+  const out: ContextSource[] = [];
+  for (const s of input.shared?.sources ?? []) out.push({ kind: "shared-brief", name: s.path ?? s.name, chars: s.chars, sha256: s.sha256, ...(input.shared?.truncated ? { truncated: true } : {}) });
+  if (input.worktree) {
+    for (const f of ["CLAUDE.md", "AGENTS.md"]) {
+      try {
+        const p = join(input.worktree, f);
+        const info = lstatSync(p);
+        if (info.isFile() && !info.isSymbolicLink()) out.push({ kind: "repo-instructions", name: `${f} (in the worktree)`, chars: info.size, sha256: null });
+      } catch { /* not present */ }
+    }
+  }
+  out.push({ kind: "task-context", name: "job spec: objective, done-when, owned paths", chars: input.taskText.length, sha256: createHash("sha256").update(input.taskText).digest("hex").slice(0, 12) });
+  return boundContextSources(out);
+}
+
+/** Guidance files as context sources (digest cut to 12 hex like every source); a withheld file is not listed as supplied. */
+function guidanceSources(guidance: RunnerOutcome["guidance"]): ContextSource[] {
+  return (guidance ?? []).filter((g) => g.supplied).map((g) => ({ kind: "engineering-guidance" as const, name: g.path, chars: g.chars, sha256: g.sha256 ? g.sha256.slice(0, 12) : null }));
+}
+
+/** Requested vs reported: true = they differ, false = same, null = the provider never said (unknown, not "fine"). */
+export function modelMismatch(requested: string, reported: string | null): boolean | null {
+  if (!reported) return null;
+  return !sameClaudeModel(requested, reported);
+}
 
 export function buildReceipt(input: ReceiptInput): UsageReceipt {
   const o = input.outcome;
@@ -98,6 +156,13 @@ export function buildReceipt(input: ReceiptInput): UsageReceipt {
     account,
     model,
     providerModel: routed ? o.routedProviderModel ?? null : o.providerModel,
+    requestedModel: b.model,
+    // A routed role's "reported" model is the router's choice; it differs from the catalogue id by design, so only native roles are compared.
+    modelMismatch: routed ? null : modelMismatch(b.model, o.providerModel),
+    executionLocation: input.executionLocation ?? "this-pc",
+    ...(input.executionDevice ? { executionDevice: input.executionDevice } : {}),
+    contextSources: boundContextSources([...(input.contextSources ?? []), ...guidanceSources(o.guidance)]),
+    ...(o.guidance?.length ? { guidance: o.guidance.map((g) => ({ ...g, path: g.path.slice(0, 200), ...(g.reason ? { reason: g.reason.slice(0, 200) } : {}) })) } : {}),
     // A routed role's class is the route that RAN (free Cline, a subscription via Hermes, metered OpenRouter).
     costClass: routed ? o.routedCost?.route ?? (cost.basis === "subscription_allowance" ? "subscription" : cost.basis === "free" ? "free" : "metered") : "subscription",
     dataClass: input.dataClass,
@@ -115,13 +180,14 @@ export function buildReceipt(input: ReceiptInput): UsageReceipt {
           window: (start ?? end)?.windows.map((w) => w.label).join(" / ") || "unknown",
           usedPercentAtLastRead: peak(start),
           readAt: start?.readAt ?? null,
+          reading: allowanceReading(start, input.now?.() ?? Date.now()),
           usedPercentAtEnd: peak(end),
         },
     credits: creditsKnown
       ? { before: start?.creditsBalance ?? null, after: end?.creditsBalance ?? null, scope: start?.creditsBalance != null && end?.creditsBalance != null ? "job" : "window", readAt: end?.readAt ?? start?.readAt ?? null }
       : null,
     contextTrimmed: false,
-    coding: { jobId: input.jobId, roleId: input.roleId, turn: input.turn, cliVersion: b.cliVersion },
+    coding: { jobId: input.jobId, roleId: input.roleId, turn: input.turn, cliVersion: o.cliVersion ?? b.cliVersion, ...(input.runId ? { runId: input.runId } : {}) },
   };
 }
 
@@ -174,4 +240,71 @@ export async function writeFleetReceipt(sink: ReceiptSink | null, receipt: Usage
   const row = routerReceiptFor(receipt, selectedBy);
   if (!row || !sink) return false;
   try { await sink.write(row); return true; } catch { return false; }
+}
+
+// ─────────────────────────── models used (selected vs actual) ───────────────────────────
+
+/** One role turn: the model the draft SELECTED and the one the receipt says RAN. */
+export type ModelUsedRow = {
+  roleId: RoleId;
+  role: RoleKind;
+  attempt: number;
+  runState: string;
+  selected: string;
+  /** The receipt's model (what ran); null when this turn has no receipt (never claimed as ran). */
+  actual: string | null;
+  provider: string | null;
+  account: string | null;
+  fallbackFrom: string | null;
+  /** actual differs from selected: a fallback or reroute ran instead. */
+  fellBack: boolean;
+  /** Why it fell back, from the router's or runner's own step; null when the run didn't say. */
+  reason: string | null;
+  tokens: { input: number | null; output: number | null } | null;
+  costUsd: number | null;
+  costBasis: string | null;
+  hasReceipt: boolean;
+};
+
+type EventLike = { type: string; roleId: string | null; payload: unknown };
+
+/**
+ * The receipt for one turn of one run. A role can have several run records (a failed run is re-run as a new one) and each
+ * counts its own turns from 1, so role and turn alone would hand one run another run's model, account and cost. A receipt that
+ * carries its run's id matches only that run; a receipt written before round 6 has no id and keeps the role-and-turn match.
+ */
+function receiptFor(receipts: readonly UsageReceipt[], run: { id?: string; roleId: string }, attempt: number): UsageReceipt | null {
+  return receipts.find((x) => x.coding?.roleId === run.roleId && x.coding.turn === attempt && (!x.coding.runId || x.coding.runId === run.id)) ?? null;
+}
+
+/**
+ * The job-level "models used" view: for every agent run, the model selected, the model that ran (from that
+ * turn's receipt, matched by role and attempt) and, when they differ, why. A finished run with no receipt is
+ * shown with `hasReceipt: false` and `actual: null`: nothing here says a model ran without a receipt.
+ */
+export function modelsUsed(runs: readonly (Pick<import("./contracts").AgentRun, "roleId" | "role" | "attempt" | "state" | "binding"> & { id?: string })[], events: readonly EventLike[]): ModelUsedRow[] {
+  const receipts = events.filter((e) => e.type === "usage").map((e) => e.payload as UsageReceipt);
+  return runs.flatMap((run) => Array.from({ length: Math.max(1, run.attempt) }, (_, i) => i + 1).map((attempt) => {
+    const r = receiptFor(receipts, run, attempt);
+    const selected = run.binding.model;
+    const actual = r ? r.model : null;
+    const fellBack = !!r && (r.model !== selected || !!r.fallbackFrom);
+    const step = fellBack
+      ? [...events].reverse().find((e) => e.type === "step" && e.roleId === run.roleId && /unavailable; the router ran|Model that ran/.test(String((e.payload as { label?: string }).label ?? "")))
+      : null;
+    const detail = step ? (step.payload as { detail?: string }).detail ?? null : null;
+    return {
+      roleId: run.roleId, role: run.role, attempt, runState: attempt === run.attempt ? run.state : "resumed", selected, actual,
+      provider: r?.provider ?? null, account: r?.account ?? null, fallbackFrom: r?.fallbackFrom ?? null, fellBack,
+      reason: fellBack ? detail ?? (r?.fallbackFrom ? `${r.fallbackFrom} was unavailable` : "the provider reported a different model") : null,
+      tokens: r ? { input: r.usage.inputTokens, output: r.usage.outputTokens } : null,
+      costUsd: r ? r.cost.usd : null, costBasis: r ? r.cost.basis : null, hasReceipt: !!r,
+    };
+  }));
+}
+
+/** Finished agent runs (succeeded) with no usage receipt for that role and attempt: the gate refuses to claim these. */
+export function unreceiptedRuns(runs: readonly (Pick<import("./contracts").AgentRun, "roleId" | "attempt" | "state"> & { id?: string })[], events: readonly EventLike[]): string[] {
+  const receipts = events.filter((e) => e.type === "usage").map((e) => e.payload as UsageReceipt);
+  return runs.filter((r) => r.state === "succeeded" && !receiptFor(receipts, r, r.attempt)).map((r) => `${r.roleId} (attempt ${r.attempt})`);
 }

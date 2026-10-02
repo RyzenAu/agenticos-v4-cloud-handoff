@@ -50,7 +50,7 @@
 .biz-overview-muted {
   margin: 7px 0 0;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
 }
 .biz-overview-hero {
@@ -74,7 +74,7 @@
 }
 .biz-spend-total > small {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0;
   margin-left: 9px;
   font-weight: 400;
@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-plan-list i {
   width: 7px;
@@ -114,7 +114,7 @@
 .biz-plan-list small,
 .biz-api-equivalent small {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 3px;
 }
@@ -128,7 +128,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 0 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin-top: auto;
 }
 .biz-api-equivalent strong {
@@ -138,7 +138,7 @@
   letter-spacing: -0.03em;
 }
 .biz-cost-note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   line-height: 1.7;
   margin-top: 13px;
@@ -204,9 +204,9 @@
   text-align: center;
 }
 .biz-overview-kicker {
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--op-accent);
 }
 .biz-dream-copy h3 {
@@ -219,7 +219,7 @@
 }
 .biz-dream-copy > p {
   max-width: 360px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.8;
   color: var(--op-muted);
   margin: 0 auto;
@@ -258,7 +258,7 @@
 .biz-focus-direction p {
   color: var(--op-muted);
   margin-top: 9px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
 }
 .biz-real-metrics {
@@ -301,21 +301,21 @@
   font-size: 19px;
 }
 .biz-real-metric-ring span small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 5px;
 }
 .biz-real-metrics strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 .biz-real-metrics p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin: 6px 0;
 }
 .biz-real-metrics > div > small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-workspace-links {
@@ -349,7 +349,7 @@
   border: 1px solid #bba7c8;
 }
 .biz-workspace-link > span:not(.biz-memory-mini) {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-workspace-link > strong {
@@ -365,7 +365,7 @@
 }
 .biz-workspace-link strong small {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
   letter-spacing: 0;
   color: var(--op-muted);
@@ -373,7 +373,7 @@
 }
 .biz-workspace-link p {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   margin-top: 15px;
   max-width: 100%;
@@ -402,7 +402,7 @@
   padding: 12px;
   text-align: left;
   background: var(--op-panel);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-dream-findings button[aria-pressed="true"] {
   border-color: var(--op-accent);
@@ -410,7 +410,7 @@
 .biz-dream-findings small {
   grid-column: 1/-1;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
 }
 .biz-dream-reader article h3 {
@@ -424,7 +424,7 @@
   color: var(--op-muted);
 }
 .biz-dream-reader details {
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 10px 0;
   margin-bottom: 16px;
 }
@@ -464,7 +464,7 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 0 3px;
 }
 .biz-finance-label span:first-child {
@@ -492,7 +492,7 @@
   padding: 19px 22px;
   cursor: pointer;
   list-style: none;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-details-drawer > summary::-webkit-details-marker {
   display: none;
@@ -501,7 +501,7 @@
   display: block;
   margin-top: 5px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-details-drawer > summary svg {
   transition: transform 150ms;
@@ -533,7 +533,7 @@
   padding: 17px;
 }
 .biz-imported-balances > p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin: 10px 0 0;
   color: var(--op-muted);
 }
@@ -610,7 +610,7 @@
 .biz-measure-list legend {
   color: var(--op-muted);
   padding: 0 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-measure-fields {
   display: grid;
@@ -624,7 +624,7 @@
   width: 100%;
 }
 .biz-measure-list .op-text-link {
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 @media (max-width: 600px) {
   .biz-measure-fields {
@@ -649,7 +649,7 @@
 }
 .biz-overview-date > p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-date .biz-inline-link {
   margin: 0;
@@ -680,7 +680,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-principal-label > svg:last-child {
@@ -725,7 +725,7 @@
   color: #cc9da8;
 }
 .biz-principal-provenance {
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
   color: var(--op-muted);
   margin-top: auto;
@@ -752,10 +752,10 @@
 }
 .biz-cash-accounts span {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-principal-stat > p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin: 8px 0 18px;
 }
@@ -789,7 +789,7 @@
 }
 .biz-brief-title > span:last-child {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   margin-left: auto;
 }
@@ -824,7 +824,7 @@
   overflow: hidden;
 }
 .biz-brief-story p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.8;
   color: var(--op-muted);
   display: -webkit-box;
@@ -854,7 +854,7 @@
 }
 .biz-brief-pager > span {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.04em;
   margin-right: 9px;
 }
@@ -878,7 +878,7 @@
 }
 .biz-brief-source {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin: 13px 0 0;
 }
 .biz-brief-side {
@@ -893,11 +893,11 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-brief-side-heading > button {
   color: var(--op-accent);
-  font-size: 12px;
+  font-size: var(--text-xs);
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -917,7 +917,7 @@
   display: flex;
   gap: 9px;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-horizon-list small span {
   opacity: 0.8;
@@ -939,7 +939,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-brief-dream > div {
@@ -954,7 +954,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-brief-dream > a {
   margin-top: 10px;
@@ -973,7 +973,7 @@
   align-items: center;
   gap: 7px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-brief-bottom a:hover {
   color: var(--op-ink);
@@ -983,7 +983,7 @@
   color: var(--op-ink);
 }
 .biz-brief-bottom a > small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   border-left: 1px solid var(--op-border);
   padding-left: 9px;
   margin-left: 3px;
@@ -1017,11 +1017,11 @@
   font-size: 13px;
 }
 .biz-ai-details summary strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
 }
 .biz-ai-details summary small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   font-weight: 400;
 }
@@ -1042,7 +1042,7 @@
   border-radius: 5px;
   width: 22px;
   height: 22px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-ai-details .biz-ai-spend {
@@ -1066,7 +1066,7 @@
     padding: 18px;
   }
   .biz-principal-label {
-    font-size: 12px;
+    font-size: var(--text-xs);
     gap: 7px;
   }
   .biz-cash-accounts strong {
@@ -1164,7 +1164,7 @@
   }
   .biz-principal-label {
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--text-xs);
     flex-wrap: wrap;
   }
   .biz-principal-label > svg:last-child {
@@ -1174,7 +1174,7 @@
     font-size: 32px;
   }
   .biz-principal-provenance {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .biz-stat-trend {
     width: 100%;
@@ -1236,7 +1236,7 @@
     align-items: center;
   }
   .biz-overview-date > p {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 
@@ -1249,7 +1249,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-accent);
   border: 1px solid color-mix(in srgb, var(--op-accent) 22%, transparent);
   padding: 8px 10px;
@@ -1280,11 +1280,11 @@
   justify-content: space-between;
   gap: 12px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 0 1px;
 }
 .biz-overview-section-label > small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-money-row {
@@ -1314,7 +1314,7 @@
   height: 35px;
 }
 .biz-overview-demo-chip {
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0.03em;
   line-height: 1;
   padding: 4px 6px;
@@ -1326,7 +1326,7 @@
 }
 .biz-overview-money-card .biz-bank-caption {
   margin-top: 20px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-money-card .biz-bank-number {
   font-size: clamp(32px, 3.2vw, 49px);
@@ -1336,7 +1336,7 @@
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--biz-c-bcb0c7);
   margin-top: 13px;
 }
@@ -1361,7 +1361,7 @@
   height: 90px;
 }
 .biz-overview-money-card .biz-bank-footer {
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 16px 0;
   margin-top: auto;
 }
@@ -1429,7 +1429,7 @@
   right: 0;
   text-align: center;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-bank.is-overview-target {
   background:
@@ -1506,7 +1506,7 @@
 .biz-overview-target-ring em {
   position: absolute;
   top: calc(50% + 20px);
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0;
   font-style: normal;
   color: var(--op-muted);
@@ -1522,17 +1522,17 @@
   letter-spacing: -0.03em;
 }
 .biz-overview-target-values > span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-target-values small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 9px;
 }
 .biz-overview-snapshot-note {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
   margin: -6px 3px 4px;
 }
@@ -1552,7 +1552,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-section-heading button:hover {
@@ -1632,7 +1632,7 @@
   border-radius: 5px;
 }
 .biz-overview-brand-name {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 17px;
 }
@@ -1646,7 +1646,7 @@
 }
 .biz-overview-brand-measure {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin-top: 6px;
 }
 .biz-overview-brand-chart {
@@ -1664,7 +1664,7 @@
   border-top: 1px solid color-mix(in srgb, var(--overview-brand-tone) 13%, transparent);
   padding: 12px 0;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.4;
   margin-top: auto;
 }
@@ -1686,7 +1686,7 @@
   gap: 10px;
   align-items: center;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-progress-label > span {
   display: grid;
@@ -1697,7 +1697,7 @@
   color: var(--overview-goal-tone);
   border-radius: 7px;
   background: color-mix(in srgb, var(--overview-goal-tone) 5%, transparent);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-progress-label > svg {
   margin-left: auto;
@@ -1728,7 +1728,7 @@
   font-variant-numeric: tabular-nums;
 }
 .biz-overview-progress-state > span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-progress-track {
@@ -1750,7 +1750,7 @@
 }
 .biz-overview-progress-card > small {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 11px;
 }
@@ -1786,7 +1786,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-dream-secondary-actions > span {
   color: var(--op-muted);
@@ -1809,7 +1809,7 @@
   border-bottom: 1px solid var(--op-border);
 }
 .biz-finance-deep-tabs > button {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   padding: 8px 15px;
   border-radius: 8px;
@@ -1980,7 +1980,7 @@
     font-size: 21px;
   }
   .biz-overview-section-heading button {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .biz-overview-section-heading {
     gap: 10px;
@@ -2005,7 +2005,7 @@
   }
   .biz-finance-deep-tabs > button {
     padding: 8px 10px;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .biz-finance-deep-content {
     padding: 15px;
@@ -2058,9 +2058,9 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+  text-transform: none;
   line-height: 1;
   padding: 4px 7px;
   border-radius: 5px;
@@ -2088,7 +2088,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-refresh:hover:not(:disabled) {
   color: var(--op-ink);
@@ -2104,7 +2104,7 @@
 }
 .biz-overview-currency-note {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0;
   color: var(--op-muted);
   margin-top: 4px;
@@ -2121,7 +2121,7 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-currency-groups strong {
@@ -2173,7 +2173,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-breakdown > div > span {
   display: grid;
@@ -2188,7 +2188,7 @@
   white-space: nowrap;
 }
 .biz-overview-breakdown small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-breakdown b {
@@ -2202,7 +2202,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   background: transparent;
   border: 0;
@@ -2225,7 +2225,7 @@
   min-width: 0;
 }
 .biz-overview-income-facts dt {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   letter-spacing: 0.03em;
 }
@@ -2255,14 +2255,14 @@
 }
 .biz-overview-income-hint {
   margin: 12px 0 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
   color: var(--op-muted);
   max-width: 34ch;
 }
 .biz-overview-income-error {
   margin: 10px 0 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   color: color-mix(in srgb, #c85b62 70%, var(--op-ink));
 }
@@ -2285,7 +2285,7 @@
   border-radius: 7px;
   background: transparent;
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
 }
 .biz-overview-target-edit svg {
@@ -2324,7 +2324,7 @@
   outline: none;
 }
 .biz-overview-target-editor small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-target-editor > button {
@@ -2344,7 +2344,7 @@
 .biz-overview-target-editor em {
   flex-basis: 100%;
   font-style: normal;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: color-mix(in srgb, #c85b62 70%, var(--op-ink));
 }
 .biz-overview-target-values > span {
@@ -2371,9 +2371,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--op-muted);
 }
 .biz-overview-linked-row {
@@ -2392,7 +2392,7 @@
   background: color-mix(in srgb, var(--overview-brand-tone) 6%, var(--op-panel));
   color: var(--op-ink);
   text-decoration: none;
-  font-size: 12px;
+  font-size: var(--text-xs);
   transition: border-color 0.18s ease, transform 0.18s ease;
 }
 .biz-overview-linked-chip:hover {
@@ -2408,7 +2408,7 @@
   font-weight: 500;
 }
 .biz-overview-linked-chip small {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2433,12 +2433,12 @@
   height: 16px;
 }
 .biz-overview-linked-avatar.is-letter {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--op-ink);
 }
 .biz-overview-linked-note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-audience-quiet {
@@ -2447,7 +2447,7 @@
   align-items: center;
   gap: 8px 18px;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .biz-overview-quiet-action {
@@ -2459,7 +2459,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-overview-quiet-action strong {
   font-weight: 500;
@@ -2579,7 +2579,7 @@
   align-items: center;
   gap: 9px;
   min-width: 0;
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--au-ink);
   overflow: hidden;
@@ -2627,7 +2627,7 @@
 }
 .biz-overview-audience-measure {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--au-muted);
 }
 .biz-overview-audience-chart {
@@ -2652,7 +2652,7 @@
 }
 .biz-overview-audience-hint {
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.4;
   color: var(--au-muted);
   overflow: hidden;
@@ -2671,7 +2671,7 @@
   border-radius: 999px;
   background: var(--au-glass);
   color: var(--au-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   line-height: 1;
   text-decoration: none;

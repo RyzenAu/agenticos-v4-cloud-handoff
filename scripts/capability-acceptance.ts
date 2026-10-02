@@ -7,6 +7,7 @@ import { jarvisTaskPrompt } from "../src/lib/jarvis-control";
 import { defaultClaudeBin } from "./claude-bridge";
 import { providerModelId } from "./model-router/catalogue";
 import { openclawNode, parseCronList, parseOpenclawNodes, refreshCapabilities, type Acceptance } from "./capability-registry";
+import { dataDirFor } from "./cloud/data-dir";
 
 /**
  * Live acceptance tests for Jarvis. Each one goes through the real chain (voice router,
@@ -329,7 +330,7 @@ async function proactive() {
 
   const script = join(HERMES_HOME, "scripts", "jarvis-watchdog.py");
   const python = join(HERMES_HOME, "hermes-agent", "venv", "Scripts", "python.exe");
-  const state = join(ROOT, ".operator-data", `watchdog-acceptance-${randomBytes(3).toString("hex")}.json`);
+  const state = join(dataDirFor(ROOT), `watchdog-acceptance-${randomBytes(3).toString("hex")}.json`);
   const hourAgo = new Date(Date.now() - 3600_000 + new Date().getTimezoneOffset() * -60_000).toISOString().slice(0, 19).replace("T", " ");
   writeFileSync(state, JSON.stringify({ os_up: false, broken: [], log_seen: hourAgo }));
   const env = { ...process.env, JARVIS_WATCHDOG_STATE: state };
@@ -362,7 +363,7 @@ async function business() {
 
   const python = join(HERMES_HOME, "hermes-agent", "venv", "Scripts", "python.exe");
   const script = join(HERMES_HOME, "scripts", "site-monitor.py");
-  const state = join(ROOT, ".operator-data", `site-monitor-acceptance-${randomBytes(3).toString("hex")}.json`);
+  const state = join(dataDirFor(ROOT), `site-monitor-acceptance-${randomBytes(3).toString("hex")}.json`);
   writeFileSync(state, JSON.stringify({ "https://muventures.com.au": ["HTTP 503"] }));
   const env = { ...process.env, SITE_MONITOR_STATE: state };
   const exec = () => new Promise<string>((resolve) => execFile(python, [script], { env, windowsHide: true, timeout: 90_000 }, (_e, out) => resolve(String(out))));
@@ -376,7 +377,7 @@ async function business() {
 
 /** Telegram voice notes: Windows speech → WAV → Hermes' own transcriber (Groq), words compared. */
 async function voiceNotes() {
-  const wav = join(ROOT, ".operator-data", `stt-acceptance-${randomBytes(3).toString("hex")}.wav`);
+  const wav = join(dataDirFor(ROOT), `stt-acceptance-${randomBytes(3).toString("hex")}.wav`);
   const phrase = "Jarvis, remind me to call the dental clinic on Thursday";
   await powershell(`Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SetOutputToWaveFile('${wav}'); $s.Speak('${phrase}'); $s.Dispose()`);
   const python = join(HERMES_HOME, "hermes-agent", "venv", "Scripts", "python.exe");
@@ -494,7 +495,7 @@ for (const [name, test] of tests) {
     record(`error.${name.replace(/\W+/g, "-")}`, false, (error as Error).message);
   }
 }
-const file = join(ROOT, ".operator-data", "capability-acceptance.json");
+const file = join(dataDirFor(ROOT), "capability-acceptance.json");
 let previous: Acceptance = {};
 try {
   previous = JSON.parse(readFileSync(file, "utf8"));
@@ -503,7 +504,7 @@ try {
 }
 const merged = { ...previous, ...results };
 for (const key of Object.keys(merged)) if (key.startsWith("error.") && !(key in results)) delete merged[key];
-mkdirSync(join(ROOT, ".operator-data"), { recursive: true });
+mkdirSync(join(dataDirFor(ROOT)), { recursive: true });
 writeFileSync(`${file}.tmp`, JSON.stringify(merged, null, 2));
 renameSync(`${file}.tmp`, file);
 await refreshCapabilities(ROOT);

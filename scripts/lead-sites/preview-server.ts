@@ -10,12 +10,17 @@
 //   <slug>.localhost          a lead preview, by its registry slug (scripts/lead-sites/registry.ts)
 //   tpl--<vertical>.localhost a flagship template in <drafts>/_templates/<vertical>
 //   draft--<folder>.localhost a site-draft in <drafts>/<folder> (the ones with a root index.html)
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { extname, join, normalize, relative, resolve, sep } from "node:path";
 import { readRegistry } from "./registry";
 
-export const PREVIEW_PORT = 8091;
+/** MU_PREVIEW_PORT moves the loopback listener (a throwaway hub must not take the live copy's 8091). */
+export function previewPortFromEnv(env: Record<string, string | undefined> = process.env): number {
+  const n = Number(String(env.MU_PREVIEW_PORT ?? "").trim());
+  return Number.isInteger(n) && n > 0 && n < 65536 ? n : 8091;
+}
+export const PREVIEW_PORT = previewPortFromEnv();
 const NAME = /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/;
 
 const TYPES: Record<string, string> = {
@@ -48,7 +53,21 @@ export function resolvePreviewHost(
   const port = opts.port ?? PREVIEW_PORT;
   const m = /^([a-z0-9-]+)\.localhost(?::(\d+))?$/.exec(String(host ?? "").toLowerCase());
   if (!m || (m[2] ?? "80") !== String(port)) return null;
-  const name = m[1];
+  return resolvePreviewName(m[1], opts);
+}
+
+/**
+ * A preview host NAME (a lead slug, `tpl--<vertical>` or `draft--<folder>`) -> its folder, or null.
+ * The one place that decides which names exist: the loopback listener (via the Host header) and the
+ * hub's authenticated remote route (via a cookie, preview-origin.ts) both go through it, so a name
+ * that isn't a registered lead, an existing template or a draft with a root index is never served.
+ */
+export function resolvePreviewName(
+  rawName: string | undefined,
+  opts: { root: string; draftsRoot: string },
+): PreviewSite | null {
+  const name = String(rawName ?? "");
+  if (name !== name.toLowerCase() || !/^[a-z0-9-]+$/.test(name)) return null;
   const prefixed = /^(tpl|draft)--(.+)$/.exec(name);
   if (prefixed) {
     const folder = prefixed[2];
@@ -73,6 +92,32 @@ export function isInside(dir: string, file: string): boolean {
 }
 
 /**
+ * The real file is exactly where the path says it is: no symlink, junction or reparse point anywhere between
+ * the site root and the file, still inside the root's real path, and no real component starts with ".".
+ */
+export function isPlainFileInside(dir: string, file: string): boolean {
+  try {
+    const realRoot = realpathSync.native(dir);
+    const real = realpathSync.native(file);
+    const rel = relative(realRoot, real);
+    if (!rel || rel.startsWith("..") || resolve(realRoot, rel) !== resolve(real)) return false;
+    if (rel.split(sep).some((c) => c.startsWith("."))) return false;
+    // The lexical path (under the root) must be the real path: a link anywhere changes it.
+    const lexical = relative(resolve(dir), resolve(file));
+    const same = process.platform === "win32" ? (a: string, b: string) => a.toLowerCase() === b.toLowerCase() : (a: string, b: string) => a === b;
+    if (!same(lexical, rel)) return false;
+    let at = resolve(dir);
+    for (const part of lexical.split(sep)) {
+      at = join(at, part);
+      if (lstatSync(at).isSymbolicLink()) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * URL path -> file on disk, the way a static host serves a Next export with clean URLs:
  * `/` -> index.html, `/foo` -> foo.html or foo/index.html, `/a.css` -> a.css. Returns null for
  * anything outside `dir` (encoded or not), dotfiles, or a missing file.
@@ -89,6 +134,9 @@ export function resolvePreviewFile(dir: string, pathname: string): string | null
   const segments = path.split("/").filter(Boolean);
   // No dotfiles or dot-folders (.vercel, .env*): only the site's own files are served.
   if (segments.some((s) => s.startsWith("."))) return null;
+  // Windows 8.3 short names ("/ENVPRO~1" is ".envprobe"), alternate data streams ("a.html::$DATA") and
+  // anything else that can name a dotfile or a different file by another spelling.
+  if (segments.some((s) => s.includes("~") || s.includes(":"))) return null;
   // Deploy config isn't part of the site (Vercel doesn't serve it either).
   if (segments.length === 1 && segments[0].toLowerCase() === "vercel.json") return null;
   const rel = segments.join("/");
@@ -101,7 +149,7 @@ export function resolvePreviewFile(dir: string, pathname: string): string | null
     const file = join(dir, candidate);
     if (!isInside(dir, file)) return null;
     try {
-      if (existsSync(file) && statSync(file).isFile()) return file;
+      if (existsSync(file) && statSync(file).isFile() && isPlainFileInside(dir, file)) return file;
     } catch {
       /* unreadable: try the next form */
     }
@@ -139,25 +187,37 @@ export function previewHandler(opts: { root: string; draftsRoot: string; port?: 
       res.end(text);
     };
     if (!["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.socket.remoteAddress || "")) return plain(403, "Local previews are only served to this PC.");
-    if (req.method !== "GET" && req.method !== "HEAD") return plain(405, "Read-only.");
-    const site = resolvePreviewHost(req.headers.host, opts);
-    if (!site) return plain(404, "No local preview at this address. Generate one from the lead's drawer in Agentic OS.");
-    const pathname = new URL(req.url || "/", "http://preview.localhost").pathname;
-    const file = resolvePreviewFile(site.dir, pathname);
-    for (const [k, v] of Object.entries(previewHeaders(site.dir))) res.setHeader(k, v);
-    if (!file) {
-      const notFound = join(site.dir, "404.html");
-      if (existsSync(notFound) && !/\.[a-z0-9]+$/i.test(pathname)) {
-        res.statusCode = 404;
-        res.setHeader("Content-Type", TYPES[".html"]);
-        return res.end(req.method === "HEAD" ? undefined : readFileSync(notFound));
-      }
-      return plain(404, "Not found");
-    }
-    res.statusCode = 200;
-    res.setHeader("Content-Type", TYPES[extname(file).toLowerCase()] ?? "application/octet-stream");
-    return res.end(req.method === "HEAD" ? undefined : readFileSync(file));
+    return servePreviewSite(req, res, resolvePreviewHost(req.headers.host, opts));
   };
+}
+
+/**
+ * Serves one request out of a preview's folder (clean URLs, the export's own 404.html, the vercel.json
+ * headers a live copy would carry). `site` null is "no such preview". Read-only: GET and HEAD.
+ */
+export function servePreviewSite(req: IncomingMessage, res: ServerResponse, site: PreviewSite | null) {
+  const plain = (status: number, text: string) => {
+    res.statusCode = status;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end(text);
+  };
+  if (req.method !== "GET" && req.method !== "HEAD") return plain(405, "Read-only.");
+  if (!site) return plain(404, "No local preview at this address. Generate one from the lead's drawer in Agentic OS.");
+  const pathname = new URL(req.url || "/", "http://preview.localhost").pathname;
+  const file = resolvePreviewFile(site.dir, pathname);
+  for (const [k, v] of Object.entries(previewHeaders(site.dir))) res.setHeader(k, v);
+  if (!file) {
+    const notFound = join(site.dir, "404.html");
+    if (existsSync(notFound) && !/\.[a-z0-9]+$/i.test(pathname)) {
+      res.statusCode = 404;
+      res.setHeader("Content-Type", TYPES[".html"]);
+      return res.end(req.method === "HEAD" ? undefined : readFileSync(notFound));
+    }
+    return plain(404, "Not found");
+  }
+  res.statusCode = 200;
+  res.setHeader("Content-Type", TYPES[extname(file).toLowerCase()] ?? "application/octet-stream");
+  return res.end(req.method === "HEAD" ? undefined : readFileSync(file));
 }
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;

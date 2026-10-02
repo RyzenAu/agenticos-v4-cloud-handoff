@@ -84,7 +84,7 @@ describe("every Jev call site writes a router receipt", () => {
     const fuzzy = await receiptsOf("scripts/screen-hands/fuzzy-verify.ts", () => createSucceededAsk({ key: () => "k", request: jev({ succeeded: { noul: 0.9 } }).request })({ intent: "turn on dark mode", app: "Settings", changes: "switched Dark mode (now on)" }, signal()));
     expect(fuzzy[0]).toMatchObject({ caller: "scripts/screen-hands/fuzzy-verify.ts (screen.verify)", outcome: "succeeded" });
 
-    const control = await receiptsOf("scripts/screen-hands/jev-control.ts", () => createControlAsk({ key: () => "k", request: jev({ action: { choice: "done", confidence: 0.9 } }).request })({ model: JEV_MODEL, state: {}, questions: {} }, signal()));
+    const control = await receiptsOf("scripts/screen-hands/jev-control.ts", () => createControlAsk({ key: () => "k", request: jev({ action: { choice: "done", confidence: 0.9 } }).request })({ model: JEV_MODEL, state: {}, questions: { action: { type: "choice", criteria: { done: "Complete" } } } }, signal()));
     expect(control[0]).toMatchObject({ caller: "scripts/screen-hands/jev-control.ts (screen.control)", outcome: "succeeded" });
 
     const minds = createPointMinds({ key: (n) => (n === "TYPESAFE_API_KEY" ? "k" : ""), request: jev({ control: { choice: "e3", confidence: 0.9 } }).request });

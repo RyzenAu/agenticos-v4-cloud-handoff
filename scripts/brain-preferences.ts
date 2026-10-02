@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type BrainPreferences = { brainSources: Record<string, boolean>; brainRevision: number };
 type Legacy = { brainSources?: unknown; brainRevision?: unknown };
@@ -13,7 +14,7 @@ const projection = (value: Legacy): BrainPreferences => ({
 
 /** Source switches are small, authoritative preferences, separate from full memory text. */
 export function readBrainPreferences(root: string, legacy?: Legacy): BrainPreferences {
-  const directory = join(resolve(root), ".operator-data"), file = join(directory, "brain-preferences.json");
+  const directory = join(dataDirFor(resolve(root))), file = join(directory, "brain-preferences.json");
   if (existsSync(file)) {
     try {
       if (statSync(file).size > 65536) throw new Error();
@@ -38,7 +39,7 @@ export function readBrainPreferences(root: string, legacy?: Legacy): BrainPrefer
 }
 
 export function writeBrainPreferences(root: string, preferences: BrainPreferences) {
-  const directory = join(resolve(root), ".operator-data"), file = join(directory, "brain-preferences.json");
+  const directory = join(dataDirFor(resolve(root))), file = join(directory, "brain-preferences.json");
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const temporary = `${file}.${randomUUID()}.tmp`;
   writeFileSync(temporary, JSON.stringify({ version: 1, ...preferences }), { mode: 0o600, flag: "wx" });

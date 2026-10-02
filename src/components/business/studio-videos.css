@@ -13,7 +13,7 @@
   border-radius: 8px;
   color: var(--op-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .studio-lanes button[aria-pressed="true"] {
   background: var(--op-panel);
@@ -37,7 +37,7 @@
   min-width: 200px;
   flex: 1;
   outline: none;
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 7px 0;
 }
 .studio-video-toolbar input::placeholder {
@@ -48,12 +48,12 @@
   border-radius: 8px;
   background: var(--op-inset);
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 8px 10px;
 }
 .studio-rank-key {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .studio-video-grid {
   display: grid;
@@ -98,7 +98,7 @@
   justify-content: center;
   gap: 10px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .studio-duration,
 .studio-rank {
@@ -108,7 +108,7 @@
   padding: 3px 6px;
   border-radius: 5px;
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .studio-duration {
   right: 8px;
@@ -137,7 +137,7 @@
   overflow: hidden;
 }
 .studio-video-copy p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
   color: var(--op-muted);
   margin: 2px 0;
@@ -149,7 +149,7 @@
   display: inline-block;
   vertical-align: baseline;
   margin: 0 7px 1px 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   letter-spacing: 0;
   padding: 2px 6px;
   color: #fff;
@@ -168,7 +168,7 @@
   align-items: center;
   justify-content: space-between;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 10px 2px 0;
 }
 .studio-video-card footer button {
@@ -184,12 +184,12 @@
   border-radius: 9px;
   padding: 9px 17px;
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 .studio-metric-note {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
   margin: 18px 0;
 }
@@ -229,7 +229,7 @@
 }
 .studio-channel-row strong {
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   max-width: 109px;
   overflow: hidden;
@@ -238,7 +238,7 @@
 }
 .studio-channel-row small {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .studio-watch-editor {
   display: flex;
@@ -253,7 +253,7 @@
   display: grid;
   flex: 1;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-ink);
 }
 .studio-watch-editor textarea {
@@ -264,7 +264,7 @@
   padding: 10px;
 }
 .studio-watch-editor button {
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding: 10px;
   color: var(--op-accent);
   cursor: pointer;
@@ -276,7 +276,7 @@
   padding: 3px;
 }
 .studio-segment button {
-  font-size: 12px;
+  font-size: var(--text-xs);
   border-radius: 6px;
   padding: 7px 10px;
   color: var(--op-muted);
@@ -291,7 +291,7 @@
   padding: 35px;
   text-align: center;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
   display: grid;
   justify-items: center;
   gap: 14px;
@@ -325,7 +325,7 @@
     font-size: 16px;
   }
   .studio-video-copy p {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .studio-watch-editor {
     flex-wrap: wrap;

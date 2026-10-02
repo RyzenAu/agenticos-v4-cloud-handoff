@@ -264,7 +264,13 @@ export type FeedClientReadiness = {
  * per-call rounding): never billing figures. `periodBillableMinutes` is the current billing
  * period's figure (contract `usage.currentPeriod.billableMinutes`); null when not sent. Review R1.
  */
-export type FeedClientUsage = { receipts: number | null; pending: number | null; billableMinutes: number; smsSegments: number; periodBillableMinutes: number | null };
+export type FeedClientUsage = { receipts: number | null; pending: number | null; billableMinutes: number; smsSegments: number; periodBillableMinutes: number | null;
+  /**
+   * Contract `usage.currentPeriod.billingBlocked`: set when no charge can be computed (catalogue basis mismatch,
+   * missing frozen snapshot). A blocked period has NO revenue, overage or margin figure: show "billing blocked",
+   * never zero. null = not blocked or not reported.
+   */
+  periodBillingBlocked?: { reason: string; message: string } | null };
 
 /** One client (organisation) this deployment serves, from the feed's `clients[]` (view=metadata). */
 export type FeedClient = {

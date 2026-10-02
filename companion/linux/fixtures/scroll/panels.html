@@ -1,0 +1,312 @@
+<!doctype html><html><head><meta charset=utf-8><title>Scroll fixture: nested panels</title>
+<style>
+html,body{height:100%;margin:0;overflow:hidden;font:15px/1.5 sans-serif}
+.shell{display:flex;flex-direction:column;height:100vh}
+header{height:56px;background:#223;color:#fff;padding:12px}
+.body{display:flex;flex:1;min-height:0}
+nav{width:200px;overflow-y:auto;background:#eef;border-right:1px solid #ccd}
+main{flex:1;overflow-y:auto;padding:16px}
+.code{height:180px;overflow:auto;background:#111;color:#9f9;padding:8px;margin:16px 0;font-family:monospace}
+li{padding:6px 0}
+</style></head><body><div class=shell><header>App shell (body does not scroll)</header>
+<div class=body><nav><ul><li>Item 1: panel content row</li>
+<li>Item 2: panel content row</li>
+<li>Item 3: panel content row</li>
+<li>Item 4: panel content row</li>
+<li>Item 5: panel content row</li>
+<li>Item 6: panel content row</li>
+<li>Item 7: panel content row</li>
+<li>Item 8: panel content row</li>
+<li>Item 9: panel content row</li>
+<li>Item 10: panel content row</li>
+<li>Item 11: panel content row</li>
+<li>Item 12: panel content row</li>
+<li>Item 13: panel content row</li>
+<li>Item 14: panel content row</li>
+<li>Item 15: panel content row</li>
+<li>Item 16: panel content row</li>
+<li>Item 17: panel content row</li>
+<li>Item 18: panel content row</li>
+<li>Item 19: panel content row</li>
+<li>Item 20: panel content row</li>
+<li>Item 21: panel content row</li>
+<li>Item 22: panel content row</li>
+<li>Item 23: panel content row</li>
+<li>Item 24: panel content row</li>
+<li>Item 25: panel content row</li>
+<li>Item 26: panel content row</li>
+<li>Item 27: panel content row</li>
+<li>Item 28: panel content row</li>
+<li>Item 29: panel content row</li>
+<li>Item 30: panel content row</li>
+<li>Item 31: panel content row</li>
+<li>Item 32: panel content row</li>
+<li>Item 33: panel content row</li>
+<li>Item 34: panel content row</li>
+<li>Item 35: panel content row</li>
+<li>Item 36: panel content row</li>
+<li>Item 37: panel content row</li>
+<li>Item 38: panel content row</li>
+<li>Item 39: panel content row</li>
+<li>Item 40: panel content row</li>
+<li>Item 41: panel content row</li>
+<li>Item 42: panel content row</li>
+<li>Item 43: panel content row</li>
+<li>Item 44: panel content row</li>
+<li>Item 45: panel content row</li>
+<li>Item 46: panel content row</li>
+<li>Item 47: panel content row</li>
+<li>Item 48: panel content row</li>
+<li>Item 49: panel content row</li>
+<li>Item 50: panel content row</li>
+<li>Item 51: panel content row</li>
+<li>Item 52: panel content row</li>
+<li>Item 53: panel content row</li>
+<li>Item 54: panel content row</li>
+<li>Item 55: panel content row</li>
+<li>Item 56: panel content row</li>
+<li>Item 57: panel content row</li>
+<li>Item 58: panel content row</li>
+<li>Item 59: panel content row</li>
+<li>Item 60: panel content row</li>
+<li>Item 61: panel content row</li>
+<li>Item 62: panel content row</li>
+<li>Item 63: panel content row</li>
+<li>Item 64: panel content row</li>
+<li>Item 65: panel content row</li>
+<li>Item 66: panel content row</li>
+<li>Item 67: panel content row</li>
+<li>Item 68: panel content row</li>
+<li>Item 69: panel content row</li>
+<li>Item 70: panel content row</li>
+<li>Item 71: panel content row</li>
+<li>Item 72: panel content row</li>
+<li>Item 73: panel content row</li>
+<li>Item 74: panel content row</li>
+<li>Item 75: panel content row</li>
+<li>Item 76: panel content row</li>
+<li>Item 77: panel content row</li>
+<li>Item 78: panel content row</li>
+<li>Item 79: panel content row</li>
+<li>Item 80: panel content row</li>
+<li>Item 81: panel content row</li>
+<li>Item 82: panel content row</li>
+<li>Item 83: panel content row</li>
+<li>Item 84: panel content row</li>
+<li>Item 85: panel content row</li>
+<li>Item 86: panel content row</li>
+<li>Item 87: panel content row</li>
+<li>Item 88: panel content row</li>
+<li>Item 89: panel content row</li>
+<li>Item 90: panel content row</li>
+<li>Item 91: panel content row</li>
+<li>Item 92: panel content row</li>
+<li>Item 93: panel content row</li>
+<li>Item 94: panel content row</li>
+<li>Item 95: panel content row</li>
+<li>Item 96: panel content row</li>
+<li>Item 97: panel content row</li>
+<li>Item 98: panel content row</li>
+<li>Item 99: panel content row</li>
+<li>Item 100: panel content row</li>
+<li>Item 101: panel content row</li>
+<li>Item 102: panel content row</li>
+<li>Item 103: panel content row</li>
+<li>Item 104: panel content row</li>
+<li>Item 105: panel content row</li>
+<li>Item 106: panel content row</li>
+<li>Item 107: panel content row</li>
+<li>Item 108: panel content row</li>
+<li>Item 109: panel content row</li>
+<li>Item 110: panel content row</li>
+<li>Item 111: panel content row</li>
+<li>Item 112: panel content row</li>
+<li>Item 113: panel content row</li>
+<li>Item 114: panel content row</li>
+<li>Item 115: panel content row</li>
+<li>Item 116: panel content row</li>
+<li>Item 117: panel content row</li>
+<li>Item 118: panel content row</li>
+<li>Item 119: panel content row</li>
+<li>Item 120: panel content row</li>
+</ul></nav><main><h2>Main panel</h2><div class=code id=code><div>line 1: const x1 = 1;</div>
+<div>line 2: const x2 = 2;</div>
+<div>line 3: const x3 = 3;</div>
+<div>line 4: const x4 = 4;</div>
+<div>line 5: const x5 = 5;</div>
+<div>line 6: const x6 = 6;</div>
+<div>line 7: const x7 = 7;</div>
+<div>line 8: const x8 = 8;</div>
+<div>line 9: const x9 = 9;</div>
+<div>line 10: const x10 = 10;</div>
+<div>line 11: const x11 = 11;</div>
+<div>line 12: const x12 = 12;</div>
+<div>line 13: const x13 = 13;</div>
+<div>line 14: const x14 = 14;</div>
+<div>line 15: const x15 = 15;</div>
+<div>line 16: const x16 = 16;</div>
+<div>line 17: const x17 = 17;</div>
+<div>line 18: const x18 = 18;</div>
+<div>line 19: const x19 = 19;</div>
+<div>line 20: const x20 = 20;</div>
+<div>line 21: const x21 = 21;</div>
+<div>line 22: const x22 = 22;</div>
+<div>line 23: const x23 = 23;</div>
+<div>line 24: const x24 = 24;</div>
+<div>line 25: const x25 = 25;</div>
+<div>line 26: const x26 = 26;</div>
+<div>line 27: const x27 = 27;</div>
+<div>line 28: const x28 = 28;</div>
+<div>line 29: const x29 = 29;</div>
+<div>line 30: const x30 = 30;</div>
+<div>line 31: const x31 = 31;</div>
+<div>line 32: const x32 = 32;</div>
+<div>line 33: const x33 = 33;</div>
+<div>line 34: const x34 = 34;</div>
+<div>line 35: const x35 = 35;</div>
+<div>line 36: const x36 = 36;</div>
+<div>line 37: const x37 = 37;</div>
+<div>line 38: const x38 = 38;</div>
+<div>line 39: const x39 = 39;</div>
+<div>line 40: const x40 = 40;</div>
+<div>line 41: const x41 = 41;</div>
+<div>line 42: const x42 = 42;</div>
+<div>line 43: const x43 = 43;</div>
+<div>line 44: const x44 = 44;</div>
+<div>line 45: const x45 = 45;</div>
+<div>line 46: const x46 = 46;</div>
+<div>line 47: const x47 = 47;</div>
+<div>line 48: const x48 = 48;</div>
+<div>line 49: const x49 = 49;</div>
+<div>line 50: const x50 = 50;</div>
+<div>line 51: const x51 = 51;</div>
+<div>line 52: const x52 = 52;</div>
+<div>line 53: const x53 = 53;</div>
+<div>line 54: const x54 = 54;</div>
+<div>line 55: const x55 = 55;</div>
+<div>line 56: const x56 = 56;</div>
+<div>line 57: const x57 = 57;</div>
+<div>line 58: const x58 = 58;</div>
+<div>line 59: const x59 = 59;</div>
+<div>line 60: const x60 = 60;</div>
+</div><ul><li>Item 1: panel content row</li>
+<li>Item 2: panel content row</li>
+<li>Item 3: panel content row</li>
+<li>Item 4: panel content row</li>
+<li>Item 5: panel content row</li>
+<li>Item 6: panel content row</li>
+<li>Item 7: panel content row</li>
+<li>Item 8: panel content row</li>
+<li>Item 9: panel content row</li>
+<li>Item 10: panel content row</li>
+<li>Item 11: panel content row</li>
+<li>Item 12: panel content row</li>
+<li>Item 13: panel content row</li>
+<li>Item 14: panel content row</li>
+<li>Item 15: panel content row</li>
+<li>Item 16: panel content row</li>
+<li>Item 17: panel content row</li>
+<li>Item 18: panel content row</li>
+<li>Item 19: panel content row</li>
+<li>Item 20: panel content row</li>
+<li>Item 21: panel content row</li>
+<li>Item 22: panel content row</li>
+<li>Item 23: panel content row</li>
+<li>Item 24: panel content row</li>
+<li>Item 25: panel content row</li>
+<li>Item 26: panel content row</li>
+<li>Item 27: panel content row</li>
+<li>Item 28: panel content row</li>
+<li>Item 29: panel content row</li>
+<li>Item 30: panel content row</li>
+<li>Item 31: panel content row</li>
+<li>Item 32: panel content row</li>
+<li>Item 33: panel content row</li>
+<li>Item 34: panel content row</li>
+<li>Item 35: panel content row</li>
+<li>Item 36: panel content row</li>
+<li>Item 37: panel content row</li>
+<li>Item 38: panel content row</li>
+<li>Item 39: panel content row</li>
+<li>Item 40: panel content row</li>
+<li>Item 41: panel content row</li>
+<li>Item 42: panel content row</li>
+<li>Item 43: panel content row</li>
+<li>Item 44: panel content row</li>
+<li>Item 45: panel content row</li>
+<li>Item 46: panel content row</li>
+<li>Item 47: panel content row</li>
+<li>Item 48: panel content row</li>
+<li>Item 49: panel content row</li>
+<li>Item 50: panel content row</li>
+<li>Item 51: panel content row</li>
+<li>Item 52: panel content row</li>
+<li>Item 53: panel content row</li>
+<li>Item 54: panel content row</li>
+<li>Item 55: panel content row</li>
+<li>Item 56: panel content row</li>
+<li>Item 57: panel content row</li>
+<li>Item 58: panel content row</li>
+<li>Item 59: panel content row</li>
+<li>Item 60: panel content row</li>
+<li>Item 61: panel content row</li>
+<li>Item 62: panel content row</li>
+<li>Item 63: panel content row</li>
+<li>Item 64: panel content row</li>
+<li>Item 65: panel content row</li>
+<li>Item 66: panel content row</li>
+<li>Item 67: panel content row</li>
+<li>Item 68: panel content row</li>
+<li>Item 69: panel content row</li>
+<li>Item 70: panel content row</li>
+<li>Item 71: panel content row</li>
+<li>Item 72: panel content row</li>
+<li>Item 73: panel content row</li>
+<li>Item 74: panel content row</li>
+<li>Item 75: panel content row</li>
+<li>Item 76: panel content row</li>
+<li>Item 77: panel content row</li>
+<li>Item 78: panel content row</li>
+<li>Item 79: panel content row</li>
+<li>Item 80: panel content row</li>
+<li>Item 81: panel content row</li>
+<li>Item 82: panel content row</li>
+<li>Item 83: panel content row</li>
+<li>Item 84: panel content row</li>
+<li>Item 85: panel content row</li>
+<li>Item 86: panel content row</li>
+<li>Item 87: panel content row</li>
+<li>Item 88: panel content row</li>
+<li>Item 89: panel content row</li>
+<li>Item 90: panel content row</li>
+<li>Item 91: panel content row</li>
+<li>Item 92: panel content row</li>
+<li>Item 93: panel content row</li>
+<li>Item 94: panel content row</li>
+<li>Item 95: panel content row</li>
+<li>Item 96: panel content row</li>
+<li>Item 97: panel content row</li>
+<li>Item 98: panel content row</li>
+<li>Item 99: panel content row</li>
+<li>Item 100: panel content row</li>
+<li>Item 101: panel content row</li>
+<li>Item 102: panel content row</li>
+<li>Item 103: panel content row</li>
+<li>Item 104: panel content row</li>
+<li>Item 105: panel content row</li>
+<li>Item 106: panel content row</li>
+<li>Item 107: panel content row</li>
+<li>Item 108: panel content row</li>
+<li>Item 109: panel content row</li>
+<li>Item 110: panel content row</li>
+<li>Item 111: panel content row</li>
+<li>Item 112: panel content row</li>
+<li>Item 113: panel content row</li>
+<li>Item 114: panel content row</li>
+<li>Item 115: panel content row</li>
+<li>Item 116: panel content row</li>
+<li>Item 117: panel content row</li>
+<li>Item 118: panel content row</li>
+<li>Item 119: panel content row</li>
+<li>Item 120: panel content row</li>
+</ul></main></div></div></body></html>

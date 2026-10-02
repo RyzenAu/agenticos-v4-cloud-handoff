@@ -1,0 +1,806 @@
+[
+  {
+    "at": "+38.5s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "via": "loopback",
+      "actor": "human",
+      "role": "cloud",
+      "port": 8112
+    }
+  },
+  {
+    "at": "+38.8s",
+    "step": "host check (adapter)",
+    "data": {
+      "present": [
+        "Xvfb",
+        "chromium",
+        "x11vnc",
+        "xdotool",
+        "node"
+      ],
+      "missing": []
+    }
+  },
+  {
+    "at": "+51.2s",
+    "step": "hub process tree measured (Windows)",
+    "data": {
+      "processes": 23
+    }
+  },
+  {
+    "at": "+84.1s",
+    "step": "provision two computers concurrently",
+    "data": {
+      "wallMs": 2901,
+      "a": {
+        "status": 200,
+        "desktop": true,
+        "browser": true
+      },
+      "b": {
+        "status": 200,
+        "desktop": true,
+        "browser": true
+      }
+    }
+  },
+  {
+    "at": "+84.1s",
+    "step": "both online",
+    "data": [
+      {
+        "name": "a-research",
+        "id": "computer-a-research-xvn17g",
+        "state": "online",
+        "desktop": true,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        },
+        "caps": 15
+      },
+      {
+        "name": "a-builder",
+        "id": "computer-a-builder-5fxoaw",
+        "state": "online",
+        "desktop": true,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        },
+        "caps": 15
+      }
+    ]
+  },
+  {
+    "at": "+86.4s",
+    "step": "navigate + write a file, concurrently",
+    "data": {
+      "research": {
+        "state": "succeeded",
+        "steps": [
+          "ok browser.navigate: step 1 browser.navigate: Opened example.com: the page title reads \"Example Domain\".",
+          "ok observe.page: step 2 observe.page: Page: \"Example Domain\" at example.com.",
+          "ok file.write: step 3 file.write: Wrote notes.txt (21 bytes) and read it back."
+        ],
+        "ms": 1517
+      },
+      "builder": {
+        "state": "succeeded",
+        "steps": [
+          "ok browser.navigate: step 1 browser.navigate: Opened www.wikipedia.org: the page title reads \"Wikipedia\".",
+          "ok observe.page: step 2 observe.page: Page: \"Wikipedia\" at www.wikipedia.org.",
+          "ok file.write: step 3 file.write: Wrote notes.txt (20 bytes) and read it back."
+        ],
+        "ms": 2260
+      }
+    }
+  },
+  {
+    "at": "+88.1s",
+    "step": "ISOLATION: processes, displays, profiles, workdirs, identities (inside WSL)",
+    "data": {
+      "a-research": {
+        "cfg": {
+          "name": "a-research",
+          "deviceId": "computer-a-research-xvn17g",
+          "display": "401",
+          "resolution": "1280x800x24",
+          "vncPort": 6301,
+          "workdir": "/home/ryzen/mu-computers-a/a-research/work",
+          "profileDir": "/home/ryzen/mu-computers-a/a-research/profile"
+        },
+        "dirs": [
+          "cfg",
+          "logs",
+          "profile",
+          "run",
+          "work"
+        ],
+        "browserHeadless": false,
+        "browserOnDisplay": [
+          "x11"
+        ]
+      },
+      "a-builder": {
+        "cfg": {
+          "name": "a-builder",
+          "deviceId": "computer-a-builder-5fxoaw",
+          "display": "402",
+          "resolution": "1280x800x24",
+          "vncPort": 6302,
+          "workdir": "/home/ryzen/mu-computers-a/a-builder/work",
+          "profileDir": "/home/ryzen/mu-computers-a/a-builder/profile"
+        },
+        "dirs": [
+          "cfg",
+          "logs",
+          "profile",
+          "run",
+          "work"
+        ],
+        "browserHeadless": false,
+        "browserOnDisplay": [
+          "x11"
+        ]
+      },
+      "processes": [
+        "29214 29183       5 Xvfb :401 -screen 0 1280x800x24 -nolisten tcp -noreset",
+        "29220 29186       5 Xvfb :402 -screen 0 1280x800x24 -nolisten tcp -noreset",
+        "29242 29183       5 x11vnc -display :401 -localhost -rfbport 6301 -forever -shared -nopw -noxdamage -quiet",
+        "29250 29186       5 x11vnc -display :402 -localhost -rfbport 6302 -forever -shared -nopw -noxdamage -quiet",
+        "29260 29183       5 /usr/bin/node /home/ryzen/mu-computers-a/bin/companion.mjs run --config /home/ryzen/mu-computers-a/a-research/cfg",
+        "29268 29186       5 /usr/bin/node /home/ryzen/mu-computers-a/bin/companion.mjs run --config /home/ryzen/mu-computers-a/a-builder/cfg",
+        "29681 29260       3 /usr/lib/chromium/chromium --show-component-extension-options --enable-gpu-rasterization --no-default-browser-check --disable-pings --media-router=0 --enable-remote-extensions --load-extension --user-data-dir=/home/ryzen/mu-computers-a/a-research/profile --remote-debugging-port=9701 --remote-debugging-address",
+        "29685 29268       3 /usr/lib/chromium/chromium --show-component-extension-options --enable-gpu-rasterization --no-default-browser-check --disable-pings --media-router=0 --enable-remote-extensions --load-extension --user-data-dir=/home/ryzen/mu-computers-a/a-builder/profile --remote-debugging-port=9702 --remote-debugging-address="
+      ],
+      "companionEnvOnlyDirAndDisplay": {
+        "23664": [
+          "DISPLAY=:202",
+          "MU_COMPUTER_DIR=/home/ryzen/mu-computers/c-beta"
+        ],
+        "29260": [
+          "DISPLAY=:401",
+          "MU_COMPUTER_DIR=/home/ryzen/mu-computers-a/a-research"
+        ],
+        "29268": [
+          "DISPLAY=:402",
+          "MU_COMPUTER_DIR=/home/ryzen/mu-computers-a/a-builder"
+        ],
+        "58790": [
+          "DISPLAY=:201",
+          "MU_COMPUTER_DIR=/home/ryzen/mu-computers/c-alpha"
+        ]
+      }
+    }
+  },
+  {
+    "at": "+88.5s",
+    "step": "ISOLATION: each Chromium's own CDP (page titles read from its own DevTools port)",
+    "data": {
+      "a-research": "cdp=9701\n[{\"type\": \"page\", \"title\": \"Example Domain\", \"url\": \"https://example.com/\"}, {\"type\": \"page\", \"title\": \"about:blank\", \"url\": \"about:blank\"}]",
+      "a-builder": "cdp=9702\n[{\"type\": \"page\", \"title\": \"Wikipedia\", \"url\": \"https://www.wikipedia.org/\"}, {\"type\": \"page\", \"title\": \"about:blank\", \"url\": \"about:blank\"}]"
+    }
+  },
+  {
+    "at": "+88.7s",
+    "step": "LISTENING sockets inside WSL (tcp on 127.0.0.1 only; X11 is unix-socket only)",
+    "data": [
+      "(only this hub's ports: displays 401+, VNC 63xx, DevTools 97xx)",
+      "127.0.0.1:6301 users:((\"x11vnc\",pid=29242,fd=9))",
+      "127.0.0.1:6302 users:((\"x11vnc\",pid=29250,fd=9))",
+      "127.0.0.1:9701 users:((\"chromium\",pid=29681,fd=77))",
+      "127.0.0.1:9702 users:((\"chromium\",pid=29685,fd=78))",
+      "[::1]:6301 users:((\"x11vnc\",pid=29242,fd=11))",
+      "[::1]:6302 users:((\"x11vnc\",pid=29250,fd=11))",
+      "---unix",
+      "@/tmp/.X11-unix/X401",
+      "@/tmp/.X11-unix/X402"
+    ]
+  },
+  {
+    "at": "+89.1s",
+    "step": "Windows loopback can reach these WSL ports? (WSL2 localhost forwarding check; true = reachable from a local Windows process)",
+    "data": {
+      "6101": true,
+      "6102": true,
+      "6301": true,
+      "6302": true,
+      "9501": true,
+      "9701": true,
+      "9702": true
+    }
+  },
+  {
+    "at": "+90.6s",
+    "step": "snapshots through the authenticated hub route",
+    "data": {
+      "research": {
+        "status": 200,
+        "type": "image/jpeg",
+        "bytes": 16723,
+        "ms": 686
+      },
+      "builder": {
+        "status": 200,
+        "type": "image/jpeg",
+        "bytes": 40785,
+        "ms": 764
+      }
+    }
+  },
+  {
+    "at": "+95.0s",
+    "step": "VNC frame for a-research (noVNC via the hub proxy)",
+    "data": {
+      "file": "vnc-a-research.png",
+      "canvas": {
+        "w": 1280,
+        "h": 800
+      },
+      "header": "a-research: online\nTake control"
+    }
+  },
+  {
+    "at": "+99.5s",
+    "step": "VNC frame for a-builder (noVNC via the hub proxy)",
+    "data": {
+      "file": "vnc-a-builder.png",
+      "canvas": {
+        "w": 1280,
+        "h": 800
+      },
+      "header": "a-builder: online\nTake control"
+    }
+  },
+  {
+    "at": "+99.6s",
+    "step": "DIAGNOSE before load: hub events",
+    "data": [
+      {
+        "at": 1790814252269,
+        "computer": "a-research",
+        "type": "provisioning",
+        "detail": "wsl-local, display :401"
+      },
+      {
+        "at": 1790814252300,
+        "computer": "a-builder",
+        "type": "provisioning",
+        "detail": "wsl-local, display :402"
+      },
+      {
+        "at": 1790814254749,
+        "computer": "a-research",
+        "type": "provisioned",
+        "detail": "computer-a-research-xvn17g"
+      },
+      {
+        "at": 1790814254767,
+        "computer": "a-builder",
+        "type": "provisioned",
+        "detail": "computer-a-builder-5fxoaw"
+      },
+      {
+        "at": 1790814254800,
+        "computer": "a-research",
+        "type": "lease-acquired",
+        "detail": "agent journey3"
+      },
+      {
+        "at": 1790814254801,
+        "computer": "a-research",
+        "type": "job-started",
+        "detail": "journey3 (6508efd0)"
+      },
+      {
+        "at": 1790814254805,
+        "computer": "a-builder",
+        "type": "lease-acquired",
+        "detail": "agent journey3"
+      },
+      {
+        "at": 1790814254805,
+        "computer": "a-builder",
+        "type": "job-started",
+        "detail": "journey3 (5ff28cbf)"
+      },
+      {
+        "at": 1790814256264,
+        "computer": "a-research",
+        "type": "lease-released",
+        "detail": "agent (released)"
+      },
+      {
+        "at": 1790814257012,
+        "computer": "a-builder",
+        "type": "lease-released",
+        "detail": "agent (released)"
+      }
+    ]
+  },
+  {
+    "at": "+99.6s",
+    "step": "DIAGNOSE before load: views",
+    "data": [
+      {
+        "name": "a-research",
+        "state": "online",
+        "failure": null,
+        "recoveries": 0,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        }
+      },
+      {
+        "name": "a-builder",
+        "state": "online",
+        "failure": null,
+        "recoveries": 0,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        }
+      }
+    ]
+  },
+  {
+    "at": "+100.0s",
+    "step": "DIAGNOSE before load: a-research logs",
+    "data": [
+      "== companion",
+      "Computer \"a-research\" starting (display :401; 15 executors).",
+      "[companion] online as computer-a-research-xvn17g (shared)",
+      "[browser] starting /usr/bin/chromium (display :401, port 9701)",
+      "== xvfb",
+      "_XSERVTransmkdir: Mode of /tmp/.X11-unix should be set to 1777",
+      "_XSERVTransSocketCreateListener: failed to bind listener",
+      "_XSERVTransSocketUNIXCreateListener: ...SocketCreateListener() failed",
+      "_XSERVTransMakeAllCOTSServerListeners: failed to create listener for unix",
+      "== vnc",
+      "Xlib:  extension \"DPMS\" missing on display \":401\".",
+      "",
+      "The VNC desktop is:      localhost:401",
+      "PORT=6301",
+      "companion.pid",
+      "companion.raw",
+      "vnc.pid",
+      "vnc.raw",
+      "xvfb.pid",
+      "xvfb.raw"
+    ]
+  },
+  {
+    "at": "+100.2s",
+    "step": "DIAGNOSE before load: a-builder logs",
+    "data": [
+      "== companion",
+      "Computer \"a-builder\" starting (display :402; 15 executors).",
+      "[companion] online as computer-a-builder-5fxoaw (shared)",
+      "[browser] starting /usr/bin/chromium (display :402, port 9702)",
+      "== xvfb",
+      "_XSERVTransmkdir: Mode of /tmp/.X11-unix should be set to 1777",
+      "_XSERVTransSocketCreateListener: failed to bind listener",
+      "_XSERVTransSocketUNIXCreateListener: ...SocketCreateListener() failed",
+      "_XSERVTransMakeAllCOTSServerListeners: failed to create listener for unix",
+      "== vnc",
+      "Xlib:  extension \"DPMS\" missing on display \":402\".",
+      "",
+      "The VNC desktop is:      localhost:402",
+      "PORT=6302",
+      "companion.pid",
+      "companion.raw",
+      "vnc.pid",
+      "vnc.raw",
+      "xvfb.pid",
+      "xvfb.raw"
+    ]
+  },
+  {
+    "at": "+146.6s",
+    "step": "2 active computers under load: latency (ms)",
+    "data": {
+      "a-research": {
+        "nav": {
+          "n": 21,
+          "p50": 957,
+          "p95": 1720,
+          "max": 4092
+        },
+        "screenshot": {
+          "n": 21,
+          "p50": 362,
+          "p95": 478
+        },
+        "observe": {
+          "n": 21,
+          "p50": 121,
+          "p95": 160
+        },
+        "failures": []
+      },
+      "a-builder": {
+        "nav": {
+          "n": 21,
+          "p50": 957,
+          "p95": 1705,
+          "max": 1750
+        },
+        "screenshot": {
+          "n": 21,
+          "p50": 381,
+          "p95": 1057
+        },
+        "observe": {
+          "n": 21,
+          "p50": 122,
+          "p95": 140
+        },
+        "failures": []
+      }
+    }
+  },
+  {
+    "at": "+177.6s",
+    "step": "stop builder",
+    "data": {
+      "status": 200,
+      "state": "offline"
+    }
+  },
+  {
+    "at": "+224.2s",
+    "step": "1 active computer under load: latency (ms)",
+    "data": {
+      "a-research": {
+        "nav": {
+          "n": 22,
+          "p50": 957,
+          "p95": 1515,
+          "max": 1886
+        },
+        "screenshot": {
+          "n": 22,
+          "p50": 412,
+          "p95": 741
+        },
+        "observe": {
+          "n": 22,
+          "p50": 121,
+          "p95": 145
+        },
+        "failures": []
+      }
+    }
+  },
+  {
+    "at": "+256.8s",
+    "step": "builder after stop/start: file survived, browser works",
+    "data": {
+      "restartToOnlineMs": 886,
+      "state": "succeeded",
+      "steps": [
+        "ok file.read: step 1 file.read: Read notes.txt (20 bytes).",
+        "ok browser.navigate: step 2 browser.navigate: Opened www.wikipedia.org: the page title reads \"Wikipedia\"."
+      ]
+    }
+  },
+  {
+    "at": "+257.3s",
+    "step": "resource view as the hub reports it",
+    "data": [
+      {
+        "name": "a-research",
+        "resource": {
+          "rssMb": 608,
+          "cpuPct": 2,
+          "procs": 15,
+          "sampledAt": 1790814424761
+        }
+      },
+      {
+        "name": "a-builder",
+        "resource": null
+      }
+    ]
+  },
+  {
+    "at": "+257.3s",
+    "step": "MEASURED 0-computers",
+    "data": {
+      "label": "0-computers",
+      "samples": 15,
+      "seconds": 28,
+      "hub": {
+        "meanRssMb": 1140.3,
+        "peakRssMb": 1151,
+        "cpuPctOfOneCore": 2.4
+      },
+      "computers": {},
+      "wslVm": {
+        "usedMbMean": 1200,
+        "usedMbPeak": 1206,
+        "cpuPctOfAllThreads": 1.1
+      },
+      "vmmemMbMean": null
+    }
+  },
+  {
+    "at": "+257.3s",
+    "step": "MEASURED 2-active-load",
+    "data": {
+      "label": "2-active-load",
+      "samples": 24,
+      "seconds": 45,
+      "hub": {
+        "meanRssMb": 1141.8,
+        "peakRssMb": 1157,
+        "cpuPctOfOneCore": 13.4
+      },
+      "computers": {
+        "a-research": {
+          "companion": {
+            "meanRssMb": 38,
+            "peakRssMb": 43,
+            "cpuPctOfOneCore": 1.7,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 14,
+            "peakRssMb": 14,
+            "cpuPctOfOneCore": 0.3,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 10,
+            "peakRssMb": 10,
+            "cpuPctOfOneCore": 0,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 352,
+            "peakRssMb": 376,
+            "cpuPctOfOneCore": 13.5,
+            "procsMax": 12
+          }
+        },
+        "a-builder": {
+          "companion": {
+            "meanRssMb": 43,
+            "peakRssMb": 47,
+            "cpuPctOfOneCore": 1.9,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 14,
+            "peakRssMb": 14,
+            "cpuPctOfOneCore": 0.3,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 10,
+            "peakRssMb": 10,
+            "cpuPctOfOneCore": 0,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 357,
+            "peakRssMb": 380,
+            "cpuPctOfOneCore": 14.3,
+            "procsMax": 12
+          }
+        }
+      },
+      "wslVm": {
+        "usedMbMean": 1887,
+        "usedMbPeak": 1951,
+        "cpuPctOfAllThreads": 7.3
+      },
+      "vmmemMbMean": null
+    }
+  },
+  {
+    "at": "+257.3s",
+    "step": "MEASURED 2-idle-pages-loaded",
+    "data": {
+      "label": "2-idle-pages-loaded",
+      "samples": 15,
+      "seconds": 28,
+      "hub": {
+        "meanRssMb": 1138.6,
+        "peakRssMb": 1150,
+        "cpuPctOfOneCore": 7
+      },
+      "computers": {
+        "a-research": {
+          "companion": {
+            "meanRssMb": 44,
+            "peakRssMb": 44,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 14,
+            "peakRssMb": 14,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 10,
+            "peakRssMb": 10,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 398,
+            "peakRssMb": 440,
+            "cpuPctOfOneCore": 20.8,
+            "procsMax": 13
+          }
+        },
+        "a-builder": {
+          "companion": {
+            "meanRssMb": 48,
+            "peakRssMb": 48,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 14,
+            "peakRssMb": 14,
+            "cpuPctOfOneCore": 0,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 10,
+            "peakRssMb": 10,
+            "cpuPctOfOneCore": 0,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 359,
+            "peakRssMb": 374,
+            "cpuPctOfOneCore": 7.4,
+            "procsMax": 12
+          }
+        }
+      },
+      "wslVm": {
+        "usedMbMean": 1942,
+        "usedMbPeak": 1990,
+        "cpuPctOfAllThreads": 4.3
+      },
+      "vmmemMbMean": null
+    }
+  },
+  {
+    "at": "+257.3s",
+    "step": "MEASURED 1-active-load",
+    "data": {
+      "label": "1-active-load",
+      "samples": 23,
+      "seconds": 44,
+      "hub": {
+        "meanRssMb": 1123.3,
+        "peakRssMb": 1128,
+        "cpuPctOfOneCore": 6
+      },
+      "computers": {
+        "a-research": {
+          "companion": {
+            "meanRssMb": 49,
+            "peakRssMb": 51,
+            "cpuPctOfOneCore": 2.1,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 15,
+            "peakRssMb": 15,
+            "cpuPctOfOneCore": 0.4,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 10,
+            "peakRssMb": 10,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 454,
+            "peakRssMb": 515,
+            "cpuPctOfOneCore": 8.6,
+            "procsMax": 13
+          }
+        }
+      },
+      "wslVm": {
+        "usedMbMean": 1598,
+        "usedMbPeak": 1668,
+        "cpuPctOfAllThreads": 5.3
+      },
+      "vmmemMbMean": null
+    }
+  },
+  {
+    "at": "+257.3s",
+    "step": "MEASURED 1-idle-page-loaded",
+    "data": {
+      "label": "1-idle-page-loaded",
+      "samples": 15,
+      "seconds": 28,
+      "hub": {
+        "meanRssMb": 1116,
+        "peakRssMb": 1129,
+        "cpuPctOfOneCore": 4.2
+      },
+      "computers": {
+        "a-research": {
+          "companion": {
+            "meanRssMb": 81,
+            "peakRssMb": 83,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "xvfb": {
+            "meanRssMb": 16,
+            "peakRssMb": 16,
+            "cpuPctOfOneCore": 0,
+            "procsMax": 1
+          },
+          "vnc": {
+            "meanRssMb": 12,
+            "peakRssMb": 12,
+            "cpuPctOfOneCore": 0.1,
+            "procsMax": 1
+          },
+          "chromium": {
+            "meanRssMb": 565,
+            "peakRssMb": 583,
+            "cpuPctOfOneCore": 1.3,
+            "procsMax": 12
+          }
+        }
+      },
+      "wslVm": {
+        "usedMbMean": 1261,
+        "usedMbPeak": 1599,
+        "cpuPctOfAllThreads": 1.2
+      },
+      "vmmemMbMean": null
+    }
+  },
+  {
+    "at": "+258.0s",
+    "step": "destroy a-research",
+    "data": {
+      "status": 200
+    }
+  },
+  {
+    "at": "+258.4s",
+    "step": "destroy a-builder",
+    "data": {
+      "status": 200
+    }
+  },
+  {
+    "at": "+259.0s",
+    "step": "hub stopped by PID",
+    "data": {
+      "pid": 172092,
+      "stillListening": false
+    }
+  },
+  {
+    "at": "+259.2s",
+    "step": "WSL after teardown (a-* processes; computer directories)",
+    "data": [
+      "bin"
+    ]
+  }
+]

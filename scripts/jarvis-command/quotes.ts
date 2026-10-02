@@ -7,6 +7,11 @@
  * the text short.
  */
 export const QUOTED = /"([^"]{1,200})"|“([^”]{1,200})”|‘(.{1,200}?)’(?![\p{L}\p{N}])|(?<![\p{L}\p{N}])'(.{1,200}?)'(?![\p{L}\p{N}])/gu;
+/** Preserve offsets while hiding conjunctions inside literal dictation or a URL. */
+export function maskInstructionData(text: string): string {
+  return text.replace(new RegExp(QUOTED.source.replaceAll("{1,200}", "{1,600}"), "gu"), s => "_".repeat(s.length))
+    .replace(/https?:\/\/[^\s]+/gi, s => "_".repeat(s.length));
+}
 /** The first quoted span: its text, where it starts and how long it is. Pure. */
 export function findQuoted(text: string): { text: string; index: number; length: number } | null {
   const re = new RegExp(QUOTED.source, "u");

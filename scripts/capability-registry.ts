@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { defaultClaudeBin } from "./claude-bridge";
 import { describePeople, readPeople } from "./remote-access";
 import { readShorthand } from "./shorthand";
+import { dataDirFor } from "./cloud/data-dir";
+import { localOwnerHeaders } from "./identity/local-owner-token";
 
 /**
  * Jarvis's capability registry: one list of what Jarvis can do, rebuilt from live
@@ -139,11 +141,17 @@ export function parseCronList(text: string) {
   return jobs;
 }
 
-export function parseOpenclawNodes(text: string) {
+export interface OpenclawNode {
+  name: string;
+  connected: boolean;
+  commands: string[];
+}
+
+export function parseOpenclawNodes(text: string): OpenclawNode[] {
   try {
     const data = JSON.parse(text.slice(text.indexOf("{")));
     if (!Array.isArray(data?.nodes)) return [];
-    return data.nodes.map((node: any) => ({
+    return data.nodes.map((node: any): OpenclawNode => ({
       name: String(node.displayName || node.nodeId || "node"),
       connected: node.connected === true,
       commands: Array.isArray(node.commands) ? node.commands.map(String) : [],
@@ -369,7 +377,7 @@ export const CLAUDE_PROBE_TTL_MS = 6 * 60 * 60_000;
  * timers spent ~130 `claude -p` turns an hour here, which alone pushed the Max plan's weekly usage up.
  */
 export async function cachedClaudeInit(root: string, exec: Exec, now = Date.now()): Promise<string> {
-  const file = join(root, ".operator-data", "claude-probe-cache.json");
+  const file = join(dataDirFor(root), "claude-probe-cache.json");
   try {
     const cached = JSON.parse(readFileSync(file, "utf8")) as { at?: number; text?: string };
     if (typeof cached.at === "number" && typeof cached.text === "string" && cached.text && now - cached.at < CLAUDE_PROBE_TTL_MS) return cached.text;
@@ -401,7 +409,7 @@ export async function probe(options: { root: string; exec?: Exec; fetch?: typeof
   const timedOut: NonNullable<Probes["timedOut"]> = [];
   const check = async (url: string, name: "osServer" | "claudeBridge") => {
     try {
-      return (await get(url, { signal: AbortSignal.timeout(8000) })).ok;
+      return (await get(url, { signal: AbortSignal.timeout(8000), headers: localOwnerHeaders() })).ok;
     } catch (error) {
       if ((error as Error)?.name === "TimeoutError" || (error as Error)?.name === "AbortError") timedOut.push(name);
       return false;
@@ -418,7 +426,7 @@ export async function probe(options: { root: string; exec?: Exec; fetch?: typeof
     exec("openclaw", ["gateway", "status"], 40_000),
     options.self ? Promise.resolve(true) : check(`${origin}/__token`, "osServer"),
     check(`${origin}/__claude/v1/models`, "claudeBridge"),
-    get(`${origin}/__operator/connections`, { signal: AbortSignal.timeout(20_000) })
+    get(`${origin}/__operator/connections`, { signal: AbortSignal.timeout(20_000), headers: localOwnerHeaders() })
       .then((r) => r.json())
       .then((d: any) => d?.accounts?.find((a: any) => a.id === "google"))
       .catch(() => undefined),
@@ -545,7 +553,7 @@ function writeAtomic(file: string, text: string) {
 
 /** Rebuild everything: registry JSON, the Hermes skill, and the voice summary. */
 export async function refreshCapabilities(root: string, options: { hermesHome?: string; exec?: Exec; fetch?: typeof fetch; origin?: string; self?: boolean } = {}) {
-  const data = join(root, ".operator-data");
+  const data = join(dataDirFor(root));
   const hermesHome = options.hermesHome ?? join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "hermes");
   const probes = await probe({ root, exec: options.exec, fetch: options.fetch, hermesHome, origin: options.origin, self: options.self });
   let acceptance: Acceptance = {};

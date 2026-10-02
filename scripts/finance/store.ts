@@ -6,9 +6,10 @@ import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { BasiqAccount, BasiqTransaction } from "./basiq";
+import { dataDirFor } from "../cloud/data-dir";
 
 export function financeDbPath(root: string): string {
-  return join(root, ".operator-data", "finance.sqlite");
+  return join(dataDirFor(root), "finance.sqlite");
 }
 
 export function openFinanceDb(file: string): Database {

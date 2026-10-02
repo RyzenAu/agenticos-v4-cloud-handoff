@@ -70,6 +70,12 @@ export type FilePort = {
   recycle(path: string): Promise<void>;
 };
 export type AwayDeps = {
+  /**
+   * MU_HUB_ROLE=server: away mode drives a DESKTOP (the screen, windows, apps), and the server has none. When set, this
+   * line is the answer to every way of turning it on, resuming it or queueing a task (the OS card, voice, Telegram), and
+   * the runner never ticks: nothing can run, whoever asks. Unset elsewhere.
+   */
+  disabled?: string;
   store: StateStore;
   audit: AuditLog;
   sentinel: Sentinel;
@@ -272,6 +278,7 @@ export function createAwayMode(deps: AwayDeps) {
 
   // --- the loop ---------------------------------------------------------------------------------------
   async function tick() {
+    if (deps.disabled) return;
     if (busy || closed) return;
     busy = true;
     try {
@@ -749,6 +756,7 @@ export function createAwayMode(deps: AwayDeps) {
 
   // --- commands ---------------------------------------------------------------------------------------
   async function turnOn(from: TaskSource) {
+    if (deps.disabled) return deps.disabled;
     const s = state();
     if (s.on) return `Away mode is already on${s.armed ? " and armed" : ""}. ${queueLine()}`;
     const sentinelOk = await startSentinel();
@@ -826,6 +834,7 @@ export function createAwayMode(deps: AwayDeps) {
   }
 
   function resume() {
+    if (deps.disabled) return deps.disabled;
     store.update((st) => void (st.paused = false));
     log({ action: "resume", result: "queue resumed" });
     void tick();
@@ -833,6 +842,7 @@ export function createAwayMode(deps: AwayDeps) {
   }
 
   async function addTask(text: string, from: TaskSource): Promise<{ ok: boolean; id?: number; said: string }> {
+    if (deps.disabled) return { ok: false, said: deps.disabled };
     const clean = text.trim().slice(0, 600);
     if (clean.length < 3) return { ok: false, said: "What should I do? e.g. /task tidy Downloads" };
     const s = state();
@@ -1035,6 +1045,15 @@ export function createAwayMode(deps: AwayDeps) {
 
   /** Start-up: tasks cut off by a restart are closed (never silently re-run); an on-state resumes watching. */
   async function start() {
+    if (deps.disabled) {
+      // A state file carried over from a PC (away mode on, a queue) must not run here: disarm it and never tick.
+      store.update((st) => {
+        st.on = false;
+        st.armed = false;
+      });
+      log({ action: "disabled", result: "away mode is off on the server: it drives a desktop" });
+      return;
+    }
     const cut = state().tasks.filter((t) => t.status === "running" || t.status === "awaiting_approval");
     const pending = state().pending;
     if (store.recover(iso())) {

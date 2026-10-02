@@ -19,9 +19,9 @@ export function useNow(ms = 30_000): number {
   return now;
 }
 
-export function OpenLink({ to, children }: { to: string; children: ReactNode }) {
+export function OpenLink({ to, search, children }: { to: string; search?: Record<string, string>; children: ReactNode }) {
   return (
-    <Link to={to as any} className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
+    <Link to={to as any} search={search as any} className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">
       {children}
       <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
     </Link>
@@ -58,7 +58,7 @@ export function PanelShell<T>({
 }: {
   id: string;
   title: string;
-  link: { to: string; label: string };
+  link: { to: string; label: string; search?: Record<string, string> };
   query: UseQueryResult<PanelResult<T>>;
   now: number;
   /** Optional source time shown instead of the fetch time (e.g. the receptionist's own snapshot). */
@@ -98,7 +98,7 @@ export function PanelShell<T>({
           <Button variant="ghost" size="icon-sm" onClick={() => void query.refetch()} disabled={query.isFetching} aria-label={`Refresh ${title}`}>
             <RefreshCw className={cn(query.isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
           </Button>
-          <OpenLink to={link.to}>{link.label}</OpenLink>
+          <OpenLink to={link.to} search={link.search}>{link.label}</OpenLink>
         </div>
       </div>
       {query.isLoading ? (

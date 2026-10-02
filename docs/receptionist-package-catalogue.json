@@ -19,7 +19,7 @@
       "title": "Booking Receptionist · Essential",
       "tier": 1,
       "shortName": "Essential",
-      "audience": "One location that wants its calls answered and booked. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]",
+      "audience": "One location that wants its calls answered and booked in business hours, after hours or as overflow.",
       "sectors": [
         "dental",
         "property",
@@ -96,7 +96,8 @@
         "concurrentCallsFairUse": 3,
         "coverModes": [
           "After hours",
-          "When busy / no answer"
+          "When busy / no answer",
+          "All calls"
         ],
         "sms": [
           "Booking confirmation (at go-live)"
@@ -140,7 +141,7 @@
       "scope": [
         {
           "id": "answer",
-          "label": "Answers calls in the cover configured for each business; says it is automated and the call is recorded. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]",
+          "label": "Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded",
           "state": "available",
           "evidence": "D:/MU-Receptionist-wt-prompt (branch fix/prompt-truth-20260927): prompt v3 applied to the Retell draft 27 Sep (message-taking, AI + recording disclosure, 000 first); docs/sales/dental-call-pack-2026-09-28/receptionist-prompt/v3-live-2026-09-27.md"
         },

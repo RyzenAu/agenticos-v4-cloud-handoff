@@ -20,6 +20,7 @@ import type {
   TaskSpec,
   TestResult,
 } from "./contracts";
+import { bareTestName, namesBaselineTest } from "./pause-reason";
 import { redactText, scanPatch } from "./redact";
 import { commandById, ownsPath } from "./registry";
 import { asSha, assertSafeGitConfig, git, worktreeState } from "./worktree";
@@ -122,7 +123,20 @@ export function parseFailedTests(kind: RegistryCommand["counts"], output: string
   const grab = (re: RegExp) => [...new Set([...text.matchAll(re)].map((m) => m[1].replace(/\s+\[[\d.]+\s*m?s\]\s*$/, "").trim()))];
   let names: string[] | null;
   switch (kind) {
-    case "bun": names = grab(/^\(fail\)\s+(.+)$/gm); break;
+    case "bun": {
+      // bun prints `path/to/file.test.ts:` before that file's results and `(fail)` lines carry no path, so a name is keyed by its
+      // file: the same name failing in another file is a different (new) failure.
+      const found = new Set<string>();
+      let file = "";
+      for (const line of text.split(/\r?\n/)) {
+        const head = /^(\S.*\.(?:test|spec)\.[cm]?[jt]sx?):\s*$/.exec(line);
+        if (head) { file = head[1].replace(/\\/g, "/"); continue; }
+        const f = /^\(fail\)\s+(.+)$/.exec(line);
+        if (f) { const n = f[1].replace(/\s+\[[\d.]+\s*m?s\]\s*$/, "").trim(); found.add(file ? `${file} :: ${n}` : n); }
+      }
+      names = [...found];
+      break;
+    }
     case "vitest": names = grab(/^\s*(?:×|✗|FAIL)\s+(.+)$/gm); break;
     case "jest": names = grab(/^\s*●\s+(.+)$/gm); break;
     case "node-test": names = grab(/^\s*not ok \d+ - (.+)$/gm); break;
@@ -130,6 +144,42 @@ export function parseFailedTests(kind: RegistryCommand["counts"], output: string
   }
   if (names === null || failedCount === null) return null;
   return names.length === failedCount ? names.sort() : null;
+}
+
+/**
+ * What a failing test said, beside its name: bun prints the assertion (the `error:` line and the Expected / Received lines)
+ * just before its `(fail)` line. Bounded to 300 characters a test and 12 tests; null when the runner printed nothing usable.
+ * Only bun's format is read; other runners keep their names only (assertion null).
+ */
+export function parseFailures(kind: RegistryCommand["counts"], output: string, names: readonly string[] | null): { name: string; assertion: string | null }[] {
+  if (!names?.length) return [];
+  const byName = new Map<string, string | null>();
+  if (kind === "bun") {
+    const lines = plain(output).split(/\r?\n/);
+    let file = "";
+    let start = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const head = /^(\S.*\.(?:test|spec)\.[cm]?[jt]sx?):\s*$/.exec(line);
+      if (head) { file = head[1].replace(/\\/g, "/"); start = i + 1; continue; }
+      if (/^\((?:pass|skip|todo)\)/.test(line)) { start = i + 1; continue; }
+      const f = /^\(fail\)\s+(.+)$/.exec(line);
+      if (!f) continue;
+      const name = f[1].replace(/\s+\[[\d.]+\s*m?s\]\s*$/, "").trim();
+      const block = lines.slice(start, i);
+      start = i + 1;
+      const at = block.findIndex((l) => /^(?:error|\w*Error)\b/.test(l.trim()));
+      if (at < 0) { byName.set(file ? `${file} :: ${name}` : name, null); continue; }
+      const said: string[] = [];
+      for (const l of block.slice(at)) {
+        const t = l.trim();
+        if (/^at\s/.test(t) || /^\d+\s*\|/.test(t) || /^\^/.test(t)) { if (said.length) break; else continue; }
+        if (t) said.push(t.replace(/^error:\s*/, ""));
+      }
+      byName.set(file ? `${file} :: ${name}` : name, said.length ? said.join(" · ").slice(0, 300) : null);
+    }
+  }
+  return names.slice(0, 12).map((name) => ({ name, assertion: byName.get(name) ?? null }));
 }
 
 /** A runner's per-test result line: its marker and the test's full name (timing and directives stripped). */
@@ -198,6 +248,7 @@ export async function runRegistryCommand(input: { entry: RepoRegistryEntry; comm
           timedOut,
           counts,
           failedTests: parseFailedTests(command.counts, output, counts.failed),
+          failures: parseFailures(command.counts, redactText(output, limit), parseFailedTests(command.counts, output, counts.failed)),
           durationMs: Date.now() - started,
         },
         output: redactText(output, limit),
@@ -218,7 +269,7 @@ export async function runRegistryCommand(input: { entry: RepoRegistryEntry; comm
 
 export type GateInput = {
   entry: RepoRegistryEntry;
-  spec: Pick<TaskSpec, "repo" | "roles" | "checks" | "doneWhen">;
+  spec: Pick<TaskSpec, "repo" | "roles" | "checks" | "doneWhen"> & { objective?: string };
   /** The job head the orchestrator believes is integrated. */
   headSha: GitSha;
   /** The integration worktree, on the job branch. */
@@ -236,6 +287,11 @@ export type GateInput = {
   ownerAcceptances?: readonly OwnerAcceptance[];
   /** Who may accept a finding. Defaults to the owner; Stage B's authorise() supplies it in C4. */
   acceptors?: readonly PersonId[];
+  /**
+   * Finished agent runs that have NO usage receipt (receipts.ts unreceiptedRuns). When supplied (even empty),
+   * the gate adds "receipts-recorded": a run with no receipt can't be claimed as having run a model.
+   */
+  unreceipted?: readonly string[];
   now?: () => Date;
 };
 
@@ -279,7 +335,17 @@ function secrets(input: GateInput): Check {
   };
 }
 
-function checksPass(input: GateInput, baselineFailures: { commandId: CommandId; failed: number }[], accepted: Set<CommandId>): Check {
+/**
+ * Two failing-test identities are the same failure when equal. Names recorded before 1 Oct have no `file :: ` part: if EITHER side
+ * lacks it, that pair is compared on the bare name; file-keyed against file-keyed stays strict.
+ */
+export function sameFailure(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.includes(" :: ") && b.includes(" :: ")) return false;
+  return bareTestName(a) === bareTestName(b);
+}
+
+function checksPass(input: GateInput, baselineFailures: { commandId: CommandId; failed: number; names: string[] }[], accepted: Set<CommandId>): Check {
   const problems: string[] = [];
   for (const id of input.spec.checks) {
     const result = [...input.tests].reverse().find((t) => t.commandId === id && t.sha === input.headSha && t.ranBy === "orchestrator");
@@ -295,13 +361,13 @@ function checksPass(input: GateInput, baselineFailures: { commandId: CommandId; 
       problems.push(`${id}: failing tests can't be identified, so pre-existing failures can't be separated`);
       continue;
     }
-    const before = new Set(b.failedTests);
-    const fresh = result.failedTests.filter((name) => !before.has(name));
+    const fresh = result.failedTests.filter((name) => !b.failedTests!.some((old) => sameFailure(name, old)));
     if (fresh.length) { problems.push(`${id}: ${fresh.length} new failing test(s) not failing on the base sha`); continue; }
-    baselineFailures.push({ commandId: id, failed: result.failedTests.length });
+    baselineFailures.push({ commandId: id, failed: result.failedTests.length, names: [...result.failedTests] });
     accepted.add(id);
   }
-  const note = baselineFailures.length ? `; pre-existing failures: ${baselineFailures.map((b) => `${b.commandId} ${b.failed}`).join(", ")}` : "";
+  // Names, not just counts: "only pre-existing failures: <names>" is what the owner reads.
+  const note = baselineFailures.length && !problems.length ? `; only pre-existing failures: ${baselineFailures.map((b) => `${b.commandId} (${b.names.join("; ")})`).join(", ")}` : baselineFailures.length ? `; pre-existing failures: ${baselineFailures.map((b) => `${b.commandId} ${b.failed}`).join(", ")}` : "";
   return { check: "checks-pass", passed: !problems.length, detail: (problems.join("; ") || `${input.spec.checks.length} check(s) passed`) + note };
 }
 
@@ -325,14 +391,29 @@ function reviewApproved(input: GateInput): Check {
   return { check: "review-approved-for-sha", passed: !problems.length, detail: problems.join("; ") || `approved for ${input.headSha.slice(0, 7)}` };
 }
 
+function receiptsRecorded(missing: readonly string[]): Check {
+  return { check: "receipts-recorded", passed: !missing.length, detail: missing.length ? `no usage receipt for: ${missing.join(", ")}` : "every agent run has its receipt (model, account, tokens)" };
+}
+
 /** `accepted` = checks the gate accepted at this sha (exit 0, or only pre-existing baseline failures). */
-function doneWhen(input: GateInput, accepted: ReadonlySet<CommandId>): Check {
+function doneWhen(input: GateInput & { baselineNames?: Record<string, readonly string[]>; objective?: string }, accepted: ReadonlySet<CommandId>): Check {
   const unmapped: string[] = [];
+  const withBaseline: string[] = [];
+  const refused: string[] = [];
   for (const c of input.spec.doneWhen) {
     let ok = false;
     if (c.evidence === "test" || c.evidence === "typecheck" || c.evidence === "build") {
       const asCommand = c.ref ? [...input.tests].reverse().find((t) => t.commandId === c.ref && t.sha === input.headSha) : undefined;
-      if (asCommand) ok = accepted.has(asCommand.commandId) && asCommand.exitCode === 0;
+      // `accepted` already means exit 0 OR only failures that also failed on the base sha, by name (checksPass):
+      // a baseline-only failure is evidence-with-baseline; a NEW failure never reaches `accepted`.
+      if (asCommand) {
+        ok = accepted.has(asCommand.commandId);
+        if (ok && asCommand.exitCode !== 0) {
+          // Baseline credit never completes a task whose point is fixing one of those tests.
+          const names = input.baselineNames?.[asCommand.commandId] ?? [];
+          if (namesBaselineTest(`${input.spec.objective ?? ""}\n${c.text}`, names)) { ok = false; refused.push(c.id); } else withBaseline.push(c.id);
+        }
+      }
       else if (c.evidence === "test" && c.ref) {
         // A named test: it must have an explicit PASS line in an accepted command's output, and no
         // fail/skip/todo line anywhere (review B4.1: a failing test is never evidence).
@@ -349,7 +430,7 @@ function doneWhen(input: GateInput, accepted: ReadonlySet<CommandId>): Check {
   return {
     check: "done-when-evidenced",
     passed: !unmapped.length && input.spec.doneWhen.length > 0,
-    detail: !input.spec.doneWhen.length ? "no done-when criteria" : unmapped.length ? `no evidence for: ${unmapped.join(", ")}` : `${input.spec.doneWhen.length} criteria evidenced`,
+    detail: !input.spec.doneWhen.length ? "no done-when criteria" : unmapped.length ? `no evidence for: ${unmapped.join(", ")}${refused.length ? ` (baseline credit refused for ${refused.join(", ")}: the task names a test that already fails)` : ""}` : `${input.spec.doneWhen.length} criteria evidenced${withBaseline.length ? ` (${withBaseline.join(", ")} with only pre-existing test failures)` : ""}`,
   };
 }
 
@@ -357,7 +438,7 @@ function doneWhen(input: GateInput, accepted: ReadonlySet<CommandId>): Check {
 export function runDoneGate(input: GateInput): DoneGateResult {
   const sha = asSha(input.headSha);
   assertSafeGitConfig(input.integrationPath);
-  const baselineFailures: { commandId: CommandId; failed: number }[] = [];
+  const baselineFailures: { commandId: CommandId; failed: number; names: string[] }[] = [];
   const accepted = new Set<CommandId>();
   const own = ownership(input);
   const checks: Check[] = [
@@ -367,7 +448,8 @@ export function runDoneGate(input: GateInput): DoneGateResult {
     secrets(input),
     checksPass(input, baselineFailures, accepted),
     reviewApproved(input),
-    doneWhen(input, accepted),
+    doneWhen({ ...input, baselineNames: Object.fromEntries(baselineFailures.map((b) => [b.commandId, b.names])) }, accepted),
+    ...(input.unreceipted ? [receiptsRecorded(input.unreceipted)] : []),
   ];
   return { sha, passed: checks.every((c) => c.passed), checks, baselineFailures, at: (input.now?.() ?? new Date()).toISOString() as IsoTime };
 }

@@ -57,6 +57,9 @@ export const ROUTES: Record<string, RouteRule> = {
   // B2 (scripts/jobs/plugin.ts, a regex-matched middleware): ONE job and approval history for both
   // founders. Writes (cancel, release, card, decide) are shared at the gate; B2's own principal rules
   // (approver/requester, human session, device) decide each one.
+  // Agent F (scripts/computers/routes.ts): shared agent cloud computers. Shared at the gate (both founders, signed in); the routes then
+  // require a PERSON (confirmed session or paired device) for lifecycle, takeover and input, and route every command through resolveTarget.
+  "/__computers": SHARED("shared agent cloud computers: list, provision, run agent jobs, take over through a control lease; viewer only behind this auth"),
   "/__jobs": { ...SHARED("the shared job and step history; B2 decides cancel/release per principal"), expectedFrom: "f/stage-b2-approvals-jobs (scripts/jobs/plugin.ts)" },
   "/__approvals": { ...SHARED("the shared approvals; B2 decides card/decide/cancel per principal"), expectedFrom: "f/stage-b2-approvals-jobs (scripts/jobs/plugin.ts)" },
   // Track 1 (scripts/commands/plugin.ts): the command palette's device-target preview, and app/file NAMES on the
@@ -64,6 +67,8 @@ export const ROUTES: Record<string, RouteRule> = {
   "/__commands": READ_SHARED("command palette: target preview (resolveTarget for the signed-in person) and own-device app/file names"),
   "/__ai_usage": READ_SHARED("AI usage reads; settings and rescans change the hub"),
   "/__version": READ_SHARED("build metadata"),
+  "/__events": READ_SHARED("the live activity stream (SSE, GET only): job, approval, computer, lease, device and Jarvis notifications; a job or approval reaches the person it belongs to (business jobs and shared computers reach both founders); notifications never run anything"),
+  "/__health": READ_SHARED("hub health: component status and recovery hints, no secrets"),
   "/__app_version": READ_SHARED("build metadata"),
   "/__live-data": READ_SHARED("dashboard data (see REVIEW-B1 M-4 for what it contains)"),
   "/__graphify_list": READ_SHARED("project graphs index"),

@@ -10,7 +10,7 @@
   border-radius: 11px;
   background: var(--op-panel);
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: nowrap;
   transition:
     border-color 0.18s,
@@ -84,12 +84,12 @@
   color: var(--op-accent);
 }
 .biz-connections-summary strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   display: block;
 }
 .biz-connections-summary p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   color: var(--op-muted);
   margin: 4px 0 0;
@@ -98,9 +98,9 @@
   margin-top: 24px;
 }
 .biz-provider-group > h3 {
-  font-size: 12px !important;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  font-size: var(--text-xs) !important;
+  letter-spacing: 0.01em;
+  text-transform: none;
   font-weight: 450;
   color: var(--op-muted);
   margin: 0 0 11px !important;
@@ -126,19 +126,19 @@
   min-width: 0;
 }
 .biz-provider-identity strong {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
   display: block;
 }
 .biz-provider-identity > span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   line-height: 1.65;
   display: block;
   margin-top: 3px;
 }
 .biz-provider-status {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   white-space: nowrap;
   margin: 0 8px;
@@ -169,7 +169,7 @@
   padding: 8px 10px;
   background: var(--op-inset);
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: nowrap;
   min-width: 86px;
 }
@@ -191,7 +191,7 @@
   justify-content: space-between;
   gap: 12px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   list-style: none;
 }
@@ -203,13 +203,13 @@
 }
 .biz-assistant-imports p {
   margin-top: 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.8;
   color: var(--op-muted);
 }
 .biz-connection-error {
   color: #df8a9a;
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   margin: 12px 0;
 }
@@ -218,7 +218,7 @@
   align-items: center;
   gap: 7px;
   color: var(--op-accent);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   margin: 12px 0;
 }
@@ -227,7 +227,7 @@
   justify-content: flex-end;
   margin: -9px 3px 12px;
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .biz-finance-demo > span {
   border: 1px solid var(--op-border);
@@ -251,21 +251,21 @@
   .biz-provider-status {
     margin-left: 40px;
     flex: 1;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .biz-provider-action {
     min-width: auto;
-    font-size: 12px;
+    font-size: var(--text-xs);
     padding: 7px 9px;
   }
   .biz-connections-summary {
     padding: 13px;
   }
   .biz-connections-summary p {
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
   .biz-connect-accounts {
-    font-size: 12px;
+    font-size: var(--text-xs);
     padding: 9px 11px;
     gap: 9px;
   }
@@ -283,13 +283,13 @@
   padding: 0 16px 18px 62px;
 }
 .biz-youtube-channel > label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-ink);
   display: block;
   margin: 4px 0 7px;
 }
 .biz-youtube-channel > p {
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   color: var(--op-muted);
   margin: 0 0 13px;
@@ -309,7 +309,7 @@
   border: 1px solid var(--op-border);
   background: var(--op-inset);
   color: var(--op-ink);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   padding: 10px 12px;
   border-radius: 8px;
@@ -323,7 +323,7 @@
 }
 .biz-youtube-edit {
   display: inline-block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-accent);
   margin-top: 7px;
   text-decoration: underline;
@@ -333,7 +333,7 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   margin-top: 11px;
 }

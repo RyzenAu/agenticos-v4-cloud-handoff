@@ -17,7 +17,7 @@ use webview2_com::Microsoft::Web::WebView2::Win32::{
 use webview2_com::{CoTaskMemPWSTR, NavigationCompletedEventHandler};
 use windows::core::{Result as WinResult, BOOL, PWSTR};
 
-use crate::supervisor::{self, Supervisor};
+use crate::supervisor::Supervisor;
 
 pub fn report_navigation_outcomes(window: &tauri::WebviewWindow, supervisor: Arc<Supervisor>) -> tauri::Result<()> {
     window
@@ -45,7 +45,7 @@ fn install_handler(webview: &ICoreWebView2, supervisor: Arc<Supervisor>) -> WinR
         let mut raw = PWSTR::null();
         unsafe { sender.Source(&mut raw) }?;
         let uri = CoTaskMemPWSTR::from(raw).to_string();
-        if !supervisor::is_app_url(&uri, supervisor.config.port) {
+        if !crate::config::is_app_url(&uri) {
             return Ok(());
         }
         let mut success = BOOL::default();

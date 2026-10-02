@@ -20,7 +20,7 @@ function lead(over: Partial<Lead> = {}): Lead {
     rating: null, reviews: null, emails: [], emailOk: false, score: 75, pitch: "both", reasons: ["Redesign + receptionist: not mobile-friendly"],
     status: "new", owner: "", nextAt: null, lastContactAt: null, googleAt: null, createdAt: "2026-09-20T00:00:00Z",
     source: "osm", attribution: "", excluded: false, excludedReason: "", websiteSource: "osm_tag", websiteConfidence: null,
-    websiteCheckedAt: null, mergedInto: null, phoneSource: "", phoneConfidence: null, phoneCheckedAt: null, suggestedPhone: "",
+    websiteCheckedAt: null, websiteCheck: "not-checked", mergedInto: null, phoneSource: "", phoneConfidence: null, phoneCheckedAt: null, suggestedPhone: "",
     ...over,
   };
 }
@@ -96,7 +96,7 @@ describe("issues: detection is evidence-backed", () => {
     const unverified = await detectIssues(lead({ website: "", websiteCheckedAt: null }), deps({}));
     expect(unverified.status).toBe("no_website_unverified");
     expect(unverified.pitch).toBe("audit_pending");
-    const verified = await detectIssues(lead({ website: "", websiteCheckedAt: "2026-09-24T10:00:00Z" }), deps({}));
+    const verified = await detectIssues(lead({ website: "", websiteCheckedAt: "2026-09-24T10:00:00Z", websiteCheck: "none-verified" }), deps({}));
     expect(verified.status).toBe("no_website_verified");
     expect(verified.pitch).toBe("audit_pending"); // needs a human check before a no-website pitch (25 Sep 2026)
     expect(verified.issues[0].finding).toContain("checked 2026-09-24");

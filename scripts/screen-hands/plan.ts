@@ -10,6 +10,7 @@
 //   his spoken yes, no clicking controls whose text is instructions aimed at Jarvis.
 // - screenActIntent: which utterances are about his screen (routing, used by free-voice.ts).
 import { similarity } from "../jarvis-skills/fuzzy";
+import { maskInstructionData } from "../jarvis-command/quotes";
 import { looksSecret } from "../jarvis-skills/text";
 import { FINAL_BUTTON } from "../../src/lib/action-keywords";
 import { MONEY_AMOUNT, moneyButton, moneyContext, moneyContextLevel, moneySurfaceRefusal, ownDashboard, type MoneyContextLevel } from "../../src/lib/money-policy";
@@ -256,7 +257,14 @@ export function parseGoal(goal: string): Step[] | null {
   if (!g || g.length > 300) return null;
   // "click System, then Display, then turn on Night light": "then" (with or without a comma) always
   // splits; a bare comma or "and" splits only before a verb.
-  const parts = g.split(new RegExp(`\\s*,?\\s+(?:and then|then|after that)\\s+|\\s*,\\s*(?=${VERB}\\b)|\\s+and\\s+(?=${VERB}\\b)`, "i"));
+  const parts: string[] = [];
+  const splitter = new RegExp(`\\s*,?\\s+(?:and then|then|after that)\\s+|\\s*,\\s*(?=${VERB}\\b)|\\s+and\\s+(?=${VERB}\\b)`, "gi");
+  let from = 0;
+  for (const match of maskInstructionData(g).matchAll(splitter)) {
+    parts.push(g.slice(from, match.index));
+    from = match.index! + match[0].length;
+  }
+  parts.push(g.slice(from));
   const steps: Step[] = [];
   for (const part of parts) {
     let s = clause(part);

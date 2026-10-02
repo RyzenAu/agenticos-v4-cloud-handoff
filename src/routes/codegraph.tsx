@@ -287,7 +287,7 @@ function CodeGraphPage() {
                 <div className="p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sm truncate">{p.name}</span>
-                    <span className="text-xs uppercase tracking-wider px-1.5 py-0.5 rounded-full border shrink-0" style={{ color: `color-mix(in srgb, ${p.color} 35%, var(--foreground))`, borderColor: `${p.color}55` }}>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full border shrink-0" style={{ color: `color-mix(in srgb, ${p.color} 35%, var(--foreground))`, borderColor: `${p.color}55` }}>
                       {p.lang}
                     </span>
                   </div>
@@ -319,7 +319,7 @@ function CodeGraphPage() {
         >
           {/* Hidden at phone width: the selected gallery card above says the same, and this box sat under the graph toolbar. */}
           <div className="hidden sm:block absolute top-4 left-4 z-10 dark text-foreground rounded-xl border border-border/60 bg-black/70 backdrop-blur px-3 py-2 text-xs pointer-events-none">
-            <div className="text-muted-foreground uppercase tracking-wider text-xs mb-0.5">Project</div>
+            <div className="text-muted-foreground text-xs mb-0.5">Project</div>
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <span className="inline-block h-2 w-2 rounded-full" style={{ background: active.color }} />
               {active.name}
@@ -330,12 +330,12 @@ function CodeGraphPage() {
           </div>
 
           {loading || !graph ? (
-            <div className="h-full flex items-center justify-center text-[12px] text-muted-foreground">
+            <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
               <Circle className="h-3 w-3 mr-2 animate-pulse" style={{ color: active.color }} />
               Loading {active.name} graph…
             </div>
           ) : (
-            <Suspense fallback={<div className="h-full flex items-center justify-center text-[12px] text-muted-foreground">Rendering…</div>}>
+            <Suspense fallback={<div className="h-full flex items-center justify-center text-xs text-muted-foreground">Rendering…</div>}>
               <GraphifyGraph3D
                 key={active.id}
                 graph={graph}
@@ -361,7 +361,7 @@ function CodeGraphPage() {
             >
               <img src={hermesPortrait} alt="Hermes" className="h-full w-full object-cover" />
             </div>
-            <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Ask</span>
+            <span className="text-xs text-muted-foreground">Ask</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 flex-1">
             {starterQuestions.map((q, i) => (
@@ -371,7 +371,7 @@ function CodeGraphPage() {
                   window.dispatchEvent(new CustomEvent("hermes-chat-prefill", { detail: q }));
                   document.getElementById("kg-chat-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
-                className="text-[12px] rounded-full border border-border/50 bg-background/40 hover:bg-background/70 hover:border-foreground/40 px-3 py-2.5 sm:py-1.5 transition-colors text-foreground/85 text-left sm:whitespace-nowrap"
+                className="text-xs rounded-full border border-border/50 bg-background/40 hover:bg-background/70 hover:border-foreground/40 px-3 py-2.5 sm:py-1.5 transition-colors text-foreground/85 text-left sm:whitespace-nowrap"
               >
                 {q}
               </button>
@@ -393,7 +393,7 @@ function CodeGraphPage() {
 
           {/* Map confidence — explains EXTRACTED vs INFERRED visually */}
           <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">Map confidence</div>
+            <div className="text-xs text-muted-foreground mb-2">Map confidence</div>
             <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-border/40">
               <div className="h-full" style={{ width: `${active.extractedPct}%`, background: "#3ddc97" }} />
               <div className="h-full" style={{ width: `${inferredPct}%`, background: "#a78bfa" }} />
@@ -422,7 +422,7 @@ function CodeGraphPage() {
           {/* Most important files — top 3 by default, expand for the rest.
               Plain-language framing for non-engineers. */}
           <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-4">
-            <div className="flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-muted-foreground mb-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
               <Sparkles className="h-3 w-3" /> Most important files
             </div>
             <div className="text-xs text-muted-foreground mb-2.5 leading-snug">
@@ -472,7 +472,7 @@ function CodeGraphPage() {
             className="rounded-2xl border bg-card/40 backdrop-blur p-4"
             style={{ borderColor: "#3ddc9740" }}
           >
-            <div className="flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
               Est. savings / session
               <span
                 className="cursor-help text-muted-foreground hover:text-foreground transition-colors"
@@ -496,7 +496,7 @@ function CodeGraphPage() {
 
           {/* Selected node */}
           <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-4 min-h-[96px]">
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted-foreground mb-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
               <span>Selected</span>
               {pinnedId && (
                 <button onClick={() => setPinnedId(null)} className="normal-case tracking-normal text-xs text-muted-foreground hover:text-foreground">
@@ -518,7 +518,7 @@ function CodeGraphPage() {
                 )}
               </div>
             ) : (
-              <div className="text-[12px] text-muted-foreground">Click a node (or a god node) to inspect it.</div>
+              <div className="text-xs text-muted-foreground">Click a node (or a god node) to inspect it.</div>
             )}
           </div>
 
@@ -569,7 +569,7 @@ function CodeGraphPage() {
             3. not installed         → full-height click-through to setup */}
       {hermesLoading ? (
         <div className="rounded-2xl border border-border/60 bg-card/40 flex items-center justify-center min-h-[480px]">
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Connecting to Hermes…
           </div>
@@ -600,7 +600,7 @@ function CodeGraphPage() {
             Hermes Agent isn't set up yet. Once connected, you can ask questions about
             any project right here — grounded in its real structure.
           </div>
-          <div className="mt-1 inline-flex items-center gap-1.5 text-[12px] font-medium text-foreground border border-foreground/30 rounded-lg px-3 py-1.5 group-hover:border-foreground/60 transition-colors">
+          <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-foreground border border-foreground/30 rounded-lg px-3 py-1.5 group-hover:border-foreground/60 transition-colors">
             Set up Hermes →
           </div>
         </Link>
@@ -707,7 +707,7 @@ function IngestCard({ onIngested }: { onIngested: (proj: Project, all: Project[]
 function MiniStat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 backdrop-blur px-3 py-2.5">
-      <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-base font-semibold tracking-tight mt-0.5">{value}</div>
       {sub && <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>}
     </div>

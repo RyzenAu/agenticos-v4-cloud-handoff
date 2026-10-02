@@ -10,6 +10,7 @@
 //       mentions the business name and suburb.
 // Every result records its source and confidence so "no website" is never a bare assumption —
 // only ever "no website found (checked <date>)" once all three have come back empty.
+import { SEARXNG_URL, searxngQuery } from "../search/searxng";
 import { HERMES_API, hermesApiKey, hermesApiUp } from "../hermes-api";
 import { ENRICH_USER_AGENT, robotsDisallowed } from "./enrich";
 import type { Vertical } from "./places";
@@ -144,7 +145,8 @@ export async function hermesWebsiteSearch(input: DiscoveryInput, request: typeof
     const text = data?.choices?.[0]?.message?.content;
     if (typeof text !== "string") return null;
     const parsed = extractJson(text);
-    if (parsed) searchAnswers++;
+    // Hermes is a language model with web search, not a search engine: a JSON reply from it is not a search answer.
+    // A verified "no website" needs at least one real engine (SearXNG, DuckDuckGo) to have answered for this lead.
     if (!parsed || typeof parsed.url !== "string") return null;
     const url = publicUrl(parsed.url)?.href;
     if (!url) return null;
@@ -156,11 +158,24 @@ export async function hermesWebsiteSearch(input: DiscoveryInput, request: typeof
 }
 
 /** 25 Sep 2026: how many times a web search backend actually answered (a real results page or a
- *  genuine zero-result answer). discoverWebsiteDetailed compares this before/after its cascade: if
+ *  genuine zero-result answer). discoverWebsiteDetailed also counts answers per cascade: if
  *  no backend answered at all (SearXNG down, DuckDuckGo serving its bot CAPTCHA, Hermes down), an
  *  empty cascade is "couldn't search", never a confirmed "no website" — the bug that told 17 of
  *  the top 20 dental leads they had no site when every one checked by hand did. */
 let searchAnswers = 0;
+// Each discovery call passes its own request wrapper through the existing provider
+// interfaces. A different lead's successful search must never certify this one's miss.
+const answersByRequest = new WeakMap<typeof fetch, { count: number; down: string | null }>();
+/** Why this lead's own SearXNG query could not be answered: per call, so another lead's outage or recovery never rewrites this lead's reason. */
+function recordSearchDown(request: typeof fetch, reason: string): void {
+  const local = answersByRequest.get(request);
+  if (local) local.down = reason;
+}
+function recordSearchAnswer(request: typeof fetch): void {
+  searchAnswers++;
+  const local = answersByRequest.get(request);
+  if (local) local.count++;
+}
 export function searchAnswerCount(): number {
   return searchAnswers;
 }
@@ -247,7 +262,7 @@ export async function duckduckgoWebsiteSearch(input: DiscoveryInput, request: ty
     if (!response.ok) return null;
     const html = await response.text();
     if (!duckDuckGoAnswered(html)) return null;
-    searchAnswers++;
+    recordSearchAnswer(request);
     // The first result whose own domain plausibly belongs to the business — not just the first
     // result full stop, which is how a business-listing directory (not blocked by name/TLD, but
     // still not their site) used to get accepted as "their website".
@@ -270,46 +285,46 @@ export async function duckduckgoWebsiteSearch(input: DiscoveryInput, request: ty
 // scraping DuckDuckGo's HTML directly (no redirect-link parsing, a real JSON API, several engines
 // at once) — DuckDuckGo above stays as a fallback if SearXNG isn't running (e.g. before its first
 // `searxng.ps1` run, or between reboots).
-export const SEARXNG_URL = "http://127.0.0.1:18888";
+export { SEARXNG_URL };
 
 let searxngWarned = false;
+/** Why the last SearXNG query could not be answered (null once one is). Surfaced in the lead's "could not search" reason, never as "no website". */
+let searxngDownReason: string | null = null;
+export function searxngDownNow(): string | null {
+  return searxngDownReason;
+}
 
 export async function searxngWebsiteSearch(input: DiscoveryInput, request: typeof fetch = fetch): Promise<DiscoveredWebsite | null> {
   const query = `${input.name} ${input.suburb} NSW official website`;
-  const url = new URL("/search", SEARXNG_URL);
-  url.searchParams.set("q", query);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("categories", "general");
-  try {
-    const response = await request(url.href, { signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) return null;
-    const data = (await response.json().catch(() => null)) as { results?: { url?: string }[] } | null;
-    if (!data || !Array.isArray(data.results)) return null;
-    searchAnswers++;
-    const urls = (data?.results ?? []).map((r) => r.url).filter((u): u is string => !!u);
-    const match = urls
-      .filter((href) => {
-        try {
-          return !NOT_A_WEBSITE.test(new URL(href).hostname);
-        } catch {
-          return false;
-        }
-      })
-      .find((href) => hostnameMatchesBusiness(href, input.name));
-    if (!match) return null;
-    // Higher than the raw DuckDuckGo scrape's 0.6 — SearXNG already merged several engines'
-    // rankings, so a hostname-matching top result here is a stronger signal.
-    return { url: match, source: "searxng", confidence: 0.65, checkedAt: now() };
-  } catch {
-    // Not running (e.g. before scripts/windows/searxng.ps1's first run, or between reboots) is
-    // an expected, silent fallback to DuckDuckGo — logged once per process, not per lead, so a
-    // long hunt run doesn't spam its own log with the same fact hundreds of times.
+  const outcome = await searxngQuery(query, { request, categories: "general", timeoutMs: 10_000 });
+  if (outcome.status === "unavailable") {
+    // Three answers, not two: "unavailable" never counts as a search that answered, so an empty cascade stays "could not search".
+    searxngDownReason = outcome.reason;
+    recordSearchDown(request, outcome.reason);
+    // Logged once per process, not per lead, so a long hunt run does not repeat the same fact hundreds of times; the reason is also
+    // carried into each lead's own "could not search" note (discoverWebsiteDetailed) so it is never lost.
     if (!searxngWarned) {
       searxngWarned = true;
-      console.error(`SearXNG unreachable at ${SEARXNG_URL} — falling back to DuckDuckGo for website discovery this run. Start it: scripts\\windows\\searxng.ps1`);
+      console.error(`SearXNG unavailable at ${SEARXNG_URL} (${outcome.reason}); falling back to DuckDuckGo for website discovery. Start it: scripts\\windows\\searxng.ps1, then run bun scripts/ops/check-search.ts`);
     }
     return null;
   }
+  searxngDownReason = null;
+  recordSearchAnswer(request); // a results page, or a genuine "the engines have nothing" answer
+  if (outcome.status === "no_results") return null;
+  const match = outcome.results
+    .map((r) => r.url)
+    .filter((href) => {
+      try {
+        return !NOT_A_WEBSITE.test(new URL(href).hostname);
+      } catch {
+        return false;
+      }
+    })
+    .find((href) => hostnameMatchesBusiness(href, input.name));
+  if (!match) return null;
+  // Higher than the raw DuckDuckGo scrape's 0.6: SearXNG already merged several engines' rankings, so a hostname-matching top result is a stronger signal.
+  return { url: match, source: "searxng", confidence: 0.65, checkedAt: now() };
 }
 
 // --- (c) domain guess, verified against the page's own content -----------------------------------
@@ -648,7 +663,7 @@ export type DiscoveryOutcome =
    *  `url` is "" for a franchise-brand-with-no-address short-circuit (see FRANCHISE_BRANDS) —
    *  there was never a candidate to name, just an inherent inability to tell which office it is.
    *  `reason`, when set, overrides the generic "site found but unverifiable" wording. */
-  | { kind: "unverifiable"; url: string; checkedAt: string; reason?: string }
+  | { kind: "unverifiable"; url: string; checkedAt: string; reason?: string; /** Why: no search engine answered, or a check could not be completed. Default check-failed. */ cause?: "search-unavailable" | "check-failed" }
   | { kind: "none" };
 
 // --- franchise/chain disambiguation ---------------------------------------------------------
@@ -690,7 +705,10 @@ function needsFranchiseDisambiguation(name: string, suburb: string): string | nu
  *  rejected — never because a directory simply didn't carry a `website` tag — and reports
  *  "unverifiable" instead of "none" when at least one candidate existed but couldn't be checked. */
 export async function discoverWebsiteDetailed(input: DiscoveryInput, deps: DiscoveryDeps = {}): Promise<DiscoveryOutcome> {
-  const request = deps.request ?? fetch;
+  const fetchRequest = deps.request ?? fetch;
+  const request = ((...args: Parameters<typeof fetch>) => fetchRequest(...args)) as typeof fetch;
+  const answers: { count: number; down: string | null } = { count: 0, down: null };
+  answersByRequest.set(request, answers);
   const searchStep: DiscoveryMethod = deps.searxngSearch ?? deps.duckduckgoSearch ?? searxngThenDuckDuckGo;
 
   const franchiseBrand = needsFranchiseDisambiguation(input.name, input.suburb);
@@ -706,7 +724,6 @@ export async function discoverWebsiteDetailed(input: DiscoveryInput, deps: Disco
   let unverifiable: { url: string; checkedAt: string } | null = null;
   // Only the built-in search backends report whether they answered; injected test doubles don't.
   const usesBuiltInSearch = !deps.searxngSearch && !deps.duckduckgoSearch && !deps.hermesSearch;
-  const answersBefore = searchAnswers;
 
   for (const hint of deps.hints ?? []) {
     const url = publicUrl(hint)?.href;
@@ -737,10 +754,10 @@ export async function discoverWebsiteDetailed(input: DiscoveryInput, deps: Disco
     if (result.confidence >= CONFIDENCE_THRESHOLD || isLastMethod) return { kind: "found", site: result };
   }
   if (unverifiable) return { kind: "unverifiable", ...unverifiable };
-  if (usesBuiltInSearch && searchAnswers === answersBefore) {
+  if (usesBuiltInSearch && answers.count === 0) {
     return {
-      kind: "unverifiable", url: "", checkedAt: now(),
-      reason: "no web search backend answered (SearXNG down, DuckDuckGo CAPTCHA or Hermes unavailable), so a missing website can't be confirmed",
+      kind: "unverifiable", url: "", checkedAt: now(), cause: "search-unavailable",
+      reason: `no web search backend answered (${answers.down ? `SearXNG: ${answers.down}; ` : "SearXNG down; "}DuckDuckGo CAPTCHA or Hermes unavailable), so a missing website can't be confirmed. Search was unavailable; this is not "no website"`,
     };
   }
   return { kind: "none" }; // every method came back empty or rejected — a genuine "no website found"

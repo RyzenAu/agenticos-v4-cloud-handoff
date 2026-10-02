@@ -61,8 +61,10 @@ async function runBrowserSkillPlain(req: BrowserSkillRequest, deps: BrowserSkill
   const { hands } = deps;
   /** Open in a new Jarvis Chrome tab (starting Jarvis Chrome once if it isn't up), remember it, bring it forward. */
   const openHere = async (url: string, label: string, done: (where: string) => string) => {
-    let r = await hands.open(url, "new-tab");
-    if (!r.ok && deps.ensure && /connect|refused|ECONN|not running|no browser|CDP/i.test(r.said) && (await deps.ensure())) r = await hands.open(url, "new-tab");
+    // Check/start the controllable browser before sending navigation. A daemon may
+    // report a generic timeout instead of ECONNREFUSED when Chrome is absent.
+    if (deps.ensure && !(await hands.tabs()).length && !(await deps.ensure().catch(() => false))) return "The browser didn't open it: I couldn't connect to Jarvis Chrome. Your ordinary Chrome window may still be open.";
+    const r = await hands.open(url, "new-tab");
     if (!r.ok) return r.said;
     rememberReferent({ app: "chrome", jarvisChrome: true, title: label, ...(r.targetId ? { targetId: r.targetId } : {}) });
     if (r.targetId) await hands.activate(r.targetId);
@@ -96,8 +98,9 @@ async function runBrowserSkillPlain(req: BrowserSkillRequest, deps: BrowserSkill
       if (!words) return "Search for what, sir?";
       const youtube = req.engine === "youtube";
       const url = youtube ? `https://www.youtube.com/results?search_query=${encodeURIComponent(words)}` : `https://www.google.com/search?q=${encodeURIComponent(words)}`;
-      // "…and open the first result": the search is done; the click on a result is not, and he's told so plainly (J4).
-      return openHere(url, youtube ? "YouTube" : "Google", (where) => `Searched ${youtube ? "YouTube" : "Google"} for "${words}" in Chrome on ${where}.${req.firstResult ? " I can only do the search, so the first result is yours to open." : ""}`);
+      // The voice turn continues an explicitly requested first-result step through screen_act.
+      // This result reports only the search; it does not claim the result has been opened.
+      return openHere(url, youtube ? "YouTube" : "Google", (where) => `Searched ${youtube ? "YouTube" : "Google"} for "${words}" in Chrome on ${where}.`);
     }
     case "back":
       return (await hands.back()).said;

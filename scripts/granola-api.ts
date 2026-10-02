@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { providerKey } from "./provider-config";
+import { dataDirFor } from "./cloud/data-dir";
 
 const endpoint = "https://public-api.granola.ai/v1/notes";
 /** Official Granola API. Keys stay server-side; each import fetches at most 20 notes. */
 export function granolaApi(root: string, options: { fetcher?: typeof fetch; key?: () => string } = {}) {
   const fetcher = options.fetcher || fetch;
-  const file = join(root, ".operator-data/granola.json");
+  const file = join(dataDirFor(root), "granola.json");
   function key() {
     if (options.key) return options.key();
     if (existsSync(file)) {
@@ -40,7 +41,7 @@ export function granolaApi(root: string, options: { fetcher?: typeof fetch; key?
       if (typeof value !== "string" || value.trim().length < 10 || value.length > 4096 || /\s/.test(value.trim())) throw new Error("Enter a valid Granola API key.");
       const apiKey = value.trim();
       validatePage(await request(endpoint + "?page_size=1", apiKey), 1);
-      mkdirSync(join(root, ".operator-data"), { recursive: true, mode: 0o700 });
+      mkdirSync(join(dataDirFor(root)), { recursive: true, mode: 0o700 });
       const temp = file + ".tmp";
       writeFileSync(temp, JSON.stringify({ apiKey }), { mode: 0o600 }); renameSync(temp, file);
       return { configured: true, method: "api" };

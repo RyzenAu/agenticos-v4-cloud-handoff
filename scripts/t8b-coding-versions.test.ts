@@ -69,3 +69,19 @@ test("the versions are primed at server start, before any /coding/* request, and
   expect(plugin).toContain("if (r.error) return { value: null, failed: true };");
   expect(readFileSync(join(import.meta.dir, "coding", "runners", "claude.ts"), "utf8")).toContain("if (r.error) return null; // couldn't start, or timed out: not cached");
 });
+
+test("a CLI installed or updated while the server runs is picked up after maxAgeMs (30 Sep 2026)", async () => {
+  let clock = 0;
+  let installed = "2.1.278";
+  const ok = (value: string) => ({ value, failed: false });
+  const v = createCliVersions({ now: () => clock, maxAgeMs: 1000, probe: async () => [ok(installed), ok("0.154.0")] });
+  await v.ready();
+  expect(v.current().claude).toBe("2.1.278");
+  installed = "2.1.280";
+  clock = 500;
+  expect(v.current().claude).toBe("2.1.278"); // still fresh: no re-read
+  clock = 2000;
+  v.current(); // stale: answers the last value and starts one re-read
+  await v.ready();
+  expect(v.current().claude).toBe("2.1.280");
+});

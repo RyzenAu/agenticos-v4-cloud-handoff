@@ -8,6 +8,7 @@ import { join } from "node:path";
 import type { JarvisEvents } from "./jarvis-events";
 import { sydneyParts } from "./jarvis-events";
 import { ageWords, spokenTime, statusSentences, type StatusSnapshot } from "./jarvis-status";
+import { dataDirFor } from "./cloud/data-dir";
 
 export const PROTOCOLS = ["start-day", "call-mode", "end-call-mode", "shutdown"] as const;
 export type ProtocolName = (typeof PROTOCOLS)[number];
@@ -98,7 +99,7 @@ export function nextSydneyMorning(now: number, hour = 7) {
 
 export function createJarvisProtocols(root: string, deps: ProtocolDeps) {
   const now = deps.now ?? Date.now;
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   const file = join(directory, "jarvis-protocols.json");
 
   function read(): ProtocolRun[] {

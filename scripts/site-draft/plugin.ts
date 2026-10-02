@@ -13,8 +13,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { openCrm, crmPath } from "../leads/crm";
-import { draftSite, type DraftResult } from "./generate";
-import { draftSiteV2, defaultDraftsRoot, type DraftV2Result } from "./orchestrator";
+import type { DraftResult } from "./generate";
+import { defaultDraftsRoot, type DraftV2Result } from "./orchestrator";
+import { draftForLead, type DraftMode } from "./dispatch";
+import { localPreviewUrl, startPreviewServer } from "../lead-sites/preview-server";
 import { refuseUnlessAtThisPc } from "../identity/gate";
 import { withBody } from "../http/body";
 
@@ -95,14 +97,22 @@ export function siteDraftPlugin(options: { root: string; token: string }): Plugi
             const data = JSON.parse(raw || "{}");
             const ref = data?.lead;
             const fast = data?.fast === true;
+            const mode = data?.mode as DraftMode | undefined;
+            if (mode !== undefined && mode !== "flagship" && mode !== "bespoke") throw new Error("Choose flagship or bespoke preview mode.");
             if (typeof ref !== "string" && typeof ref !== "number") throw new Error("Say which lead — a name or CRM id.");
             const db = openCrm(crmPath(root));
-            // The v2 pipeline (evidence + art direction + a Claude Code build + QA) can take
-            // minutes, unlike the old instant template — this request simply stays open until
-            // it's done; `fast: true` in the POST body still gets the old sub-second template.
-            const result = fast
-              ? await draftSite(db, ref, { draftsRoot: defaultDraftsRoot(), by: "jarvis" })
-              : await draftSiteV2(db, ref, { draftsRoot: defaultDraftsRoot(), by: "jarvis" });
+            let draft: Awaited<ReturnType<typeof draftForLead>>;
+            try {
+              draft = await draftForLead(db, ref, { root, draftsRoot: defaultDraftsRoot(), by: "jarvis", fast, mode });
+            } finally { db.close(); }
+            if (draft.kind === "flagship") {
+              const { record } = draft.result;
+              startPreviewServer({ root, draftsRoot: defaultDraftsRoot() });
+              send({ leadId: record.leadId, name: record.business, slug: record.slug, dir: record.dir,
+                previewUrl: localPreviewUrl(record.slug), ms: Date.now() - started, mode: "flagship" });
+              return;
+            }
+            const result = draft.result;
             const port = await ensurePreview(result);
             send({
               leadId: result.lead.id,

@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isIP } from "node:net";
 import { join } from "node:path";
 import { createRateLimitedWarn, relayedByTailscaleServe, type ServePeerCheck } from "./identity/serve-peer";
+import { dataDirFor } from "./cloud/data-dir";
 
 /**
  * Who is who, and signing in to Agentic OS from other devices over Tailscale.
@@ -19,7 +20,7 @@ import { createRateLimitedWarn, relayedByTailscaleServe, type ServePeerCheck } f
 export type Person = { name: string; role?: string; tailscale?: string[]; telegram?: string[]; notes?: string };
 
 export function peopleFile(root: string) {
-  return join(root, ".operator-data", "people.json");
+  return join(dataDirFor(root), "people.json");
 }
 
 export function readPeople(root: string): Person[] {

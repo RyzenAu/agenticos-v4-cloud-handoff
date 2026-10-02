@@ -16,6 +16,7 @@ import { defaultReceiptSink } from "./model-router/defaults";
 import { MemoryHealthStore, type HealthStore } from "./model-router/health";
 import type { ReceiptSink } from "./model-router/receipts";
 import { ProviderError as RouterError, route, RouteError, runRouted, type RouteConstraints } from "./model-router/router";
+import { dataDirFor } from "./cloud/data-dir";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 /** The router task for a realtime voice session; OpenAI's model is its selectable openai-api model. */
@@ -311,7 +312,7 @@ function validateSDP(value: unknown, kind: "offer" | "answer") {
 }
 
 export function openAIVoice(root: string, dependencies: Dependencies = {}) {
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "openai-voice.json");
   const safetyIdentifier = createHash("sha256")
     .update("agentic-os-voice:" + root)

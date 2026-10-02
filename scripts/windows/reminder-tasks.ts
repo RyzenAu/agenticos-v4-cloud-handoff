@@ -20,6 +20,7 @@ import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const TASK_FOLDER = "\\MU";
 export const TASK_PREFIX = "JarvisReminder-";
@@ -125,7 +126,7 @@ export function createReminderTasks(root: string, deps: { run?: CommandRunner; p
   // reminders stay in its own in-app scheduler, and its startup sweep can never delete the live OS's tasks.
   const preview = deps.preview ?? previewCopy();
   const run = deps.run ?? defaultRunner;
-  const dataDir = join(root, ".operator-data");
+  const dataDir = join(dataDirFor(root));
   const deliveredFile = join(dataDir, "jarvis-reminders-delivered.json");
   const toastScript = join(__dirname, "jarvis-toast.ps1");
   const fireScript = join(__dirname, "jarvis-reminder-fire.ps1");

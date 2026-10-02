@@ -43,6 +43,6 @@ Bun.serve({ hostname: "127.0.0.1", port, maxRequestBodySize: NAB_CSV_MAX_BYTES +
   const path = url.pathname === "/" ? "/manual-preview.html" : url.pathname;
   const asset = assets.get(path);
   if (!asset) return new Response("Not found", { status: 404 });
-  return new Response(asset, { headers: { "Content-Type": path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css" : "text/html", "Cache-Control": "no-store" } });
+  return new Response(typeof asset === "string" ? asset : new Uint8Array(asset), { headers: { "Content-Type": path.endsWith(".js") ? "text/javascript" : path.endsWith(".css") ? "text/css" : "text/html", "Cache-Control": "no-store" } });
 } });
 console.log(`Finance synthetic preview: http://127.0.0.1:${port}/ (store: ${arg("file") ? "file" : "memory"}, today ${today})`);

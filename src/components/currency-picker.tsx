@@ -42,7 +42,7 @@ export function CurrencyPicker() {
           ))}
         </select>
       </div>
-      <div className="mt-3 pt-3 border-t border-border/60 text-[11px] text-muted-foreground">
+      <div className="mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground">
         Display only — your underlying spend data stays in USD, exactly as the providers bill it.
         {code !== "USD" && " Rates refresh daily and are cached for offline use."}
       </div>

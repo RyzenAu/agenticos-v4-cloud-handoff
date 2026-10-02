@@ -9,8 +9,10 @@
 //
 // The call counter is installed when this module loads, before other plugins create their
 // provider clients, so their fetches are counted.
+import { hubRole } from "../cloud/hub-role";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { publishUsageSnapshot } from "../model-router/allowance";
+import { loadAccounts } from "../coding/accounts";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Plugin } from "vite";
@@ -22,9 +24,10 @@ import type { AiUsageSnapshot } from "./types";
 import { requestPrincipal } from "../identity/gate";
 import { authorise, isBrowserPrincipal } from "../identity/principal";
 import { withBody } from "../http/body";
+import { dataDirFor } from "../cloud/data-dir";
 
 // The dev server runs from the repo root; aiUsagePlugin() re-points the file at its real root.
-let counter = installCallCounter(resolve(process.cwd(), ".operator-data", "ai-usage-calls.json"));
+let counter = installCallCounter(resolve(dataDirFor(process.cwd()), "ai-usage-calls.json"));
 
 let activeService: AiUsageService | null = null;
 
@@ -46,9 +49,12 @@ const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 export type AiUsageService = ReturnType<typeof createAiUsageService>;
 
 export function createAiUsageService(options: { root: string; providerKey: (name: string) => string }) {
-  const settingsFile = join(options.root, ".operator-data", "ai-usage.json");
+  const settingsFile = join(dataDirFor(options.root), "ai-usage.json");
   const cache = createProviderCache();
-  const scanner = createTranscriptScanner({ dir: join(homedir(), ".claude", "projects") });
+  // Cloud hub: there is no owner home here, so this PC's Claude logs and logins are "on your PC", never read from the VM user's home.
+  const cloud = hubRole() === "cloud";
+  const homeDir = cloud ? join(dataDirFor(options.root), "no-owner-home") : homedir();
+  const scanner = createTranscriptScanner({ dir: join(homeDir, ".claude", "projects") });
   let snapshot: AiUsageSnapshot | null = null;
   let building: Promise<AiUsageSnapshot> | null = null;
   let lastScan = 0;
@@ -70,8 +76,11 @@ export function createAiUsageService(options: { root: string; providerKey: (name
   const build = () => {
     building ??= buildSnapshot({
       settingsFile,
+      ...(cloud ? { home: homeDir } : {}),
       cache,
       root: options.root,
+      // Every Claude login in the coding accounts (each read from its own profile); unreadable = the default only.
+      claudeProfiles: () => loadAccounts(join(dataDirFor(options.root), "coding", "accounts.json")).claude.map((c) => ({ slot: c.slot, label: c.label, configDir: c.configDir })),
       counts: counter.counts,
       transcripts: scanner.last,
       transcriptsScanning: scanner.scanning,
@@ -109,7 +118,7 @@ export function createAiUsageService(options: { root: string; providerKey: (name
 }
 
 export function aiUsagePlugin(options: { root: string; token: string; providerKey: (name: string) => string }): Plugin {
-  counter = installCallCounter(join(options.root, ".operator-data", "ai-usage-calls.json"));
+  counter = installCallCounter(join(dataDirFor(options.root), "ai-usage-calls.json"));
   return {
     name: "agentic-os-ai-usage",
     configureServer(server) {

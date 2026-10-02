@@ -11,8 +11,9 @@
 // carries that in its `attribution` field, and the CRM's 30-day Google purge is scoped to
 // `source = 'google'` so it never touches these rows (see crm.ts).
 import type { Database } from "bun:sqlite";
-import { countCall, knownPlaceIds, upsertLead, type Lead } from "./crm";
-import { discoverWebsite, type DiscoveryDeps } from "./discovery";
+import { countCall, knownPlaceIds, upsertLead, type Lead, type WebsiteCheck } from "./crm";
+import { discoverWebsiteDetailed, type DiscoveryDeps } from "./discovery";
+import { normaliseFindArea, normaliseWebsitePresence, type WebsitePresence } from "./find-input";
 import { enrichWebsite, looksPersonal } from "./enrich";
 import { checkExclusion } from "./exclusions";
 import type { Vertical } from "./places";
@@ -60,7 +61,8 @@ export const AREA_BBOX: Record<string, BBox> = Object.fromEntries(
 );
 
 function normaliseAreaName(area: string): string {
-  return area.trim().toLowerCase().replace(/\s*,?\s*(nsw|australia)$/i, "").trim();
+  return area.trim().toLowerCase().replace(/\s+/g, " ")
+    .replace(/\s*,?\s*australia$/i, "").replace(/\s*,?\s*nsw$/i, "").trim();
 }
 
 /** The suburb table, or the whole-Sydney box for "Sydney"/"Greater Sydney" — no network call. */
@@ -125,7 +127,7 @@ export class OverpassError extends Error {
  * a mirror is only used when the owner has put it there.
  */
 export function overpassEndpoints(env: NodeJS.ProcessEnv = process.env): string[] {
-  const list = (env.OVERPASS_URLS ?? "").split(",").map((u) => u.trim()).filter((u) => /^https:\/\/[^\s/]+\/\S*$/.test(u));
+  const list = (env.OVERPASS_URLS ?? "").split(",").map((u) => u.trim()).filter((u) => /^https:\/\/[^\s/]+\/\S*$/.test(u) || /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\/\S*$/.test(u)); // loopback http: a local stub for browser tests only, unset by default
   return list.length ? [...new Set(list)] : [OVERPASS_URL];
 }
 
@@ -186,6 +188,8 @@ export type OsmLead = {
   email: string;
   address: string;
   postcode: string;
+  /** Explicit OSM locality tag, kept separately from the broader requested search area. */
+  locality?: string;
   lat: number | null;
   lon: number | null;
   mapsUrl: string;
@@ -227,6 +231,7 @@ export function normaliseOsmElement(el: any): OsmLead | null {
     email: tagsGet(tags, "email", "contact:email"),
     address: addressFrom(tags),
     postcode: tags?.["addr:postcode"] ?? "",
+    locality: tagsGet(tags, "addr:suburb") || tagsGet(tags, "addr:locality") || tagsGet(tags, "addr:city"),
     lat, lon,
     mapsUrl: lat !== null && lon !== null ? `https://www.openstreetmap.org/${el.type}/${el.id}` : "",
     attribution: OSM_ATTRIBUTION,
@@ -239,18 +244,28 @@ export function normaliseOsmElement(el: any): OsmLead | null {
  *  overlap) and then by name+postcode (a business mapped as both a node and a nearby building/way
  *  is a duplicate business, not two leads). */
 export function dedupeOsmLeads(leads: OsmLead[]): OsmLead[] {
-  const seenId = new Set<string>();
-  const seenNamePostcode = new Set<string>();
+  const seenId = new Map<string, number>();
+  const seenNamePostcode = new Map<string, number>();
   const out: OsmLead[] = [];
   for (const lead of leads) {
-    if (seenId.has(lead.sourceId)) continue;
-    seenId.add(lead.sourceId);
-    if (lead.name && lead.postcode) {
-      const key = `${lead.name.trim().toLowerCase()}|${lead.postcode}`;
-      if (seenNamePostcode.has(key)) continue;
-      seenNamePostcode.add(key);
+    const key = lead.name && lead.postcode ? `${lead.name.trim().toLowerCase()}|${lead.postcode}` : "";
+    const existing = seenId.get(lead.sourceId) ?? (key ? seenNamePostcode.get(key) : undefined);
+    if (existing !== undefined) {
+      // A node and its building may carry complementary tags. Keep the first stable source ID
+      // and prefer its existing values, but don't discard a website/contact on the duplicate.
+      // This operates only on source results, never on a saved, user-corrected CRM record.
+      const kept = { ...out[existing] };
+      for (const field of ["phone", "website", "email", "address", "postcode", "locality", "operator", "brand"] as const) {
+        if (!kept[field] && lead[field]) kept[field] = lead[field];
+      }
+      out[existing] = kept;
+      seenId.set(lead.sourceId, existing);
+      if (key) seenNamePostcode.set(key, existing);
+      continue;
     }
-    out.push(lead);
+    seenId.set(lead.sourceId, out.length);
+    if (key) seenNamePostcode.set(key, out.length);
+    out.push({ ...lead });
   }
   return out;
 }
@@ -278,31 +293,41 @@ export type OsmFindResult = {
   excluded: number;
   /** OSM had no `website` tag, but discovery.ts actually found one before scoring ran. */
   discovered: number;
+  /** Selection counts apply to fresh source records, before discovery/enrichment and its cap. */
+  websitePresence: WebsitePresence;
+  matched: number;
+  filteredOut: number;
+  limited: number;
+  /** Website lookup was blocked/inconclusive, not evidence that the business has no site. */
+  unverifiable: number;
 };
 
 /** find, via OpenStreetMap: Overpass search (free) -> skip ids already in the CRM -> exclude
  *  government/legal-aid/non-profit/national-chain results (exclusions.ts) -> for a lead with no
  *  `website` tag, actually look for one (discovery.ts) before assuming there isn't one -> enrich
  *  the real site (politely, capped concurrency, skipped past `enrichMax`) -> score -> CRM.
- *  "No website" is only ever recorded once discovery has actually checked and found nothing. */
+ *  Missing source tags select candidates only; failed discovery leaves absence unverified. */
 export async function findLeadsOsm(
   db: Database,
   opts: {
     vertical: Vertical; area: string; max?: number; enrichMax?: number; request?: typeof fetch; concurrency?: number;
+    websitePresence?: WebsitePresence;
     /** Injectable for tests: skip live discovery calls (Hermes/DuckDuckGo/domain guess). */
     discovery?: DiscoveryDeps;
   },
 ): Promise<OsmFindResult> {
   const request = opts.request ?? fetch;
-  const area = opts.area.trim().slice(0, 120);
-  if (!area) throw new Error('Say where, e.g. "Mount Druitt NSW" or "Greater Sydney".');
-  const suburb = area.replace(/\s*,?\s*NSW$/i, "").trim();
+  const area = normaliseFindArea(opts.area);
+  const websitePresence = normaliseWebsitePresence(opts.websitePresence);
+  const suburb = area.replace(/(?:,\s*|\s+)Australia$/i, "").replace(/(?:,\s*|\s+)NSW$/i, "").trim();
   const { leads } = await searchOsm(opts.vertical, area, request);
   countCall(db, "osm_overpass_query");
   const known = knownPlaceIds(db);
   const fresh = leads.filter((l) => !known.has(l.sourceId));
+  const matching = websitePresence === "missing" ? fresh.filter((l) => !l.website) : fresh;
   const max = Math.max(opts.max ?? fresh.length, 1);
-  const queue = fresh.slice(0, max);
+  const queue = matching.slice(0, max);
+  const limited = matching.length - queue.length;
   const enrichMax = Math.max(opts.enrichMax ?? 60, 0);
   let enriched = 0;
 
@@ -310,6 +335,7 @@ export async function findLeadsOsm(
   let flaggedPersonalEmails = 0;
   let excludedCount = 0;
   let discoveredCount = 0;
+  let unverifiableCount = 0;
   const workers = Array.from({ length: Math.max(1, Math.min(opts.concurrency ?? 4, queue.length)) }, async () => {
     for (let item = queue.shift(); item; item = queue.shift()) {
       const exclusion = checkExclusion({ name: item.name, operator: item.operator, brand: item.brand });
@@ -334,18 +360,30 @@ export async function findLeadsOsm(
       let websiteSource = item.website ? "osm_tag" : "";
       let websiteConfidence: number | null = item.website ? 1 : null;
       let websiteCheckedAt: string | null = null;
+      let websiteCheck: WebsiteCheck = item.website ? "found" : "not-checked";
+      let unverifiableReason: string | null = null;
 
       if (!finalUrl) {
-        websiteCheckedAt = new Date().toISOString();
-        const discovered = await discoverWebsite(
-          { name: item.name, suburb, vertical: opts.vertical, phone: item.phone, address: item.address },
+        const outcome = await discoverWebsiteDetailed(
+          { name: item.name, suburb: item.locality || suburb, postcode: item.postcode, vertical: opts.vertical, phone: item.phone, address: item.address },
           { request, ...opts.discovery },
         );
-        if (discovered) {
+        if (outcome.kind === "found") {
           discoveredCount++;
-          finalUrl = discovered.url;
-          websiteSource = `discovered_${discovered.source}`;
-          websiteConfidence = discovered.confidence;
+          finalUrl = outcome.site.url;
+          websiteSource = `discovered_${outcome.site.source}`;
+          websiteConfidence = outcome.site.confidence;
+          websiteCheckedAt = outcome.site.checkedAt;
+          websiteCheck = "found";
+        } else if (outcome.kind === "none") {
+          websiteCheckedAt = new Date().toISOString();
+          websiteCheck = "none-verified"; // discovery only reports "none" once a real search engine answered
+        } else {
+          websiteCheck = outcome.cause === "search-unavailable" ? "search-unavailable" : "check-failed";
+          unverifiableCount++;
+          // This timestamp is consumed elsewhere as absence evidence when website is blank.
+          // An attempted but inconclusive check must therefore leave it empty.
+          unverifiableReason = `${outcome.reason ?? "site found but unverifiable"} (checked ${outcome.checkedAt.slice(0, 10)})`;
         }
       }
 
@@ -364,14 +402,15 @@ export async function findLeadsOsm(
         audit,
         opts.vertical,
       );
+      if (unverifiableReason) scored.reasons = [unverifiableReason];
       added.push(
         upsertLead(db, {
           placeId: item.sourceId, vertical: opts.vertical, area, name: item.name,
           phone: [...phones][0] ?? "", address: item.address, website: finalUrl, mapsUrl: item.mapsUrl,
-          rating: null, reviews: null, emails: usableEmails, emailOk: usableEmails.length > 0 && !audit.noUnsolicited,
+          rating: null, reviews: null, emails: usableEmails, emailOk: usableEmails.length > 0 && !audit.noUnsolicited && !unverifiableReason,
           score: scored.score, pitch: scored.pitch, reasons: scored.reasons, googleAt: null,
           source: "osm", attribution: item.attribution,
-          websiteSource, websiteConfidence, websiteCheckedAt,
+          websiteSource, websiteConfidence, websiteCheckedAt, websiteCheck,
         }),
       );
     }
@@ -383,5 +422,7 @@ export async function findLeadsOsm(
     added, noWebsite: added.filter((l) => !l.excluded && !l.website).length, withPhone: added.filter((l) => l.phone).length,
     withEmail: added.filter((l) => l.emails.length > 0).length, flaggedPersonalEmails, attribution: OSM_ATTRIBUTION,
     excluded: excludedCount, discovered: discoveredCount,
+    websitePresence, matched: matching.length, filteredOut: fresh.length - matching.length, limited,
+    unverifiable: unverifiableCount,
   };
 }

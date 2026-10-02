@@ -94,5 +94,5 @@ Present from the Word documents instead (`proposal-template.docx`, `demo-guide.d
 3. **SMS go-live** (send from +61 485 011 208, Twilio messaging webhook, 5-text test to your own mobile).
 4. **Qualified legal review** of the service agreement draft before any client signs it.
 5. Each follow-up email, before it's sent.
-6. **Essential's cover** (audit A3 #1). Until you decide, the pack says: [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.]
+6. **Essential's cover** (audit A3 #1): settled 1 Oct 2026 (owner brief). Every package covers business hours, alongside staff, after hours and overflow; plans differ by included minutes and extra-minute rate.
 7. **Billing timing** (audit A3 #5; the receptionist code invoices in arrears, `invoice-issue.ts:54-55`). Until you decide, the pack says: [OWNER DECISION (b) PENDING: is the monthly fee billed in advance from Acceptance, or in arrears after each billing period? Not decided.] Billing terms are confirmed in your agreement.

@@ -106,7 +106,7 @@ describe("Jarvis progress contract", () => {
   });
   test("fills a missing label and caps long text", () => {
     expect(parseProgress({ phase: "needs-you" }, 1)!.label).toBe("Needs your yes");
-    expect(parseProgress({ phase: "acting", label: "x".repeat(500) }, 1)!.label.length).toBe(60);
+    expect(parseProgress({ phase: "acting", label: "word ".repeat(100) }, 1)!.label.length).toBe(60);
   });
   test("derives progress from the agent feed, then lets a finished task fade", () => {
     const task: FeedTask = { id: "t1", kind: "hermes", title: "Book a demo slot", agent: "Hermes", startedAt: 1000, steps: [{ at: new Date(2000).toISOString(), kind: "tool", text: "Opened calendar" }] };
@@ -311,6 +311,16 @@ describe("Jarvis chip: needs your yes, masked like the run log", () => {
     expect(maskGoal("type see you at 3pm, Jane into the message box then press enter")).toBe("type ⟨text 1⟩ into the message box then press enter");
     expect(maskGoal("fill in the email field with jane.doe@example.com")).toBe("fill in the email field with ⟨text 1⟩");
     expect(maskGoal("save it as D:\\tmp\\plans.txt")).toBe("save it as ⟨file 1⟩");
+    // a web address is not a file path: the "s:/" of "https://" is not a drive letter
+    expect(maskGoal("audit https://dental-care-plus.muventures.com.au (running)")).toBe("audit https://dental-care-plus.muventures.com.au (running)");
+    // a goal reaches the chip without redactText in some callers: secrets in a web address never show
+    for (const q of ["token=abc123def456", "key=abc123def456", "code=abc123def456", "sig=abc123def456", "access_token=abc123def456&x=1"]) {
+      const shown = maskGoal(`open https://x.example/reset?${q}`);
+      expect(shown).toBe("open https://x.example/reset");
+      expect(shown).not.toContain("abc123def456");
+    }
+    expect(maskGoal("open https://x.example/a#access_token=abc123def456 now")).toBe("open https://x.example/a now");
+    expect(maskGoal("run with API_KEY=sk-abcdefgh12345678 please")).not.toContain("abcdefgh12345678");
     expect(maskGoal('call 0412 345 678 and write "meet me at the station" here')).toBe("call [number] and write ⟨text 1⟩ here");
     expect(maskGoal("open the Settings app on 2026-09-27")).toBe("open the Settings app on 2026-09-27");
     expect(maskLine("mail jane@example.com re 4111 1111 1111 1111")).toBe("mail [email] re [number]");

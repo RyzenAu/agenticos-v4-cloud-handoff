@@ -7,7 +7,9 @@ import {
   identifyRequest,
   identityStore,
   isAtHub,
+  isAtThisPc,
   isBrowserPrincipal,
+  markLoopbackUnproven,
   pageTokenFor,
   pairingTokenFor,
   safeEqual,
@@ -20,6 +22,9 @@ import {
 import { routeClass, routeRule } from "./routes";
 import { peerImage, relayedByTailscaleServe, type ServePeerCheck } from "./serve-peer";
 import { tailnetSnapshotWait, type TailnetSource } from "../remote-access";
+import { hubRole, type HubRole } from "../cloud/hub-role";
+import { createLocalOwnerProof, markLocalOwnerProven, type LocalOwnerProof } from "./local-owner-token";
+import { grantServerFounder, isServerFounderGrant, serverRoleDecision } from "./server-role";
 
 /**
  * The identity gate: the first thing every request meets after the dev-restart coalescer.
@@ -75,7 +80,7 @@ export function under(path: string, prefix: string) {
 
 function pathOf(req: ReqLike) {
   const url = req.url || "/";
-  const q = url.indexOf("?");
+  const q = url.search(/[?#]/);
   return q < 0 ? url : url.slice(0, q);
 }
 
@@ -119,6 +124,17 @@ export type GateOptions = {
    * source). Defaults to the image of the socket's peer process (serve-peer peerImage). Tests pass their own.
    */
   navigationSource?: (req: IncomingMessage) => string | null;
+  /**
+   * The hub role (default: MU_HUB_ROLE). Only "server" changes a decision: a founder with a confirmed human
+   * session, arriving through Serve, may use local-owner routes except the console-only set
+   * (scripts/identity/server-role.ts). In "pc" and "cloud" the gate is exactly what it always was.
+   */
+  role?: HubRole;
+  /**
+   * Server role only: the local-owner proof checker (default: the token file under the data directory, created
+   * at startup). A loopback request without it is nobody (scripts/identity/local-owner-token.ts). Tests inject one.
+   */
+  localOwnerProof?: LocalOwnerProof;
 };
 
 /** A short tag for a navigation's source program: its file name and a hash of its full path. */
@@ -137,6 +153,8 @@ function sendJson(res: ServerResponse, status: number, value: unknown) {
 
 const SIGN_IN = "Sign in first: use Agentic OS at this PC, or open it through your own Tailscale address.";
 const HUB_ONLY = "That runs on Usman's PC, so only he can use it, at the PC. Your own device's version arrives with the companion.";
+const SERVER_CONSOLE_ONLY = "That changes the server's own keys, configuration or software, so it can only be done at the server itself.";
+const SERVER_NEEDS_SESSION = "That runs on the server and needs a confirmed browser session: pair this browser first (Profile), then try again.";
 
 /** Refused when it comes from another origin (another localhost port included). */
 export function crossOrigin(req: ReqLike, secure: boolean): string | null {
@@ -152,6 +170,9 @@ export function crossOrigin(req: ReqLike, secure: boolean): string | null {
 
 export function createPrincipalGate(options: GateOptions) {
   const ctx: Partial<IdentityContext> = { root: options.root, store: options.store, tailnetName: options.tailnetName, servePeer: options.servePeer, tailnet: options.tailnet };
+  const role: HubRole = options.role ?? hubRole();
+  // Created at startup in the server role only; pc and cloud never touch the file.
+  const proof: LocalOwnerProof | null = role === "server" ? (options.localOwnerProof ?? createLocalOwnerProof(options.root)) : null;
 
   function serveToken(req: IncomingMessage, res: ServerResponse, id: RequestIdentity) {
     if ((req.method || "GET") !== "GET") return sendJson(res, 405, { error: "GET only" });
@@ -208,6 +229,15 @@ export function createPrincipalGate(options: GateOptions) {
   }
 
   return function principalGate(req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) {
+    // Server role: on a headless hub any local process (and every WSL user, over mirrored networking) reaches
+    // loopback. A loopback request is the owner only with the local-owner proof; otherwise it is marked, before
+    // anything resolves an identity, and every later resolution of it (here or in a handler) is anonymous.
+    // The proof headers are always stripped, so no handler or bridge ever sees the secret.
+    if (proof) {
+      const atPc = isAtThisPc(req);
+      const carried = proof.check(req);
+      if (atPc) (carried ? markLocalOwnerProven : markLoopbackUnproven)(req);
+    }
     const odd = nonCanonicalTarget(req.url || "");
     if (odd) return sendJson(res, 400, { error: odd });
     const wait = snapshotWait(req);
@@ -251,6 +281,9 @@ export function createPrincipalGate(options: GateOptions) {
       return sendJson(res, 401, { error: SIGN_IN });
     }
 
+    // Server role liveness for the Windows supervisor: an unproven loopback GET /__version answers a data-free ok
+    // (no build info, no identity), so the probe needs no secret. Everything else on loopback needs the proof.
+    if (proof && id.local && !id.principal && (method === "GET" || method === "HEAD") && path === "/__version") return sendJson(res, 200, { ok: true });
     const refused = crossOrigin(req, id.secure);
     if (refused) return sendJson(res, 403, { error: refused });
     // The internal token is only ever presented by the owner at this PC.
@@ -264,8 +297,22 @@ export function createPrincipalGate(options: GateOptions) {
     if (cls === "self") return next();
     if (!id.principal) return sendJson(res, 401, { error: SIGN_IN, signIn: "/__devices/me" });
     if (!isBrowserPrincipal(id.principal)) return sendJson(res, 403, { error: "Companions talk to /__devices/companion only." });
-    if (cls === "local-owner" && id.principal.via !== "loopback-owner")
-      return sendJson(res, 403, { error: HUB_ONLY, route: routeRule(path).key ?? "unclassified" });
+    if (cls === "local-owner" && id.principal.via !== "loopback-owner") {
+      const route = routeRule(path).key ?? "unclassified";
+      if (role !== "server") return sendJson(res, 403, { error: HUB_ONLY, route });
+      // Server role: a founder's confirmed human session, through the trusted Serve path, may use the hub's
+      // shared server-side capabilities, except the console-only set. serverRoleDecision only reads the
+      // identity derived above; it never re-derives or loosens it.
+      const decision = serverRoleDecision(path, id, method);
+      if (!decision.ok)
+        return sendJson(res, 403, { error: decision.reason === "console-only" ? SERVER_CONSOLE_ONLY : SERVER_NEEDS_SESSION, route, reason: decision.reason });
+      // The route's own checks (requestAtHub, refuseUnlessAtThisPc, the legacy `=== REFRESH_TOKEN` write check)
+      // were written for the owner at this PC: record the gate's decision, and when the founder presented his OWN
+      // page token, hand the handlers the internal one they compare against. Any other value is left as sent.
+      grantServerFounder(req);
+      const presented = req.headers[TOKEN_HEADER];
+      if (pageTokenMatches(id.principal, presented, options.internalToken())) req.headers[TOKEN_HEADER] = options.internalToken();
+    }
     return next();
   }
 }
@@ -289,7 +336,8 @@ export function identityGatePlugin(options: GateOptions): Plugin {
 export function refuseUnlessAtThisPc(req: ReqLike, message: string, ctx?: Partial<IdentityContext>): { status: 401 | 403; error: string } | null {
   const principal = requestPrincipal(req, ctx);
   if (!principal || !isBrowserPrincipal(principal)) return { status: 401, error: SIGN_IN };
-  return principal.via === "loopback-owner" ? null : { status: 403, error: message };
+  // Server role: the gate already admitted this founder to this local-owner route (server-role.ts).
+  return principal.via === "loopback-owner" || isServerFounderGrant(req) ? null : { status: 403, error: message };
 }
 
 /**
@@ -300,7 +348,9 @@ export function refuseUnlessAtThisPc(req: ReqLike, message: string, ctx?: Partia
  * neither proves locality; the hub's writes check the token themselves for CSRF.)
  */
 export function requestAtHub(req: ReqLike, ctx?: Partial<IdentityContext>): boolean {
-  return isAtHub(requestPrincipal(req, ctx));
+  // MU_HUB_ROLE=server: a founder the gate admitted to a local-owner route (never a console-only one) counts
+  // as "at the hub" for that request only. Nothing sets the grant but the gate; it is false in every other role.
+  return isAtHub(requestPrincipal(req, ctx)) || isServerFounderGrant(req);
 }
 
 /**

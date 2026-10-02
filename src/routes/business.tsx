@@ -130,7 +130,7 @@ function Panel({
 }
 
 function Eyebrow({ children }: { children: ReactNode }) {
-  return <div className="text-[12px] uppercase tracking-[0.18em] text-white/50">{children}</div>;
+  return <div className="text-xs text-white/50">{children}</div>;
 }
 
 function IconTile({ icon, tone }: { icon: ReactNode; tone: string }) {
@@ -157,14 +157,14 @@ function Delta({
   upIsGood?: boolean;
   label: string;
 }) {
-  if (pct === null) return <span className="text-[12px] text-white/50">{label}</span>;
+  if (pct === null) return <span className="text-xs text-white/50">{label}</span>;
   const up = pct >= 0;
   const good = up === upIsGood;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className="inline-flex items-center gap-1 text-[12px] text-white/62">
+    <span className="inline-flex items-center gap-1 text-xs text-white/62">
       <span
-        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[12px] font-medium"
+        className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-xs font-medium"
         style={{
           color: good ? "#7ee2a1" : "#f2a4a4",
           background: good ? "rgba(12,163,12,0.14)" : "rgba(208,59,59,0.16)",
@@ -432,7 +432,7 @@ function ChartTip({
   const total = payload.reduce((s, p) => s + (typeof p.value === "number" ? p.value : 0), 0);
   return (
     <div
-      className="rounded-lg border border-white/[0.1] px-3 py-2 text-[12px] shadow-xl"
+      className="rounded-lg border border-white/[0.1] px-3 py-2 text-xs shadow-xl"
       style={{ background: "#0d1015" }}
     >
       <div className="mb-1 font-medium text-white/85">{label}</div>
@@ -661,23 +661,20 @@ function BusinessCluster() {
         description={view === "overview" ? todayModel.focus.headline : undefined}
         actions={
           <div className="biz-context">
-            <CommandSceneButton />
-            <a className="biz-demo-toggle" href="/operations">Packages & economics</a>
+            <CommandSceneButton className="max-sm:!hidden" />
+            <a className="biz-demo-toggle max-sm:hidden" href="/operations">Packages & economics</a>
             {!demo.liveData && isDevMode() && (
-              <button className="biz-demo-toggle" type="button" aria-pressed={demo.enabled} onClick={() => demo.setEnabled(!demo.enabled)}>{demo.enabled ? "Sample numbers on" : "Sample numbers"}</button>
+              <button className="biz-demo-toggle" type="button" aria-pressed={demo.enabled} onClick={() => demo.setEnabled(!demo.enabled)}>
+                {demo.enabled ? "Sample numbers on" : "Sample numbers"}
+              </button>
             )}
             <BusinessConnections />
           </div>
         }
       />
-      {/* The invitation belongs to Overview, and only while the profile is really incomplete (it renders nothing once set up).
-          It sits under the page heading so the h1 comes first (audit P2-9). */}
-      {view === "overview" && <SetupWelcome />}
       <div className="biz-toolbar">
         <div className="biz-tabs" role="tablist" aria-label="Business views">
-          {(
-            BUSINESS_VIEWS.map((key) => ({ key, label: BUSINESS_VIEW_TITLE[key] }))
-          ).map((tab) => (
+          {BUSINESS_VIEWS.map((key) => ({ key, label: BUSINESS_VIEW_TITLE[key] })).map((tab) => (
             <button
               key={tab.key}
               role="tab"
@@ -720,15 +717,22 @@ function BusinessCluster() {
         className="biz-content"
       >
         {view === "overview" && <TodayFocus m={todayModel} />}
+        {/* Setup invitation: after what needs you, never before it. It renders nothing once the profile is complete. */}
+        {view === "overview" && <SetupWelcome />}
         {view === "overview" && <MuBrief />}
         {view === "overview" && <QuickActions />}
         {view === "overview" && (
-          <WorkspaceOverview
+          <details className="mb-8 border-t border-border pt-2">
+            <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+              Business detail
+            </summary>
+            <WorkspaceOverview
             money={money}
             onAudience={selectAudience}
             onFinances={() => selectView("finance")}
             onProgress={() => selectView("progress")}
           />
+          </details>
         )}
         {view === "overview" && (
           <TodaySources m={todayModel}>
@@ -754,7 +758,9 @@ function BusinessCluster() {
                     <span className="biz-balance-provider">
                       <BusinessLogo provider="mercury" />
                     </span>
-                    <h2 id="bank-heading">{importedAccounts.length && !canCombineAccounts ? "Account balances" : "Combined balance"}</h2>
+                    <h2 id="bank-heading">
+                      {importedAccounts.length && !canCombineAccounts ? "Account balances" : "Combined balance"}
+                    </h2>
                     <span className="biz-bank-code">
                       {canCombineAccounts
                         ? knownCurrency
@@ -771,11 +777,23 @@ function BusinessCluster() {
                   <div
                     className={`biz-bank-number${importedAccounts.length && !canCombineAccounts ? " is-unavailable" : ""}`}
                   >
-                    {actualTotal !== null
-                      ? formatAccount(actualTotal, knownCurrency!)
-                      : importedAccounts.length
-                        ? <div className="biz-balance-numbers">{importedAccounts.map(account => <div key={account.sourceId || account.name}><span>{account.name}<small>{account.currency || "Currency not supplied"}</small></span><strong>{formatAccount(account.balance, account.currency)}</strong></div>)}</div>
-                        : money(balance)}
+                    {actualTotal !== null ? (
+                      formatAccount(actualTotal, knownCurrency!)
+                    ) : importedAccounts.length ? (
+                      <div className="biz-balance-numbers">
+                        {importedAccounts.map((account) => (
+                          <div key={account.sourceId || account.name}>
+                            <span>
+                              {account.name}
+                              <small>{account.currency || "Currency not supplied"}</small>
+                            </span>
+                            <strong>{formatAccount(account.balance, account.currency)}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      money(balance)
+                    )}
                   </div>
                   <p className="biz-balance-availability">
                     {canCombineAccounts
@@ -996,11 +1014,13 @@ function BusinessCluster() {
         )}
         {view === "progress" && <NorthStarGoals />}
         {view === "progress" && <ProgressPanel />}
-        {view === "audience" && (
-          <AudiencePanel initialPlatform={audiencePlatform} />
-        )}
+        {view === "audience" && <AudiencePanel initialPlatform={audiencePlatform} />}
       </div>
-      <BusinessComposer
+      <details className="mt-6 border-t border-border py-2">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm text-muted-foreground hover:text-foreground">
+          Business advice
+        </summary>
+        <BusinessComposer
         context={JSON.stringify({
           section: view,
           profile: {
@@ -1080,10 +1100,7 @@ function BusinessCluster() {
             : {}),
         })}
       />
-      <footer className="biz-footer">
-        <span>YOUR BUSINESS WORKSPACE</span>
-        <span>Built around the way you work.</span>
-      </footer>
+      </details>
     </div>
   );
 }
@@ -1321,9 +1338,9 @@ function MetricDial({
         <div className="text-[26px] font-semibold leading-none tracking-[-0.035em] text-white/95">
           {compactNumber(metric.value)}
         </div>
-        <div className="mt-1 text-[12px] text-white/45">of {compactNumber(metric.target)}</div>
+        <div className="mt-1 text-xs text-white/45">of {compactNumber(metric.target)}</div>
       </Dial>
-      <div className="mt-2 text-[12px] font-medium text-white/85">{metric.label}</div>
+      <div className="mt-2 text-xs font-medium text-white/85">{metric.label}</div>
       <div className="mt-1.5">
         <Delta pct={pct} label="vs last quarter" />
       </div>
@@ -1362,7 +1379,7 @@ function IncomeByMonth({
               rows.reduce((s, r) => s + r.total, 0),
               true,
             )}{" "}
-            <span className="text-[12px] font-normal text-white/45">
+            <span className="text-xs font-normal text-white/45">
               over {months.length} months
             </span>
           </div>
@@ -1383,7 +1400,7 @@ function IncomeByMonth({
               aria-pressed={focus === s.key}
               onClick={() => setFocus(focus === s.key ? null : s.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2 py-[3px] text-[12px] transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full border px-2 py-[3px] text-xs transition-colors",
                 active ? "border-white/[0.12] text-white/80" : "border-white/[0.06] text-white/50",
               )}
             >
@@ -1395,12 +1412,12 @@ function IncomeByMonth({
             </button>
           );
         })}
-        <span className="ml-auto self-center text-[12px] text-white/50">* month in progress</span>
+        <span className="ml-auto self-center text-xs text-white/50">* month in progress</span>
       </div>
 
       {table ? (
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-white/45">
                 <th className="py-1.5 pr-3 font-medium">Month</th>
@@ -1540,7 +1557,7 @@ function CashFlow({
         </div>
         <ViewToggle table={table} onChange={setTable} />
       </div>
-      <div className="mt-2 flex items-center gap-3 text-[12px] text-white/50">
+      <div className="mt-2 flex items-center gap-3 text-xs text-white/50">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full" style={{ background: SERIES[2] }} /> Money in
           exceeds out
@@ -1550,7 +1567,7 @@ function CashFlow({
         </span>
       </div>
       {table ? (
-        <table className="mt-3 w-full text-[12px]">
+        <table className="mt-3 w-full text-xs">
           <thead>
             <tr className="text-left text-white/45">
               <th className="py-1.5 font-medium">Month</th>
@@ -1661,7 +1678,7 @@ function ExpenseBreakdown({
             onMouseEnter={() => setHover(l.name)}
             onMouseLeave={() => setHover(null)}
             className={cn(
-              "flex items-center justify-between text-[12px] transition-opacity",
+              "flex items-center justify-between text-xs transition-opacity",
               hover && hover !== l.name && "opacity-45",
             )}
           >
@@ -1707,7 +1724,7 @@ function InvoicesTile({
           <div className="mt-1 text-[26px] font-semibold leading-none tracking-[-0.03em] text-white/95">
             {money(inv.outstanding + inv.overdue)}
           </div>
-          <div className="mt-1.5 text-[12px] text-white/50">
+          <div className="mt-1.5 text-xs text-white/50">
             owed to you across {inv.outstandingCount + inv.overdueCount} invoices
           </div>
         </div>
@@ -1723,13 +1740,13 @@ function InvoicesTile({
       </div>
       <ul className="mt-3 space-y-1.5">
         {segs.map((s) => (
-          <li key={s.k} className="flex items-center justify-between text-[12px]">
+          <li key={s.k} className="flex items-center justify-between text-xs">
             <span className="inline-flex items-center gap-2 text-white/70">
               <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
               {s.k}
               {s.status && s.n > 0 && (
                 <span
-                  className="rounded-full px-1.5 py-[1px] text-[12px] font-medium"
+                  className="rounded-full px-1.5 py-[1px] text-xs font-medium"
                   style={{ color: "#f2a4a4", background: "rgba(208,59,59,0.16)" }}
                 >
                   chase

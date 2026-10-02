@@ -1,10 +1,11 @@
 import { createRequire } from "node:module";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** Read-only storage inventory. It does not print mail, account identities or credentials. */
 export function mailStorageAudit(root: string) {
-  const directory = join(root, ".operator-data"), path = join(directory, "mail-archive.sqlite");
+  const directory = join(dataDirFor(root)), path = join(directory, "mail-archive.sqlite");
   const require = createRequire(import.meta.url);
   const sqlite = require(process.versions.bun ? "bun:sqlite" : "node:sqlite");
   const db = process.versions.bun ? new sqlite.Database(path, { readonly: true }) : new sqlite.DatabaseSync(path, { readOnly: true });

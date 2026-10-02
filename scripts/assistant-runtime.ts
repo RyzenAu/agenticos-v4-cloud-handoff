@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 import { cliHomeGuard } from "./cli-home-guard";
+import { dataDirOverride, DEFAULT_DATA_DIR_NAME } from "./cloud/data-dir";
 
 /** Platform facts are parameters, so every Windows branch can be proven from a macOS host. */
 export type PlatformOptions = {
@@ -383,9 +384,10 @@ export async function claudeSignInStatus(
 }
 
 export function assistantPython(root: string, platform: NodeJS.Platform = process.platform): string {
+  // Joined with the TARGET platform's path rules (the override, when set, is already absolute on this host).
+  const override = dataDirOverride();
   return platformPath(platform).resolve(
-    root,
-    ".operator-data",
+    ...(override ? [override] : [root, DEFAULT_DATA_DIR_NAME]),
     "dsh-venv",
     ...(platform === "win32" ? ["Scripts", "python.exe"] : ["bin", "python"]),
   );

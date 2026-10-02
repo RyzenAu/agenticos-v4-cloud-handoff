@@ -1,0 +1,391 @@
+{
+  "run": "56cb2a",
+  "bank": "syn-prog-d-56cb2a",
+  "tag": "SYNTHETIC-PROG-20261001",
+  "work": "D:\\prog-scratch\\mu-prog-d-mem-VXAN47",
+  "at": "2026-10-01T00:33:40.731Z",
+  "passed": 25,
+  "failed": 0,
+  "results": [
+    {
+      "step": "setup",
+      "check": "dedicated synthetic Hindsight healthy; this process is the writer (owns the writer port); writes on; no key in the OS process",
+      "ok": true,
+      "observed": {
+        "proxy": "http://127.0.0.1:8883",
+        "bank": "syn-prog-d-56cb2a",
+        "tag": "SYNTHETIC-PROG-20261001",
+        "writer_port": 8097,
+        "scratch": "D:\\prog-scratch\\mu-prog-d-mem-VXAN47",
+        "hindsight_url": "http://127.0.0.1:8883"
+      }
+    },
+    {
+      "step": "setup",
+      "check": "initial sync of the temporary vault: nothing pending, every note indexed",
+      "ok": true,
+      "observed": {
+        "pending": 0,
+        "counts": {
+          "notes": 8,
+          "docs": 8,
+          "memories": 0,
+          "indexed": 8,
+          "excluded": 0,
+          "tombstones": 0
+        },
+        "errors": []
+      }
+    },
+    {
+      "step": "1 save",
+      "check": "saved as a Hindsight memory, indexed, and present as a document in the bank",
+      "ok": true,
+      "observed": {
+        "id": "mem-7992f2fbc4",
+        "message": "Remembered in Hindsight memory as mem-7992f2fbc4 (\"SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 6:10am on…\"): indexed in Hindsight. Not written to the vault.",
+        "indexed": "confirmed",
+        "hindsight_doc": 200
+      }
+    },
+    {
+      "step": "2 recall+cite",
+      "check": "recall returns the memory via Hindsight with its source cited",
+      "ok": true,
+      "observed": {
+        "hindsight": "ok",
+        "hit": {
+          "id": "mem-7992f2fbc4",
+          "via": [
+            "hindsight",
+            "local"
+          ],
+          "source": {
+            "kind": "memory",
+            "id": "mem-7992f2fbc4"
+          },
+          "text": "SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 6:10am on Tuesdays."
+        },
+        "spoken": "Here's what's saved: SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 6:10am on Tuesdays. (from the Jarvis memory mem-7992f2fbc4) Also: Synthetic playbook for the demo receptionist"
+      }
+    },
+    {
+      "step": "3 model record",
+      "check": "the save records the provider and model Hindsight reports processing it (receipts, no text)",
+      "ok": true,
+      "observed": {
+        "processed_by": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3508,
+          "at": "2026-10-01T00:33:11.018665+00:00"
+        },
+        "models": {
+          "openrouter/deepseek/deepseek-v4.1-flash": 9
+        }
+      }
+    },
+    {
+      "step": "4 dedupe",
+      "check": "saving the same text again returns the same memory (duplicate); no new Hindsight document",
+      "ok": true,
+      "observed": {
+        "message": "Already remembered as mem-7992f2fbc4 (\"SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 6:10am on…\").",
+        "docs_before": 9,
+        "docs_after": 9
+      }
+    },
+    {
+      "step": "4b credential screen",
+      "check": "a synthetic password-shaped string is refused; not in the bank, the app, or recall; no new document",
+      "ok": true,
+      "observed": {
+        "code": "prohibited-content",
+        "message": "That looks like a password, key or token. Secrets are never stored in memory."
+      }
+    },
+    {
+      "step": "5 correct",
+      "check": "the new fact supersedes: recalled as current; the old one is never recalled and is retracted from Hindsight",
+      "ok": true,
+      "observed": {
+        "correct": "Corrected: mem-f0341f9028 replaces mem-7992f2fbc4, which is kept here marked superseded and retracted from Hindsight. The new version is indexed in Hindsight.",
+        "new_id": "mem-f0341f9028",
+        "recalled": [
+          {
+            "id": "mem-f0341f9028",
+            "via": [
+              "hindsight",
+              "local"
+            ],
+            "text": "SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 7:40am on Tuesdays."
+          }
+        ],
+        "old_doc_in_hindsight": 404,
+        "old_row_status": "superseded"
+      }
+    },
+    {
+      "step": "5 model record",
+      "check": "the correction save also records the model Hindsight reports processing it",
+      "ok": true,
+      "observed": {
+        "save1": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3508,
+          "at": "2026-10-01T00:33:11.018665+00:00"
+        },
+        "correction": {
+          "provider": "openrouter",
+          "model": "deepseek/deepseek-v4.1-flash",
+          "fallback_from": [],
+          "basis": "metered",
+          "calls": 1,
+          "tokens": 3542,
+          "at": "2026-10-01T00:33:13.299696+00:00"
+        }
+      }
+    },
+    {
+      "step": "6 delete",
+      "check": "deleting a saved memory asks for approval first; nothing is removed yet",
+      "ok": true,
+      "observed": {
+        "code": "approval-required",
+        "hindsight_doc": 200
+      }
+    },
+    {
+      "step": "6 delete",
+      "check": "a program (the same person's agent, no browser session) cannot use that approval; nothing is removed",
+      "ok": true,
+      "observed": {
+        "code": "approval-required"
+      }
+    },
+    {
+      "step": "6 delete",
+      "check": "after the page approval the memory is gone: Hindsight document 404, not in recall, not in the app",
+      "ok": true,
+      "observed": {
+        "grant": true,
+        "result": "Deleted the memory \"SYNTHETIC-PROG-20261001 The synthetic Cormorant56cb2a depot opens at 7:40am on…\" (2 version(s)): removed from this app's store and the local index; 1 Hindsight document(s) deleted. A tombstone stops it coming back.",
+        "hindsight_doc": 404,
+        "recall_has_run": false
+      }
+    },
+    {
+      "step": "6 delete",
+      "check": "the approval is single use (replaying it removes nothing more and is refused)",
+      "ok": true,
+      "observed": {}
+    },
+    {
+      "step": "7 note",
+      "check": "a new note in the vault is indexed with a stable id and is a Hindsight document",
+      "ok": true,
+      "observed": {
+        "id": "n-bfd01b1843",
+        "path": "wiki/topics/business/zz-prog-d-56cb2a.md",
+        "indexed": "confirmed",
+        "hindsight_doc": 200
+      }
+    },
+    {
+      "step": "7 note edit",
+      "check": "an edit keeps the note's identity and replaces the old wording in Hindsight and in recall",
+      "ok": true,
+      "observed": {
+        "same_id": true,
+        "hindsight_has_new": true,
+        "hindsight_has_old": false,
+        "recall": {
+          "via": [
+            "hindsight",
+            "local"
+          ],
+          "text": "SYNTHETIC-PROG-20261001. The synthetic Plover56cb2a depot opens at 6:25am on Fridays."
+        }
+      }
+    },
+    {
+      "step": "7 note rename",
+      "check": "a rename keeps the note id: one note, the new path, the same set of Hindsight documents (no duplicate)",
+      "ok": true,
+      "observed": {
+        "renames": [
+          {
+            "from": "wiki/topics/business/zz-prog-d-56cb2a.md",
+            "to": "wiki/topics/business/zz-prog-d-56cb2a-renamed.md",
+            "id": "n-bfd01b1843"
+          }
+        ],
+        "notes_with_title": 1,
+        "id": "n-bfd01b1843",
+        "path": "wiki/topics/business/zz-prog-d-56cb2a-renamed.md",
+        "docs_before": 9,
+        "docs_after": 9
+      }
+    },
+    {
+      "step": "7 note copy",
+      "check": "a copy of the note is not indexed as a second note: no new Hindsight document",
+      "ok": true,
+      "observed": {
+        "notes_with_title": 1,
+        "docs_before": 9,
+        "docs_after": 9,
+        "ids": [
+          "n-bfd01b1843"
+        ]
+      }
+    },
+    {
+      "step": "7 reindex",
+      "check": "re-indexing the note and a full sync do not duplicate it: same ids, same documents",
+      "ok": true,
+      "observed": {
+        "reindex": "That isn't excluded from the index.",
+        "docs_after": 9,
+        "ids": [
+          "n-bfd01b1843"
+        ]
+      }
+    },
+    {
+      "step": "7 note delete",
+      "check": "deleting the note removes it from Hindsight, from recall and from the index",
+      "ok": true,
+      "observed": {
+        "hindsight_doc": 404,
+        "recall_has_note": false
+      }
+    },
+    {
+      "step": "8 model record",
+      "check": "Hindsight's own receipts name the provider and model that processed these saves",
+      "ok": true,
+      "observed": {
+        "models": {
+          "openrouter/deepseek/deepseek-v4.1-flash": 12
+        },
+        "recent": [
+          {
+            "op": "retain",
+            "outcome": "ok",
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3575,
+              "at": "2026-10-01T00:33:16.082926+00:00"
+            }
+          },
+          {
+            "op": "retain",
+            "outcome": "ok",
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3591,
+              "at": "2026-10-01T00:33:14.687447+00:00"
+            }
+          },
+          {
+            "op": "retain",
+            "outcome": "ok",
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3542,
+              "at": "2026-10-01T00:33:13.299696+00:00"
+            }
+          },
+          {
+            "op": "retain",
+            "outcome": "ok",
+            "processed_by": {
+              "provider": "openrouter",
+              "model": "deepseek/deepseek-v4.1-flash",
+              "fallback_from": [],
+              "basis": "metered",
+              "calls": 1,
+              "tokens": 3508,
+              "at": "2026-10-01T00:33:11.018665+00:00"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": "8 model record",
+      "check": "the bank's llm-requests receipts list provider, model and status per call (no prompt text)",
+      "ok": true,
+      "observed": {
+        "status": 200,
+        "calls": {
+          "openrouter/deepseek/deepseek-v4.1-flash/success": 12
+        }
+      }
+    },
+    {
+      "step": "8b handoff",
+      "check": "two handoffs on one repo: the second is refused as a conflict unless saved keep-both (the cause of a second failure mode); with keep-both both are saved",
+      "ok": true,
+      "observed": {
+        "first": "saved",
+        "second_plain": "conflict",
+        "second_keep_both": "saved"
+      }
+    },
+    {
+      "step": "8b handoff",
+      "check": "a normal coding handoff about credentials is saved to the vault and recalled; a request carrying a fake secret is refused as a full fact (prohibited-content), its neutral form saves, and the secret is nowhere in the bank or the recall",
+      "ok": true,
+      "observed": {
+        "normal": "saved",
+        "full_with_secret": "prohibited-content",
+        "neutral": "saved",
+        "recalled_normal": true,
+        "secret_in_bank": false
+      }
+    },
+    {
+      "step": "9 cleanup",
+      "check": "nothing synthetic is left: no extra Hindsight documents, recall empty for the tag, no current items, no vault files",
+      "ok": true,
+      "observed": {
+        "leftover_docs": [],
+        "recall_hits_with_run": 0,
+        "raw_bank_recall_hits_with_run": 0,
+        "current_items_with_run": 0,
+        "vault_files_left": [],
+        "bank_docs_now": 8,
+        "bank_docs_at_start": 8
+      }
+    },
+    {
+      "step": "9 cleanup",
+      "check": "no Telegram message was sent or needed (captured count)",
+      "ok": true,
+      "observed": {
+        "captured": 0
+      }
+    }
+  ]
+}

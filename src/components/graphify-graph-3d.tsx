@@ -781,7 +781,7 @@ export function GraphifyGraph3D({
       {!embedded && (
         <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
           {/* Density toggle — Full (whole web) vs Core (load-bearing skeleton) */}
-          <div className="dark text-foreground flex rounded-lg border border-border/60 bg-black/70 backdrop-blur overflow-hidden text-[12px] sm:text-[12px] uppercase tracking-wider">
+          <div className="dark text-foreground flex rounded-lg border border-border/60 bg-black/70 backdrop-blur overflow-hidden text-xs sm:text-xs">
             <button
               onClick={() => setDensity("full")}
               className={`min-h-10 sm:min-h-0 px-3.5 sm:px-2.5 py-1 transition-colors ${density === "full" ? "text-foreground" : "text-muted-foreground hover:text-foreground/80"}`}
@@ -801,7 +801,7 @@ export function GraphifyGraph3D({
           </div>
           <button
             onClick={() => setRotating((r) => !r)}
-            className="dark min-h-10 sm:min-h-0 rounded-lg border border-border/60 bg-black/70 backdrop-blur px-3.5 sm:px-2.5 py-1 text-[12px] sm:text-[12px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            className="dark min-h-10 sm:min-h-0 rounded-lg border border-border/60 bg-black/70 backdrop-blur px-3.5 sm:px-2.5 py-1 text-xs sm:text-xs text-muted-foreground hover:text-foreground"
             title="Pause / resume orbit"
           >
             {rotating ? "Pause" : "Play"}
@@ -811,13 +811,13 @@ export function GraphifyGraph3D({
 
       {data.capped && (
         // Under the toolbar at phone width: bottom-right, it sat on top of the wrapped legend (T8b).
-        <div className="dark absolute top-[3.75rem] right-3 sm:top-auto sm:bottom-3 z-10 rounded-md border border-border/60 bg-black/70 backdrop-blur px-2.5 py-1 text-[12px] text-muted-foreground pointer-events-none">
+        <div className="dark absolute top-[3.75rem] right-3 sm:top-auto sm:bottom-3 z-10 rounded-md border border-border/60 bg-black/70 backdrop-blur px-2.5 py-1 text-xs text-muted-foreground pointer-events-none">
           densest {data.shown.toLocaleString()} of {data.total.toLocaleString()} nodes
         </div>
       )}
 
       {!embedded && !hideLegend && (
-        <div className="absolute bottom-3 left-3 right-3 sm:right-auto flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-border/70 bg-background/70 backdrop-blur px-3 py-2 text-[12px] text-muted-foreground pointer-events-none">
+        <div className="absolute bottom-3 left-3 right-3 sm:right-auto flex flex-wrap gap-x-3 gap-y-1 rounded-lg border border-border/70 bg-background/70 backdrop-blur px-3 py-2 text-xs text-muted-foreground pointer-events-none">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2 w-3 rounded-full" style={{ background: "rgba(120,224,200,0.85)" }} />
             EXTRACTED

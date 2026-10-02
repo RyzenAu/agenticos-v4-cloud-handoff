@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { InboxItem, OperatorState } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type GmailCapabilities = {
   modify: boolean;
@@ -174,7 +175,7 @@ export function gmailMailbox(options: {
   identity: () => { email?: string; connected: boolean; grantedScopes?: string[] };
   request: (path: string, method: string, body: unknown) => Promise<any>;
 }) {
-  const directory = join(options.root, ".operator-data"),
+  const directory = join(dataDirFor(options.root)),
     ledgerFile = join(directory, "gmail-send-attempts.json");
   const ledger = (): Record<string, SendAttempt> =>
     existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : {};

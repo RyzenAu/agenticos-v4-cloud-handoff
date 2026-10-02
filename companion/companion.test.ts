@@ -147,7 +147,7 @@ describe("results go back as ExecutorResults", () => {
 describe("gate on the companion", () => {
   test("Windows executors are registered on Windows only; echo/notify/wait/open-url everywhere", () => {
     const win = Object.keys(defaultExecutors({ platform: "win32", open: () => undefined }));
-    expect(win.sort()).toEqual(["app.open", "deck.blank", "echo", "file.open", "notepad.type", "notify", "open-url", "wait"]);
+    expect(win.sort()).toEqual(["app.focus", "app.open", "browser.navigate", "deck.blank", "echo", "file.open", "notepad.type", "notify", "observe.window", "open-url", "screen.goal", "target.focus", "wait"]);
     const mac = Object.keys(defaultExecutors({ platform: "darwin", open: () => undefined }));
     expect(mac.sort()).toEqual(["echo", "notify", "open-url", "wait"]);
   });

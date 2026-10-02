@@ -372,11 +372,11 @@ function WindowBar({ window: w, brand }: { window: UsageWindow; brand: string })
           </span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="ds-num inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span className="ds-num inline-flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
             {w.resetIn}
           </span>
-          <span className="ds-num w-9 text-right text-[11px] text-foreground">
+          <span className="ds-num w-9 text-right text-xs text-foreground">
             {w.pct}%
           </span>
         </div>

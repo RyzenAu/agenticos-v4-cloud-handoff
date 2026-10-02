@@ -93,7 +93,7 @@ import {
 import { findLeads, MONTHLY_DETAILS_BUDGET, type Source } from "./engine";
 import { applyPlacesCleanup, planPlacesCleanup, renderCleanupPlan } from "./places-cleanup";
 import { defaultPlacesLookup, hydrateLead, hydrateLeads, placesAttributionLine, placesSession, type LiveLead } from "./places-live";
-import { callOpener, callWindow, DEFAULT_SENDER, emailDraft } from "./outreach";
+import { callOpener, callWindow, DEFAULT_SENDER, emailDraft, emailPitch } from "./outreach";
 import { followUpQueue, renderFollowUp } from "./followups";
 import { buildCarePlanDraft, renderCarePlanSummary } from "./care-plan";
 import { reviewAskQueue, renderReviewAsk } from "./review-ask";
@@ -106,13 +106,14 @@ import { coverageByPitch, defaultFinderDeps, describeSources, findAndApply, load
 import { isVerifiedFact } from "./score";
 import { draftInvoice, draftProposal } from "./sales-backoffice";
 import { leadPipeline, pipelineSummary } from "./lead-pipeline";
-import { crmOverview, dealRows, draftTarget, leadDeal, moveStage, readRules, saveDeal, saveRules, type DealPatch } from "./deals";
+import { crmOverview, dealRows, draftTarget, leadDeal, moveStage, readDeal, readRules, saveDeal, saveRules, type DealPatch } from "./deals";
 import { applyIssueReport, detectIssues, issueHook, outreachBlocked, rankWithMimo } from "./issues";
 import { renderTargetingReport, runIssuesBatch, writeTargetingReport } from "./issues-batch";
 import { createJarvisEvents } from "../jarvis-events";
 import {
   changeDetectionConfigFromEnv, pollChanges, renderPollResult, renderSyncResult, syncWatches,
 } from "./watch";
+import { dataDirFor } from "../cloud/data-dir";
 
 function isSource(value: unknown): value is Source {
   return value === "osm" || value === "google";
@@ -264,7 +265,7 @@ async function main() {
       // Same rule as the API: the deal's offer, an explicit or saved catalogue package, never an assumed one.
       const t = draftTarget(db, lead, flags.package);
       const result = command === "proposal" ? draftProposal(ROOT, t.lead, t.packageId) : draftInvoice(ROOT, t.lead, new Date(), t.packageId);
-      out(result, `DRAFT only — ${result.files.map(f => join(ROOT, ".operator-data", "drafts", String(lead.id), f)).join("\n")}`);
+      out(result, `DRAFT only — ${result.files.map(f => join(dataDirFor(ROOT), "drafts", String(lead.id), f)).join("\n")}`);
       break;
     }
     case "find": {
@@ -385,7 +386,7 @@ async function main() {
       if (lead.status === "do_not_contact") throw new Error(`${lead.name} asked not to be contacted.`);
       if (!lead.emailOk || !lead.emails.length || isOptedOut(db, lead.emails[0]))
         throw new Error(`No email to use for ${lead.name}: none published on their site, or they opted out. Call instead.`);
-      const draft = { to: lead.emails[0], ...emailDraft({ ...lead, hook: issueHook(db, lead) }, sender(flags.by)) };
+      const draft = { to: lead.emails[0], ...emailDraft({ name: lead.name, vertical: lead.vertical, reasons: lead.reasons, pitch: emailPitch(lead.pitch), hook: issueHook(db, lead), contactPref: readDeal(db, lead.id).contactPref }, sender(flags.by)) };
       out(draft, `To: ${draft.to}\nSubject: ${draft.subject}\n\n${draft.body}\n\n(Draft only. Send it yourself, then: log ${lead.id} --kind email --outcome emailed)`);
       break;
     }
@@ -404,7 +405,7 @@ async function main() {
     }
     case "care-plan": {
       const lead = need(rest[0]);
-      const draft = await buildCarePlanDraft(db, lead, { root: ROOT, month: flags.month, repoPath: flags.repo, by: flags.by });
+      const draft = await buildCarePlanDraft(db, lead, { root: ROOT, month: flags.month, repoPath: flags.repo });
       out(draft, renderCarePlanSummary(draft));
       break;
     }

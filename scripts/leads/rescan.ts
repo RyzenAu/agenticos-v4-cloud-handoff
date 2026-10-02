@@ -7,7 +7,7 @@
 import type { Database } from "bun:sqlite";
 import { browserOverflowCheck, type BrowserAuditDeps } from "./browser-audit";
 import type { Crawl4aiDeps } from "./crawl4ai";
-import { listLeads, upsertLead, WEBSITE_NOT_VERIFIED, WEBSITE_NOT_VERIFIED_REASON, type Lead } from "./crm";
+import { listLeads, upsertLead, WEBSITE_NOT_VERIFIED, WEBSITE_NOT_VERIFIED_REASON, type Lead, type WebsiteCheck } from "./crm";
 import { discoverWebsiteDetailed, localityFromAddress, type DiscoveryDeps } from "./discovery";
 import { enrichWebsite, looksPersonal } from "./enrich";
 import { checkExclusion } from "./exclusions";
@@ -94,6 +94,7 @@ export async function rescanLead(
   let websiteConfidence = lead.websiteConfidence;
   let websiteCheckedAt = lead.websiteCheckedAt;
   let discoveredNow = false;
+  let websiteCheck: WebsiteCheck = lead.website ? "found" : "not-checked";
   // undefined = not attempted / no unverifiable outcome; a real (possibly "") string once
   // discoverWebsiteDetailed reports "unverifiable" — "" itself is a valid case (a franchise-brand
   // short-circuit never had a URL to name), so this can't be a plain truthy check.
@@ -116,8 +117,12 @@ export async function rescanLead(
       websiteSource = `discovered_${outcome.site.source}`;
       websiteConfidence = outcome.site.confidence;
       discoveredNow = true;
+      websiteCheck = "found";
     } else if (outcome.kind === "unverifiable") {
       unverifiable = { url: outcome.url, reason: outcome.reason };
+      websiteCheck = outcome.cause === "search-unavailable" ? "search-unavailable" : "check-failed";
+    } else {
+      websiteCheck = "none-verified"; // a real search engine answered and found nothing
     }
   }
 
@@ -136,7 +141,7 @@ export async function rescanLead(
           address: lead.address, website: "", mapsUrl: lead.mapsUrl, rating: lead.rating, reviews: lead.reviews,
           emails: lead.emails, emailOk: false, score: 0, pitch: "audit_pending", reasons: [reason],
           googleAt: lead.googleAt, source: lead.source, attribution: lead.attribution,
-          excluded: false, excludedReason: "", websiteSource, websiteConfidence, websiteCheckedAt,
+          excluded: false, excludedReason: "", websiteSource, websiteConfidence, websiteCheckedAt, websiteCheck,
         }));
     return {
       leadId: lead.id, name: lead.name, before, after, action: "site unverifiable",
@@ -172,7 +177,7 @@ export async function rescanLead(
         address: lead.address, website: finalUrl, mapsUrl: lead.mapsUrl, rating: lead.rating, reviews: lead.reviews,
         emails: usableEmails, emailOk: usableEmails.length > 0 && !audit.noUnsolicited, score: scored.score, pitch: scored.pitch,
         reasons: scored.reasons, googleAt: lead.googleAt, source: lead.source, attribution: lead.attribution,
-        excluded: false, excludedReason: "", websiteSource, websiteConfidence, websiteCheckedAt,
+        excluded: false, excludedReason: "", websiteSource, websiteConfidence, websiteCheckedAt, websiteCheck,
       }));
   const action: RescanAction = discoveredNow ? "website discovered" : finalUrl ? "rescored" : "no website confirmed";
   return { leadId: lead.id, name: lead.name, before, after, action, severity: scored.severity, verdict: scored.verdict };

@@ -764,7 +764,7 @@ function ChampionsRow({
   if (champions.length === 0) return null;
   return (
     <div>
-      <div className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Trophy className="h-3 w-3 text-amber-400" />
         Champions · the best model for each metric
       </div>
@@ -815,7 +815,7 @@ function ChampionCard({
         onClick={() => onInspect(model.id)}
         className="relative block w-full text-left"
       >
-        <div className="mb-2 inline-flex items-center gap-1 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="mb-2 inline-flex items-center gap-1 text-xs text-muted-foreground">
           <Trophy className="h-3 w-3 text-amber-400" />
           {label}
         </div>
@@ -829,7 +829,7 @@ function ChampionCard({
           </div>
           <div className="min-w-0">
             <div className="truncate text-[13px] font-semibold leading-tight">{model.name}</div>
-            <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {model.vendor}
             </div>
           </div>
@@ -951,7 +951,7 @@ function PlaybooksPanel({
   return (
     <div>
       {/* Task-shape chips: pick the shape of the work → its recipe lights up. */}
-      <div className="mb-2 flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Workflow className="h-3 w-3 text-violet-400" />
         Task shapes · what kind of work is it?
       </div>
@@ -1072,12 +1072,12 @@ function RecipeCard({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {isDefault && (
-            <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs uppercase tracking-wider text-amber-700">
+            <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs text-amber-700">
               default
             </span>
           )}
           <span
-            className={`rounded-full px-2 py-0.5 text-xs uppercase tracking-wider ${
+            className={`rounded-full px-2 py-0.5 text-xs ${
               BUDGET_CHIP[recipe.controls.budgetClass] ?? "bg-foreground/10 text-foreground/70"
             }`}
           >
@@ -1107,7 +1107,7 @@ function RecipeCard({
       <div className="relative mt-3 space-y-1.5">
         {roles.map((r) => (
           <div key={r.role.id} className="flex items-center gap-2 text-xs">
-            <span className="w-20 shrink-0 text-xs uppercase tracking-wider text-neutral-500">
+            <span className="w-20 shrink-0 text-xs text-neutral-500">
               {r.role.id}
             </span>
             {r.models.length === 0 ? (
@@ -1224,7 +1224,7 @@ function ModelTable({
       {/* Rank-by control (the leaderboard's main lever) + tier filter + off-roster toggle */}
       <div className="mb-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             Rank by
           </span>
           <div className="flex flex-wrap items-center gap-1">
@@ -1279,7 +1279,7 @@ function ModelTable({
                   type="button"
                   onClick={() => onTier(c.key)}
                   aria-pressed={active}
-                  className={`rounded-full px-1.5 py-0.5 text-xs uppercase tracking-wider transition-colors ${
+                  className={`rounded-full px-1.5 py-0.5 text-xs transition-colors ${
                     active
                       ? "bg-foreground/10 text-foreground ring-1 ring-foreground/20"
                       : "bg-foreground/5 text-muted-foreground hover:text-foreground"
@@ -1381,7 +1381,7 @@ function ModelTable({
         {/* Footer — leaderboard deep-links */}
         {leaderboards.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border px-5 py-2.5 text-xs text-muted-foreground">
-            <span className="uppercase tracking-wider text-muted-foreground">Leaderboards</span>
+            <span className="tracking-wider text-muted-foreground">Leaderboards</span>
             {leaderboards.map((lb) => (
               <a
                 key={lb.url}
@@ -1580,7 +1580,7 @@ function ModelRow({
       {/* Status pill */}
       <span>
         <span
-          className={`rounded-full px-1.5 py-0.5 text-xs font-medium uppercase tracking-wider ${status.cls}`}
+          className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${status.cls}`}
         >
           {status.label}
         </span>
@@ -1707,7 +1707,7 @@ function InspectDrawer({
             </div>
             <div className="min-w-0">
               <div className="text-[15px] font-semibold leading-tight">{model.name}</div>
-              <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {model.vendor} · {formatTier(model.tier)}
               </div>
             </div>
@@ -1754,7 +1754,7 @@ function InspectDrawer({
           <DotList title="Gripes" items={model.sentiment?.gripes ?? []} dot="#f5b14c" />
 
           <div>
-            <div className="mb-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+            <div className="mb-1.5 text-xs text-muted-foreground">
               Best for
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -1770,7 +1770,7 @@ function InspectDrawer({
           </div>
           {model.avoidFor.length > 0 && (
             <div>
-              <div className="mb-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              <div className="mb-1.5 text-xs text-muted-foreground">
                 Avoid for
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -1790,7 +1790,7 @@ function InspectDrawer({
         {/* Right: pro usage + deep links */}
         <div className="space-y-3">
           <div className="rounded-lg border border-violet-500/20 bg-violet-500/10 p-3">
-            <div className="mb-1 text-xs uppercase tracking-[0.12em] text-brand">
+            <div className="mb-1 text-xs text-brand">
               How pros use it
             </div>
             <p className="text-xs leading-relaxed text-foreground/80">{model.proUsage}</p>
@@ -1827,7 +1827,7 @@ function InspectDrawer({
 function HeadlineNum({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-black/20 px-2.5 py-2">
-      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-0.5 text-[15px] font-semibold tabular-nums leading-tight">{value}</div>
       {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
     </div>
@@ -1838,7 +1838,7 @@ function DotList({ title, items, dot }: { title: string; items: string[]; dot: s
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <div className="mb-1.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="mb-1.5 text-xs text-muted-foreground">
         {title}
       </div>
       <ul className="space-y-1">

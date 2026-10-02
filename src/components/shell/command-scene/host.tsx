@@ -48,11 +48,11 @@ export function CommandSceneHost() {
 }
 
 /** The quiet way in, for page headers. */
-export function CommandSceneButton() {
+export function CommandSceneButton({ className = "" }: { className?: string } = {}) {
   return (
     <button
       type="button"
-      className="op-header-ask inline-flex items-center gap-1.5"
+      className={`op-header-ask items-center gap-1.5 ${className || "inline-flex"}`}
       data-command-scene-trigger=""
       onClick={openCommandScene}
       onPointerEnter={() => void import("./command-scene").catch(() => undefined)}

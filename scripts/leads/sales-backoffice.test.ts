@@ -40,8 +40,9 @@ describe("sales back-office", () => {
     const premium = getReceptionistPackage("receptionist-premium").pricing;
     expect(invoiceData({ ...lead, pitch: "receptionist" } as Lead, new Date("2026-09-25T00:00:00Z"), "receptionist-premium").receptionistIllustration?.subtotal).toBe(rxCents(premium));
     expect(proposalText({ ...lead, pitch: "receptionist" } as Lead, "receptionist-essential")).not.toContain("A$1,650");
-    // Essential's cover is an open owner decision (audit A3 #1): its proposal carries the placeholder, never a guess.
-    expect(proposalText({ ...lead, pitch: "both" } as Lead, "receptionist-essential")).toContain("[OWNER DECISION (a) PENDING:");
+    // Essential cover settled 1 Oct 2026 (owner brief): all modes, no placeholder.
+    expect(proposalText({ ...lead, pitch: "both" } as Lead, "receptionist-essential")).not.toContain("OWNER DECISION (a)");
+    expect(proposalText({ ...lead, pitch: "both" } as Lead, "receptionist-essential")).toContain("Answers calls in business hours, after hours, alongside your team or as overflow");
     expect(proposalText({ ...lead, pitch: "both" } as Lead, "receptionist-premium")).toContain("Answers calls in business hours, after hours, alongside your team or as overflow");
     expect(proposalText({ ...lead, pitch: "redesign" } as Lead)).toContain("Redesign a business website");
     expect(proposalText({ ...lead, pitch: "website" } as Lead)).not.toContain("receptionist");

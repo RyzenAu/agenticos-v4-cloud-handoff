@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import type { PsHost } from "./ps-host";
 import { norm } from "./text";
 import { placeFromWords, resolvePlace, spokenPlace } from "./places";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type SettingsRequest =
   | { skill: "settings"; action: "radio"; radio: "bluetooth" | "wifi"; on: boolean }
@@ -192,7 +193,7 @@ export async function answerSettings(req: SettingsRequest, deps: { ps: PsHost; h
 }
 
 /** Where the last rename's old names are kept (for "undo the rename"). */
-const UNDO_FILE = (root: string) => join(root, ".operator-data", "jarvis-last-rename.json");
+const UNDO_FILE = (root: string) => join(dataDirFor(root), "jarvis-last-rename.json");
 export async function answerFiles(req: FilesRequest, deps: { root: string; home?: string; workRoot?: string }): Promise<string> {
   const home = deps.home ?? homedir();
   if (req.action === "undo_rename") {
@@ -226,7 +227,7 @@ export async function answerFiles(req: FilesRequest, deps: { root: string; home?
   const temp = renames.map((r, i) => ({ ...r, tmp: `.jarvis-rename-${Date.now().toString(36)}-${i}` }));
   for (const r of temp) renameSync(join(folder, r.from), join(folder, r.tmp));
   for (const r of temp) renameSync(join(folder, r.tmp), join(folder, r.to));
-  mkdirSync(join(deps.root, ".operator-data"), { recursive: true });
+  mkdirSync(join(dataDirFor(deps.root)), { recursive: true });
   writeFileSync(UNDO_FILE(deps.root), JSON.stringify({ folder, renames: renames.map(({ from, to }) => ({ from, to })) }));
   return renames.length ? `Renamed ${renames.length} ${req.kind === "all" ? "file" : req.kind.replace(/s$/, "")}${renames.length === 1 ? "" : "s"} by date, sir. Say "undo the rename" to put them back.` : "They're already named by date, sir.";
 }

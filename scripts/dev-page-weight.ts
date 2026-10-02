@@ -195,3 +195,33 @@ export function routeReferenceMaps(options: { root: string; routesDir?: string }
     },
   };
 }
+
+/**
+ * Round 6: every app module (src/**) is served without its inline source map in dev. Vite embeds the whole original
+ * file as base64 in each module, so a first load carried about as much map as code (floating-oracle.tsx 560 KB,
+ * voice-companion.tsx 557 KB, business.tsx 275 KB). Stack traces in the browser console then point at the served
+ * module instead of the original line; set AGENTIC_DEV_SOURCEMAPS=1 to keep the maps while debugging UI.
+ * Node modules keep theirs (they are small once pre-bundled) and `vite build` is untouched.
+ */
+export function isAppSourceModule(id: string, srcDir: string): boolean {
+  const [path, query = ""] = id.split("?");
+  if (query.includes("raw") || query.includes("url") || query.includes("inline")) return false;
+  const file = path.split("\\").join("/");
+  const dir = srcDir.split("\\").join("/").replace(/\/$/, "");
+  return file.startsWith(`${dir}/`) && !file.includes("/node_modules/") && /\.[cm]?[jt]sx?$/.test(file);
+}
+
+export function appSourceMapsOff(options: { root: string; srcDir?: string }): Plugin {
+  const srcDir = options.srcDir ?? join(options.root, "src");
+  return {
+    name: "agentic-app-source-maps-off",
+    apply: "serve",
+    enforce: "post",
+    transform(code, id) {
+      if (process.env.AGENTIC_DEV_SOURCEMAPS === "1") return null;
+      if ((this as { environment?: { name: string } }).environment?.name !== "client") return null;
+      if (!isAppSourceModule(id, srcDir)) return null;
+      return { code, map: { mappings: "" } };
+    },
+  };
+}

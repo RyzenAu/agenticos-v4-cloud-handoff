@@ -1,6 +1,20 @@
 import type { BusinessWorkspace } from "@/lib/business-workspace";
 import { useState } from "react";
-import { fmtMoney } from "@/lib/format";
+import { fmtDay, fmtMoney } from "@/lib/format";
+
+/** The business keeps Sydney time: a UTC instant late on 30 Sep is 1 Oct here, on every machine. */
+export const FINANCE_TIME_ZONE = "Australia/Sydney";
+
+/**
+ * "Recorded 1 Oct 2026", or "Recorded: not recorded" when the stored value is missing or not a date. Stored
+ * timestamps are ISO strings; they are never shown raw, and an unreadable one never prints "Invalid Date".
+ */
+export function recordedLine(label: string, iso: string | null | undefined): string {
+  // JavaScript reads some junk ("0000-00-00") as a day in 1899; no finance record is that old, so it counts as unreadable.
+  const readable = !!iso && Date.parse(iso) >= Date.UTC(2000, 0, 1);
+  const day = readable ? fmtDay(iso, { timeZone: FINANCE_TIME_ZONE, year: true }) : "—";
+  return day === "—" ? `${label}: not recorded` : `${label} ${day}`;
+}
 
 const amount = (value: number, currency: string | null) =>
   currency
@@ -40,7 +54,7 @@ export function FinanceSnapshotState({ finances, onExamples }: {
       </div>
       {accounts.length ? (
         <>
-          <p>{finances?.sourceLabel} · Recorded {finances?.recordedAt?.slice(0, 10)}</p>
+          <p>{finances?.sourceLabel} · {recordedLine("Recorded", finances?.recordedAt)}</p>
           <dl className="biz-finance-live-totals">
             {groups.map((group) => (
               <div key={group.currency || "unspecified"}>
@@ -52,7 +66,7 @@ export function FinanceSnapshotState({ finances, onExamples }: {
               <dt>Income, last 30 days</dt>
               <dd>
                 {income ? amount(income.amount, income.currency) : "Not read yet"}
-                {income ? <small> · {income.transactions} settled payments · read {income.recordedAt.slice(0, 10)}</small> : <small> · refresh from the overview</small>}
+                {income ? <small> · {income.transactions} settled payments · {recordedLine("read", income.recordedAt)}</small> : <small> · refresh from the overview</small>}
               </dd>
             </div>
           </dl>

@@ -4,7 +4,7 @@
 // anyone — `draft` returns text only.
 import type { Database } from "bun:sqlite";
 import { buildCard } from "./card";
-import { generateCallScript, hasScript, readScript } from "./call-script";
+import { generateCallScript, readScript } from "./call-script";
 import {
   activities,
   callList,
@@ -28,11 +28,12 @@ import {
   type Status,
 } from "./crm";
 import { findLeads, MONTHLY_DETAILS_BUDGET, type Source } from "./engine";
+import { normaliseFindArea, normaliseWebsitePresence, type WebsitePresence } from "./find-input";
 import { followUpQueue } from "./followups";
 import { readHunt, type HuntReport } from "./hunt";
-import { callOpener, callWindow, DEFAULT_SENDER, emailDraft } from "./outreach";
+import { callOpener, callWindow, DEFAULT_SENDER, emailDraft, emailPitch } from "./outreach";
 import { defaultFinderDeps, describeSources, findAndApply, readFinding, type FinderDeps } from "./phone-finder";
-import { issueHook, readIssues, topIssues } from "./issues";
+import { issueHook, readTrustedIssues, topIssues } from "./issues";
 import { isVertical, VERTICALS } from "./places";
 import { defaultPlacesLookup, hydrateLead, hydrateLeads, placesSession, type PlacesLookup, type PlacesSession } from "./places-live";
 import { isVerifiedFact } from "./score";
@@ -43,6 +44,7 @@ import { leadPipeline, pipelineSummary } from "./lead-pipeline";
 import { crmOverview, dealRows, draftTarget, isCalendarDate, leadDeal, moveStage, OFFERS, readDeal, readRules, saveDeal, saveRules, type DealPatch } from "./deals";
 import { isCallDue } from "../../src/lib/call-queue";
 import { searchCrm } from "./crm-search";
+import { editLead, leadArtifactCurrent, leadEditVersion } from "./edit";
 
 export const OWNERS = ["usman", "mehroz"] as const;
 export type Owner = (typeof OWNERS)[number];
@@ -104,22 +106,23 @@ export function validateGoalBody(body: any): { by: Owner; calls: number } {
   return { by, calls: Math.round(calls) };
 }
 
-export function validateFindBody(body: any): { vertical: keyof typeof VERTICALS; area: string; max: number; source: Source } {
+export function validateFindBody(body: any): { vertical: keyof typeof VERTICALS; area: string; max: number; source: Source; websitePresence: WebsitePresence } {
   const vertical = body?.vertical;
   if (!isVertical(vertical)) throw new Error(`vertical must be one of ${Object.keys(VERTICALS).join(", ")}.`);
-  const area = String(body?.area ?? "").trim().slice(0, 120);
-  if (!area) throw new Error('Say where, e.g. "Parramatta NSW".');
+  const area = normaliseFindArea(body?.area);
   const maxRaw = body?.max;
   const max = Math.min(Math.max(Number.isFinite(Number(maxRaw)) ? Math.round(Number(maxRaw)) : 20, 1), 30);
   const sourceRaw = body?.source;
   if (sourceRaw !== undefined && sourceRaw !== "osm" && sourceRaw !== "google") throw new Error('source must be "osm" or "google".');
   const source: Source = sourceRaw === "google" ? "google" : "osm"; // osm (free, no key) is the default
-  return { vertical, area, max, source };
+  const websitePresence = normaliseWebsitePresence(body?.websitePresence);
+  if (source === "google" && websitePresence === "missing") throw new Error("The no-website-listed filter is available for OpenStreetMap only.");
+  return { vertical, area, max, source, websitePresence };
 }
 
-function friendlyFindError(error: unknown): Error {
+export function friendlyFindError(error: unknown, source: Source): Error {
   const message = (error as Error)?.message || "The search failed.";
-  if (/403|PERMISSION_DENIED/i.test(message))
+  if (source === "google" && /403|PERMISSION_DENIED/i.test(message))
     return new Error("Google isn't allowing this yet: enable Places API (New) in Google Cloud Console for this key, then try again.");
   return new Error(message);
 }
@@ -187,9 +190,9 @@ export function createLeadsApi(
     const id = params.get("id");
     if (!id) throw new Error("Missing lead id.");
     const lead = await hydrateLead(requireLead(id), session());
-    const report = readIssues(db, lead.id);
+    const report = readTrustedIssues(db, lead);
     return {
-      lead: withVerified(lead), activities: activities(db, lead.id), phoneFinding: phoneFinding(lead.id),
+      lead: { ...withVerified(lead), editVersion: leadEditVersion(requireLead(id)) }, activities: activities(db, lead.id), phoneFinding: phoneFinding(lead.id),
       pipeline: leadPipeline(root, db, lead), drafts: draftFiles(root, lead.id), deal: leadDeal(root, db, lead),
       // issues.ts: top evidenced issues with the page each was seen on (null until an issues pass ran).
       issues: report ? { checkedAt: report.checkedAt, status: report.status, statusNote: report.statusNote, hook: report.hook, top: topIssues(report, 3) } : null,
@@ -229,8 +232,8 @@ export function createLeadsApi(
       leads: leads.map((lead) => ({
         ...withVerified(lead),
         opener: callOpener({ ...lead, hook: issueHook(db, lead) }, DEFAULT_SENDER),
-        scriptReady: hasScript(root, lead.id),
-        topIssues: topIssues(readIssues(db, lead.id), 3),
+        scriptReady: !!currentScript(lead.id),
+        topIssues: topIssues(readTrustedIssues(db, lead), 3),
       })),
     };
   }
@@ -318,9 +321,8 @@ export function createLeadsApi(
     const lead = requireLead(id);
     if (!lead.emails.length) throw new Error("No published email address on file for this lead.");
     if (!lead.emailOk) throw new Error("This lead has opted out or its site asks not to be emailed.");
-    const pitch = lead.pitch === "receptionist" || lead.pitch === "both" || lead.pitch === "redesign" || lead.pitch === "audit_pending" ? lead.pitch : "website";
     // F1-33: the founder's contact note travels with the draft (a no-email note refuses it).
-    const drafted = emailDraft({ name: lead.name, vertical: lead.vertical, reasons: lead.reasons, pitch, hook: issueHook(db, lead), contactPref: readDeal(db, lead.id).contactPref }, DEFAULT_SENDER);
+    const drafted = emailDraft({ name: lead.name, vertical: lead.vertical, reasons: lead.reasons, pitch: emailPitch(lead.pitch), hook: issueHook(db, lead), contactPref: readDeal(db, lead.id).contactPref }, DEFAULT_SENDER);
     return { to: lead.emails, subject: drafted.subject, body: drafted.body, sent: false, note: "Draft only — this is never sent automatically." };
   }
 
@@ -328,7 +330,12 @@ export function createLeadsApi(
     const id = params.get("id");
     if (!id) throw new Error("Missing lead id.");
     const lead = requireLead(id);
-    return { script: readScript(root, lead.id) };
+    return { script: currentScript(lead.id) };
+  }
+
+  function currentScript(id: number) {
+    const script = readScript(root, id);
+    return script && leadArtifactCurrent(db, id, script.generatedAt) ? script : null;
   }
 
   async function generateScript(body: any) {
@@ -342,7 +349,8 @@ export function createLeadsApi(
     const id = params.get("id");
     if (!id) throw new Error("Missing lead id.");
     const lead = requireLead(id);
-    return { audit: readSeoAudit(root, lead.id) as SeoAuditRecord | null };
+    const audit = readSeoAudit(root, lead.id) as SeoAuditRecord | null;
+    return { audit: audit && leadArtifactCurrent(db, lead.id, audit.startedAt, true) ? audit : null };
   }
 
   /** Founder-clicked, one lead at a time -- runSeoAudit's own process-wide lock enforces
@@ -375,7 +383,7 @@ export function createLeadsApi(
     try {
       return await findLeads(db, opts);
     } catch (error) {
-      throw friendlyFindError(error);
+      throw friendlyFindError(error, opts.source);
     }
   }
 
@@ -406,6 +414,10 @@ export function createLeadsApi(
       if (path === "/leads/summary" && method === "GET") return summary();
       if (path === "/leads/list" && method === "GET") return list(params);
       if (path === "/leads/detail" && method === "GET") return detail(params);
+      if (path === "/leads/edit" && method === "POST") {
+        const lead = editLead(db, requireLead(body?.lead).id, body);
+        return { lead: { ...withVerified(lead), editVersion: leadEditVersion(lead) } };
+      }
       if (path === "/leads/pipeline" && method === "GET") return params.get("summary") === "1" ? pipelineSummary(root, db) : leadPipeline(root, db, requireLead(params.get("id") ?? ""));
       if (path === "/leads/proposal" && method === "POST") { const t = draftTarget(db, requireLead(body?.lead), body?.packageId); return draftProposal(root, t.lead, t.packageId); }
       if (path === "/leads/deposit-invoice" && method === "POST") { const t = draftTarget(db, requireLead(body?.lead), body?.packageId); return draftInvoice(root, t.lead, new Date(), t.packageId); }

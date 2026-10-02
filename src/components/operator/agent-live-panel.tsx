@@ -3,9 +3,10 @@
 // then the result — the way a terminal would, inside the OS. Read-only. Sources are the existing
 // streams: the voice companion's hand-off events (src/lib/agent-feed.ts), Hermes' own session
 // (GET /__operator/hud/hermes), /agent-jobs and /away. Everything shown is redacted first.
+import { TaskProgress } from "./task-progress";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, Check, ChevronDown, ChevronRight, ChevronUp, Dot, Hand, Loader2, MessageSquareText, MonitorSmartphone, Moon, TerminalSquare, TriangleAlert, X } from "lucide-react";
+import { Bot, Check, ChevronDown, ChevronUp, Hand, Loader2, MonitorSmartphone, Moon, TerminalSquare, TriangleAlert, X } from "lucide-react";
 import { dismissTask, feedStatus, redactText, setSteps, subscribeFeed, type FeedStep, type FeedTask } from "@/lib/agent-feed";
 import { agentLabel, useAgentJobs, type AgentJob } from "./agent-jobs-panel";
 import "./jarvis-hud-upgrade.css";
@@ -101,7 +102,7 @@ export function AgentLivePanel() {
   const away = useQuery<AwayStatus>({
     queryKey: ["hud-away"],
     queryFn: async () => (await fetch("/__operator/away", { cache: "no-store" })).json(),
-    refetchInterval: 8000,
+    refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     retry: false,
   });
@@ -154,7 +155,7 @@ export function AgentLivePanel() {
         <span className="alp-pulse" data-live={live} aria-hidden="true" />
         <button type="button" className="alp-title" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed}>
           <LeadIcon size={14} />
-          <span>{live ? `${lead.agent} working` : `${lead.agent} done`}</span>
+          <span>{lead.agent} {feedStatus(lead) === "running" ? "working" : feedStatus(lead) === "needs-you" ? "needs your yes" : feedStatus(lead) === "done" ? "finished" : "needs attention"}</span>
           <span className="alp-count">
             {tasks.length > 1 ? `${tasks.length} tasks` : `${lead.steps.length} step${lead.steps.length === 1 ? "" : "s"}`} · {clock((lead.endedAt ?? now) - lead.startedAt)}
           </span>
@@ -189,26 +190,7 @@ export function AgentLivePanel() {
                     </button>
                   )}
                 </div>
-                <ol className="alp-steps">
-                  {task.steps.map((step, i) => (
-                    <li key={i} data-kind={step.kind}>
-                      <span className="alp-step-mark" aria-hidden="true">
-                        {step.kind === "tool" ? <ChevronRight size={11} /> : step.kind === "result" ? <Check size={11} /> : step.kind === "error" ? <TriangleAlert size={11} /> : step.kind === "say" ? <MessageSquareText size={11} /> : <Dot size={11} />}
-                      </span>
-                      {step.name && <code className="alp-step-name">{step.name}</code>}
-                      <span className="alp-step-text">{step.text}</span>
-                    </li>
-                  ))}
-                  {!task.endedAt && (
-                    <li data-kind="waiting" className="alp-cursor">
-                      <span className="alp-step-mark" aria-hidden="true">
-                        <ChevronRight size={11} />
-                      </span>
-                      <span className="alp-step-text">{isHermes && hermes?.activity ? hermes.activity : "working"}</span>
-                      <i aria-hidden="true" />
-                    </li>
-                  )}
-                </ol>
+                <TaskProgress task={task} activity={isHermes ? hermes?.activity ?? undefined : undefined} />
                 {task.endedAt && task.result && <p className="alp-result">{task.result}</p>}
               </section>
             );

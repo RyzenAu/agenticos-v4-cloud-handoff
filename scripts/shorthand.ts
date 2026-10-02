@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDirFor } from "./cloud/data-dir";
 
 /**
  * His shorthand ("yt" = YouTube), shared by every entry point so Jarvis reads him the same
@@ -33,7 +34,7 @@ export const DEFAULT_SHORTHAND: Record<string, string> = {
 
 export function readShorthand(root: string): Record<string, string> {
   try {
-    const data = JSON.parse(readFileSync(join(root, ".operator-data", "shorthand.json"), "utf8"));
+    const data = JSON.parse(readFileSync(join(dataDirFor(root), "shorthand.json"), "utf8"));
     const own = data && typeof data.terms === "object" ? data.terms : {};
     const clean: Record<string, string> = {};
     for (const [term, meaning] of Object.entries(own))

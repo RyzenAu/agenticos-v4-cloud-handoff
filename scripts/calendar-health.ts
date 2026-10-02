@@ -10,6 +10,7 @@ import {
   type NativeCalendarProblem,
   type NativeCalendarSaved,
 } from "./native-calendar-sync";
+import { dataDirFor } from "./cloud/data-dir";
 
 export const CALENDAR_SYNC_INTERVAL_MS = 15 * 60_000;
 export const CALENDAR_FIRST_SYNC_MS = 45_000;
@@ -199,7 +200,7 @@ export function calendarHealthReader(
   root: string,
   deps: { accounts: Accounts; savedEvents: () => number; timeZone?: () => string | undefined },
 ) {
-  const directory = join(root, ".operator-data");
+  const directory = join(dataDirFor(root));
   return async (now = Date.now()) =>
     calendarHealth({
       native: readJson<NativeCalendarSaved>(join(directory, "native-calendar.json")),
@@ -233,7 +234,7 @@ export function startCalendarBackgroundSync(
 ) {
   const intervalMs = deps.intervalMs ?? CALENDAR_SYNC_INTERVAL_MS;
   const now = deps.now ?? Date.now;
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "calendar-background.json");
   let running: Promise<CalendarBackgroundState> | undefined;
   const write = (state: CalendarBackgroundState) => {

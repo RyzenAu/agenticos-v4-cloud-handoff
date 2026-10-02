@@ -86,7 +86,7 @@ export function resetMotion() {
 }
 
 /** Jarvis phases that mean he is talking to Jarvis or Jarvis is waiting on him. */
-export const TALKING_PHASES = new Set(["listening", "thinking", "acting", "needs-you"]);
+export const TALKING_PHASES = new Set(["listening", "speaking", "thinking", "acting", "needs-you"]);
 
 const EDITABLE = "input:not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select,[contenteditable=''],[contenteditable=true]";
 /**

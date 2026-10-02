@@ -67,3 +67,6 @@ outputs/
 
 # Local review screenshots (live call data, masked) — kept on disk, never committed.
 review/
+
+# PowerShell module cache written when the hub runs with a synthetic HOME
+/Microsoft/

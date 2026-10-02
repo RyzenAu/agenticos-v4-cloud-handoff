@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { parsePublicProfiles, type PublicProfileLink } from "../src/lib/workspace-profile-links";
+import { dataDirFor } from "./cloud/data-dir";
 
 export interface WorkspaceProfile {
   name: string;
@@ -127,7 +128,7 @@ function applyProfileFields(
 }
 
 export function workspaceProfile(root: string) {
-  const folder = join(root, ".operator-data"),
+  const folder = join(dataDirFor(root)),
     file = join(folder, "profile.json");
   const blank = (): WorkspaceProfile => ({
     name: "",

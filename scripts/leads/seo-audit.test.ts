@@ -102,11 +102,28 @@ describe("runSeoAudit guards", () => {
         // the module-wide lock before the first one finishes. A short timeoutMs cleans it up fast.
         return child;
       }
-      const first = runSeoAudit({ id: 1, website: "https://example.com" }, { root: dir, spawnFn: slowSpawn as any, timeoutMs: 50 });
+      // The interpreter is injected (any file that exists), so this test does not depend on D:\jev-seo being installed.
+      const machine = { python: process.execPath, src: dir };
+      const first = runSeoAudit({ id: 1, website: "https://example.com" }, { root: dir, spawnFn: slowSpawn as any, timeoutMs: 50, ...machine });
       await new Promise((r) => setTimeout(r, 10));
-      await expect(runSeoAudit({ id: 2, website: "https://example.org" }, { root: dir, spawnFn: fakeSpawn as any }))
+      await expect(runSeoAudit({ id: 2, website: "https://example.org" }, { root: dir, spawnFn: fakeSpawn as any, ...machine }))
         .rejects.toBeInstanceOf(SeoAuditBusyError);
-      first.catch(() => {}); // leave the first to time out/be killed in the background; not this test's concern
+      await first.catch(() => {}); // wait for the first to time out (50 ms) so its lock is released before the next test starts
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("a missing interpreter is a config error that never takes the lock", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "seo-audit-"));
+    writeFileSync(join(dir, ".env.local"), "TYPESAFE_API_KEY=test-key-not-real\n");
+    try {
+      const missing = { python: join(dir, "no-such-python.exe"), src: dir };
+      await expect(runSeoAudit({ id: 1, website: "https://example.com" }, { root: dir, spawnFn: fakeSpawn as any, ...missing }))
+        .rejects.toBeInstanceOf(SeoAuditConfigError);
+      // The failed attempt must not leave the module "busy": the next call is refused for the same honest reason, not as busy.
+      await expect(runSeoAudit({ id: 2, website: "https://example.org" }, { root: dir, spawnFn: fakeSpawn as any, ...missing }))
+        .rejects.toBeInstanceOf(SeoAuditConfigError);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

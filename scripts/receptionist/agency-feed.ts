@@ -215,8 +215,13 @@ function projectClientUsage(v: unknown): FeedClientUsage | null {
   const o = v as Record<string, unknown>;
   const smsSegments = num(o.smsSegments), billableMinutes = num(o.billableMinutes);
   if (smsSegments === null || billableMinutes === null || smsSegments < 0 || billableMinutes < 0) return null;
-  const period = o.currentPeriod && typeof o.currentPeriod === "object" && !Array.isArray(o.currentPeriod) ? num((o.currentPeriod as Record<string, unknown>).billableMinutes) : null;
-  return { receipts: num(o.receipts), pending: num(o.pending), billableMinutes: Math.trunc(billableMinutes), smsSegments: Math.trunc(smsSegments), periodBillableMinutes: period === null || period < 0 ? null : Math.trunc(period) };
+  const cp = o.currentPeriod && typeof o.currentPeriod === "object" && !Array.isArray(o.currentPeriod) ? (o.currentPeriod as Record<string, unknown>) : null;
+  const period = cp ? num(cp.billableMinutes) : null;
+  const bb = cp?.billingBlocked && typeof cp.billingBlocked === "object" && !Array.isArray(cp.billingBlocked) ? (cp.billingBlocked as Record<string, unknown>) : null;
+  const reason = bb ? text(bb.reason, 60) : null;
+  // A present billingBlocked object is a block even if its reason is malformed: fail to "blocked", never to "fine".
+  const periodBillingBlocked = bb ? { reason: reason && /^[A-Z][A-Z0-9_]*$/.test(reason) ? reason : "UNKNOWN", message: text(bb.message, 200) ?? "Billing blocked: the feed gave no reason." } : null;
+  return { periodBillingBlocked, receipts: num(o.receipts), pending: num(o.pending), billableMinutes: Math.trunc(billableMinutes), smsSegments: Math.trunc(smsSegments), periodBillableMinutes: period === null || period < 0 ? null : Math.trunc(period) };
 }
 
 function projectClientReadiness(v: unknown): FeedClientReadiness {

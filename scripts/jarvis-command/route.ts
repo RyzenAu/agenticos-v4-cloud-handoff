@@ -11,8 +11,22 @@
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Principal } from "../identity/principal";
-import type { CommandBody, CommandStreamEvent } from "./contracts";
+import { COMPANION_EXECUTORS, MAX_REMOTE_STEPS, type CommandBody, type CommandStreamEvent, type ExecutorName, type RemoteStep } from "./contracts";
 import type { CommandService } from "./service";
+
+/** A typed plan from the body: only companion executors, plain-object args, at most MAX_REMOTE_STEPS. Anything else is dropped whole. */
+export function parseSteps(value: unknown): RemoteStep[] | undefined {
+  if (!Array.isArray(value) || !value.length || value.length > MAX_REMOTE_STEPS) return undefined;
+  const steps: RemoteStep[] = [];
+  for (const raw of value) {
+    const s = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+    const executor = typeof s?.executor === "string" ? (s.executor as ExecutorName) : null;
+    if (!executor || !COMPANION_EXECUTORS.includes(executor)) return undefined;
+    const args = s!.args && typeof s!.args === "object" && !Array.isArray(s!.args) && JSON.stringify(s!.args).length <= 4_000 ? (s!.args as Record<string, unknown>) : {};
+    steps.push({ executor, args });
+  }
+  return steps;
+}
 
 /** Validate POST /screen/command. `personId` is never read (identity is the verified principal). */
 export function parseCommandBody(body: unknown): CommandBody {
@@ -24,7 +38,10 @@ export function parseCommandBody(body: unknown): CommandBody {
   const spokenYes = typeof b.spokenYes === "string" && /^[a-f0-9-]{36}$/i.test(b.spokenYes) ? b.spokenYes : undefined;
   let pageContext: CommandBody["pageContext"];
   if (b.pageContext && typeof b.pageContext === "object" && JSON.stringify(b.pageContext).length <= 24_000) pageContext = b.pageContext as CommandBody["pageContext"];
-  return { utterance, source, ...(spokenTarget ? { spokenTarget } : {}), ...(spokenYes ? { spokenYes } : {}), ...(pageContext ? { pageContext } : {}) };
+  const steps = parseSteps(b.steps);
+  const conversationId = typeof b.conversationId === "string" && /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(b.conversationId) ? b.conversationId : undefined;
+  const eventId = typeof b.eventId === "string" && /^[\w:.-]{6,80}$/.test(b.eventId) ? b.eventId : undefined;
+  return { utterance, source, ...(conversationId ? { conversationId } : {}), ...(eventId ? { eventId } : {}), ...(spokenTarget ? { spokenTarget } : {}), ...(spokenYes ? { spokenYes } : {}), ...(pageContext ? { pageContext } : {}), ...(steps ? { steps } : {}) };
 }
 
 function ndjson(res: ServerResponse) {
@@ -105,6 +122,15 @@ export async function commandRoute(input: {
       ended = true;
     });
     return true;
+  }
+  // GET /screen/command/thread?conversation=<id>&after=<seq> -> { conversationId, entries }: the server-appended job results in this person's
+  // Jarvis thread (the voice client says the short ones at a pause; the activity stream shows them). Reads only.
+  if (path === "/screen/command/thread" && method === "GET") {
+    const raw = url.searchParams.get("conversation") || "";
+    const conversation = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(raw) ? raw : undefined;
+    const after = Math.max(0, Number(url.searchParams.get("after")) || 0);
+    const r = service.threadUpdates(principal, conversation, after);
+    return r ? (send(r), true) : (send({ error: "That conversation is someone else's." }, 403), true);
   }
   if (path === "/screen/command/cancel" && method === "POST") {
     const jobId = typeof (body as { jobId?: unknown } | null)?.jobId === "string" ? String((body as { jobId: string }).jobId).slice(0, 64) : "";

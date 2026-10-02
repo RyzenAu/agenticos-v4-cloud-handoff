@@ -17,6 +17,8 @@ import { createWorkspace, loopbackJson, type PanelName } from "./sources";
 import { parseWorkspacesFile, type SavedGroups } from "./three-workspaces";
 import { requestPrincipal } from "../identity/gate";
 import { authorise, isBrowserPrincipal, type Principal } from "../identity/principal";
+import { decisionPath } from "./decisions";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROUTES: Record<string, PanelName> = {
   "/today": "today",
@@ -54,7 +56,7 @@ export type { SavedGroups } from "./three-workspaces";
 
 /** Reads .operator-data/workspaces.json (written only by consolidate-workspaces.ts --apply). */
 export function savedGroupsReader(root: string): () => SavedGroups {
-  const file = join(root, ".operator-data", "workspaces.json");
+  const file = join(dataDirFor(root), "workspaces.json");
   return () => {
     if (!existsSync(file)) return { saved: null };
     try {
@@ -91,8 +93,9 @@ export function workspaceMiddleware(workspace: ReturnType<typeof createWorkspace
  * both, so a call logged on /leads invalidates the reused read. Other panels: null (time-based).
  */
 export function crmChangeKey(root: string): (name: PanelName) => string | null {
-  const files = [join(root, ".operator-data", "crm.sqlite"), join(root, ".operator-data", "crm.sqlite-wal")];
+  const files = [join(dataDirFor(root), "crm.sqlite"), join(dataDirFor(root), "crm.sqlite-wal")];
   return (name) => {
+    if (name === "today" || name === "needsYou") return [join(root, "scripts/workspace/approvals.json"), decisionPath(root)].map(f => existsSync(f) ? `${statSync(f).size}:${statSync(f).mtimeMs}` : "-").join("|");
     if (name !== "pipeline" && name !== "callQueue") return null;
     return files.map((f) => (existsSync(f) ? `${statSync(f).size}:${statSync(f).mtimeMs}` : "-")).join("|");
   };
@@ -100,7 +103,7 @@ export function crmChangeKey(root: string): (name: PanelName) => string | null {
 
 /** Open speed-to-lead enquiries from the CRM, opened read-only per request (never created here). */
 export function enquiryReader(root: string): () => EnquiryRecord[] {
-  const file = join(root, ".operator-data", "crm.sqlite");
+  const file = join(dataDirFor(root), "crm.sqlite");
   return () => {
     if (!existsSync(file)) return [];
     const { Database } = createRequire(import.meta.url)("bun:sqlite") as typeof import("bun:sqlite");
@@ -126,6 +129,7 @@ export function workspacePlugin(options: { root: string }): Plugin {
       const workspace = createWorkspace({
         get: loopbackJson(origin),
         approvalsFile: join(options.root, "scripts/workspace/approvals.json"),
+        decisionsFile: decisionPath(options.root),
         enquiries: enquiryReader(options.root),
         // No scheduler runs scripts/speed-to-lead/run.ts yet (owner yes pending, docs/SPEED-TO-LEAD.md).
         enquiryWatcherScheduled: false,

@@ -431,3 +431,28 @@ test("an unrecognised bookingOutcome value is dropped, never invented", () => {
   if (!state.ok) throw Error("feed");
   expect(state.clients[0].readiness.bookingOutcome).toBeNull();
 });
+
+test("plugin wiring: the snapshot feed asks for view=full, the dashboard feed for view=metadata (the app's default is metadata)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("./plugin.ts", import.meta.url), "utf8");
+  expect(src).toMatch(/const agencyFeed = createAgencyFeed\(\{[^}]*view: "full"/);
+  expect(src).toMatch(/const agencyFeedMetadata = createAgencyFeed\(\{[^}]*view: "metadata"/);
+});
+
+test("usage.currentPeriod.billingBlocked is projected as a block, never dropped or zeroed", () => {
+  const base = { organizationId: "org_1", slug: "s", isDemoTenant: false, readiness: {} };
+  const usage = (currentPeriod: unknown) => ({ receipts: 1, pending: 0, billableMinutes: 10, smsSegments: 0, currentPeriod });
+  const state = projectAgencyFeed({
+    ...(fixture() as object),
+    clients: [
+      { ...base, usage: usage({ billableMinutes: 12, billingBlocked: { reason: "TAX_MODE_MISMATCH", message: "Billing blocked: tax mode mismatch." } }) },
+      { ...base, organizationId: "org_2", usage: usage({ billableMinutes: 12, billingBlocked: null }) },
+      { ...base, organizationId: "org_3", usage: usage({ billableMinutes: 12, billingBlocked: { reason: 5 } }) },
+    ],
+  });
+  if (!state.ok) throw Error("feed");
+  const [a, b, c] = state.clients.map((x) => x.usage?.periodBillingBlocked ?? null);
+  expect(a).toEqual({ reason: "TAX_MODE_MISMATCH", message: "Billing blocked: tax mode mismatch." });
+  expect(b).toBeNull();
+  expect(c).toMatchObject({ reason: "UNKNOWN" }); // malformed block still blocks
+});

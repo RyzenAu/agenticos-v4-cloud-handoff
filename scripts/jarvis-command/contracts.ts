@@ -51,13 +51,22 @@ export type ExecutorName =
   | "deck" // PowerPoint COM ops on a deck under an authorised root (create/open/edit/add/show/end)
   | "deck.blank" // a NEW, never-saved PowerPoint presentation with a title slide, read back from COM
   | "notepad.type" // a NEW empty Notepad document, a line typed and read back; never saved
+  | "app.focus" // launch or focus an allow-listed app; confirmed by reading the foreground window's process and handle
+  | "browser.navigate" // a new tab (or this one) in Jarvis Chrome at a URL; confirmed by the tab's own title and address
+  | "target.focus" // bring back a website or app the person was using, confirmed as the foreground window
+  | "screen.goal" // an open-ended or compound goal: the SAME Jarvis entry + screen loop the PC hub runs, on the companion's own PC
+  | "observe.window" // read-only: the foreground window's process and title (no screenshot)
   | "browser.youtube" // hub only: YouTube steps in the app-owned browser
   | "screen.act" // hub only: the Jev-first screen loop on the window in front
   | "echo"
   | "wait";
 
 /** Executors a companion may be asked to run (the hub-only ones are never dispatched). */
-export const COMPANION_EXECUTORS: readonly ExecutorName[] = ["app.open", "open-url", "file.open", "deck.blank", "notepad.type", "echo", "wait"];
+export const COMPANION_EXECUTORS: readonly ExecutorName[] = ["app.open", "app.focus", "open-url", "browser.navigate", "file.open", "deck.blank", "notepad.type", "observe.window", "target.focus", "screen.goal", "echo", "wait"];
+
+/** A job's plan for a companion: up to this many typed steps, each dispatched, checked and recorded on its own. */
+export const MAX_REMOTE_STEPS = 6;
+export type RemoteStep = { executor: ExecutorName; args: Record<string, unknown> };
 
 export type ExecutorCall = { targetDeviceId: string; executor: ExecutorName; args: Record<string, unknown> };
 
@@ -154,6 +163,21 @@ export type CommandBody = {
   pageContext?: PageContext;
   /** The voice pipeline's own spoken-yes event id (never minted by a client). */
   spokenYes?: string;
+  /**
+   * A typed plan for the requester's own companion (Jev's or a caller's): each step is dispatched in order, to the
+   * device the job started on, and checked before the next. Only COMPANION_EXECUTORS; at most MAX_REMOTE_STEPS.
+   */
+  steps?: RemoteStep[];
+  /**
+   * The person's Jarvis thread (the voice transcript's conversation id). Jobs this command leaves going are linked to it and their results
+   * are appended there by the server. Absent: the person's default thread. Someone else's id is ignored.
+   */
+  conversationId?: string;
+  /**
+   * A client-minted id for THIS utterance (one per spoken or typed event, stable across a reconnect's replay). The same id from the same
+   * person is the same command: the first outcome is returned and nothing runs twice.
+   */
+  eventId?: string;
 };
 
 export type CommandKind = "screen" | "browser" | "app" | "file" | "answer" | "navigate" | "handoff" | "refused" | "ask" | "unavailable" | "remote";
@@ -175,6 +199,8 @@ export type CommandDoneEvent = {
   ask?: boolean;
   stopped?: boolean;
   confirm?: string;
+  /** The unfinished screen goal after a verified setup. */
+  resumeGoal?: string;
   /** When the lane's post-action check passed on the hub (ms epoch), if it reports one. */
   checkedAt?: number;
   /** A question was asked that waits for his answer (a final button's yes, a forget's yes): the job is awaiting-approval. */

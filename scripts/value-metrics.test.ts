@@ -25,4 +25,6 @@ test("the profile's hourly rate wins; an unset rate is an assumption and says so
 test("Australian time zones suggest AUD", () => {
   expect(currencyForTimeZone("Australia/Sydney")).toBe("AUD");
   expect(currencyForTimeZone("America/New_York")).toBe("USD");
+  expect(currencyForTimeZone("UTC")).toBe("AUD");
+  expect(currencyForTimeZone(undefined)).toBe("AUD");
 });

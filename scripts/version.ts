@@ -53,7 +53,7 @@ export function createVersionInfo(root: string, status: GitStatus = gitStatus): 
         (out) => out.trim().length > 0,
         () => false,
       );
-      return { version: readPackageVersion(root), gitSha: gitHeadShortSha(root) || "unknown", dirty, buildTime };
+      return { version: readPackageVersion(root), gitSha: gitHeadShortSha(root) || readReleaseSha(root) || "unknown", dirty, buildTime };
     })());
 }
 
@@ -62,6 +62,19 @@ const processVersion = createVersionInfo(REPO_ROOT);
 /** This server's version (one shared promise per process). The server primes it at startup. */
 export function versionInfo(): Promise<VersionInfo> {
   return processVersion();
+}
+
+/**
+ * A release unpacked with `git archive` (deploy/bin/rollout.sh) has no .git folder; the rollout writes the
+ * SHA it unpacked into RELEASE_SHA so /__version and /__health still say which commit is running.
+ */
+function readReleaseSha(root: string): string {
+  try {
+    const sha = readFileSync(join(root, "RELEASE_SHA"), "utf8").trim();
+    return /^[0-9a-f]{7,40}$/i.test(sha) ? sha.slice(0, 7) : "";
+  } catch {
+    return "";
+  }
 }
 
 function readPackageVersion(root: string): string {

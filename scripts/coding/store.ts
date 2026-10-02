@@ -417,14 +417,14 @@ export class CodingStore {
    * `spec` may change only before the job starts (a draft edit or the confirmation, C4): a confirmed
    * spec is immutable, and an edit after confirmation is refused.
    */
-  updateJob(id: string, patch: Partial<Pick<CodingJob, "headSha" | "diff" | "tests" | "review" | "gate" | "applies" | "spec">>): CodingJob {
+  updateJob(id: string, patch: Partial<Pick<CodingJob, "headSha" | "diff" | "tests" | "review" | "gate" | "applies" | "spec" | "supersededBy" | "stoppedBecause">>): CodingJob {
     this.writable();
     const at = this.at();
     this.db.transaction(() => {
       const job = this.readJob(id);
       if (!job) throw new CodingStoreError("Unknown job.");
       for (const key of Object.keys(patch))
-        if (!["headSha", "diff", "tests", "review", "gate", "applies", "spec"].includes(key)) throw new CodingStoreError(`Can't update ${key} here.`);
+        if (!["headSha", "diff", "tests", "review", "gate", "applies", "spec", "supersededBy", "stoppedBecause"].includes(key)) throw new CodingStoreError(`Can't update ${key} here.`);
       if (patch.spec) {
         if (!["draft", "awaiting_confirmation"].includes(job.state)) throw new CodingStoreError("A started job's spec never changes.");
         if (job.spec.confirmation.state === "confirmed") throw new CodingStoreError("A confirmed spec is immutable; draft a new job instead.");

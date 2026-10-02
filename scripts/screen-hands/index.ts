@@ -19,6 +19,7 @@ import { SHELL_CLASSES, THIS_OS } from "../jarvis-skills/dictation";
 import { jevAnswers } from "../jev-client";
 import { Missed, nativeScreen, SCREEN_PRELUDE, WindowMoved, type NativeScreen } from "./native";
 import { FLAGS_OFF, screenFlags, type ScreenFlags } from "./flags";
+import { observedChange } from "./settle";
 import { isRefError, RefError, resolveRef, scope, whichOne, type Scoped } from "./refs";
 import { cdpHands, connectCdp, createCdpSessions, type CdpClient, type CdpDeps, type CdpSessions, type LaunchReply } from "./cdp";
 import { spawn } from "node:child_process";
@@ -35,7 +36,7 @@ import { createTutor, createTutorMinds, type TutorEvent, type TutorMinds } from 
 import { fillLine, FORM_FILL_GOAL, planFill, savedDetails, type Detail, type FillAsk } from "./form-fill";
 import { runFileDialog, type DialogOps } from "./file-dialog";
 import { screenAuditEntries } from "./audit";
-import { createJarvisChromeRoute, loadChromium, type JarvisChromeRoute } from "./browser-exec";
+import { playwrightHands, PLAYWRIGHT_WINDOW, type PwPage, createJarvisChromeRoute, loadChromium, type JarvisChromeRoute } from "./browser-exec";
 import { newTaskId } from "../../src/lib/control-outcome";
 import { auditDir, createAuditLog } from "../control-audit";
 import {
@@ -103,6 +104,12 @@ export type ScreenRequest = {
   confirm?: string;
   vision?: boolean;
   onlyWindow?: number;
+  /** Server-selected owned page, never accepted from HTTP or model arguments. */
+  browserPage?: PwPage;
+  /** Server checkpoint after a question; never accepted from HTTP. */
+  resumeFrom?: number;
+  /** Server-only read/vet of a single invalid confirmation. Never execute it. */
+  confirmAssessment?: boolean;
   trace?: boolean;
   /**
    * A-M3 for final buttons: set by parseScreenRequest (every HTTP request). A `confirm` then counts
@@ -142,6 +149,8 @@ export type ScreenDone = {
   ms: number;
   stepMs: number[];
   confirm?: string;
+  /** Completed parsed steps before the pending action (server checkpoint only). */
+  resumeFrom?: number;
   ask?: boolean;
   stopped?: boolean;
   outcome?: "unverified" | "step_limit" | "no_progress";
@@ -513,6 +522,7 @@ export async function runScreenAct(
     const hit = fence(win.title, url, win.process, dialogTextOf(snap, win.title)) ?? (front && front.handle !== win.handle ? fence(front.title, null, front.process) : null);
     return hit ? finish(false, `${did.length ? `${summarise(did)} ` : ""}${hit}`, { refused: true }) : null;
   };
+  if (target.behind && req.confirmAssessment) return finish(false, "That confirmation isn't current. I left the background window alone.", { ask: true });
   if (target.behind) await hands.focus(win.handle).catch(() => false);
   let browser = BROWSER_PROCESS.test(win.process);
   emit({ type: "start", window: windowTitle });
@@ -586,6 +596,7 @@ export async function runScreenAct(
     const usesYes = !!confirmed && ((action.do === "click" && labelOf(action.element).toLowerCase() === confirmed.toLowerCase()) || (action.do === "key" && canonicalKeys(confirmed.replace(/\s+/g, "")) === canonicalKeys(action.keys.replace(/\s+/g, ""))));
     if (usesYes && req.bound && (req.bound.page !== binding.page || req.bound.element !== binding.element))
       return finish(false, `${did.length ? `${summarise(did)} ` : ""}The page or the control changed since you said yes, so I didn't press it. Ask again if you still want it.`);
+    if (req.confirmAssessment) return finish(false, "That confirmation isn't current. Nothing was pressed.", { ask: true });
     if (aborted()) return stopped();
     const aimAt = action.do === "click" ? action.element : action.do === "type" ? action.field : null;
     if (deps.pointer && aimAt && aim) {
@@ -1070,6 +1081,11 @@ export async function runScreenAct(
       let check = "";
       let verified: boolean | undefined;
       switch (d.op) {
+        case "wait":
+          // Observation only. Still consumes the bounded loop budget; never replays a click.
+          await sleep(300);
+          if (aborted()) return stopped();
+          continue;
         case "done":
           narrate("check", `Jev says the task is complete (${pct(confidence)}).`);
           // Success is claimed only when the last action was checked: Jev's "done" can't turn an
@@ -1149,12 +1165,8 @@ export async function runScreenAct(
             check = nowEl ? `it is now ${nowEl.toggled ? "on" : "off"}` : "I couldn't read it back";
             if (nowEl) did[did.length - 1] += nowEl.toggled ? " (now on)" : " (now off)";
           } else {
-            let after = signature(await look());
-            if (after === before) {
-              await sleep(250);
-              after = signature(await look());
-            }
-            verified = after !== before;
+            verified = await observedChange({ before, read: look, signature, signal, sleep });
+            if (aborted()) return stopped();
             check = verified ? "the window changed" : "nothing visible changed";
           }
           emit({ type: "step", n: did.length, did: did[did.length - 1], ms: stepMs[stepMs.length - 1] ?? 0, verified });
@@ -1208,7 +1220,8 @@ export async function runScreenAct(
           await sleep(SETTLE_MS);
           const moved = await popped();
           if (moved) return moved;
-          verified = signature(await look()) !== before;
+          verified = await observedChange({ before, read: look, signature, signal, sleep });
+          if (aborted()) return stopped();
           check = verified ? "the window changed" : "nothing visible changed";
           emit({ type: "step", n: did.length, did: did[did.length - 1], ms: stepMs[stepMs.length - 1] ?? 0, verified });
           lastAttempt = verified ? null : `key:${k.keys}`;
@@ -1238,7 +1251,7 @@ export async function runScreenAct(
     }
     return finish(false, `${summarise(did)} I reached the step limit; the goal may still need work.`, { outcome: "step_limit" });
   };
-  if (jevInCharge) {
+  if (jevInCharge && !(req.resumeFrom !== undefined && parseGoal(req.goal))) {
     const done = await jevLoop();
     if (done) return done;
     if (namedElsewhere(win)) return finish(false, namedLine());
@@ -1246,7 +1259,9 @@ export async function runScreenAct(
 
   const steps = parseGoal(req.goal);
   if (steps) {
-    for (const step of steps.slice(0, maxSteps)) {
+    const from = Math.min(steps.length, Math.max(0, req.resumeFrom ?? 0));
+    for (let index = from; index < Math.min(steps.length, from + maxSteps); index++) {
+      const step = steps[index];
       if (aborted()) return stopped();
       let result: ScreenDone | null;
       try {
@@ -1255,12 +1270,12 @@ export async function runScreenAct(
         if (aborted()) return stopped();
         return finish(false, `${did.length ? `${summarise(did)} ` : ""}${failLine(error)}`.slice(0, 300));
       }
-      if (result) return result;
+      if (result) return result.confirm ? { ...result, resumeFrom: index } : result;
       if (missing) break;
     }
     if (aborted()) return stopped();
     if (!missing) {
-      if (steps.length > maxSteps) return finish(false, `${summarise(did)} I stopped at the step limit; the rest is still pending.`, { outcome: "step_limit" });
+      if (steps.length - from > maxSteps) return finish(false, `${summarise(did)} I stopped at the step limit; the rest is still pending.`, { outcome: "step_limit" });
       return finish(true, summarise(did));
     }
   }
@@ -1751,7 +1766,7 @@ export function createScreenHands(options: {
    * yes must come after THIS question, for THIS task, and the press is pinned to the window it was
    * asked about (onlyWindow). A yes to "Delete" in one window can't press "delete" in another.
    */
-  const askedConfirms = new Map<string, { at: number; handle?: number; question: string; bind?: YesBinding }>();
+  const askedConfirms = new Map<string, { at: number; handle?: number; question: string; bind?: YesBinding; browserPage?: PwPage; resumeFrom?: number }>();
   const confirmKey = (label: string, goal: string) => `${label.trim().toLowerCase()}|${goal.trim().toLowerCase().replace(/\s+/g, " ")}`;
   /** When this server last pressed a final button on his yes (a follow-up dialog's Yes/OK is final too). */
   let lastGatedAt = -Infinity;
@@ -2010,20 +2025,36 @@ export function createScreenHands(options: {
         if (yes && asked?.handle) req = { ...req, onlyWindow: asked.handle };
         // ...and to the page and control it was asked about (checked again right before the press).
         if (yes && asked?.bind) req = { ...req, bound: asked.bind };
+        if (yes && asked?.browserPage) req = { ...req, browserPage: asked.browserPage };
+        if (yes && asked?.resumeFrom !== undefined) req = { ...req, resumeFrom: asked.resumeFrom };
         if (!yes) {
-          const { confirm: _dropped, ...rest } = req;
-          req = rest;
-          log.step({ stage: "check", text: `A confirm for "${req.goal.slice(0, 40)}" came without your spoken yes to my question, so it doesn't count.` });
+          const steps = parseGoal(req.goal);
+          const single = steps?.length === 1 ? steps[0] : null;
+          // A single final can be re-assessed read-only, preserving existing refusal and question
+          // semantics. Compound tasks must never rewind their completed steps to ask again.
+          if (single?.do === "click" || (single?.do === "key" && /^(?:enter|delete|space)$/.test(single.keys))) {
+            log.step({ stage: "check", text: "Your spoken yes did not match the pending question; the control is assessed without acting." });
+            req = { ...req, confirm: undefined, jev: false, confirmAssessment: true, ...(asked?.browserPage ? { browserPage: asked.browserPage } : {}) };
+          } else {
+            // Never replay earlier task steps just to re-ask the final question.
+            const said = fresh ? "I still need your spoken yes to that question. Nothing else was repeated." : "That confirmation is no longer current. Tell me what to do next; nothing was repeated.";
+            const done: ScreenDone = { type: "done", ok: false, ask: true, said, steps: 0, ms: 0, stepMs: [], ...(fresh ? { confirm: req.confirm } : {}) };
+            log.step({ stage: "check", text: "Your spoken yes did not match a current question; nothing was repeated." });
+            log.step({ stage: "ask", text: said, spoken: true });
+            log.end({ ok: false, ask: true, said });
+            return done;
+          }
         } else {
           askedConfirms.delete(key);
           log.step({ stage: "check", text: "Your spoken yes to that question was checked on the server." });
         }
       }
-      // One driver at a time: a screen_act order ends any running lesson first.
-      lesson?.stop();
+      // A read-only invalid-confirmation check never interrupts a running lesson.
+      if (!req.confirmAssessment) lesson?.stop();
       const controller = new AbortController();
       const relay = () => controller.abort();
       signal.addEventListener("abort", relay, { once: true });
+      if (signal.aborted) controller.abort();
       running.add(controller);
       let client: CdpClient | null = null;
       let browserRoute: { hands: Hands; close(): Promise<void> } | null = null;
@@ -2032,8 +2063,9 @@ export function createScreenHands(options: {
         if (req.vision) pointMinds.warmLook?.();
         const flags = flagsNow();
         // An Electron app he asked Jarvis to open for driving: its web content through CDP.
-        let using = hands;
-        if (flags.cdp) {
+        let using = req.browserPage ? playwrightHands(req.browserPage, "Jarvis browser") : hands;
+        if (req.browserPage) req = { ...req, vision: false, onlyWindow: PLAYWRIGHT_WINDOW };
+        if (!req.browserPage && flags.cdp) {
           const front = await targetWindow(hands).catch(() => null);
           const session = front ? await cdp.forWindow(front.win) : null;
           const url = session ? await cdp.pageUrl(session) : null;
@@ -2041,15 +2073,15 @@ export function createScreenHands(options: {
           if (client) using = cdpHands(hands, client);
         }
         // Jarvis Chrome's own page: Playwright (exact DOM, actionability checks), ahead of UIA and vision.
-        if (!client && jarvisChrome) {
+        if (!req.browserPage && !client && jarvisChrome) {
           const front = await targetWindow(hands).catch(() => null);
           browserRoute = front ? await jarvisChrome.forWindow(front.win).catch(() => null) : null;
           if (browserRoute) using = browserRoute.hands;
         }
         const events: ScreenEvent[] = [];
-        log.set({ executor: client ? "cdp" : browserRoute ? "playwright" : "uia" });
+        log.set({ executor: client ? "cdp" : browserRoute || req.browserPage ? "playwright" : "uia" });
         const done = await runScreenAct(req, {
-          hands: using, minds, signal: controller.signal, pointer, flags, gated,
+          hands: using, minds: req.confirmAssessment ? {} : minds, signal: controller.signal, ...(req.browserPage || req.confirmAssessment ? {} : { pointer }), flags, gated,
           openApp: req.onlyWindow ? undefined : openApp,
           onEvent: (e) => {
             if (e.type === "step") events.push(e);
@@ -2060,12 +2092,12 @@ export function createScreenHands(options: {
         // Only questions to HIM go on the registry (away mode's unattended runs never ask him on screen).
         if (done.confirm && !req.unattended) {
           const q = spoken.ask("screen");
-          askedConfirms.set(confirmKey(done.confirm, req.goal), { at: clock(), question: q.id, ...(done.handle ? { handle: done.handle } : {}), ...(done.bind ? { bind: done.bind } : {}) });
+          askedConfirms.set(confirmKey(done.confirm, req.goal), { at: clock(), question: q.id, ...(done.handle ? { handle: done.handle } : {}), ...(done.bind ? { bind: done.bind } : {}), ...(req.browserPage ? { browserPage: req.browserPage } : {}), ...(done.resumeFrom !== undefined ? { resumeFrom: done.resumeFrom } : {}) });
         }
         log.end({ ok: done.ok, said: masker(done.said), ...(done.outcome ? { outcome: done.outcome } : {}), ...(done.ask ? { ask: true } : {}), ...(done.stopped ? { stopped: true } : {}), ...(done.confirm ? { confirm: done.confirm } : {}) });
         if (auditSink) {
           const taskId = newTaskId();
-          for (const entry of screenAuditEntries({ taskId, goal: req.goal, done, events, ...(client ? { executor: "cdp" as const } : browserRoute ? { executor: "playwright" as const } : {}), confirmed: !!req.confirm }))
+          for (const entry of screenAuditEntries({ taskId, goal: req.goal, done, events, ...(client ? { executor: "cdp" as const } : browserRoute || req.browserPage ? { executor: "playwright" as const } : {}), confirmed: !!req.confirm }))
             try {
               auditSink(entry);
             } catch {

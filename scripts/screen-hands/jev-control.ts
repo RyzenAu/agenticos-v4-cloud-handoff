@@ -35,8 +35,9 @@ export const JEV_CONTROL_TIMEOUT_MS = 2500;
 /** Recent step results carried in the state. */
 export const JEV_CONTROL_HISTORY = 6;
 
-export type ControlOp = "click" | "select" | "type" | "key" | "scroll_down" | "scroll_up" | "save_file" | "open_file" | "open_app" | "done" | "ask_owner";
+export type ControlOp = "click" | "select" | "type" | "key" | "scroll_down" | "scroll_up" | "save_file" | "open_file" | "open_app" | "wait" | "done" | "ask_owner";
 export const CONTROL_OPS: Record<ControlOp, string> = {
+  wait: "Wait briefly and observe again when the page shows loading or an action is still processing; do not repeat the action",
   click: "Click or press one control on screen (a button, menu item, link, tab, tick box, field or switch)",
   select: "Select an item in a list, tree, tab strip or drop-down",
   type: "Type one of the texts he dictated into the focused field (or into the target field)",
@@ -192,7 +193,8 @@ export function controlCandidates(snap: Snapshot, slots: Pick<GoalSlots, "goal" 
   const ranked = scored
     .sort((a, b) => b.s - a.s || a.i - b.i)
     .filter((x) => {
-      const k = `${x.e.type}|${x.label.toLowerCase()}|${x.label ? "" : x.e.id}`;
+      // Equal labels at different positions are separate controls (each row's Open).
+      const k = `${x.e.type}|${x.label.toLowerCase()}|${x.e.x}:${x.e.y}:${x.e.w}:${x.e.h}|${x.label ? "" : x.e.id}`;
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -202,9 +204,19 @@ export function controlCandidates(snap: Snapshot, slots: Pick<GoalSlots, "goal" 
   if (focused && !ranked.some((x) => x.e.id === focused.e.id)) ranked[Math.min(ranked.length, max - 1)] = { ...focused, s: 1 };
   // Reading order for Jev (the ranking only chose which ones).
   ranked.sort((a, b) => a.i - b.i);
+  const occurrences = new Map<string, number>();
+  const totals = new Map<string, number>();
+  for (const { e, label } of ranked) {
+    const key = `${e.type}|${label.toLowerCase()}`;
+    totals.set(key, (totals.get(key) ?? 0) + 1);
+  }
   const list = ranked.map(({ e, label }) => {
     const shown = { ...e, name: label, help: e.help ? safeLabel(e.help, slots.redact) ?? "" : "", value: "" };
-    const text = `${candidateText(shown, snap.window)}${e.focused ? " [has the keyboard focus]" : ""}${secureField(e) ? " [secure field]" : ""}`.slice(0, 200);
+    const group = `${e.type}|${label.toLowerCase()}`;
+    const occurrence = (occurrences.get(group) ?? 0) + 1;
+    occurrences.set(group, occurrence);
+    const ordinal = (totals.get(group) ?? 0) > 1 ? ` [${occurrence} of ${totals.get(group)} with this label, in reading order]` : "";
+    const text = `${candidateText(shown, snap.window)}${ordinal}${e.focused ? " [has the keyboard focus]" : ""}${secureField(e) ? " [secure field]" : ""}`.slice(0, 240);
     return { key: `e${e.id}`, element: e, text };
   });
   return { list, withheld, injected };
@@ -386,6 +398,8 @@ const pct = (p: number) => `${Math.round(p * 100)}%`;
 export function describeDecision(d: ControlDecision): string {
   const target = d.target ? ` ${d.target.text.split(",")[0]}` : "";
   switch (d.op) {
+    case "wait":
+      return "wait for the page to finish changing";
     case "click":
       return `click${target}`;
     case "select":

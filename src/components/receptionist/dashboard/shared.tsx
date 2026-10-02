@@ -5,7 +5,7 @@ import { SignalTile, type SignalRecovery, type SignalTone } from "@/components/s
 import { ageText, blockIsStale, tileRecovery, tileState, type BlockMeta, type DashBlock, type TileRecovery } from "@/lib/receptionist-dashboard";
 import type { UnknownCause } from "../../../../scripts/receptionist/dashboard";
 import { cn } from "@/lib/utils";
-import { fmtDateTime } from "@/lib/format";
+import { fmtDateTime, fmtProse } from "@/lib/format";
 
 /** cents (a whole number of AU cents) → "A$1,234.00"; null → "—" (never a fabricated zero). */
 export function aud(cents: number | null): string {
@@ -132,7 +132,7 @@ export function SourceLine({ block }: { block: BlockMeta & { ok?: boolean } }) {
   const stale = blockIsStale(block, now);
   const detail = (
     <>
-      Source: {block.source}
+      Source: {fmtProse(block.source)}
       {" · "}
       {block.ok === false
         ? lastGoodText(block.asOf, now)

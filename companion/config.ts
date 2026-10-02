@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, parse, resolve } from "node:path";
+import { dirname, isAbsolute, join, parse, resolve, sep } from "node:path";
 import { isPersonId, type PersonId } from "../scripts/devices/types";
 
 /**
@@ -8,7 +8,18 @@ import { isPersonId, type PersonId } from "../scripts/devices/types";
  * file.open may open documents from (default: Documents\MU-Jarvis); set with --root at pair time or by
  * editing companion.json.
  */
-export type CompanionConfig = { hubUrl: string; deviceId: string; owner: PersonId; label: string; token: string; expiresAt: number; pairedAt: number; roots?: string[] };
+export type CompanionConfig = {
+  hubUrl: string;
+  deviceId: string;
+  owner: PersonId;
+  label: string;
+  token: string;
+  expiresAt: number;
+  pairedAt: number;
+  roots?: string[];
+  /** Jarvis Chrome for browser.navigate: its DevTools port (default 9222) and profile folder (default beside 9222's). */
+  browser?: { port?: number; profileDir?: string; session?: string };
+};
 
 /** The default authorised folder for file.open: a dedicated one, never the whole profile. */
 export function defaultRoots(env: Record<string, string | undefined> = process.env): string[] {
@@ -47,12 +58,29 @@ export function configDir(override?: string) {
 
 export const configFile = (dir: string) => join(dir, "companion.json");
 export const micLockFile = (dir: string) => join(dir, "mic.lock");
+export const ledgerFile = (dir: string) => join(dir, "command-ledger.json");
 
 export function readConfig(dir: string): CompanionConfig | null {
   try {
     const c = JSON.parse(readFileSync(configFile(dir), "utf8"));
     if (typeof c?.hubUrl !== "string" || typeof c?.token !== "string" || typeof c?.deviceId !== "string" || !isPersonId(c?.owner)) return null;
     if (c.roots !== undefined && !(Array.isArray(c.roots) && c.roots.every((r: unknown) => typeof r === "string"))) delete c.roots;
+    if (c.browser !== undefined) {
+      const b = c.browser;
+      const port = Number(b?.port);
+      // The profile and session are per companion (per person's PC): the profile folder must be absolute and OUTSIDE this source checkout
+      // (it holds cookies and logins: never committed, never logged); the session name is a plain label.
+      const checkout = resolve(import.meta.dir, "..").toLowerCase();
+      const outside = (d: string) => !resolve(d).toLowerCase().startsWith(checkout + sep.toLowerCase()) && resolve(d).toLowerCase() !== checkout;
+      c.browser = b && typeof b === "object"
+        ? {
+            ...(Number.isInteger(port) && port > 1024 && port < 65536 ? { port } : {}),
+            ...(typeof b.profileDir === "string" && isAbsolute(b.profileDir) && outside(b.profileDir) ? { profileDir: b.profileDir } : {}),
+            ...(typeof b.session === "string" && /^[a-z0-9][a-z0-9-]{0,47}$/i.test(b.session) ? { session: b.session } : {}),
+          }
+        : undefined;
+      if (!c.browser) delete c.browser;
+    }
     return c as CompanionConfig;
   } catch {
     return null;

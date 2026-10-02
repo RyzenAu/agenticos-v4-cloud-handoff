@@ -2,7 +2,7 @@
 // away, coding, memory, lesson), newest first, with its masked steps, Jev decisions, checks and state.
 // "Interrupted, not re-run" and "Outcome unknown" are stated plainly; waiting for a yes is never "done".
 import { useEffect, useState } from "react";
-import { Badge, EmptyState } from "@/components/ds";
+import { Badge, DeviceStatusSlot, EmptyState, deviceFromRecord } from "@/components/ds";
 import type { Tone } from "@/components/ds/status";
 import { JOB_STATE_LABEL, cancelJob, fetchJob, readJobs, startJobEventBridge, subscribeJobs, type Job, type JobState, type JobSummary, type Step } from "@/lib/job-events";
 import { cn } from "@/lib/utils";
@@ -64,8 +64,8 @@ function JobRow({ job }: { job: JobSummary & { steps: Step[] } }) {
         </button>
         <Badge tone={TONE[job.state]}>{JOB_STATE_LABEL[job.state]}</Badge>
       </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        {job.kind} · {who} · {job.targetDeviceId} · <span className="ds-num">{job.stepCount}</span> step{job.stepCount === 1 ? "" : "s"}
+      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+        {job.kind} · {who} · <DeviceStatusSlot device={deviceFromRecord(job)} /> · <span className="ds-num">{job.stepCount}</span> step{job.stepCount === 1 ? "" : "s"}
         {job.quarantined ? " · quarantined: the stop wasn't confirmed" : ""}
       </p>
       {job.note && <p className="mt-1 text-xs text-muted-foreground">{job.note}</p>}

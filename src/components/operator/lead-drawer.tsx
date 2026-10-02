@@ -2,10 +2,10 @@
 // findings with [verified] markers, the "Generate website" preview flow (generate → look → deploy
 // behind a confirm → take down), logging a call, the follow-up and the activity log. Nothing here
 // contacts the lead; deploy/take-down run only on a founder's confirmed click and are logged.
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, ClipboardList, Copy, ExternalLink, FileSearch, Globe, Loader2, Mail, MapPin, Phone, PhoneCall, Rocket, Search, Sheet as SheetIcon, Trash2, Wand2 } from "lucide-react";
-import { Badge, Button, Notice, Skeleton, fmtRelative } from "@/components/ds";
+import { Badge, Button, DetailSection, Notice, SaveStatus, Skeleton, Tabs, TabPanel, fmtRelative } from "@/components/ds";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +23,9 @@ import { operatorRequest } from "@/lib/operator";
 import { cn } from "@/lib/utils";
 import { startMeeting } from "@/lib/meeting-mode";
 import {
+  deployReply,
   leadSitesPost,
+  leadSitesPostRaw,
   leadSitesStatus,
   leadsApi,
   localPreviewHref,
@@ -51,8 +53,13 @@ import {
 import { CopyButton, PlacesAttribution, ReasonChip } from "./lead-bits";
 import { SalesBackofficePanel } from "./sales-backoffice-panel";
 import { LeadIssuesBlock } from "./lead-issues";
+import { websiteStateLine } from "@/lib/call-queue";
 import { ContactPrefBlock, DealBlock } from "./deal-block";
 import { fmtDateTime, fmtDay } from "@/lib/format";
+import { hasLeadEditDraft, LeadEditor } from "./lead-editor";
+import { usePageContext } from "@/components/shell/page-context";
+import { PublishApprovalCard } from "@/components/approvals/publish-approval-card";
+import { usePublishFlow } from "@/lib/use-publish-flow";
 
 const OUTCOMES: { key: LeadStatus; label: string; needsDate?: boolean }[] = [
   { key: "no_answer", label: "No answer" },
@@ -81,61 +88,97 @@ export const sydneyToday = (now = Date.now()) => new Intl.DateTimeFormat("en-CA"
 const dateLong = (iso: string) => fmtDay(new Date(iso), { year: true });
 const dateTime = (iso: string) => fmtDateTime(new Date(iso));
 
-function Block({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <section className="border-t border-border pt-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="ds-label text-muted-foreground">{title}</h3>
-        {actions}
-      </div>
-      {children}
-    </section>
-  );
+const Block = DetailSection;
+
+type LeadDrawerProps = { id: number | null; onClose: () => void; by: Owner; preview?: Preview; onChanged: () => void };
+type LeadTab = "overview" | "call" | "deal" | "research" | "history";
+const LEAD_TABS = [{ id: "overview", label: "Overview" }, { id: "call", label: "Call" }, { id: "deal", label: "Deal" }, { id: "research", label: "Research" }, { id: "history", label: "History" }] as const;
+
+export function LeadDrawer(props: LeadDrawerProps) {
+  return <LeadDrawerSession key={props.id ?? "closed"} {...props} />;
 }
 
-export function LeadDrawer({ id, onClose, by, preview, onChanged }: { id: number | null; onClose: () => void; by: Owner; preview?: Preview; onChanged: () => void }) {
-  const detail = useQuery({ queryKey: ["leads-detail", id], queryFn: () => leadsApi.detail(id!), enabled: id !== null, retry: retryUnlessClientError });
+function LeadDrawerSession({ id, onClose, by, preview, onChanged }: LeadDrawerProps) {
+  const client = useQueryClient();
+  const [editing, setEditing] = useState(() => id !== null && hasLeadEditDraft(id));
+  const [saved, setSaved] = useState(false);
+  const detail = useQuery({ queryKey: ["leads-detail", id], queryFn: () => leadsApi.detail(id!), enabled: id !== null, retry: retryUnlessClientError, refetchOnMount: "always" }); // opening a lead always reads it again: an edit starts from the current record, not a 5 s old copy
   const lead = detail.data?.lead;
+  // Page context for Jarvis: "open this lead's website" names the lead the drawer shows (the address itself is read from the CRM).
+  usePageContext("leads:drawer", lead ? { selection: { kind: "lead", id: String(lead.id), label: lead.name || "this lead", to: "/leads", search: { lead: String(lead.id) } } } : null);
   const [copied, copy] = useCopy();
+  const [tab, setTab] = useState<LeadTab>("overview");
+  const [visited, setVisited] = useState<Partial<Record<LeadTab, boolean>>>({ overview: true });
+  const body = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const selectTab = (next: LeadTab) => {
+    setTab(next);
+    setVisited((current) => ({ ...current, [next]: true }));
+    if (body.current) body.current.scrollTop = 0;
+  };
 
   return (
     <Sheet open={id !== null} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-xl">
+      <SheetContent side="right" className="ds-detail-sheet w-full p-0 sm:max-w-[720px]"
+        onOpenAutoFocus={() => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+        onCloseAutoFocus={(event) => { event.preventDefault(); if (returnFocus.current?.isConnected) returnFocus.current.focus(); }}>
         {detail.isLoading || !lead ? (
           <div className="flex flex-col gap-3 p-6">
             <SheetHeader><SheetTitle>Lead</SheetTitle><SheetDescription className="sr-only">Loading the lead</SheetDescription></SheetHeader>
             {detail.error ? <Notice tone="danger">{(detail.error as Error).message}</Notice> : [0, 1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-lg" />)}
           </div>
         ) : (
-          <div className="flex flex-col gap-4 p-5 sm:p-6">
-            <SheetHeader className="space-y-1 text-left">
+          <>
+            <SheetHeader className="ds-detail-header space-y-2 text-left">
               <SheetTitle className="pr-8 text-xl font-semibold leading-tight">{lead.name || "(name not on file)"}</SheetTitle>
               <SheetDescription>
-                {VERTICAL_LABEL[lead.vertical as Vertical] ?? lead.vertical} · {suburbOf(lead.area)}{lead.address ? ` · ${lead.address}` : ""}
+                {VERTICAL_LABEL[lead.vertical as Vertical] ?? lead.vertical} · {suburbOf(lead.area)}
               </SheetDescription>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 <Badge tone={statusTone(lead.status)}>{statusLabel(lead.status)}</Badge>
-                <Badge tone={pitchInfo(lead.pitch).tone}>{pitchInfo(lead.pitch).label}</Badge>
+                {/* The "website" state is only "not verified" when the absence is not verified: a verified absence says so. */}
+                {lead.pitch === "website" && !lead.website && detail.data?.issues?.status === "no_website_verified"
+                  ? <Badge tone="success">No website (verified)</Badge>
+                  : <Badge tone={pitchInfo(lead.pitch).tone}>{pitchInfo(lead.pitch).label}</Badge>}
                 <Badge tone="neutral"><span className="ds-num">Score {lead.score}</span></Badge>
                 {lead.excluded && <Badge tone="danger">Excluded</Badge>}
                 {detail.data?.deal?.stuck && <Badge tone="warn">Stuck {detail.data.deal.stuck.days} d</Badge>}
               </div>
             </SheetHeader>
-
-            {lead.excluded && <Notice tone="warn" title="Excluded from calls and previews">{lead.excludedReason || "Not a prospect."}</Notice>}
-
-            <Block title="Contact">
+            <div className="ds-detail-nav">
+              <Tabs tabs={[...LEAD_TABS]} value={tab} onChange={selectTab} idBase={`lead-${lead.id}`} label="Lead sections" />
+            </div>
+            <div className="ds-detail-body" ref={body}>
+              {!!detail.error && <Notice tone="warn" className="mt-4">Couldn’t refresh this lead. Showing the last loaded details.</Notice>}
+              {lead.excluded && <Notice tone="warn" className="mt-4" title="Excluded from calls and previews">{lead.excludedReason || "Not a prospect."}</Notice>}
+              {lead.status === "do_not_contact" && <Notice tone="warn" className="mt-4">This lead asked not to be contacted.</Notice>}
+              <TabPanel idBase={`lead-${lead.id}`} id="overview" active={tab === "overview"}>
+                <section className="ds-detail-next" aria-label="Next action">
+                  <h3>Next step</h3>
+                  <p className={nextAction(lead).overdue ? "text-danger" : undefined}>{nextAction(lead).text}{nextAction(lead).overdue ? " — overdue" : ""}</p>
+                  {!lead.excluded && !["won", "lost", "not_interested", "do_not_contact"].includes(lead.status) && <Button variant="accent" onClick={() => selectTab("call")}><PhoneCall /> Prepare call</Button>}
+                </section>
+                <Block title="Contact" actions={!editing && <Button variant="outline" onClick={() => { setEditing(true); setSaved(false); }}>Edit lead</Button>}>
+              {editing ? <LeadEditor key={lead.editVersion ?? "none"} lead={lead} by={by} onCancel={() => setEditing(false)} onSaved={patch => {
+                client.setQueryData(["leads-detail", id], (data: any) => data ? { ...data, lead: { ...data.lead, ...patch } } : data);
+                setEditing(false); setSaved(true);
+                void client.invalidateQueries({ queryKey: ["lead-script", id] });
+                void client.invalidateQueries({ queryKey: ["lead-seo-audit", id] });
+                void client.invalidateQueries({ queryKey: ["workspace"] });
+                void detail.refetch(); onChanged();
+              }} /> : <>
+              {saved && <SaveStatus phase="saved" saved="Lead saved." className="mb-3 text-sm" />}
               <ul className="flex flex-col gap-1 text-sm">
                 {lead.phone ? (
-                  <li className="flex items-center justify-between gap-2">
+                  <li className="lead-contact-row flex items-center justify-between gap-3">
                     <a href={`tel:${lead.phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-2 underline-offset-2 hover:underline"><Phone className="size-3.5 text-muted-foreground" /><span className="ds-num">{lead.phone}</span></a>
                     <CopyButton value={lead.phone} label="phone" icon={Copy} copied={copied === "phone"} onCopy={() => copy("phone", lead.phone)} />
                   </li>
                 ) : <li className="text-muted-foreground">No phone on file.</li>}
                 <PhoneFinder lead={lead} finding={detail.data?.phoneFinding ?? null} onFound={() => { void detail.refetch(); onChanged(); }} />
                 {lead.emails.map((e) => (
-                  <li key={e} className="flex items-center justify-between gap-2">
-                    <span className="inline-flex min-w-0 items-center gap-2"><Mail className="size-3.5 shrink-0 text-muted-foreground" /><span className="truncate">{e}</span>{!lead.emailOk && <Badge tone="warn">Don't email</Badge>}</span>
+                  <li key={e} className="lead-contact-row flex items-center justify-between gap-3">
+                    <span className="inline-flex min-w-0 items-center gap-2"><Mail className="size-3.5 shrink-0 text-muted-foreground" /><span>{e}</span>{!lead.emailOk && <Badge tone="warn">Don't email</Badge>}</span>
                     <CopyButton value={e} label="email" icon={Copy} copied={copied === e} onCopy={() => copy(e, e)} />
                   </li>
                 ))}
@@ -144,19 +187,53 @@ export function LeadDrawer({ id, onClose, by, preview, onChanged }: { id: number
                 )}
               </ul>
               {lead.placesLive && <PlacesAttribution live={lead.placesLive} />}
+              </>}
             </Block>
+                <Block title="At a glance">
+                  <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-5 gap-y-3">
+                    <dt className="text-muted-foreground">Owner</dt><dd className="capitalize">{lead.owner || "Unassigned"}</dd>
+                    {/* Provenance shows only when it was recorded: a column of "Not recorded" says nothing. */}
+                    {lead.source && <><dt className="text-muted-foreground">Lead source</dt><dd>{lead.source === "osm" ? "OpenStreetMap" : lead.source === "google" ? "Google Places" : lead.source}</dd></>}
+                    {lead.websiteSource && <><dt className="text-muted-foreground">Website source</dt><dd>{lead.websiteSource.replace(/_/g, " ")}</dd></>}
+                    {lead.websiteCheckedAt && <><dt className="text-muted-foreground">Website checked</dt><dd>{dateTime(lead.websiteCheckedAt)}</dd></>}
+                    {lead.address && <><dt className="text-muted-foreground">Address</dt><dd>{lead.address}</dd></>}
+                    {lead.website && <><dt className="text-muted-foreground">Website</dt><dd><a href={siteHref(lead.website)} target="_blank" rel="noreferrer" className="underline underline-offset-4">{siteHost(lead.website)}</a></dd></>}
+                    {lead.lastContactAt && <><dt className="text-muted-foreground">Last contact</dt><dd>{fmtRelative(lead.lastContactAt)}</dd></>}
+                  </dl>
+                </Block>
+                {detail.data?.deal?.contactPref && <Block title="Contact notes"><p>{detail.data.deal.contactPref}</p><Button variant="ghost" className="mt-3" onClick={() => selectTab("call")}>Edit contact notes</Button></Block>}
+              </TabPanel>
+              <TabPanel idBase={`lead-${lead.id}`} id="call" active={tab === "call"}>
+                {visited.call && <>
+                  <CallBlock
+              lead={lead}
+              contactPref={detail.data?.deal?.contactPref ?? ""}
+              onStartMeeting={() => {
+                // AUDIT-F1 F1-04: the modal drawer blocked the meeting panel. Close it first; the panel's lead is prefilled.
+                onClose();
+                void startMeeting(String(lead.id));
+              }}
+            />
+                  <LogCall lead={lead} by={by} onLogged={() => { void detail.refetch(); onChanged(); }} />
+                  <details className="ds-detail-secondary"><summary>Edit contact notes</summary><ContactPrefBlock leadId={lead.id} value={detail.data?.deal?.contactPref ?? ""} by={by} onSaved={() => { void detail.refetch(); onChanged(); }} /></details>
+                </>}
+              </TabPanel>
+              <TabPanel idBase={`lead-${lead.id}`} id="deal" active={tab === "deal"}>
+                {visited.deal && <>
+                  {detail.data?.deal && <DealBlock leadId={lead.id} deal={detail.data.deal} by={by} onSaved={() => { void detail.refetch(); onChanged(); }} />}
+                  <SalesBackofficePanel key={lead.id} id={lead.id} pipeline={detail.data?.pipeline} initialFiles={detail.data?.drafts} by={by} offer={detail.data?.deal?.economics.offer} packageId={chosenPackage(detail.data?.deal)} refresh={() => { void detail.refetch(); onChanged(); }} />
 
-            <ContactPrefBlock leadId={lead.id} value={detail.data?.deal?.contactPref ?? ""} by={by} onSaved={() => { void detail.refetch(); onChanged(); }} />
-
-            {detail.data?.deal && <DealBlock leadId={lead.id} deal={detail.data.deal} by={by} onSaved={() => { void detail.refetch(); onChanged(); }} />}
-
-            <RealSite lead={lead} thumbAt={preview?.thumb?.at ?? null} onChanged={onChanged} />
+                </>}
+              </TabPanel>
+              <TabPanel idBase={`lead-${lead.id}`} id="research" active={tab === "research"}>
+                {visited.research && <>
+                  <RealSite lead={lead} thumbAt={preview?.thumb?.at ?? null} onChanged={onChanged} websiteStatus={detail.data?.issues?.status} />
 
             <LeadIssuesBlock issues={detail.data?.issues ?? null} />
 
             <Block title="Why M&U could help">
               {lead.reasons.length ? (
-                <ul className="flex flex-col gap-1.5">
+                <ul className="lead-reasons flex flex-col gap-3">
                   {taggedReasons(lead).map((r, i) => <li key={i}><ReasonChip {...r} /></li>)}
                 </ul>
               ) : <p className="text-sm text-muted-foreground">No audit findings on file.</p>}
@@ -167,27 +244,15 @@ export function LeadDrawer({ id, onClose, by, preview, onChanged }: { id: number
             </Block>
 
             {!lead.excluded && <SeoAuditBlock lead={lead} />}
-            <SalesBackofficePanel key={lead.id} id={lead.id} pipeline={detail.data?.pipeline} initialFiles={detail.data?.drafts} by={by} offer={detail.data?.deal?.economics.offer} packageId={chosenPackage(detail.data?.deal)} refresh={() => { void detail.refetch(); onChanged(); }} />
-
-            <CallBlock
-              lead={lead}
-              contactPref={detail.data?.deal?.contactPref ?? ""}
-              onStartMeeting={() => {
-                // AUDIT-F1 F1-04: the modal drawer blocked the meeting panel. Close it first; the panel's lead is prefilled.
-                onClose();
-                void startMeeting(String(lead.id));
-              }}
-            />
-
-            <WebsitePreview lead={lead} preview={preview} by={by} onChanged={onChanged} onDone={() => detail.refetch()} />
-
-            <LogCall lead={lead} by={by} onLogged={() => { void detail.refetch(); onChanged(); }} />
-
-            <Block title="Activity">
+                  <WebsitePreview lead={lead} preview={preview} by={by} onChanged={onChanged} onDone={() => detail.refetch()} />
+                </>}
+              </TabPanel>
+              <TabPanel idBase={`lead-${lead.id}`} id="history" active={tab === "history"}>
+                {visited.history && <><Block title="Activity">
               {!detail.data?.activities.length ? (
                 <p className="text-sm text-muted-foreground">Nothing logged yet.</p>
               ) : (
-                <ol className="flex flex-col gap-2.5">
+                <ol className="lead-activity flex flex-col">
                   {detail.data.activities.slice(0, 20).map((a) => (
                     <li key={a.id} className="flex gap-3 text-sm">
                       <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-border-strong" aria-hidden="true" />
@@ -201,10 +266,10 @@ export function LeadDrawer({ id, onClose, by, preview, onChanged }: { id: number
                   ))}
                 </ol>
               )}
-            </Block>
-
-            <EmailDraft lead={lead} />
-          </div>
+            </Block></>}
+              </TabPanel>
+            </div>
+          </>
         )}
       </SheetContent>
     </Sheet>
@@ -270,7 +335,7 @@ function PhoneFinder({ lead, finding, onFound }: { lead: Lead; finding: PhoneFin
 
 // ── their real site ──────────────────────────────────────────────────────
 
-export function RealSite({ lead, thumbAt, onChanged }: { lead: Lead; thumbAt: string | null; onChanged: () => void }) {
+export function RealSite({ lead, thumbAt, onChanged, websiteStatus }: { lead: Lead; thumbAt: string | null; onChanged: () => void; websiteStatus?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   // Only a recorded screenshot is requested: asking for one that doesn't exist logged a 404 on
@@ -303,7 +368,7 @@ export function RealSite({ lead, thumbAt, onChanged }: { lead: Lead; thumbAt: st
     return (
       <Block title="Their website">
         <p className="text-sm text-muted-foreground">
-          Website not verified — owner to Google{lead.websiteCheckedAt ? ` (checked ${dateLong(lead.websiteCheckedAt)})` : ""}.
+          {websiteStateLine(lead, websiteStatus)}.
         </p>
       </Block>
     );
@@ -335,7 +400,7 @@ export function RealSite({ lead, thumbAt, onChanged }: { lead: Lead; thumbAt: st
 // ── generate website ─────────────────────────────────────────────────────
 
 function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; preview?: Preview; by: Owner; onChanged: () => void; onDone: () => void }) {
-  const [busy, setBusy] = useState<"" | "generate" | "deploy" | "takedown">("");
+  const [busy, setBusy] = useState<"" | "generate">("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [confirmDeploy, setConfirmDeploy] = useState(false);
@@ -345,15 +410,27 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
 
   const blocked = lead.excluded ? "Excluded leads never get a preview." : lead.status === "do_not_contact" ? "This lead asked not to be contacted." : lead.status === "won" ? "Won — build the real site from the client project." : "";
 
-  async function run(kind: "generate" | "deploy" | "takedown") {
+  // Deploy and take-down are outward, so on a server-role hub they go through a B2 approval (src/lib/publish-flow.ts): the first POST
+  // answers 202 and nothing is published, the card below waits for the approval, and the hub then runs it once. On a PC hub the
+  // first POST just does it (200), exactly as before.
+  const deployFlow = usePublishFlow({
+    resumeKey: `lead:${lead.id}:deploy`,
+    send: async (approvalId) => deployReply(await leadSitesPostRaw("/deploy", approvalId ? { lead: lead.id, by, approvalId } : { lead: lead.id, by, confirm: preview?.domain })),
+    onSettled: () => { onChanged(); onDone(); },
+  });
+  const takedownFlow = usePublishFlow({
+    resumeKey: `lead:${lead.id}:takedown`,
+    send: async (approvalId) => leadSitesPostRaw("/takedown", approvalId ? { lead: lead.id, by, approvalId } : { lead: lead.id, by }),
+    onSettled: () => { onChanged(); onDone(); },
+  });
+  const inFlight = (k: string) => k === "asking" || k === "waiting" || k === "approved" || k === "running";
+  const flowBusy = inFlight(deployFlow.state.kind) || inFlight(takedownFlow.state.kind);
+
+  async function run(kind: "generate") {
     setBusy(kind); setError(""); setInfo("");
     try {
-      const body: Record<string, unknown> = { lead: lead.id, by };
-      if (kind === "deploy") body.confirm = preview?.domain;
-      const r = await leadSitesPost<{ preview: Preview; missing?: string[]; services?: number }>(`/${kind}`, body);
-      if (kind === "generate") setInfo(`Drafted from ${r.services ?? 0} verified service${r.services === 1 ? "" : "s"}; placeholders for ${r.missing?.join(", ") || "nothing"}. Check it before deploying.`);
-      if (kind === "deploy") setInfo(r.preview.lastError ? r.preview.lastError : `Live at ${r.preview.url} and checked.`);
-      if (kind === "takedown") setInfo("Taken down. The local copy stays for reference.");
+      const r = await leadSitesPost<{ preview: Preview; missing?: string[]; services?: number }>(`/${kind}`, { lead: lead.id, by });
+      setInfo(`Drafted from ${r.services ?? 0} verified service${r.services === 1 ? "" : "s"}; placeholders for ${r.missing?.join(", ") || "nothing"}. Check it before deploying.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -378,7 +455,7 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
             {live ? (
               preview.expired ? <Badge tone="danger">Expired — take it down</Badge> : <Badge tone="success">Live · {preview.daysLeft} day{preview.daysLeft === 1 ? "" : "s"} left</Badge>
             ) : preview.status === "failed" ? <Badge tone="danger">Deploy failed</Badge> : preview.status === "deploying" ? <Badge tone="info">Deploying</Badge> : <Badge tone="neutral">Drafted, not deployed</Badge>}
-            <span className="font-mono text-xs text-muted-foreground">{preview.domain}</span>
+            <span className="text-sm text-muted-foreground">{preview.domain}</span>
           </div>
           {live && (
             <>
@@ -406,7 +483,7 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
         <p className="mt-2 text-xs text-muted-foreground">{blocked}</p>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant={drafted ? "outline" : "accent"} onClick={() => run("generate")} disabled={!!busy}>
+          <Button size="sm" variant={drafted ? "outline" : "accent"} onClick={() => run("generate")} disabled={!!busy || flowBusy}>
             {busy === "generate" ? <Loader2 className="animate-spin" /> : <Wand2 />} {drafted ? "Regenerate" : "Generate website"}
           </Button>
           {drafted && (
@@ -415,23 +492,45 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
             </Button>
           )}
           {drafted && !live && (
-            <Button size="sm" variant="accent" onClick={() => { setChecked(false); setConfirmDeploy(true); }} disabled={!!busy}>
-              {busy === "deploy" ? <Loader2 className="animate-spin" /> : <Rocket />} Deploy…
+            <Button size="sm" variant="accent" onClick={() => { setChecked(false); setConfirmDeploy(true); }} disabled={!!busy || flowBusy}>
+              {inFlight(deployFlow.state.kind) ? <Loader2 className="animate-spin" /> : <Rocket />} Deploy…
             </Button>
           )}
           {live && (
-            <Button size="sm" variant="outline" onClick={() => { setChecked(false); setConfirmDeploy(true); }} disabled={!!busy}>
-              {busy === "deploy" ? <Loader2 className="animate-spin" /> : <Rocket />} Redeploy…
+            <Button size="sm" variant="outline" onClick={() => { setChecked(false); setConfirmDeploy(true); }} disabled={!!busy || flowBusy}>
+              {inFlight(deployFlow.state.kind) ? <Loader2 className="animate-spin" /> : <Rocket />} Redeploy…
             </Button>
           )}
           {(live || preview?.status === "failed") && (
-            <Button size="sm" variant="outline" className="text-danger hover:text-danger" onClick={() => setConfirmDown(true)} disabled={!!busy}>
-              {busy === "takedown" ? <Loader2 className="animate-spin" /> : <Trash2 />} Take down…
+            <Button size="sm" variant="outline" className="text-danger hover:text-danger" onClick={() => setConfirmDown(true)} disabled={!!busy || flowBusy}>
+              {inFlight(takedownFlow.state.kind) ? <Loader2 className="animate-spin" /> : <Trash2 />} Take down…
             </Button>
           )}
         </div>
       )}
-      {busy === "deploy" && <p className="mt-2 text-xs text-muted-foreground">Deploying to Vercel and checking the live page — this takes about a minute.</p>}
+      {deployFlow.state.kind === "running" && <p className="mt-2 text-xs text-muted-foreground">Deploying to Vercel and checking the live page — this takes about a minute.</p>}
+      {preview && (
+        <>
+          <PublishApprovalCard
+            state={deployFlow.state}
+            flow={deployFlow.flow}
+            what={`${lead.name}'s website preview (hidden from search, lasts 30 days)`}
+            where={`https://${preview.domain}`}
+            doneText={(r) => { const p = (r as { preview?: Preview } | undefined)?.preview; return p?.url ? `Live at ${p.url} and checked.` : "Live and checked."; }}
+            askAgain={() => { setChecked(false); setConfirmDeploy(true); }}
+          />
+          <PublishApprovalCard
+            state={takedownFlow.state}
+            flow={takedownFlow.flow}
+            verb="Will remove"
+            approveLabel="Approve and take down"
+            what={`${lead.name}'s live preview (it will stop working)`}
+            where={`https://${preview.domain}`}
+            doneText={() => "Taken down. The local copy stays for reference."}
+            askAgain={() => setConfirmDown(true)}
+          />
+        </>
+      )}
       {error && <Notice tone="danger" className="mt-2">{error}</Notice>}
       {info && <Notice tone="success" className="mt-2">{info}</Notice>}
 
@@ -457,7 +556,7 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
           </label>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction disabled={!checked} onClick={() => void run("deploy")}>Deploy preview</AlertDialogAction>
+            <AlertDialogAction disabled={!checked} onClick={() => void deployFlow.flow.start()}>Deploy preview</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -472,7 +571,7 @@ function WebsitePreview({ lead, preview, by, onChanged, onDone }: { lead: Lead; 
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep it live</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void run("takedown")}>Take down</AlertDialogAction>
+            <AlertDialogAction onClick={() => void takedownFlow.flow.start()}>Take down</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -646,7 +745,7 @@ export function CallBlock({ lead, contactPref, onStartMeeting }: { lead: Lead; c
           </div>
           {error && <Notice tone="danger" className="mt-2">{error}</Notice>}
           {script && (
-            <div className="mt-3 flex flex-col gap-3 text-sm">
+            <div className="lead-script mt-3 flex flex-col gap-5 text-sm">
               <p className="text-xs text-muted-foreground">
                 Generated {fmtRelative(script.generatedAt)} via {script.model} for the "{pitchInfo(script.pitch).label}" pitch. {script.compliance.noInventedClaims}
               </p>
@@ -662,22 +761,22 @@ export function CallBlock({ lead, contactPref, onStartMeeting }: { lead: Lead; c
                 <h4 className="ds-label text-muted-foreground">Value pitch</h4>
                 <p className="mt-1 whitespace-pre-wrap">{script.valuePitch}</p>
               </div>
-              <div>
-                <h4 className="ds-label text-muted-foreground">Objections</h4>
+              <details className="ds-detail-secondary">
+                <summary>Objection responses</summary>
                 <ul className="mt-1 flex flex-col gap-1.5">
                   {(Object.keys(OBJECTION_LABEL) as (keyof CallScript["objections"])[]).map((k) => (
                     <li key={k}><span className="font-medium text-foreground">{OBJECTION_LABEL[k]}</span> — {script.objections[k]}</li>
                   ))}
                 </ul>
-              </div>
+              </details>
               <div>
                 <h4 className="ds-label text-muted-foreground">Close</h4>
                 <p className="mt-1">{script.close}</p>
               </div>
-              <div>
-                <h4 className="ds-label text-muted-foreground">Follow-up email (never sent from here)</h4>
-                <Textarea readOnly className="mt-1 h-40 font-mono text-xs" value={`Subject: ${script.followupEmail.subject}\n\n${script.followupEmail.body}`} aria-label="Follow-up email draft" />
-              </div>
+              <details className="ds-detail-secondary">
+                <summary>Follow-up email draft</summary><p className="text-sm text-muted-foreground">Draft only. Nothing is sent.</p>
+                <Textarea readOnly className="mt-1 h-40 text-sm" value={`Subject: ${script.followupEmail.subject}\n\n${script.followupEmail.body}`} aria-label="Follow-up email draft" />
+              </details>
             </div>
           )}
         </>
@@ -688,18 +787,31 @@ export function CallBlock({ lead, contactPref, onStartMeeting }: { lead: Lead; c
 
 // ── log a call ───────────────────────────────────────────────────────────
 
-function LogCall({ lead, by, onLogged }: { lead: Lead; by: Owner; onLogged: () => void }) {
+export function LogCall({ lead, by, onLogged }: { lead: Lead; by: Owner; onLogged: () => void }) {
   const [note, setNote] = useState("");
   const [date, setDate] = useState("");
   const [busy, setBusy] = useState<LeadStatus | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => { setNote(""); setDate(""); setError(""); }, [lead.id]);
+  // "Do not contact" is permanent (the opt-out cannot be edited away), so it takes a second, deliberate click.
+  const [confirmDnc, setConfirmDnc] = useState(false);
+  const armedAt = useRef(0);
+  const cancelDnc = useRef<HTMLButtonElement | null>(null);
+  // Focus goes to Cancel, the safe choice, when the confirmation appears.
+  useEffect(() => { if (confirmDnc) cancelDnc.current?.focus(); }, [confirmDnc]);
+  useEffect(() => { setNote(""); setDate(""); setError(""); setConfirmDnc(false); }, [lead.id]);
   const next = nextAction(lead);
 
   const pastDate = !!date && date < sydneyToday();
 
   async function log(outcome: LeadStatus) {
     if (outcome === "call_back" && (!date || pastDate)) return;
+    if (outcome === "do_not_contact") {
+      // First click arms it. The confirmation is a different button in a different place, and clicks in the first
+      // half second are ignored, so a double-click can never arm and confirm a permanent opt-out.
+      if (!confirmDnc) { armedAt.current = Date.now(); setConfirmDnc(true); return; }
+      if (Date.now() - armedAt.current < 500) return;
+    }
+    setConfirmDnc(false);
     setBusy(outcome); setError("");
     try {
       await operatorRequest("/leads/log", { lead: lead.id, outcome, kind: "call", by, note, next: outcome === "call_back" ? date : null }, "POST");
@@ -713,7 +825,7 @@ function LogCall({ lead, by, onLogged }: { lead: Lead; by: Owner; onLogged: () =
   }
 
   return (
-    <Block title="Next step">
+    <Block title="Log a call">
       <p className={cn("text-sm", next.overdue ? "font-medium text-danger" : "text-foreground")}>
         {next.text}{next.overdue ? " — overdue" : ""}
         {lead.lastContactAt && <span className="text-muted-foreground"> · last contact {fmtRelative(lead.lastContactAt)}</span>}
@@ -724,11 +836,20 @@ function LogCall({ lead, by, onLogged }: { lead: Lead; by: Owner; onLogged: () =
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {OUTCOMES.map((o) => (
               <Button key={o.key} size="xs" variant="outline" className={o.key === "do_not_contact" ? "text-danger hover:text-danger" : undefined}
-                disabled={busy !== null || (o.needsDate && (!date || pastDate))} onClick={() => log(o.key)}>
+                disabled={busy !== null || (o.needsDate && (!date || pastDate)) || (o.key === "do_not_contact" && confirmDnc)} onClick={() => log(o.key)}>
                 {busy === o.key ? <Loader2 className="animate-spin" /> : o.label}
               </Button>
             ))}
           </div>
+          {confirmDnc && (
+            <div className="mt-2 rounded-lg border border-danger/40 p-3" role="alertdialog" aria-label="Confirm do not contact">
+              <p className="text-sm text-foreground" role="status">This marks {lead.name || "this lead"} as asking not to be contacted. It can't be undone from here.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button ref={cancelDnc} size="xs" variant="outline" onClick={() => setConfirmDnc(false)}>Cancel</Button>
+                <Button size="xs" variant="outline" className="text-danger hover:text-danger" disabled={busy !== null} onClick={() => log("do_not_contact")}>Confirm: do not contact</Button>
+              </div>
+            </div>
+          )}
           <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             Call back on
             <input type="date" value={date} min={sydneyToday()} onChange={(e) => setDate(e.target.value)} className="h-7 rounded-md border border-input bg-transparent px-2 text-xs text-foreground" />
@@ -768,7 +889,7 @@ function EmailDraft({ lead }: { lead: Lead }) {
       {error && <Notice tone="danger" className="mt-2">{error}</Notice>}
       {draft && (
         <>
-          <Textarea readOnly className="mt-2 h-48 font-mono text-xs" value={text} aria-label="Email draft" />
+          <Textarea readOnly className="mt-2 h-48 text-sm" value={text} aria-label="Email draft" />
           <Button size="xs" variant="outline" className="mt-2" onClick={() => copy("draft", text)}>{copied === "draft" ? <Check /> : <Copy />} {copied === "draft" ? "Copied" : "Copy"}</Button>
         </>
       )}

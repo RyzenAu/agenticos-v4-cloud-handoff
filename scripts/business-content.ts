@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import { youtubeConfiguration } from "./business-integrations";
+import { dataDirFor } from "./cloud/data-dir";
 const VIDEO_LIMIT = 20;
 const COMMENT_VIDEO_LIMIT = 6;
 const UPLOAD_PAGE_SIZE = 50;
@@ -144,7 +145,7 @@ function snapshot(videos: BusinessVideo[], recordedAt: string | null, channelId:
 }
 
 export function businessContent(root: string, options: Options = {}) {
-  const directory = join(root, ".operator-data"), file = join(directory, "business-content.json");
+  const directory = join(dataDirFor(root)), file = join(directory, "business-content.json");
   const configuration = () => youtubeConfiguration(options.homeDir || homedir());
   const read = (): BusinessContentSnapshot => {
     const { channelId } = configuration();

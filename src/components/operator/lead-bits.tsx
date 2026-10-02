@@ -15,7 +15,7 @@ export function ReasonChip({ text, verified }: { text: string; verified: boolean
       title={verified ? "Seen on the business's own site" : "Directory or score-only signal — not seen on their site"}
     >
       <span className="min-w-0 truncate">{text}</span>
-      <span className={cn("shrink-0 font-mono text-[11px]", verified ? "text-success" : "text-muted-foreground")}>{verified ? "[verified]" : "[score-only]"}</span>
+      <span className={cn("shrink-0 font-mono text-xs", verified ? "text-success" : "text-muted-foreground")}>{verified ? "[verified]" : "[score-only]"}</span>
     </span>
   );
 }

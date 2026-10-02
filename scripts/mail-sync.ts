@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFile
 import { join } from "node:path";
 import type { mailArchive } from "./mail-archive";
 import { mailMetadataPath } from "./mail-provider";
+import { dataDirFor } from "./cloud/data-dir";
 
 type Provider = "gmail" | "outlook";
 type Job = { provider: Provider; account: string; status: "running" | "paused" | "needs-attention" | "complete"; cursor: string | null; visited: string[]; pending: string[]; downloaded: number; enumerated: number; stored: number; exhausted: boolean; updatedAt: string; error?: string };
@@ -11,7 +12,7 @@ const valid = (provider: string): provider is Provider => provider === "gmail" |
 
 /** Provider responses stay in this process and SQLite. HTTP responses contain progress only. */
 export function createMailSync(options: Options) {
-  const directory = join(options.root, ".operator-data"), file = join(directory, "mail-sync.json");
+  const directory = join(dataDirFor(options.root)), file = join(directory, "mail-sync.json");
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const state: Partial<Record<Provider, Job>> = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
   const tasks = new Map<Provider, Promise<void>>();

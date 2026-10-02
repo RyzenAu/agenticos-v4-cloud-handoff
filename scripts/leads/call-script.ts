@@ -28,10 +28,11 @@ import type { ReceiptSink } from "../model-router/receipts";
 import { ProviderError, type RouteChoice } from "../model-router/router";
 import type { ClaudeComplete } from "../model-router/subscription-clients";
 import { buildCard } from "./card";
-import { readIssues } from "./issues";
+import { readTrustedIssues } from "./issues";
 import { isPlacesLead, type LiveLead } from "./places-live";
 import { callWindow, DEFAULT_SENDER, DEMO_CTA } from "./outreach";
 import { readSeoAudit, seoVerifiedFacts } from "./seo-audit";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type ScriptObjection = "price" | "already_have_website" | "send_email" | "not_now" | "ask_partner";
 
@@ -53,7 +54,7 @@ export type CallScript = {
   };
 };
 
-export const scriptDir = (root: string) => join(root, ".operator-data", "leads", "call-scripts");
+export const scriptDir = (root: string) => join(dataDirFor(root), "leads", "call-scripts");
 export const scriptPath = (root: string, leadId: number) => join(scriptDir(root), `${leadId}.json`);
 
 export function hasScript(root: string, leadId: number): boolean {
@@ -122,7 +123,7 @@ export async function generateCallScript(
   const seoFacts = seoAudit?.ok ? seoVerifiedFacts(seoAudit.topFindings) : [];
   // issues.ts: evidenced issues (finding + the page it was seen on) lead the verified list, and
   // the top one is what the opener must open with.
-  const issueReport = readIssues(db, lead.id);
+  const issueReport = readTrustedIssues(db, lead);
   const issueFacts = (issueReport?.issues ?? []).filter((i) => i.evidence.source === "site").map((i) => `${i.finding} (seen on ${i.evidence.url.split(" and ")[0]}: ${i.evidence.seen})`);
   const topIssue = issueReport?.issues[0] ?? null;
   const verified = [...issueFacts, ...card.reasons.filter((r) => r.verified && !issueFacts.some((f) => f.startsWith(r.text.split(" — seen on ")[0]))).map((r) => r.text), ...seoFacts];

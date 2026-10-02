@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { defaultAgentBrowserBin, defaultRunner, type Runner } from "../site-draft/qa";
 import { captureThumb, thumbPath } from "../lead-sites/thumb";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type ThumbTarget =
   | { key: string; kind: "live"; url: string }
@@ -23,7 +24,7 @@ export const isThumbKey = (key: string) => KEY.test(key);
 
 export function thumbFile(root: string, target: Pick<ThumbTarget, "key" | "kind"> & { leadId?: number }): string {
   if (target.kind === "real") return thumbPath(root, (target as { leadId: number }).leadId);
-  return join(root, ".operator-data", "website-thumbs", `${target.key}.jpg`);
+  return join(dataDirFor(root), "website-thumbs", `${target.key}.jpg`);
 }
 
 // One queue per process (a dev-server reload re-imports this module; two workers would fight over

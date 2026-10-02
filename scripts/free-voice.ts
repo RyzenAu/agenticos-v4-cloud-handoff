@@ -1,4 +1,6 @@
 import { parseScreenResult } from "../src/lib/screen-result";
+import { replyStyleInstructions } from "../src/lib/voice-style";
+import { personalityInstructions } from "../src/lib/voice-personality";
 import { neutralisedForModel, parsePageRead } from "../src/lib/page-read";
 import { spokenConfirmations } from "./jarvis-execution/voice-confirmation";
 import { catalogueModel, catalogueTask, taskChain } from "./model-router/catalogue";
@@ -40,6 +42,7 @@ import { commandIntent } from "./jarvis-command/words";
 import { rememberToReminder } from "./jarvis-command/plan";
 import { createTone, spokenSafe } from "./j4/spoken";
 import { needsMeIntent, needsYouSaid, type NeedsYouSources } from "./workspace/needs-you-voice";
+import { dataDirFor } from "./cloud/data-dir";
 /**
  * Turn-based Jarvis engine on free-tier providers: Groq Whisper hears, a Groq model
  * decides and calls the same tools as the realtime engine, and Groq Orpheus or Gemini
@@ -649,7 +652,8 @@ export function confirmAnswer(messages: Message[]): { reply: ConfirmationReply; 
   let goal = "";
   try {
     const args = JSON.parse(original.function.arguments || "{}");
-    goal = String((commandConfirm ? args.utterance : args.goal) ?? "");
+    const resultGoal = commandConfirm ? JSON.parse(result.content)?.resumeGoal : undefined;
+    goal = String((typeof resultGoal === "string" && resultGoal.trim() ? resultGoal : commandConfirm ? args.utterance : args.goal) ?? "");
   } catch { /* keep empty */ }
   return { reply: answer, surface, call: { id: `r_${Date.now().toString(36)}`, type: "function", function: { name: "screen_act", arguments: JSON.stringify({ goal: goal.slice(0, 600), confirmed: true }) } } };
 }
@@ -703,9 +707,29 @@ export function asksPermission(reply: string | null | undefined) {
   return !!reply && PERMISSION_QUESTION.test(reply);
 }
 
+/** A bare acknowledgement is not evidence that a requested computer action ran. */
+export function emptyActionAcknowledgement(utterance: string, reply: string | null | undefined) {
+  const request = utterance.replace(/^\s*(?:(?:hey\s+)?jarvis[,\s]+)?(?:(?:can|could|would|will) you\s+)?(?:please\s+)?/i, "");
+  return /^(?:open|start|launch|click|press|play|pause|close|scroll|navigate|switch|select|type|move|copy|paste|run|refresh|reload)\b/i.test(request)
+    && !!reply && /^(?:all set|done|at your service|on it|consider it done|certainly|of course|sure|okay|ok)(?:[,!\s]+sir)?[.!\s]*$/i.test(reply.trim());
+}
+
 /** A direct instruction he gave, which needs no second yes unless the action is outbound. */
 export function isDirectRequest(utterance: string) {
   return REQUEST.test(utterance) && !needsConfirmation(utterance) && !isAffirmative(utterance);
+}
+
+/** Only continue a search whose requested first-result step has not run yet. */
+export function browserSearchFollowUp(messages: Message[]): { goal: string } | null {
+  const result = messages.at(-1), previous = messages.at(-2);
+  if (result?.role !== "tool" || previous?.role !== "assistant" || previous.tool_calls?.length !== 1) return null;
+  const call = previous.tool_calls[0];
+  if (call.id !== result.tool_call_id || call.function.name !== "skill" || !/^Searched (Google|YouTube) for /.test(result.content)) return null;
+  try {
+    const args = JSON.parse(call.function.arguments);
+    if (args.skill !== "browser" || args.action !== "search" || args.firstResult !== true || typeof args.query !== "string") return null;
+    return { goal: `In the Chrome search results just opened for ${JSON.stringify(args.query.slice(0, 200))}, open the first actual search result, excluding sponsored results. Check the destination loaded. If the page is not the expected search results or there is no result, stop and explain; do not guess.` };
+  } catch { return null; }
 }
 
 /**
@@ -760,7 +784,7 @@ export function protocolFollowUp(messages: Message[]): string | null {
   while (index >= 0 && messages[index].role === "tool") results.unshift(messages[index--] as Extract<Message, { role: "tool" }>);
   const call = messages[index];
   if (!results.length || !call || call.role !== "assistant" || !call.tool_calls?.length) return null;
-  if (!call.tool_calls.every((c) => ["protocol", "screen", "skill", "open_url", "screen_act", "screen_teach", "screen_point", "screen_tutor", "meeting", "narrate", "page_answer", "open_lead", "explain_page", "jarvis_command"].includes(c.function.name))) return null;
+  if (!call.tool_calls.every((c) => ["protocol", "screen", "skill", "open_url", "pc_act", "browser_act", "screen_act", "screen_teach", "screen_point", "screen_tutor", "meeting", "narrate", "page_answer", "open_lead", "explain_page", "jarvis_command"].includes(c.function.name))) return null;
   const ids = new Set(results.map((r) => r.tool_call_id));
   if (!call.tool_calls.every((c) => ids.has(c.id))) return null;
   // A command the entry delegated (to the brain, vision or another tool) is the brain's turn now, not a line to read out.
@@ -844,9 +868,9 @@ export function frontFailureLine(messages: Message[]): string | null {
   return said;
 }
 
-export function freeVoiceInstructions(context: string[] = []) {
+export function freeVoiceInstructions(context: string[] = [], style?: unknown, personality?: unknown) {
   const notes = context.filter(Boolean).map((line) => `- ${line}`).join("\n");
-  return INSTRUCTIONS + (notes ? `\n\nCurrent app context (from the OS, not from the user):\n${notes}` : "");
+  return INSTRUCTIONS + replyStyleInstructions(style) + personalityInstructions(personality) + (notes ? `\n\nCurrent app context (from the OS, not from the user):\n${notes}` : "");
 }
 
 /** Wrap raw little-endian 16-bit mono PCM in a WAV header. */
@@ -957,7 +981,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       return await runRouted<T>({ ...req, sink: receipts, constraints, parentRequestId: parent });
     }
   }
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "free-voice.json");
   const toolNames = new Set([...freeVoiceTools(), ...RULE_ONLY_TOOLS].map((t) => t.function.name));
   const speechCache = new Map<string, { audio: string; mime: string; provider: SpokenBy }>();
@@ -1359,6 +1383,8 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     // "open Stake and buy 10 Tesla shares": the app was launched; say plainly that the money part wasn't done.
     const launched = launchMoneyFollowUp(messages);
     if (launched) return { content: launched, model: "rules" };
+    const searchNext = browserSearchFollowUp(messages);
+    if (searchNext) return oneCall("screen_act", searchNext);
     const spoken = protocolFollowUp(messages);
     // (One voice: no ID, path or ISO date aloud, and the light "sir" on about one line in four, browser lines included.)
     // (Only lines from the everyday skills carry the light "sir"; a command-entry, protocol, narration, meeting or
@@ -1522,7 +1548,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     }
 
     async function think(serverLines: string[], cancel?: AbortSignal) {
-    const system = { role: "system", content: freeVoiceInstructions([...context, ...serverLines]) };
+    const system = { role: "system", content: freeVoiceInstructions([...context, ...serverLines], input.replyStyle, input.replyPersonality) };
     // A page read aloud is spoken from its envelope with no model; a model (a mixed batch) sees only the neutral line.
     const modelMessages = neutralisedForModel(messages);
     const tools = freeVoiceTools();
@@ -1572,8 +1598,8 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       if (
         last?.role === "user" &&
         !(Array.isArray(message.tool_calls) && message.tool_calls.length) &&
-        asksPermission(stripThinking(message.content)) &&
         typeof lastUser === "string" &&
+        (asksPermission(stripThinking(message.content)) || emptyActionAcknowledgement(lastUser, stripThinking(message.content))) &&
         isDirectRequest(lastUser)
       ) {
         // Same model, same attempt (its receipt carries both calls' tokens).
@@ -1585,7 +1611,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
             messages: [
               system,
               ...modelMessages,
-              { role: "system", content: "He has already told you to do this; that is his go-ahead. Do not ask again. Call the right tool now." },
+              { role: "system", content: "The requested action has not run. Call the appropriate tool now; its existing approval rules still apply. Do not claim completion without a tool result." },
             ],
             tools,
             tool_choice: "required",
@@ -1601,6 +1627,9 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
           if (Array.isArray(retried?.tool_calls) && retried.tool_calls.length) message = retried;
           for (const k of ["prompt_tokens", "completion_tokens"] as const)
             if (typeof again?.usage?.[k] === "number" && typeof data?.usage?.[k] === "number") data.usage[k] += again.usage[k];
+        }
+        if (!(Array.isArray(message.tool_calls) && message.tool_calls.length)) {
+          message = { content: "I haven't carried that out: I couldn't start the action. Nothing has been confirmed as done." };
         }
       }
           return {

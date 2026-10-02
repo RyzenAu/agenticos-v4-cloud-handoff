@@ -15,6 +15,7 @@ import { MemoryUniverse } from "./memory-universe";
 import { MemoryImports, useMemoryConnectors } from "./memory-imports";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   BookOpen,
@@ -532,7 +533,7 @@ export function MemoryWorkspace() {
           new CustomEvent("memory:connect", { detail: { app: id === "email" ? "gmail" : id } }),
         );
         document
-          .getElementById("memory-connections")
+        .getElementById("memory-connections")
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
@@ -556,17 +557,15 @@ export function MemoryWorkspace() {
             ? "personal"
             : id === "codebases"
               ? "projects"
-              : collection === "all"
-                ? "business"
-                : collection,
+              : collection === "all" ? "business" : collection,
         provider: id === "codex" || id === "claude" ? id : undefined,
       });
       setAdd(true);
       window.setTimeout(
         () =>
           document
-            .getElementById("memory-entry")
-            ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        .getElementById("memory-entry")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" }),
         80,
       );
     },
@@ -579,6 +578,8 @@ export function MemoryWorkspace() {
   }, [importSource]);
   const savedCount = state.sources.filter((s) => !s.deletedAt).length;
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [photosOpen, setPhotosOpen] = useState(false);
   const openLibrary = () => {
     setLibraryOpen(true);
     window.setTimeout(() => document.getElementById("memory-library")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
@@ -588,7 +589,14 @@ export function MemoryWorkspace() {
   // its sources, adding, photos and the full library are all still here, as widgets below.
   return (
     <div className="op-page cortex-workspace">
-      <PageHeader title="Memory" description="Find or recall anything you've saved." />
+      <PageHeader
+        title="Memory"
+        actions={
+          <Button asChild variant="outline">
+            <Link to="/memory/vault">Open shared vault</Link>
+          </Button>
+        }
+      />
       {error && <Notice tone="danger">{error.message}</Notice>}
       {notice && (
         <Notice
@@ -609,11 +617,11 @@ export function MemoryWorkspace() {
           title="Find a memory"
           badge={isLoading ? undefined : query.trim() ? `${filtered.length} found` : savedCount}
           data-memory="find"
-          action={
+          action={savedCount > 0 ? (
             <Button variant="outline" size="sm" className="rounded-full" onClick={openLibrary}>
               Browse all {savedCount.toLocaleString("en-AU")} saved
             </Button>
-          }
+          ) : undefined}
         >
           <label className="op-search memory-find-search">
             <Search size={14} />
@@ -637,7 +645,13 @@ export function MemoryWorkspace() {
                       </button>
                     }
                     meta={`${spaces.find((c) => c.id === s.collection)?.name ?? s.collection} · ${humanDate(s.updatedAt)}`}
-                    aside={s.status === "error" ? <span className="text-xs text-danger">Needs attention</span> : s.status === "indexing" ? <span className="text-xs text-warn">Processing</span> : undefined}
+                    aside={
+                      s.status === "error" ? (
+                        <span className="text-xs text-danger">Needs attention</span>
+                      ) : s.status === "indexing" ? (
+                        <span className="text-xs text-warn">Processing</span>
+                      ) : undefined
+                    }
                   />
                 );
               })}
@@ -652,16 +666,6 @@ export function MemoryWorkspace() {
         </Widget>
         <div className="col-span-full min-w-0 md:col-span-2">
           <MemoryChat />
-        </div>
-        <div className="memory-cortex-layout col-span-full min-w-0">
-          <MemoryUniverse onSource={(id) => setSelected(id)} />
-          <aside
-            id="memory-connections"
-            className="memory-cortex-sources"
-            aria-label="Memory sources"
-          >
-            <MemoryConnections onAdded={refresh} onImport={importSource} />
-          </aside>
         </div>
         <div className="col-span-full min-w-0 md:col-span-2">
           <MemoryStudio
@@ -688,10 +692,33 @@ export function MemoryWorkspace() {
             }
           />
         </div>
-        <div className="col-span-full min-w-0 md:col-span-2">
-          <MemoryPhotos />
-        </div>
       </WidgetGrid>
+      <details
+        id="memory-connections"
+        className="mt-6 border-t border-border py-2"
+        onToggle={(event) => setMapOpen(event.currentTarget.open)}
+      >
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+          Sources & visual map
+        </summary>
+        {mapOpen && (
+          <div className="memory-cortex-layout">
+            <MemoryUniverse onSource={(id) => setSelected(id)} />
+            <aside className="memory-cortex-sources" aria-label="Memory sources">
+              <MemoryConnections onAdded={refresh} onImport={importSource} />
+            </aside>
+          </div>
+        )}
+      </details>
+      <details
+        className="border-t border-border py-2"
+        onToggle={(event) => setPhotosOpen(event.currentTarget.open)}
+      >
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+          Image memories
+        </summary>
+        {photosOpen && <MemoryPhotos />}
+      </details>
       <details id="memory-library" className="memory-saved-drawer" open={libraryOpen} onToggle={(e) => setLibraryOpen((e.target as HTMLDetailsElement).open)}>
         <summary>
           <span>Saved memories</span>
@@ -846,8 +873,8 @@ export function MemoryWorkspace() {
         </div>
       </details>
       <PageFoot>
-        Saved memories are indexed on this PC for search. Ask uses only the sources switched on under Memory sources; photos and documents keep their originals on
-        this computer.
+        Saved memories are indexed on this PC for search. Ask uses the sources selected under
+        Sources & visual map; photos and documents keep their originals on this computer.
       </PageFoot>
       <Modal
         open={manageSpaces}

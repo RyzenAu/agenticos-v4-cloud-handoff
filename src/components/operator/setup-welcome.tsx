@@ -11,7 +11,7 @@ export function SetupWelcome() {
   return (
     <section className="os-setup-invitation" aria-labelledby="setup-invitation-title">
       <div className="os-setup-invitation-copy">
-        <span className="os-setup-kicker">START WITH YOUR WORLD</span>
+        <span className="os-setup-kicker">Start with your world</span>
         <h2 id="setup-invitation-title">
           Set up your Agentic OS<span>.</span>
         </h2>

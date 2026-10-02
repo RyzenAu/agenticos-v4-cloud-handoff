@@ -5,9 +5,9 @@
 // is removed: the W-B answer card's facts are the four widgets, its footer is the page foot.
 // Leads, Websites, the business brief, goals, projects and coding are drilldowns.
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Globe, Phone, Scale, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button, PageFoot, PageHeader, Skeleton, Widget, WidgetGrid } from "@/components/ds";
+import { Button, PageFoot, PageHeader, Skeleton, WidgetGrid } from "@/components/ds";
 import { useWorkspacePanel } from "@/components/workspace/api";
 import { CallQueuePanel, PipelinePanel, WebsitesPanel } from "@/components/workspace/other-panels";
 import { useNow } from "@/components/workspace/panel-shell";
@@ -26,15 +26,20 @@ function useWorkSummary(): WorkSummary & { calls: number | null; open: number | 
   return {
     ...v,
     calls: calls.data?.ok ? calls.data.data.total : null,
-    open: pipeline.data?.ok ? pipeline.data.data.open ?? null : null,
+    open: pipeline.data?.ok ? (pipeline.data.data.open ?? null) : null,
     sites: s ? { down: s.filter((x) => x.tone === "bad").length, total: s.length } : null,
-    errors: today.data?.ok ? (today.data.data as { approvalsErrors?: string[] }).approvalsErrors?.length ?? 0 : 0,
+    errors: today.data?.ok
+      ? ((today.data.data as { approvalsErrors?: string[] }).approvalsErrors?.length ?? 0)
+      : 0,
   };
 }
 
 const go = (label: ReactNode, to: string, accent = false) => (
   <Button variant={accent ? "accent" : "outline"} className="h-auto min-h-10 max-w-full whitespace-normal rounded-full px-5 py-2 text-center" asChild>
-    <Link to={to as never}>{label}{accent && <ArrowRight aria-hidden="true" />}</Link>
+    <Link to={to as never}>
+      {label}
+      {accent && <ArrowRight aria-hidden="true" />}
+    </Link>
   </Button>
 );
 
@@ -43,7 +48,9 @@ function WorkAnswer({ v }: { v: ReturnType<typeof useWorkSummary> }) {
   const decisionsAction =
     v.next === "approvals" ? (
       <Button variant="accent" className="h-auto min-h-10 max-w-full whitespace-normal rounded-full px-5 py-2 text-center" asChild>
-        <a href="#ws-today">Review the decisions <ArrowRight aria-hidden="true" /></a>
+        <a href="#ws-today">
+          Review the decisions <ArrowRight aria-hidden="true" />
+        </a>
       </Button>
     ) : (
       <Button variant="outline" className="h-auto min-h-10 max-w-full whitespace-normal rounded-full px-5 py-2 text-center" asChild>
@@ -51,31 +58,48 @@ function WorkAnswer({ v }: { v: ReturnType<typeof useWorkSummary> }) {
       </Button>
     );
   return (
-    <WidgetGrid className="mb-6" aria-label="What waits on you" data-work-answer={v.tone}>
-      <Widget
-        icon={Scale}
-        title="Decisions"
-        value={v.approvals}
-        tone={v.approvals ? "warn" : "default"}
-        line={v.approvals === null ? v.title : v.errors ? `Only you can make these · ${plural(v.errors, "approval")} couldn't be read` : v.approvals ? "Only you can make these" : "Nothing waits on you"}
-        action={decisionsAction}
-      />
-      <Widget icon={Phone} title="Calls to make" value={v.calls} line={v.facts[0]} action={go(v.next === "calls" ? "Open calls to make" : "Calls to make", "/leads", v.next === "calls")} />
-      <Widget icon={Users} title="Open leads" value={v.open} line={v.facts[1]} action={go(v.next === "pipeline" ? "Work the pipeline" : "Pipeline", "/leads", v.next === "pipeline")} />
-      <Widget
-        icon={Globe}
-        title="Sites down"
-        value={v.sites ? v.sites.down : null}
-        tone={v.sites?.down ? "danger" : "default"}
-        line={v.facts[2]}
-        action={go("Websites", "/websites")}
-      />
-    </WidgetGrid>
+    <section
+      className="mb-6 border-b border-border pb-6"
+      aria-label="What waits on you"
+      data-work-answer={v.tone}
+    >
+      <dl className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {[
+          {
+            label: "Decisions",
+            value: v.approvals,
+            detail:
+              v.approvals === null
+                ? v.title
+                : v.errors
+                  ? `${plural(v.errors, "approval")} couldn't be read`
+                  : undefined,
+          },
+          { label: "Calls to make", value: v.calls, detail: v.facts[0] },
+          { label: "Open leads", value: v.open, detail: v.facts[1] },
+          { label: "Sites down", value: v.sites?.down ?? null, detail: v.facts[2] },
+        ].map((item) => (
+          <div key={item.label}>
+            <dt className="text-sm text-muted-foreground">{item.label}</dt>
+            <dd className="mt-1 text-xl font-semibold tabular-nums">{item.value ?? "—"}</dd>
+            {item.detail && <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>}
+          </div>
+        ))}
+      </dl>
+      <div className="mt-5 flex flex-wrap gap-3">
+        {decisionsAction}
+        {go("Calls & leads", "/leads", v.next === "calls" || v.next === "pipeline")}
+        {go("Websites", "/websites")}
+        {go("Assign coding work", "/coding")}
+      </div>
+    </section>
   );
 }
 
 /** A panel in the grid: spans two columns and stretches to its row's height. */
-const Cell = ({ children }: { children: ReactNode }) => <div className="col-span-full min-w-0 md:col-span-2 [&>*]:h-full">{children}</div>;
+const Cell = ({ children }: { children: ReactNode }) => (
+  <div className="col-span-full min-w-0 md:col-span-2 [&>*]:h-full">{children}</div>
+);
 
 export function WorkPage() {
   const now = useNow(30_000);
@@ -87,15 +111,34 @@ export function WorkPage() {
         <div className="mb-12 sh-arrive">
           <WorkAnswer v={v} />
           <WidgetGrid>
-            <Cell><TodayPanel now={now} /></Cell>
-            <Cell><CallQueuePanel now={now} /></Cell>
-            <Cell><PipelinePanel now={now} /></Cell>
-            <Cell><WebsitesPanel now={now} /></Cell>
+            <div className="col-span-full min-w-0">
+              <TodayPanel now={now} />
+            </div>
           </WidgetGrid>
+          <details className="mt-6 border-t border-border py-2">
+            <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+              Calls, pipeline & site status
+            </summary>
+            <WidgetGrid className="mt-3">
+              <Cell>
+                <CallQueuePanel now={now} />
+              </Cell>
+              <Cell>
+                <PipelinePanel now={now} />
+              </Cell>
+              <Cell>
+                <WebsitesPanel now={now} />
+              </Cell>
+            </WidgetGrid>
+          </details>
         </div>
       ) : (
         <div className="mb-12 space-y-6" role="status" aria-busy="true" aria-label="Loading work">
-          <WidgetGrid>{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-44 rounded-2xl" />)}</WidgetGrid>
+          <WidgetGrid>
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-44 rounded-2xl" />
+            ))}
+          </WidgetGrid>
           <WidgetGrid>
             <Skeleton className="col-span-full h-64 rounded-2xl md:col-span-2" />
             <Skeleton className="col-span-full h-64 rounded-2xl md:col-span-2" />

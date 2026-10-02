@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { RANK, maskSecrets, type Importance } from "./rules";
 import type { JevMode } from "./jev";
 import type { TriageRow, TriageStore } from "./store";
+import { dataDirFor } from "../cloud/data-dir";
 
 /** The only Telegram chat these alerts may ever go to: Usman's own DM with @MnUJarvis_bot. */
 export const OWNER_TELEGRAM = "telegram:8550678495";
@@ -50,7 +51,7 @@ export const DEFAULT_SETTINGS: TriageSettings = {
   personalAccounts: [],
 };
 
-export const settingsPath = (root: string) => join(root, ".operator-data", "inbox-triage.json");
+export const settingsPath = (root: string) => join(dataDirFor(root), "inbox-triage.json");
 
 export function readSettings(root: string): TriageSettings {
   try {
@@ -77,7 +78,7 @@ export function readSettings(root: string): TriageSettings {
 
 export function writeSettings(root: string, settings: TriageSettings) {
   const file = settingsPath(root);
-  mkdirSync(join(root, ".operator-data"), { recursive: true, mode: 0o700 });
+  mkdirSync(join(dataDirFor(root)), { recursive: true, mode: 0o700 });
   const temporary = `${file}.${process.pid}.tmp`;
   writeFileSync(temporary, JSON.stringify(settings, null, 2), { mode: 0o600 });
   renameSync(temporary, file);

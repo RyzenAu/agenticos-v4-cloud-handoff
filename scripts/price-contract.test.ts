@@ -6,7 +6,8 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { calculateEconomics, exportConsistencyFixtureJson, receptionistConsistencyFixture } from "../src/lib/business-economics";
-import { getReceptionistPackage } from "../src/lib/receptionist-packages";
+import { getReceptionistPackage, RECEPTIONIST_PACKAGES } from "../src/lib/receptionist-packages";
+import { approvedSetupCents } from "./receptionist/dashboard";
 import { priceStatusLines } from "../src/lib/price-status";
 import { invoiceData, proposalText } from "./leads/sales-backoffice";
 import type { Lead } from "./leads/crm";
@@ -113,5 +114,30 @@ describe("drafts use only approved prices", () => {
     expect(text).toContain("Setup: quoted separately once approved.");
     expect(text).toContain("Pilot terms: not approved; no pilot is offered.");
     expect(text).toContain("M&U Ventures is registered for GST");
+  });
+});
+
+describe("owner decision 1 Oct 2026: every package covers every mode; setup never in a total", () => {
+  test("coverModes are identical on all tiers and no placeholder survives in the catalogue", () => {
+    const tiers = RECEPTIONIST_PACKAGES;
+    for (const p of tiers) expect(p.inclusions.coverModes).toEqual(["After hours", "When busy / no answer", "All calls"]);
+    const ess = getReceptionistPackage("receptionist-essential");
+    expect(ess.audience).not.toContain("OWNER DECISION");
+    expect(ess.functions.find((f) => f.id === "answer")!.label).toBe(getReceptionistPackage("receptionist-professional").functions.find((f) => f.id === "answer")!.label);
+    const json = readFileSync(join(import.meta.dir, "..", "docs", "receptionist-package-catalogue.json"), "utf8");
+    expect(json).not.toContain("OWNER DECISION");
+  });
+  test("dashboard totals never include a proposed setup fee (unknown is null, never zero)", () => {
+    for (const p of RECEPTIONIST_PACKAGES) {
+      expect(p.pricing.setupStatus).toBe("proposed");
+      expect(approvedSetupCents(p)).toBeNull();
+    }
+    expect(approvedSetupCents({ pricing: { setup: { cents: 99000 }, setupStatus: "approved", status: "approved" } })).toBe(99000);
+  });
+  test("Professional 1,200 billable minutes invoice total is A$1,373.90 incl GST with no setup line", () => {
+    const fx = receptionistConsistencyFixture();
+    const sum = fx.expectedInvoice.lines.reduce((s, l) => s + l.inclGstCents, 0);
+    expect(sum).toBe(137390);
+    expect(fx.expectedInvoice.lines.every((l) => !/setup/i.test(l.id))).toBe(true);
   });
 });

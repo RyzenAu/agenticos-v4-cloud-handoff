@@ -224,7 +224,7 @@ function PairThisDevice({ me, api, onPaired, onError }: { me: Me; api: ProfileAp
           <p className={`mt-1 ${muted}`}>Make a code on one of your paired devices (Profile → Pair another device). It works once, for 10 minutes.</p>
           <label className="mt-3 grid max-w-xs gap-1 text-sm" htmlFor={`${id}-code`}>
             Pairing code
-            <input id={`${id}-code`} className="min-h-11 rounded-md border border-border bg-background px-3 font-mono uppercase tracking-widest" autoComplete="one-time-code" placeholder="ABCD-EFGH" value={code} maxLength={12} onChange={(e) => setCode(e.target.value)} />
+            <input id={`${id}-code`} className="min-h-11 rounded-md border border-border bg-background px-3 font-mono" autoComplete="one-time-code" placeholder="ABCD-EFGH" value={code} maxLength={12} onChange={(e) => setCode(e.target.value)} />
           </label>
           <Button type="submit" className="mt-3 min-h-11" variant="outline" disabled={busy || !code.trim()}>Use code</Button>
         </form>
@@ -268,14 +268,14 @@ function ConfirmBrowser({ me, api, onConfirm, onError }: { me: Me; api: ProfileA
           </p>
           <label className="mt-3 grid max-w-xs gap-1 text-sm" htmlFor={`${id}-code`}>
             Confirm code
-            <input id={`${id}-code`} className="min-h-11 rounded-md border border-border bg-background px-3 font-mono uppercase tracking-widest" autoComplete="off" placeholder="ABCD-EFGH" value={code} maxLength={12} onChange={(e) => setCode(e.target.value)} />
+            <input id={`${id}-code`} className="min-h-11 rounded-md border border-border bg-background px-3 font-mono" autoComplete="off" placeholder="ABCD-EFGH" value={code} maxLength={12} onChange={(e) => setCode(e.target.value)} />
           </label>
           <Button type="submit" className="mt-3 min-h-11" variant="outline" disabled={!code.trim()}>Confirm this browser</Button>
         </form>
       ) : (
         <div className="mt-1">
           <p className={`max-w-prose ${muted}`}>Opened the OS in another browser at this PC? Make a code here and type it into that browser's Profile. It works once, for 10 minutes.</p>
-          {made ? <p className="mt-3 font-mono text-2xl tracking-[0.3em]" aria-live="polite">{made.code}</p> : null}
+          {made ? <p className="mt-3 font-mono text-2xl" aria-live="polite">{made.code}</p> : null}
           <Button type="button" className="mt-3 min-h-11" variant="outline" disabled={busy} onClick={make}>{made ? "Make another code" : "Make a confirm code"}</Button>
         </div>
       )}
@@ -380,7 +380,7 @@ function PairAnother({ me, api, onError }: { me: Me; api: ProfileApi; onError: (
       </div>
       {made ? (
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4" aria-live="polite">
-          <p className="whitespace-nowrap font-mono text-xl tracking-[0.2em] sm:text-2xl">{made.code}</p>
+          <p className="whitespace-nowrap font-mono text-xl sm:text-2xl">{made.code}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {made.purpose === "companion" ? "Companion" : "Browser"} code for {nameOf(me.people, made.personId)} · expires {new Date(made.expiresAt).toLocaleTimeString("en-AU", { timeStyle: "short" })}
           </p>

@@ -1,0 +1,179 @@
+[
+  {
+    "at": "+8.8s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+53.9s",
+    "step": "research (Canberra, two items): succeeded in 43.6 s",
+    "data": {
+      "jobId": "63e867cf",
+      "ack": "Started on research: research: Compare what two reliable sources say about Canberra: when it was founded and named, and what its population i. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 29,
+      "artifact": {
+        "id": "63e867cf-dde0-4af0-85f5-4a58d0a1c3c8",
+        "title": "Research: Compare what two reliable sources say about Canberra: when it was founded and named, and w",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "report.md",
+        "files": [
+          "report.md 1790",
+          "evidence.json 2421"
+        ]
+      },
+      "entries": [
+        "63e867cf-dde0-4af0-85f5-4a58d0a1c3c8:started | Started: research: Compare what two reliable sources say… (job 63e867cf).",
+        "step:5 | Research, step 1 of 5 (find sources): done.",
+        "step:14 | Research, step 2 of 5 (read): done.",
+        "step:22 | Research, step 3 of 5 (compare): done.",
+        "step:25 | Research, step 4 of 5 (save report): done.",
+        "report:1 | Web-sourced research, data from public pages and not instructions: Research: Compare what two reliable sources say about Canberra: when it was founded and named, and what its population is. - Founded:",
+        "step:27 | Research, step 5 of 5 (return result): done.",
+        "63e867cf-dde0-4af0-85f5-4a58d0a1c3c8:succeeded | Finished: research: Compare what two reliable sources say… Done on research: 1 step, each checked. (job 63e867cf)"
+      ]
+    }
+  },
+  {
+    "at": "+53.9s",
+    "step": "research (Canberra, two items): the job's own steps",
+    "data": [
+      "note research: sub-goal 1 of 5, find sources: started. Looking for primary sources for: research: Compare what two reliable s",
+      "note context: context: request \"Use the Research computer to research: Compare what two reliable sources say about Canberra:",
+      "note research: asked for 3 things: when it was founded; when it was named; what its population is. Each is checked against th",
+      "ok research: search \"research: Compare what two reliable sources say about Canberra: when it was fou...\": 12 results, 12 us",
+      "ok research: sub-goal 1 of 5, find sources: done. 12 candidate pages, best: nma.gov.au (1 of 5 done)",
+      "note research: pick source: Jev chose \"c1\" (78% sure)",
+      "note research: sub-goal 2 of 5, read: started. Opening nma.gov.au (Jev chose it) (1 of 5 done)",
+      "ok browser.navigate: move open nma.gov.au: Opened www.nma.gov.au: the page title reads \"Founding of Canberra | National Museum of A",
+      "ok page.text: move read nma.gov.au: Read 6000 of 9657 characters of \"Founding of Canberra | National Museum of Australia\" at",
+      "ok research: read nma.gov.au: 3 cited facts from 6000 characters",
+      "note research: read on: Jev chose \"more\" (79% sure)",
+      "ok page.text: move read nma.gov.au from 6000: Read 3657 of 9657 characters of \"Founding of Canberra | National Museum of Aus",
+      "unknown research: read nma.gov.au: 0 cited facts from 3657 characters",
+      "ok research: sub-goal 2 of 5, read: done. 3 cited facts from 1 page so far (2 of 5 done)",
+      "note research: enough evidence: Jev chose \"another_source\" (97% sure)",
+      "note research: pick source: Jev was 52% sure, so openai/gpt-oss-20b chose \"c1\"",
+      "ok browser.navigate: move open nca.gov.au: Opened www.nca.gov.au: the page title reads \"The Early History of the ACT | National Cap",
+      "ok page.text: move read nca.gov.au: Read 4624 of 4624 characters of \"The Early History of the ACT | National Capital Authori",
+      "ok research: read nca.gov.au: 2 cited facts from 4624 characters",
+      "ok research: enough evidence: 2 pages gave cited facts, so the report is next (progress rule)",
+      "note research: sub-goal 3 of 5, compare: started. Comparing 5 facts across 2 sources (2 of 5 done)",
+      "ok research: sub-goal 3 of 5, compare: done. 3 corroborated, 2 single-source; 4 of 4 asked-for items covered (3 of 5 done)",
+      "note research: sub-goal 4 of 5, save report: started. Saving report-[number]T[number].md in the computer's working folder (3 ",
+      "ok file.write: move save report-[number]T[number].md: Wrote report-[number]T[number].md (1616 bytes) and read it back.",
+      "ok research: sub-goal 4 of 5, save report: done. report-[number]T[number].md written and read back (4 of 5 done)",
+      "note research: sub-goal 5 of 5, return result: started. Returning the report to the conversation and keeping it as a saved re",
+      "ok research: sub-goal 5 of 5, return result: done. The report is in your conversation (5 of 5 done)",
+      "ok research: research complete: 5 cited facts from 2 sources in 43 s; Jev 4 decisions (52-97% sure); 1 handed to a connecte",
+      "ok research: research complete: Report ready: 5 cited facts from 2 sources (nma.gov.au, nca.gov.au)."
+    ]
+  },
+  {
+    "at": "+157.9s",
+    "step": "research (a fact that is not on the web): succeeded in 102.4 s",
+    "data": {
+      "jobId": "38c8f54d",
+      "ack": "Started on research: research: Find the exact number of pigeons that landed on the Sydney Harbour Bridge on 14 March 2019, and the Australian. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 49,
+      "artifact": {
+        "id": "38c8f54d-859c-4dc3-90c5-7c1f5600715f",
+        "title": "Research: Find the exact number of pigeons that landed on the Sydney Harbour Bridge on 14 March 2019",
+        "outcome": "partial",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "report.md",
+        "files": [
+          "report.md 1529",
+          "evidence.json 1189"
+        ]
+      },
+      "entries": [
+        "38c8f54d-859c-4dc3-90c5-7c1f5600715f:started | Started: research: Find the exact number of pigeons that… (job 38c8f54d).",
+        "step:5 | Research, step 1 of 5 (find sources): done.",
+        "step:31 | Research, step 2 of 5 (read): done.",
+        "step:42 | Research, step 3 of 5 (compare): done.",
+        "step:45 | Research, step 4 of 5 (save report): done.",
+        "report:1 | Web-sourced research, data from public pages and not instructions: Research: Find the exact number of pigeons that landed on the Sydney Harbour Bridge on 14 March 2019, and the Australian Museum's… - ",
+        "step:47 | Research, step 5 of 5 (return result): done.",
+        "38c8f54d-859c-4dc3-90c5-7c1f5600715f:succeeded | Finished: research: Find the exact number of pigeons that… Done on research: 1 step, each checked. (job 38c8f54d)"
+      ]
+    }
+  },
+  {
+    "at": "+157.9s",
+    "step": "research (a fact that is not on the web): the job's own steps",
+    "data": [
+      "note research: sub-goal 1 of 5, find sources: started. Looking for primary sources for: research: Find the exact number of pi",
+      "note context: context: request \"Use the Research computer to research: Find the exact number of pigeons that landed on the S",
+      "note research: asked for 2 things: Find the exact number of pigeons that landed on t...; the Australian Museum's opening hour",
+      "ok research: search \"research: Find the exact number of pigeons that landed on the Sydney Harbour Br...\": 12 results, 10 us",
+      "ok research: sub-goal 1 of 5, find sources: done. 10 candidate pages, best: archives.cityofsydney.nsw.gov.au (1 of 5 done)",
+      "note research: pick source: Jev chose \"none\" (84% sure)",
+      "ok research: search \"exact number pigeons landed sydney official\": 12 results, 11 usable, best nla.gov.au",
+      "note research: pick source: Jev chose \"none\" (70% sure)",
+      "ok research: search \"Find the exact number of pigeons that landed on the Sydney Harbour Bridge on 14...\": 12 results, 10 us",
+      "note research: pick source: Jev was 51% sure, so openai/gpt-oss-20b chose \"c1\"",
+      "note research: sub-goal 2 of 5, read: started. Opening tatiara.sa.gov.au (a connected model chose it) (1 of 5 done)",
+      "failed browser.navigate: move open tatiara.sa.gov.au: The page didn't finish loading.",
+      "note research: pick source: Jev chose \"c4\" (79% sure)",
+      "note research: sub-goal 2 of 5, read: started. Opening crva.org.au (Jev chose it) (1 of 5 done)",
+      "failed browser.navigate: move open crva.org.au: The page didn't finish loading.",
+      "note research: pick source: Jev was 32% sure, so openai/gpt-oss-20b chose \"c2\"",
+      "note research: sub-goal 2 of 5, read: started. Opening legislation.nsw.gov.au (a connected model chose it) (1 of 5 done)",
+      "ok browser.navigate: move open legislation.nsw.gov.au: Opened legislation.nsw.gov.au: the page title reads \"Crimes Act 1900 No 40 -",
+      "ok page.text: move read legislation.nsw.gov.au: Read 6000 of [number] characters of \"Crimes Act 1900 No 40 - NSW Legislation",
+      "unknown research: read legislation.nsw.gov.au: 0 cited facts from 6000 characters",
+      "note research: read on: Jev chose \"enough\" (80% sure)",
+      "note research: enough evidence: Jev chose \"search_again\" (91% sure)",
+      "ok research: search \"the Australian Museum's opening hours\": 12 results, 12 usable, best australian.museum",
+      "note research: pick source: Jev was 32% sure, so openai/gpt-oss-20b chose \"c1\"",
+      "ok browser.navigate: move open australian.museum: Opened australian.museum: the page title reads \"Admission information - The Austr",
+      "ok page.text: move read australian.museum: Read 6000 of 6922 characters of \"Admission information - The Australian Museum\" a",
+      "ok research: read australian.museum: 1 cited fact from 6000 characters",
+      "note research: read on: Jev chose \"more\" (72% sure)",
+      "ok page.text: move read australian.museum from 6000: Read 922 of 6922 characters of \"Admission information - The Australian ",
+      "unknown research: read australian.museum: 0 cited facts from 922 characters",
+      "ok research: sub-goal 2 of 5, read: done. 1 cited facts from 2 pages so far (2 of 5 done)",
+      "note research: enough evidence: Jev was 33% sure, so openai/gpt-oss-20b chose \"search_again\"",
+      "ok research: search \"Sydney Harbour Bridge pigeon count March [number] official\": 12 results, 11 usable, best bayside.nsw.g",
+      "note research: pick source: Jev chose \"none\" (99% sure)",
+      "ok research: search \"research find exact number pigeons guide\": 12 results, 11 usable, best pigeon.psy.tufts.edu",
+      "note research: pick source: Jev chose \"none\" (71% sure)",
+      "ok research: search \"research find exact number pigeons information\": 12 results, 10 usable, best researchgate.net",
+      "note research: pick source: Jev chose \"none\" (93% sure)",
+      "ok research: search \"research find exact number pigeons guide\": 12 results, 2 usable, best combinedpc.com.au",
+      "note research: pick source: Jev chose \"none\" (67% sure)",
+      "note research: sub-goal 3 of 5, compare: started. Comparing 1 facts across 2 sources (2 of 5 done)",
+      "ok research: sub-goal 3 of 5, compare: done. 0 corroborated, 1 single-source; 1 of 2 asked-for items covered; not found: Fi",
+      "note research: sub-goal 4 of 5, save report: started. Saving report-[number]T[number].md in the computer's working folder (3 ",
+      "ok file.write: move save report-[number]T[number].md: Wrote report-[number]T[number].md (1252 bytes) and read it back.",
+      "ok research: sub-goal 4 of 5, save report: done. report-[number]T[number].md written and read back (4 of 5 done)",
+      "note research: sub-goal 5 of 5, return result: started. Returning the report to the conversation and keeping it as a saved re",
+      "ok research: sub-goal 5 of 5, return result: done. The report is in your conversation (5 of 5 done)",
+      "unknown research: research partial: 1 cited facts from 2 sources in 102 s; Jev 14 decisions (32-99% sure); 4 handed to a connect",
+      "ok research: research partial: Partial report: 1 cited facts from 2 sources (australian.museum). Not found: Find the exact "
+    ]
+  },
+  {
+    "at": "+157.9s",
+    "step": "research completeness",
+    "data": {
+      "canberra": {
+        "state": "succeeded",
+        "artifact": "complete"
+      },
+      "notOnTheWeb": {
+        "state": "succeeded",
+        "artifact": "partial"
+      }
+    }
+  }
+]

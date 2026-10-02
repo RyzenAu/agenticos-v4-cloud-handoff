@@ -185,7 +185,7 @@ Clients (the AgenticOS connector and Jarvis, Claude Code, Hermes, hindsight-ask)
 **Writes**
 - Writes are **OFF** unless `run\<profile>\WRITES_ENABLED` exists (`hindsightctl writes -State on`).
 - They are allowed only to write banks: `mu-shared` on the pilot.
-- MCP write tools (`sync_retain`, `update_memory`, `invalidate_memory`) are gated the same way.
+- MCP write tools (`sync_retain`, `update_memory`, `invalidate_memory`) are gated the same way. **Since 28 Sep (commit `a1ec9053`, REVIEW-STAGE-D B3) Hindsight's own MCP no longer enables them** (`HINDSIGHT_API_MCP_ENABLED_TOOLS`), so this gate is a second layer: a `tools/call sync_retain` answers HTTP 200 with a JSON-RPC result `isError: true` ("Unknown tool"), and with writes OFF the proxy answers first with error `-32001` ("memory writes are OFF"). The only save path at the proxy is REST retain (forced synchronous); agents save through AgenticOS (`/__memory/mcp`, §13).
 - Read banks on the pilot: `mu-shared` and `mu-pilot`.
 
 **Deletion**
@@ -341,10 +341,10 @@ Evidence lives in `docs/hindsight-evidence/`.
 
 | Test | Command | Result |
 |---|---|---|
-| Unit | `python -m unittest discover -s scripts/hindsight/tests -p "test_*.py"` | **30 pass** (rev 3): adds canonical-path rejection of 15 traversal forms, strict routes (no bank delete/clear), daily cap, two mutexes, managed-Postgres URL, reflect scrubbing |
+| Unit | `python -m unittest discover -s scripts/hindsight/tests -p "test_*.py"` | **48 pass on 2 Oct 2026** (30 at rev 3; the count has grown since). Rev 3: adds canonical-path rejection of 15 traversal forms, strict routes (no bank delete/clear), daily cap, two mutexes, managed-Postgres URL, reflect scrubbing |
 | Credentials (synthetic fixture) | `python scripts/hindsight/tests/cred_fixture_test.py` | **ALL PASS**: success, failure, kill and no-root |
 | API acceptance (8889) | `python scripts/hindsight/tests/synthetic_acceptance.py` | **45/45**: 401s, loopback, receipts without text, document/memory/bank deletion by SQL counts |
-| Proxy acceptance (8879) | `python scripts/hindsight/tests/proxy_acceptance.py` | **64/64** (rev 3): key-less clients, SID check, forced sync, correction, approval-only document deletes, bank delete/clear not exposed even with a signed token, 19 raw traversal requests refused with no effect (victim bank intact, no clear, no hidden bank, no payload), rejections logged as `reject_noncanonical`, reflect, writes switch, 403 allowlist, MCP, operator bank delete, leak scan incl. reflect |
+| Proxy acceptance (8879) | `python scripts/hindsight/tests/proxy_acceptance.py` | **77/77 on 2 Oct 2026** (Ryzen, synthetic instance; the script grew from 64 to 74 checks after rev 3, and its two stale MCP-save checks were replaced by five checks of the supported read-only-MCP behaviour, see `docs/programme-20261001/RYZEN-HINDSIGHT.md` §4 F8). **64/64** at rev 3: key-less clients, SID check, forced sync, correction, approval-only document deletes, bank delete/clear not exposed even with a signed token, 19 raw traversal requests refused with no effect (victim bank intact, no clear, no hidden bank, no payload), rejections logged as `reject_noncanonical`, reflect, writes switch, 403 allowlist, MCP, operator bank delete, leak scan incl. reflect |
 | Route evaluation | `python scripts/hindsight/tests/route_eval.py` | §12 |
 | Startup-hang bound (live) | profile `synth-hang` | **Stopped at the bound.** 1 start + 5 restarts, each killed at the 240 s startup timeout; `crashloop_stopped` ("6 failed launches in a row") after 25.5 min, while the rate window held only 2 (`synth-hang-events.jsonl`) |
 | Session end (synthetic `WM_ENDSESSION`) | `python scripts/hindsight/tests/session_end_check.py` | **Pass** (rev 3): proxy, API, then Postgres (`pg_ctl`) stopped in 4.8 s, in that order; Postgres log "fast shutdown … shut down"; nothing left running |
@@ -426,7 +426,9 @@ This is not recommended.
 
 ## 13. Client wiring
 
-**Configuration.** Every client uses the proxy on 127.0.0.1:8878 and bank `mu-shared`. There is no key and no header in any client config. `scripts/hindsight/clients/connect-clients.ps1` backs up each file and applies the change.
+> **Superseded in part (28 Sep, `a1ec9053`).** The table below is the rev-3 wiring and still shows `sync_retain`, `update_memory` and `invalidate_memory` in the Hermes include list and in the saves that were tested. Today Hindsight's MCP is **read-only** and Claude Code, Hermes and the skill **save through AgenticOS** (`http://127.0.0.1:8081/__memory/mcp`: `remember`, `save_to_vault`, `recall`, `forget`; recall through `/__memory/recall`), with only `bun.exe` allowed to write at the pilot proxy (`write_images`). `scripts/hindsight/clients/connect-clients.ps1` applies that shape. Consequence for a client whose config still lists the removed tools: the tool is not offered by `tools/list`, a forced call returns `isError` "Unknown tool" and nothing is saved; the client can still read. Nothing is lost silently, but an agent told to "save" through such a config cannot until its config is re-pointed at AgenticOS. The live main-PC client configs were not inspected or changed for this note.
+
+**Configuration (rev 3).** Every client uses the proxy on 127.0.0.1:8878 and bank `mu-shared`. There is no key and no header in any client config. `scripts/hindsight/clients/connect-clients.ps1` backs up each file and applies the change.
 
 | Client | Change (redacted diff) | Applied? | Real save + recall (synthetic proxy 8879, bank `mu-shared`) | Read-only on the pilot (proxy 8878) |
 |---|---|---|---|---|

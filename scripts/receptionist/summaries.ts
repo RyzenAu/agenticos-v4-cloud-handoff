@@ -1,6 +1,7 @@
 import { readFileSync, mkdirSync, writeFileSync, renameSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { callMimo } from "../llm/mimo";
+import { dataDirFor } from "../cloud/data-dir";
 export type Summary = { line: string; source: "mimo" | "first-sentence"; at?: number };
 // A person's name after "named/called/patient/Mr/Mrs/Ms/Miss/Dr" (capitalised words) → "[name]".
 // Retell's summaries name the caller ("…an existing patient named X"); the page never needs it.
@@ -28,7 +29,7 @@ export function createSummaries(
     fetch?: typeof fetch;
   } = {},
 ) {
-  const file = join(root, ".operator-data/receptionist-summaries.json");
+  const file = join(dataDirFor(root), "receptionist-summaries.json");
   let cache: Record<string, Summary> = Object.create(null);
   try {
     const data = JSON.parse(readFileSync(file, "utf8"));

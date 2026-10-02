@@ -276,15 +276,18 @@ async function drags() {
           for (let i = 0; i < 40 && !saidDrag && lesson.active; i++) await sleep(250);
           await sleep(3000);
           const snap = parseSnapshot(await nativeScreen(ps).snapshot(win.handle), { browser: true });
-          const src = snap.elements.find((e) => e.web !== false && labelOf(e) === task.learner.from);
-          const dst = "to" in task.learner ? snap.elements.find((e) => e.web !== false && labelOf(e) === task.learner.to) : src;
+          // Plain locals: the learner is a union (drag to a target, drag by a percent, or both), and a closure loses the `in` narrowing.
+          const learner = task.learner;
+          const targetLabel = "to" in learner ? learner.to : undefined;
+          const src = snap.elements.find((e) => e.web !== false && labelOf(e) === learner.from);
+          const dst = targetLabel !== undefined ? snap.elements.find((e) => e.web !== false && labelOf(e) === targetLabel) : src;
           if (src && dst && lesson.active) {
-            const pct = "percent" in task.learner ? task.learner.percent : undefined;
+            const pct = "percent" in learner ? learner.percent : undefined;
             const to = pct !== undefined ? { x: Math.round(dst.x + (dst.w * pct) / 100), y: Math.round(dst.y + dst.h / 2) } : centre(dst);
-            transcript.push({ t: at(), kind: "him", text: `(drags ${task.learner.from} to ${pct !== undefined ? `${pct}%` : task.learner.to})` });
+            transcript.push({ t: at(), kind: "him", text: `(drags ${learner.from} to ${pct !== undefined ? `${pct}%` : targetLabel})` });
             learnerAt = Date.now();
             await nativeScreen(ps).drag!(win.handle, centre(src).x, centre(src).y, to.x, to.y);
-          } else transcript.push({ t: at(), kind: "note", text: `(learner couldn't find ${task.learner.from})` });
+          } else transcript.push({ t: at(), kind: "note", text: `(learner couldn't find ${learner.from})` });
         }
         const out = await Promise.race([lesson.finished, sleep(60_000).then(() => ({ ok: false, said: "(timed out)" }))]);
         lesson.stop();

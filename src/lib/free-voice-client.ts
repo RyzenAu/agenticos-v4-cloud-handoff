@@ -7,6 +7,22 @@ import { runVoiceToolBatch, screenResultPause } from "./screen-result";
 import { neutralisePageReads, pageReadForModel } from "./page-read";
 import type { VoicePhase } from "./openai-voice-client";
 import { isEarconEnabled, playAcknowledgeEarcon, type EarconAudioContext } from "./earcons";
+import { validPersonality } from "./voice-personality";
+import {
+  ENDPOINTING,
+  FALSE_INTERRUPTION_MS,
+  INTERRUPT_CONFIRM_MS,
+  STOP_QUESTION_TTL_MS,
+  STOP_TASK_QUESTION,
+  answerStopQuestion,
+  classifyStop,
+  createDuplicateGuard,
+  utteranceEventId,
+  createMicReconnector,
+  remainingHoldMs,
+  type EndpointConfig,
+  type MicStatus,
+} from "./voice-turns";
 
 export type ToolCall = {
   id: string;
@@ -43,7 +59,16 @@ export type FreeVoiceOptions = {
    */
   onTool: (name: string, args: Record<string, unknown>, signal: AbortSignal, say: (line: string) => void) => Promise<string>;
   slowTools?: string[];
+  /**
+   * Work Jarvis left going on the server (a computer job, a coding job) outlives any one turn, so a "stop that task" with nothing running HERE is
+   * still a stop of that work. When given, those words go to this (the one command path's stop, which cancels the right job or asks which) and
+   * its line is spoken; null falls back to "Nothing is running." A bare "stop" only goes there when `hasBackgroundWork` says something is going.
+   */
+  backgroundStop?: (text: string, signal: AbortSignal) => Promise<string | null>;
+  hasBackgroundWork?: () => boolean;
   greeting?: string;
+  /** Read per clip so speed changes apply without restarting the conversation. */
+  speechSpeed?: () => number;
   /**
    * "Act while I speak": asked with a stable partial transcript (browser interim results,
    * debounced) and returns a show-only tool call to run before he finishes, or null. Omit to
@@ -56,6 +81,15 @@ export type FreeVoiceOptions = {
    * and the route that answered ("rules", "jev-router" or a brain model). Never awaited, never
    * changes routing or timing — the caller (voice-companion.tsx) fires a best-effort POST.
    */
+  /**
+   * Turn-taking tuning (src/lib/voice-turns.ts). Defaults are the shipped behaviour; tests shrink
+   * the delays so a synthetic fixture runs in milliseconds.
+   */
+  endpointing?: Partial<EndpointConfig>;
+  falseInterruptionMs?: number;
+  micReconnectDelays?: number[];
+  /** The microphone dropped (device change, permission blip) and was re-acquired or given up on; the session continues. */
+  onMicStatus?: (status: MicStatus) => void;
   onLatency?: (entry: { id: string; route: string; speechEndAt: number; routeDecidedAt: number; actionStartedAt: number; actionDoneAt: number }) => void;
 };
 
@@ -186,7 +220,7 @@ const DEFAULT_VAD_CONFIG: VadConfig = {
   startRms: 0.02,
   stopRms: 0.012,
   startMs: 150,
-  silenceMs: 800,
+  silenceMs: ENDPOINTING.minSilenceMs,
   minSpeechMs: 350,
   maxSpeechMs: 30000,
   bargeInRmsMultiplier: 2.5,
@@ -745,6 +779,8 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+type EarlyAction = { id: number; name: string; args: Record<string, unknown>; partial: string; result: string };
+
 export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoiceCall> {
   const { signal } = options;
   signal.throwIfAborted();
@@ -764,6 +800,23 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
   let phase: VoicePhase = "listening";
   let generation = 0;
   let turnController: AbortController | null = null;
+  // Turn-taking (src/lib/voice-turns.ts): how long to wait, what is still undecided, what is running.
+  const endpoint: EndpointConfig = { ...ENDPOINTING, ...options.endpointing };
+  const falseInterruptionMs = options.falseInterruptionMs ?? FALSE_INTERRUPTION_MS;
+  const duplicates = createDuplicateGuard();
+  /** turn()/tool calls of the current turn still awaited: "a task is running". Reset when a turn is superseded. */
+  let inFlight = 0;
+  let speechToken = 0;
+  /** Aborts every queued/in-flight TTS fetch of the speech being said; replaced whenever speech is stopped. */
+  let speechAbort = new AbortController();
+  /** Jarvis's playback is held (speech over him, not yet known to be words). */
+  let paused: { at: number; timer: ReturnType<typeof setTimeout> } | null = null;
+  let stopQuestionAt = 0;
+  let utteranceSeq = 0;
+  let holdWake: (() => void) | null = null;
+  /** The newest utterance not yet handed to the brain: a continuation merges into it instead of replacing it. */
+  let pending: { seq: number; chunks: Float32Array[]; endAt: number; submitted: boolean; controller: AbortController; speakingAtOnset: boolean; early: EarlyAction | null } | null = null;
+  let utteranceSpeakingAtOnset = false;
   let history: ChatMessage[] = [];
   const context: string[] = [];
 
@@ -783,16 +836,22 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
   let recording = false;
   let interrupted = false;
   let voicedSamples = 0;
-  const CONFIRM_SPEECH_SAMPLES = (16000 * 350) / 1000;
   let utteranceChunks: Float32Array[] = [];
 
-  const vad = createVad({});
+  const vad = createVad({ silenceMs: endpoint.minSilenceMs });
 
   // "Act while I speak": one speculative show-only action per utterance, from partials.
   let utteranceId = 0;
   // The utterance the final turn has taken over; a late reflex answer for it is dropped.
   let consumedId = 0;
-  let speculated: { id: number; name: string; args: Record<string, unknown>; partial: string; result: string } | null = null;
+  // Event identity of the current turn (Open Dot V): the same utterance's early and final calls, or a replay after a reconnect, share it,
+  // so the command service runs the command once. A typed turn gets its own key; the same words typed again later are a new command.
+  const eventNonce = Math.random().toString(36).slice(2, 8);
+  let typedTurns = 0;
+  let turnEventKey = "u0";
+  /** jarvis_command carries its event id; every other tool is untouched. */
+  const withEventId = (name: string, args: Record<string, unknown>, key: string) => (name === "jarvis_command" ? { ...args, eventId: utteranceEventId(eventNonce, key, name, args) } : args);
+  let speculated: EarlyAction | null = null;
   let partialText = "";
   let partialTimer: ReturnType<typeof setTimeout> | undefined;
   let reflexController: AbortController | null = null;
@@ -821,6 +880,8 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
 
   const setPhase = (next: VoicePhase) => {
     if (closed) return;
+    // While his playback is held for a possible interruption he is not "speaking": the orb and the barge-in bar stay down.
+    if (paused && next === "speaking") return;
     phase = next;
     options.onPhase(next);
     if (next === "listening") scheduleAnnouncements();
@@ -852,18 +913,85 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
     }
   };
 
+  /** Freezes / releases the playback clock, so held speech continues exactly where it stopped. */
+  const holdAudio = (hold: boolean) => {
+    try {
+      const done = hold ? playbackContext.suspend() : playbackContext.resume();
+      void Promise.resolve(done).catch(() => undefined);
+    } catch {
+      /* a context without suspend/resume: the pause simply doesn't freeze the clock */
+    }
+  };
+
+  /** Stops what Jarvis is saying and cancels every queued TTS chunk and fetch. Never touches a running task. */
+  const stopSpeech = () => {
+    speechToken++;
+    speechAbort.abort();
+    speechAbort = new AbortController();
+    stopPlayback();
+    clearPause();
+    ttsActive = false;
+    ttsEndedAt = Date.now();
+  };
+
+  /** Drops the pause without resuming the clock while sources still exist: callers have already stopped them. */
+  const clearPause = () => {
+    if (!paused) return;
+    clearTimeout(paused.timer);
+    paused = null;
+    holdAudio(false);
+  };
+
+  /** Speech over Jarvis: hold his playback at once; the words (or a noise) decide whether it resumes. */
+  const pauseSpeech = () => {
+    if (closed || paused || phase !== "speaking") return;
+    const timer = setTimeout(() => {
+      if (!paused) return;
+      // Still talking after the window: it is a real interruption. Nothing heard: resume (cf. LiveKit's resume_false_interruption).
+      if (recording) confirmInterruption();
+      else resumeSpeech();
+    }, falseInterruptionMs);
+    paused = { at: Date.now(), timer };
+    holdAudio(true);
+    setPhase("listening");
+  };
+
+  const resumeSpeech = () => {
+    if (!paused) return;
+    clearTimeout(paused.timer);
+    paused = null;
+    holdAudio(false);
+    if (ttsActive) setPhase("speaking");
+  };
+
+  const settle = () => {
+    if (paused) return;
+    setPhase(inFlight > 0 ? "thinking" : ttsActive ? "speaking" : "listening");
+  };
+
+  /** Confirmed speech over him (or over a pause): cancel what he was saying. The task, if any, keeps running. */
+  const confirmInterruption = () => {
+    if (!paused && phase !== "speaking") return;
+    stopSpeech();
+    options.onCaption("");
+    settle();
+  };
+
   const invalidateCurrentTurn = () => {
     generation++;
+    inFlight = 0;
     turnController?.abort();
     reflexController?.abort();
     turnController = null;
-    stopPlayback();
+    stopSpeech();
   };
 
+  const acquireMic = () =>
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
   let microphone: MediaStream | undefined;
-  microphone = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
+  microphone = await acquireMic();
   if (closed || signal.aborted) {
     microphone.getTracks().forEach((t) => t.stop());
     signal.throwIfAborted();
@@ -878,10 +1006,67 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
   outputGain.connect(outputMeter);
   outputGain.connect(playbackContext.destination);
 
-  const micSource = captureContext.createMediaStreamSource(microphone);
+  let micSource = captureContext.createMediaStreamSource(microphone);
   inputMeter = captureContext.createAnalyser();
   inputMeter.fftSize = 256;
   micSource.connect(inputMeter);
+
+  // Device change or a permission blip: the track ends (or stays muted); re-acquire it and rewire
+  // the capture graph. The session, history and any running task are untouched.
+  let muteTimer: ReturnType<typeof setTimeout> | undefined;
+  let resetCapture: () => void = () => {};
+  const mic = createMicReconnector<MediaStream>({
+    acquire: acquireMic,
+    isClosed: () => closed,
+    delays: options.micReconnectDelays,
+    onStatus: (status) => {
+      options.onMicStatus?.(status);
+      if (status === "failed") options.onError("The microphone isn't available. Check it is connected and allowed, then start Jarvis again.");
+    },
+    onStream: (stream) => {
+      const old = microphone;
+      microphone = stream;
+      try {
+        micSource.disconnect();
+      } catch {
+        /* a source that never connected */
+      }
+      for (const track of old?.getTracks() ?? []) {
+        track.onended = null;
+        track.stop();
+      }
+      micSource = captureContext.createMediaStreamSource(stream);
+      micSource.connect(inputMeter!);
+      if (workletNode) micSource.connect(workletNode);
+      stream.getAudioTracks().forEach((t) => (t.enabled = !micMuted));
+      resetCapture();
+      watchMic(stream);
+    },
+  });
+  const reconnectMic = () => {
+    if (closed || mic.busy) return;
+    resetCapture();
+    void mic.lost();
+  };
+  function watchMic(stream: MediaStream) {
+    for (const track of stream.getAudioTracks()) {
+      track.onended = () => {
+        if (stream === microphone) reconnectMic();
+      };
+      track.onmute = () => {
+        clearTimeout(muteTimer);
+        muteTimer = setTimeout(() => {
+          if (stream === microphone) reconnectMic();
+        }, 3000);
+      };
+      track.onunmute = () => clearTimeout(muteTimer);
+    }
+  }
+  const onDeviceChange = () => {
+    if (microphone?.getAudioTracks().some((t) => t.readyState === "ended")) reconnectMic();
+  };
+  watchMic(microphone);
+  navigator.mediaDevices.addEventListener?.("devicechange", onDeviceChange);
 
   const end = async () => {
     if (closed) return;
@@ -892,6 +1077,11 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
     announcements.clear();
     if (announceTimer) clearTimeout(announceTimer);
     if (partialTimer) clearTimeout(partialTimer);
+    clearTimeout(muteTimer);
+    if (paused) clearTimeout(paused.timer);
+    pending?.controller.abort();
+    holdWake?.();
+    navigator.mediaDevices.removeEventListener?.("devicechange", onDeviceChange);
     if (recognition) {
       recognition.onend = null;
       try {
@@ -900,13 +1090,16 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         /* already stopped */
       }
     }
-    stopPlayback();
+    stopSpeech();
     try {
       workletNode?.port.close();
     } catch {
       /* ignore */
     }
-    microphone?.getTracks().forEach((t) => t.stop());
+    microphone?.getTracks().forEach((t) => {
+      t.onended = null;
+      t.stop();
+    });
     if (workletUrl) URL.revokeObjectURL(workletUrl);
     await Promise.allSettled([captureContext.close(), playbackContext.close()]);
     options.onDisconnect();
@@ -940,6 +1133,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         stopPlayback();
         const source = playbackContext.createBufferSource();
         source.buffer = buffer;
+        source.playbackRate.value = validPersonality({ speed: options.speechSpeed?.() }).speed;
         source.connect(outputGain!);
         activeSource = source;
         pendingStop = resolve;
@@ -967,10 +1161,12 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
         const source = playbackContext.createBufferSource();
         source.buffer = buffer;
+        const speed = validPersonality({ speed: options.speechSpeed?.() }).speed;
+        source.playbackRate.value = speed;
         source.connect(outputGain!);
         at = Math.max(at, playbackContext.currentTime + 0.03);
         source.start(at);
-        at += buffer.duration;
+        at += buffer.duration / speed;
         streamSources.add(source);
         source.onended = () => streamSources.delete(source);
         if (!last) setPhase("speaking");
@@ -1007,7 +1203,10 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
     // supersedes it, and only the current speaker may change the phase. Otherwise the
     // acknowledgement finishing mid-answer would flip the phase and lower the barge-in bar
     // while Jarvis is still talking.
-    let speechToken = 0;
+    const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+    const confirmSamples = (16000 * INTERRUPT_CONFIRM_MS) / 1000;
+    /** Confirmed speech of his is in progress: a reply waits for him rather than talking over him. */
+    const userTalking = () => recording && voicedSamples >= confirmSamples;
     const speak = async (
       text: string,
       turnSignal: AbortSignal,
@@ -1016,11 +1215,15 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
     ) => {
       if (closed) return;
       const mine = ++speechToken;
-      const current = () => mine === speechToken && myGeneration === generation && !closed && !turnSignal.aborted;
+      const speechSignal = speechAbort.signal;
+      const fetchSignal = AbortSignal.any([turnSignal, speechSignal]);
+      const current = () => mine === speechToken && myGeneration === generation && !closed && !turnSignal.aborted && !speechSignal.aborted;
       const split = splitSentences(stripMarkdownForSpeech(text));
       // With a streaming voice the first sentence goes alone and starts playing as it arrives.
       const sentences = options.ttsStream ? chunksForStreaming(split) : groupForSpeech(split);
       if (!sentences.length) return;
+      for (let waited = 0; userTalking() && current() && waited < 8000; waited += 40) await sleep(40);
+      if (!current()) return;
       // Tracked for TTS-echo suppression (isLikelyTtsEcho): what he's about to say, and that
       // he's saying it now. A newer speak() call (e.g. the real answer superseding "On it.")
       // naturally overwrites this with the more current line.
@@ -1029,7 +1232,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
       const fetches: Array<Promise<{ audio: string; mime: string }>> = [];
       const fetchAt = (i: number) => {
         if (!fetches[i]) {
-          fetches[i] = options.tts(sentences[i], turnSignal);
+          fetches[i] = options.tts(sentences[i], fetchSignal);
           fetches[i].catch(() => undefined); // awaited later, or dropped if he interrupts
         }
         return fetches[i];
@@ -1038,7 +1241,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         let start = 0;
         if (options.ttsStream) {
           if (sentences.length > 1) fetchAt(1); // the rest is fetched while sentence one plays
-          const live = await options.ttsStream(sentences[0], turnSignal).catch(() => null);
+          const live = await options.ttsStream(sentences[0], fetchSignal).catch(() => null);
           if (!current()) return;
           if (live && (await playPcmStream(live.stream, live.sampleRate, current).catch(() => false))) start = 1;
           if (!current()) return;
@@ -1079,12 +1282,23 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
       }
     };
 
-    const runModelLoop = async (controller: AbortController, myGeneration: number, speechEndAt: number) => {
+    /** Counts one awaited piece of this turn's work ("a task is running") for as long as this turn is current. */
+    const working = async <T,>(myGeneration: number, run: () => Promise<T>): Promise<T> => {
+      if (myGeneration === generation) inFlight++;
+      try {
+        return await run();
+      } finally {
+        if (myGeneration === generation && inFlight > 0) inFlight--;
+      }
+    };
+
+    const runModelLoop = async (controller: AbortController, myGeneration: number, speechEndAt: number, onFail?: () => void) => {
       let rounds = 0;
       let acknowledged = false;
       // Latency instrumentation only (scripts/voice-latency.ts): the route and the first action's
       // start/end, logged once per command. Never gates or slows anything below.
       const commandId = newLatencyId(speechEndAt);
+      const eventKey = turnEventKey;
       let routeDecidedAt: number | null = null;
       let route: string | null = null;
       let latencyLogged = false;
@@ -1092,10 +1306,11 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         if (myGeneration !== generation || closed) return;
         let result: { content: string | null; tool_calls?: ToolCall[]; model?: string };
         try {
-          result = await options.turn(prepareHistory(history), context, controller.signal);
+          result = await working(myGeneration, () => options.turn(prepareHistory(history), context, controller.signal));
         } catch (error) {
           if (myGeneration !== generation || closed) return;
           if ((error as { name?: string })?.name === "AbortError") return;
+          onFail?.();
           options.onError((error as Error)?.message || pickThinkingFailed());
           setPhase("listening");
           return;
@@ -1141,7 +1356,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
               const say = (line: string) => {
                 if (myGeneration === generation && !closed && !controller.signal.aborted) void speak(line, controller.signal, myGeneration, "thinking").catch(() => {});
               };
-              toolResult = await options.onTool(call.function.name, args, controller.signal, say);
+              toolResult = await working(myGeneration, () => options.onTool(call.function.name, withEventId(call.function.name, args, eventKey), controller.signal, say));
             } catch {
               toolResult =
                 "This action could not finish. Ask the user to try again. Do not claim it happened.";
@@ -1182,7 +1397,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
     // Never chimes over Jarvis's own voice, respects mute (routed through outputGain) and the
     // localStorage "jarvis:earcon" off switch.
     const playAcknowledgeChime = () => {
-      if (closed || micMuted || phase === "speaking" || !outputGain) return;
+      if (closed || micMuted || phase === "speaking" || paused || !outputGain) return;
       if (!isEarconEnabled()) return;
       try {
         playAcknowledgeEarcon(playbackContext as unknown as EarconAudioContext, outputGain);
@@ -1191,13 +1406,34 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
       }
     };
 
-    const handleUtterance = async (chunks: Float32Array[], speechEndAt: number = Date.now()) => {
+    /** A short line of his own (a stop confirmation, the stop question): spoken and shown, never a turn, never in the model's history. */
+    const sayLine = (line: string) => {
+      if (closed) return;
+      options.onMessage("assistant", line);
+      void speak(line, speechAbort.signal, generation).catch(() => {});
+    };
+
+    /** "Stop that task": the existing cancel path. Aborting the turn aborts its tool signal, which cancels the command job. */
+    const cancelTask = () => {
+      invalidateCurrentTurn();
+      options.onCaption("");
+      setPhase("listening");
+      sayLine("Stopped.");
+    };
+
+    const handleUtterance = async (
+      chunks: Float32Array[],
+      speechEndAt: number = Date.now(),
+      speakingAtOnset = false,
+      inheritedEarly: EarlyAction | null = null,
+    ) => {
       if (closed) return;
       // Whatever ran early for this utterance travels with it; later partials can't add more.
       if (partialTimer) clearTimeout(partialTimer);
       reflexController?.abort();
       consumedId = utteranceId;
-      const early = speculated;
+      turnEventKey = `u${consumedId}`;
+      const early = speculated ?? inheritedEarly;
       speculated = null;
       const totalLength = chunks.reduce((n, c) => n + c.length, 0);
       if (totalLength === 0) return;
@@ -1209,31 +1445,126 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
       }
       const wavBase64 = encodeBase64(encodeWav(merged, 16000));
 
+      // Nothing of the running turn is touched until these words are known to be a real new request:
+      // a cough, an echo, "stop" or a continuation of this very sentence must not kill a task or a reply.
+      const seq = ++utteranceSeq;
+      const sttGeneration = generation;
+      const sttController = new AbortController();
+      const entry = { seq, chunks, endAt: speechEndAt, submitted: false, controller: sttController, speakingAtOnset, early };
+      pending = entry;
+      const stale = () => closed || seq !== utteranceSeq || sttGeneration !== generation;
+      const release = () => {
+        if (pending === entry) pending = null;
+      };
+      if (!paused) setPhase("thinking");
+      let text = "";
+      try {
+        text = await options.stt(wavBase64, sttController.signal);
+        if (stale()) return;
+        if (!text || isNoiseTranscript(text)) {
+          // Noise that briefly held his voice: he carries on where he stopped.
+          release();
+          resumeSpeech();
+          settle();
+          return;
+        }
+        if (stopQuestionAt && Date.now() - stopQuestionAt <= STOP_QUESTION_TTL_MS) {
+          const answer = answerStopQuestion(text);
+          stopQuestionAt = 0;
+          if (answer) {
+            release();
+            options.onCaption("");
+            if (answer === "yes") cancelTask();
+            else {
+              resumeSpeech();
+              settle();
+            }
+            return;
+          }
+        }
+        const stop = classifyStop(text, { speaking: speakingAtOnset || paused !== null, taskRunning: inFlight > 0 });
+        if (stop.kind !== "none") {
+          // A deliberate stop never becomes a request to the brain. What it stops depends on what is going on.
+          release();
+          options.onCaption("");
+          if (stop.kind === "stop-speech") {
+            stopSpeech();
+            settle();
+          } else if (stop.kind === "stop-task") cancelTask();
+          else if (stop.kind === "ambiguous") {
+            stopSpeech();
+            stopQuestionAt = Date.now();
+            settle();
+            sayLine(STOP_TASK_QUESTION);
+          } else if (stop.kind === "no-task" || (stop.kind === "nothing" && options.hasBackgroundWork?.())) {
+            stopSpeech();
+            settle();
+            if (options.backgroundStop) {
+              const generationAtStop = generation;
+              void options.backgroundStop(text, speechAbort.signal).then((line) => {
+                if (generationAtStop !== generation) return;
+                if (line) sayLine(line);
+                else if (stop.kind === "no-task") sayLine("Nothing is running.");
+              }).catch(() => {
+                if (stop.kind === "no-task") sayLine("Nothing is running.");
+              });
+            } else if (stop.kind === "no-task") sayLine("Nothing is running.");
+          } else {
+            resumeSpeech();
+            settle();
+          }
+          return;
+        }
+        if (isLikelyTtsEcho({ transcript: text, ttsText: lastTtsText, ttsActive, msSinceTtsEnded: Date.now() - ttsEndedAt })) {
+          // Almost certainly Jarvis's own voice bleeding back through open speakers: drop it, and let him finish.
+          release();
+          resumeSpeech();
+          settle();
+          return;
+        }
+        // Adaptive endpointing: a trailing filler or a dangling "and" means he has not finished.
+        const hold = remainingHoldMs(text, Date.now() - speechEndAt, endpoint);
+        if (hold > 0) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, hold);
+            holdWake = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+          });
+          holdWake = null;
+          if (stale()) return;
+        }
+        // He started again: his next utterance decides (it merges into this one, or was only a blip).
+        while (recording && !stale()) await sleep(30);
+        if (stale()) return;
+        entry.submitted = true;
+        release();
+        if (!duplicates.accept(text)) {
+          // The same words again within the window: one command, not two.
+          options.onCaption("");
+          resumeSpeech();
+          settle();
+          return;
+        }
+      } catch (error) {
+        if (stale()) return;
+        if ((error as { name?: string })?.name !== "AbortError") {
+          release();
+          resumeSpeech();
+          options.onError((error as Error)?.message || pickMisheard());
+          setPhase("listening");
+        }
+        return;
+      }
+
+      // A real new request: it supersedes whatever was running or being said.
+      invalidateCurrentTurn();
       const myGeneration = generation;
       const controller = new AbortController();
       turnController = controller;
       setPhase("thinking");
       try {
-        const text = await options.stt(wavBase64, controller.signal);
-        if (myGeneration !== generation || closed) return;
-        if (!text || isNoiseTranscript(text)) {
-          setPhase("listening");
-          return;
-        }
-        if (isStopPhrase(text)) {
-          // A deliberate "stop"/"wait"/"that's enough": the VAD barge-in guard already cut any
-          // playback (well under 300ms — see bargeInStartMs); this must never also become a
-          // fresh request to the brain.
-          options.onCaption("");
-          setPhase("listening");
-          return;
-        }
-        if (isLikelyTtsEcho({ transcript: text, ttsText: lastTtsText, ttsActive, msSinceTtsEnded: Date.now() - ttsEndedAt })) {
-          // Almost certainly Jarvis's own voice bleeding back through open speakers — drop it
-          // rather than let him answer himself.
-          setPhase("listening");
-          return;
-        }
         options.onMessage("user", text);
         history.push({ role: "user", content: text.slice(0, MAX_MESSAGE_CHARS) });
         if (early && partialStillHolds(early.partial, text)) {
@@ -1254,16 +1585,31 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
           context.push(`Before he finished, Jarvis already ran ${early.name} ${JSON.stringify(early.args)} from the partial "${early.partial.slice(0, 120)}". His full request differs: do what he actually asked, and don't repeat that action unless he asked for it.`);
           while (context.length > 8) context.shift();
         }
-        await runModelLoop(controller, myGeneration, speechEndAt);
+        await runModelLoop(controller, myGeneration, speechEndAt, () => duplicates.forget(text));
       } catch (error) {
         if (myGeneration !== generation || closed) return;
         if ((error as { name?: string })?.name !== "AbortError") {
+          duplicates.forget(text);
           options.onError((error as Error)?.message || pickMisheard());
           setPhase("listening");
         }
       } finally {
         if (turnController === controller) turnController = null;
       }
+    };
+
+    resetCapture = () => {
+      recording = false;
+      interrupted = false;
+      voicedSamples = 0;
+      utteranceChunks = [];
+      preroll.length = 0;
+      prerollSamples = 0;
+      vad.reset();
+      if (partialTimer) clearTimeout(partialTimer);
+      reflexController?.abort();
+      consumedId = utteranceId;
+      partialText = "";
     };
 
     const handleCaptureFrame = (rawSamples: Float32Array, nativeRate: number) => {
@@ -1281,16 +1627,9 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         if (removed) prerollSamples -= removed.length;
       }
 
-      // Interrupt only once speech is confirmed. Cutting Jarvis off at the first loud
-      // frame would let a cough or a keyboard clack (later discarded as a blip) kill the
-      // reply he was giving or the turn he was thinking about.
-      const interrupt = () => {
-        if (interrupted) return;
-        interrupted = true;
-        invalidateCurrentTurn();
-        options.onCaption("");
-        setPhase("listening");
-      };
+      // Speech over Jarvis holds his playback at once (the VAD's barge-in start: loud and sustained,
+      // not a click). Only confirmed speech (INTERRUPT_CONFIRM_MS voiced) cancels what he was saying
+      // and only the words decide anything else: a cough or a door never kills a reply or a task.
       const event = vad.push(rms, frameMs, phase === "speaking");
       switch (event) {
         case "start":
@@ -1301,13 +1640,18 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
           utteranceId++;
           partialText = "";
           resultStart = resultsSeen;
+          utteranceSpeakingAtOnset = phase === "speaking";
+          if (utteranceSpeakingAtOnset) pauseSpeech();
           break;
         case "speech":
           if (recording) {
             utteranceChunks.push(down);
             // "speech" also covers the trailing-silence frames; count voiced ones only.
             if (rms >= vad.config.stopRms) voicedSamples += down.length;
-            if (voicedSamples >= CONFIRM_SPEECH_SAMPLES) interrupt();
+            if (voicedSamples >= confirmSamples && !interrupted) {
+              interrupted = true;
+              confirmInterruption();
+            }
           }
           break;
         case "end": {
@@ -1315,16 +1659,24 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
           recording = false;
           // The VAD's own end-of-speech moment: the "speech end" timestamp for latency logging.
           const speechEndAt = Date.now();
-          interrupt();
           playAcknowledgeChime();
-          const finished = utteranceChunks;
+          let finished = utteranceChunks;
           utteranceChunks = [];
-          void handleUtterance(finished, speechEndAt);
+          // A pause inside one sentence: the earlier words, not yet sent to the brain, join this utterance.
+          const carry = pending && !pending.submitted ? pending : null;
+          if (carry) {
+            carry.controller.abort();
+            holdWake?.();
+            finished = [...carry.chunks, ...finished];
+          }
+          void handleUtterance(finished, speechEndAt, utteranceSpeakingAtOnset || !!carry?.speakingAtOnset, carry?.early ?? null);
           break;
         }
         case "discard":
           recording = false;
           utteranceChunks = [];
+          // A blip that never became speech: if it had paused him, he carries on.
+          resumeSpeech();
           break;
         default:
           break;
@@ -1353,7 +1705,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
             speculated = { id, name: call.name, args: call.arguments, partial: text, result: "Early action still pending. Outcome unknown; do not repeat automatically." };
             const mine = speculated;
             try {
-              mine.result = await options.onTool(call.name, call.arguments, AbortSignal.any([signal, controller.signal]), () => {});
+              mine.result = await options.onTool(call.name, withEventId(call.name, call.arguments, `u${id}`), AbortSignal.any([signal, controller.signal]), () => {});
               if (controller.signal.aborted) mine.result = "This early action was interrupted. Its outcome is unknown; do not repeat automatically.";
             } catch {
               mine.result = "This action could not finish. Do not claim it happened.";
@@ -1446,17 +1798,8 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         microphone?.getAudioTracks().forEach((t) => (t.enabled = !muted));
         if (muted) {
           // Do not submit pre-mute audio when silence arrives after unmuting.
-          recording = false;
-          interrupted = false;
-          voicedSamples = 0;
-          utteranceChunks = [];
-          preroll.length = 0;
-          prerollSamples = 0;
-          vad.reset();
-          if (partialTimer) clearTimeout(partialTimer);
-          reflexController?.abort();
-          consumedId = utteranceId;
-          partialText = "";
+          resetCapture();
+          resumeSpeech();
         }
         // Browser SpeechRecognition owns a separate microphone stream; disabling our
         // getUserMedia track alone does not mute it. onend must not restart while muted.
@@ -1486,7 +1829,10 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         if (closed) return;
         const trimmed = text.trim();
         if (!trimmed) return;
+        // Typed and spoken words share one guard: the same words within the window are one command.
+        if (!duplicates.accept(trimmed)) return;
         invalidateCurrentTurn();
+        turnEventKey = `t${++typedTurns}`;
         const myGeneration = generation;
         const controller = new AbortController();
         turnController = controller;
@@ -1494,7 +1840,7 @@ export async function startFreeVoice(options: FreeVoiceOptions): Promise<FreeVoi
         history.push({ role: "user", content: trimmed.slice(0, MAX_MESSAGE_CHARS) });
         setPhase("thinking");
         // A typed message has no VAD end-of-speech; "now" is its speech-end for latency logging.
-        void runModelLoop(controller, myGeneration, Date.now()).catch((error) => {
+        void runModelLoop(controller, myGeneration, Date.now(), () => duplicates.forget(trimmed)).catch((error) => {
           // Tool batches reject when interrupted. Typed turns need the same rejection
           // boundary as handleUtterance, otherwise Stop emits an unhandled promise.
           if (myGeneration !== generation || closed || controller.signal.aborted) return;

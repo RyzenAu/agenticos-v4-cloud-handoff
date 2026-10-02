@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useDraft } from "@/lib/use-draft";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowUp,
@@ -49,7 +50,7 @@ export function MemoryCapture({
   const { state, isLoading } = useOperator();
   const spaces = memorySpaces(state);
   const [destination, setDestination] = useState(collection);
-  const [text, setText] = useState("");
+  const [text, setText] = useDraft("memory-note");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);

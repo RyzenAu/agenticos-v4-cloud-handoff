@@ -1,0 +1,168 @@
+[
+  {
+    "at": "+8.6s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+11.5s",
+    "step": "host check",
+    "data": [
+      {
+        "kind": "vps-ssh",
+        "ok": true,
+        "host": "Ryzen-PC",
+        "present": [
+          "Xvfb",
+          "chromium",
+          "x11vnc",
+          "xdotool",
+          "node",
+          "fonts"
+        ],
+        "missing": [],
+        "notes": [
+          "computers on this host run only while WSL is awake: it idles out when nothing runs in it and this hub's tunnel is down (an owner-side keep-alive on that PC makes that durable; LAN-BOT-HOST.md)"
+        ]
+      }
+    ]
+  },
+  {
+    "at": "+26.7s",
+    "step": "provision Research and Builder on Ryzen",
+    "data": {
+      "wallMs": 14928,
+      "a": {
+        "status": 200,
+        "adapter": "vps-ssh"
+      },
+      "b": {
+        "status": 200,
+        "adapter": "vps-ssh"
+      }
+    }
+  },
+  {
+    "at": "+26.7s",
+    "step": "both online",
+    "data": [
+      {
+        "name": "research",
+        "adapter": "vps-ssh",
+        "state": "online",
+        "desktop": true,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        },
+        "caps": [
+          "app.open",
+          "browser.navigate",
+          "build.component",
+          "computer.info",
+          "echo",
+          "file.chunk",
+          "file.list",
+          "file.read",
+          "file.write",
+          "fixture.open",
+          "input.click",
+          "input.key",
+          "input.scroll",
+          "input.type",
+          "notify",
+          "observe.page",
+          "page.audit",
+          "page.links",
+          "page.text",
+          "screen.goal",
+          "wait"
+        ]
+      },
+      {
+        "name": "builder",
+        "adapter": "vps-ssh",
+        "state": "online",
+        "desktop": true,
+        "viewer": {
+          "snapshot": true,
+          "vnc": true
+        },
+        "caps": [
+          "app.open",
+          "browser.navigate",
+          "build.component",
+          "computer.info",
+          "echo",
+          "file.chunk",
+          "file.list",
+          "file.read",
+          "file.write",
+          "fixture.open",
+          "input.click",
+          "input.key",
+          "input.scroll",
+          "input.type",
+          "notify",
+          "observe.page",
+          "page.audit",
+          "page.links",
+          "page.text",
+          "screen.goal",
+          "wait"
+        ]
+      }
+    ]
+  },
+  {
+    "at": "+26.7s",
+    "step": "the companion bundle on Ryzen carries the workflow executors",
+    "data": {
+      "missing": []
+    }
+  },
+  {
+    "at": "+27.2s",
+    "step": "workflows available on this hub",
+    "data": true
+  },
+  {
+    "at": "+27.8s",
+    "step": "ISOLATION: separate display, VNC port, DevTools port, work folder; one shared Kali environment",
+    "data": {
+      "research": {
+        "cfg": {
+          "name": "research",
+          "display": "60",
+          "resolution": "1280x800x24",
+          "vncPort": 5960,
+          "browserPort": 9360,
+          "workdir": "/var/lib/mu-computers/research/work"
+        },
+        "work": []
+      },
+      "builder": {
+        "cfg": {
+          "name": "builder",
+          "display": "61",
+          "resolution": "1280x800x24",
+          "vncPort": 5961,
+          "browserPort": 9361,
+          "workdir": "/var/lib/mu-computers/builder/work"
+        },
+        "work": []
+      },
+      "counts": {
+        "companion": 2,
+        "xvfb": 2,
+        "x11vnc": 2,
+        "browserMain": 0,
+        "git": 0
+      }
+    }
+  }
+]

@@ -10,6 +10,7 @@ import {
   type DetectDeps, type IssueReport, type RankDeps,
 } from "./issues";
 import { callOpener, DEFAULT_SENDER } from "./outreach";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type BatchRow = {
   lead: Lead;
@@ -137,7 +138,7 @@ export function renderTargetingReport(result: BatchResult, meta: { crmPath: stri
 }
 
 export function writeTargetingReport(root: string, result: BatchResult, markdown: string, now = new Date()): { md: string; json: string } {
-  const dir = join(root, ".operator-data", "reports");
+  const dir = join(dataDirFor(root), "reports");
   mkdirSync(dir, { recursive: true });
   const stem = `lead-targeting-${sydneyDate(now)}`;
   const md = join(dir, `${stem}.md`);

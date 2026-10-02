@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { existingConnectionDiscovery } from "./account-discovery";
 import type { ConnectionDiscovery, ExistingAppConnection } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 /** Keep only names and CLI connection health; never retain server URLs or configuration. */
 export function claudeConnectionMetadata(output: string): ExistingAppConnection[] {
@@ -54,7 +55,7 @@ export function nativeConnectionDiscovery(root: string, options: NonNullable<Par
   // starts Codex (`codex app-server`) or Claude (`claude mcp list`) (T8c, lead decision). read() is the
   // check: POST /setup/connections/check (Check again, the setup scan). The last answer is kept on
   // disk (app names and health flags only) so a restart still has it.
-  const file = join(root, ".operator-data", "setup-connections.json");
+  const file = join(dataDirFor(root), "setup-connections.json");
   let last: ConnectionDiscovery | undefined;
   try {
     const saved = JSON.parse(readFileSync(file, "utf8"));
@@ -63,7 +64,7 @@ export function nativeConnectionDiscovery(root: string, options: NonNullable<Par
   const remember = (value: ConnectionDiscovery) => {
     last = value;
     try {
-      mkdirSync(join(root, ".operator-data"), { recursive: true, mode: 0o700 });
+      mkdirSync(join(dataDirFor(root)), { recursive: true, mode: 0o700 });
       const tmp = `${file}.${randomUUID()}.tmp`;
       writeFileSync(tmp, JSON.stringify(value), { mode: 0o600 });
       renameSync(tmp, file);

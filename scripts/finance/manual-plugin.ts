@@ -1,6 +1,7 @@
 // /__finance_manual — HTTP surface for the owner-initiated NAB CSV import (Finance page).
 //
 //   GET  /__finance_manual/summary?period=this-month   → summary(ledger, period) aggregates
+//   GET  /__finance_manual/receptionist-payments?period → credits equal to an approved package price (counts, no rows)
 //   GET  /__finance_manual/status                      → counts, "NAB CSV imported, as of …", audit (counts only), live-feed card
 //   GET  /__finance_manual/transactions?period&filter  → rows for review/correction (labels + amounts, no bank text) (token)
 //   GET  /__finance_manual/edits                       → correction history (who, when, old → new) (token)
@@ -28,6 +29,7 @@ import { legacyNabRowCount, migrateLegacyFinance, type LegacyMigrationResult } f
 import { answerManualFinanceQuestion, matchManualFinanceQuestion } from "./manual-jarvis";
 import { NAB_CSV_ISSUE_TEXT, NAB_CSV_MAX_BYTES, NabCsvRejected, type NabCsvIssue } from "./manual-nab-csv";
 import { SHARED_LEDGER, closeSharedManualStores, sharedManualStore, type EffectiveRow, type ManualFinanceStore, type TxField, type VendorField } from "./manual-store";
+import { receptionistPaymentCandidates } from "./manual-receptionist";
 import { LIVE_FEED_LABEL, matchRefunds, ownAccountPairs, parsePeriodParam, resolvePeriod, summary, sydneyToday } from "./manual-summary";
 import { pageTokenOk, requestPrincipal } from "../identity/gate";
 import { authorise, isBrowserPrincipal, type Principal } from "../identity/principal";
@@ -106,6 +108,10 @@ export function handleManualFinance(req: ManualFinanceRequest, deps: ManualFinan
   try {
     if (req.method === "GET" && route === "/summary") {
       return { status: 200, body: summary(ledger, parsePeriodParam(req.query.get("period")), { store: deps.store(), today }) };
+    }
+    // Approved-package price matches: counts and totals per package only, no rows (same class as /summary).
+    if (req.method === "GET" && route === "/receptionist-payments") {
+      return { status: 200, body: receptionistPaymentCandidates(parsePeriodParam(req.query.get("period")), { store: deps.store(), today }) };
     }
     if (req.method === "GET" && route === "/status") {
       const store = deps.store();

@@ -4,6 +4,7 @@ import { demoAudience } from "../src/lib/business-demo-data";
 import { assistantCatalog, runAssistant } from "./assistant-adapters";
 import { briefGeneratorFor, briefGeneratorName, businessBrief, findBriefModel } from "./business-brief";
 import { briefHighlights } from "./business-brief-highlights";
+import { localOwnerHeaders } from "./identity/local-owner-token";
 
 export function briefPrompt(packet: ReturnType<ReturnType<typeof businessBrief>["collect"]>) {
   return `Write a useful, calm, readable daily business briefing for the workspace owner using ONLY the evidence packet below. This is an actual report, not sample content or a list of dashboard features.
@@ -95,7 +96,7 @@ async function askBriefModel(root: string, key: string, model: BriefModel, promp
     : { backend: model.backend, provider: model.provider, model: model.name, prompt, permissionMode: "plan", contextMode: "provided", streamFormat: "text-delta", effort: "low", origin: "business", title: "Daily brief" };
   const response = await fetch(`${options.baseUrl}${route}`, {
     method: "POST", redirect: "error", signal,
-    headers: { "Content-Type": "application/json", "X-Claude-OS-Token": options.token! },
+    headers: { "Content-Type": "application/json", "X-Claude-OS-Token": options.token!, ...localOwnerHeaders() },
     body: JSON.stringify(body),
   });
   if (!response.ok || !response.body) throw new Error(`Your ${name} connection could not prepare the brief. Please try again.`);

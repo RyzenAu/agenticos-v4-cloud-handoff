@@ -23,8 +23,7 @@ use windows::core::{Result as WinResult, HSTRING, PWSTR};
 use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
-use crate::config::app_port;
-use crate::supervisor;
+use crate::config;
 
 pub fn open_links_externally(window: &tauri::WebviewWindow) -> tauri::Result<()> {
     window
@@ -52,7 +51,7 @@ fn external_scheme(uri: &str) -> bool {
 }
 
 fn is_app_url(uri: &str) -> bool {
-    uri.eq_ignore_ascii_case("about:blank") || supervisor::is_app_url(uri, app_port())
+    uri.eq_ignore_ascii_case("about:blank") || config::is_app_url(uri)
 }
 
 fn open_in_default_browser(uri: &str) {

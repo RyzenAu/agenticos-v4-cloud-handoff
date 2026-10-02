@@ -20,7 +20,7 @@ function lead(over: Partial<Lead> = {}): Lead {
     rating: null, reviews: null, emails: [], emailOk: false, score: 0, pitch: "audit_pending", reasons: [],
     status: "new", owner: "", nextAt: null, lastContactAt: null, googleAt: null, createdAt: "2026-09-20T00:00:00Z",
     source: "osm", attribution: "", excluded: false, excludedReason: "", websiteSource: "osm_tag", websiteConfidence: null,
-    websiteCheckedAt: null, mergedInto: null, phoneSource: "", phoneConfidence: null, phoneCheckedAt: null, suggestedPhone: "",
+    websiteCheckedAt: null, websiteCheck: "not-checked", mergedInto: null, phoneSource: "", phoneConfidence: null, phoneCheckedAt: null, suggestedPhone: "",
     ...over,
   };
 }
@@ -60,7 +60,7 @@ describe("eval: a phone-only home page trips phone_only with evidence, a form-co
 describe("eval: an automatic 'no website' finding is never sent out as a confirmed pitch", () => {
   test("no website on file, checked by discovery -> status no_website_verified, pitch audit_pending (never 'website')", async () => {
     const report = await detectIssues(
-      lead({ website: "", websiteCheckedAt: "2026-09-25T10:00:00Z" }),
+      lead({ website: "", websiteCheckedAt: "2026-09-25T10:00:00Z", websiteCheck: "none-verified" }),
       { now: NOW },
     );
     expect(report.status).toBe("no_website_verified");
@@ -71,7 +71,7 @@ describe("eval: an automatic 'no website' finding is never sent out as a confirm
 
   test("a lead with no suburb/address on file (e.g. Maven Dental Group) gets exactly the same audit_pending guard, never a confirmed pitch either way", async () => {
     const noAddressLead = lead({
-      name: "Maven Dental Group", address: "", area: "", website: "", websiteCheckedAt: "2026-09-25T10:00:00Z",
+      name: "Maven Dental Group", address: "", area: "", website: "", websiteCheckedAt: "2026-09-25T10:00:00Z", websiteCheck: "none-verified",
     });
     const report = await detectIssues(noAddressLead, { now: NOW });
     expect(report.status).toBe("no_website_verified");

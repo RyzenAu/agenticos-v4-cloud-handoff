@@ -12,7 +12,7 @@ function fn(name: string, description: string, properties: Record<string, unknow
 export function siteDraftTool() {
   return fn(
     "site_draft",
-    "Draft a first-cut local website for a CRM lead — never publishes, never sends. Say the lead's name or CRM id.",
+    "Create a local website preview for a CRM lead. Dental previews use the selected flagship design. Never publishes or sends. Say the lead's name or CRM id.",
     { lead: { type: "string", description: "Lead name (as in the CRM) or numeric lead id" } },
   );
 }

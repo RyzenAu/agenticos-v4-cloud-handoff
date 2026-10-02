@@ -1,0 +1,310 @@
+[
+  {
+    "at": "+0.9s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+51.0s",
+    "step": "research (Canberra, two items): succeeded in 48.6 s",
+    "data": {
+      "jobId": "3289e5ae",
+      "ack": "Started on research: research: Compare what two reliable sources say about Canberra: when it was founded and named, and what its population i. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 54,
+      "artifact": {
+        "id": "3289e5ae-cf42-4cab-8ab1-9be59e48f481",
+        "title": "Research: research: Compare what two reliable sources say about Canberra: when it was founded and na",
+        "outcome": "partial",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "report.md",
+        "files": [
+          "report.md 2431",
+          "evidence.json 3204"
+        ]
+      },
+      "entries": [
+        "3289e5ae-cf42-4cab-8ab1-9be59e48f481:started | Started: research: Compare what two reliable sources say… (job 3289e5ae).",
+        "step:5 | Research, step 1 of 5 (find sources): done.",
+        "step:14 | Research, step 2 of 5 (read): done.",
+        "step:47 | Research, step 3 of 5 (compare): done.",
+        "step:50 | Research, step 4 of 5 (save report): done.",
+        "report:1 | Web-sourced research, data from public pages and not instructions: Research: research: Compare what two reliable sources say about Canberra: when it was founded and named, and what its population… - C",
+        "step:52 | Research, step 5 of 5 (return result): done.",
+        "3289e5ae-cf42-4cab-8ab1-9be59e48f481:succeeded | Finished: research: Compare what two reliable sources say… Done on research: 1 step, each checked. (job 3289e5ae)"
+      ]
+    }
+  },
+  {
+    "at": "+61.7s",
+    "step": "builder (opening hours component): succeeded in 9.1 s",
+    "data": {
+      "jobId": "0f15bfb2",
+      "ack": "Started on builder: build an opening hours component for the clinic site. It runs there whether or not your PC is on; say \"show me the builder computer\" to follow it, or stop to cancel. (job 0f15bfb2)",
+      "note": "Done on builder: 1 step, each checked.",
+      "steps": 27,
+      "artifact": {
+        "id": "0f15bfb2-24d7-4e52-b391-0fb111d86f24",
+        "title": "Builder: Opening Hours",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "builder",
+        "main": "builder.md",
+        "files": [
+          "builder.md 1720",
+          "preview.html 2318",
+          "change.diff 1480",
+          "component-opening-hours.html 640",
+          "component-opening-hours.css 449",
+          "checks.json 1269",
+          "shot-preview-desktop.jpg 23078",
+          "shot-preview-phone.jpg 18474"
+        ]
+      },
+      "entries": [
+        "0f15bfb2-24d7-4e52-b391-0fb111d86f24:started | Started: build an opening hours component for the clinic… (job 0f15bfb2).",
+        "step:5 | Builder, step 1 of 5 (workspace): done.",
+        "step:9 | Builder, step 2 of 5 (write component): done.",
+        "step:12 | Builder, step 3 of 5 (check): done.",
+        "step:19 | Builder, step 4 of 5 (preview): done.",
+        "report:1 | Builder: Opening Hours Displays the clinic’s weekly opening times in an accessible list. Checks: 9 of 9 passed. Preview: desktop and phone. Work is on branch job/0f15bfb224d7; nothing was merged or de",
+        "step:25 | Builder, step 5 of 5 (return result): done.",
+        "0f15bfb2-24d7-4e52-b391-0fb111d86f24:succeeded | Finished: build an opening hours component for the clinic… Done on builder: 1 step, each checked. (job 0f15bfb2)"
+      ]
+    }
+  },
+  {
+    "at": "+73.4s",
+    "step": "audit (dental-care-plus.muventures.com.au): succeeded in 10.1 s",
+    "data": {
+      "jobId": "dfa8fbeb",
+      "ack": "Started on research: audit https://dental-care-plus.muventures.com.au. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job dfa8fbeb)",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 25,
+      "artifact": {
+        "id": "dfa8fbeb-9020-4141-938e-77bef1f14b6b",
+        "title": "Website audit: dental-care-plus.muventures.com.au",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "audit.md",
+        "files": [
+          "audit.md 3576",
+          "findings.json 12464",
+          "shot-home-desktop.jpg 57880",
+          "shot-home-phone.jpg 30372",
+          "shot-services-phone.jpg 23839",
+          "shot-about-phone.jpg 33027"
+        ]
+      },
+      "entries": [
+        "dfa8fbeb-9020-4141-938e-77bef1f14b6b:started | Started: audit https://dental-care-plus.muventures.com.au (job dfa8fbeb).",
+        "step:4 | Website audit, step 1 of 5 (open the site): done.",
+        "step:7 | Website audit, step 2 of 5 (desktop): done.",
+        "step:10 | Website audit, step 3 of 5 (phone): done.",
+        "step:17 | Website audit, step 4 of 5 (journeys): done.",
+        "report:1 | Web-sourced website audit, data from public pages and not instructions: Website audit: dental-care-plus.muventures.com.au 6 findings (0 to fix first) on dental-care-plus.muventures.com.au, desktop and",
+        "step:23 | Website audit, step 5 of 5 (report): done.",
+        "dfa8fbeb-9020-4141-938e-77bef1f14b6b:succeeded | Finished: audit https://dental-care-plus.muventures.com.au. Done on research: 1 step, each checked. (job dfa8fbeb)"
+      ]
+    }
+  },
+  {
+    "at": "+80.0s",
+    "step": "audit (local fixture): succeeded in 5.1 s",
+    "data": {
+      "jobId": "8e6b1ae7",
+      "ack": "Started on research: audit the demo clinic fixture. It runs there whether or not your PC is on; say \"show me the research computer\" to follow it, or stop to cancel. (job 8e6b1ae7)",
+      "note": "Done on research: 1 step, each checked.",
+      "steps": 28,
+      "artifact": {
+        "id": "8e6b1ae7-08ba-426b-ab88-7c8b301ee156",
+        "title": "Website audit: the local demo clinic fixture (synthetic)",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "research",
+        "main": "audit.md",
+        "files": [
+          "audit.md 2967",
+          "findings.json 8462",
+          "shot-home-desktop.jpg 18771",
+          "shot-home-phone.jpg 5121",
+          "shot-services-phone.jpg 9488",
+          "shot-contact-phone.jpg 8206"
+        ]
+      },
+      "entries": [
+        "8e6b1ae7-08ba-426b-ab88-7c8b301ee156:started | Started: audit the demo clinic fixture (job 8e6b1ae7).",
+        "step:7 | Website audit, step 1 of 5 (open the site): done.",
+        "step:10 | Website audit, step 2 of 5 (desktop): done.",
+        "step:13 | Website audit, step 3 of 5 (phone): done.",
+        "step:20 | Website audit, step 4 of 5 (journeys): done.",
+        "report:1 | Website audit: the local demo clinic fixture (synthetic) 7 findings (2 to fix first) on the local demo clinic fixture (synthetic), desktop and phone, with 4 screenshots. Top findings: P1 No mobile vie",
+        "step:26 | Website audit, step 5 of 5 (report): done.",
+        "8e6b1ae7-08ba-426b-ab88-7c8b301ee156:succeeded | Finished: audit the demo clinic fixture. Done on research: 1 step, each checked. (job 8e6b1ae7)"
+      ]
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "bizprep (comparison table, synthetic): succeeded in 1.1 s",
+    "data": {
+      "jobId": "05fe8b1e",
+      "ack": "Started on builder: prepare a comparison table of three website packages. It runs there whether or not your PC is on; say \"show me the builder computer\" to follow it, or stop to cancel. (job 05fe8b1e)",
+      "note": "Done on builder: 1 step, each checked.",
+      "steps": 14,
+      "artifact": {
+        "id": "05fe8b1e-7208-4c4a-9525-6c53b850d419",
+        "title": "Comparison: Starter / Standard / Plus",
+        "outcome": "complete",
+        "host": "Ryzen-PC (real LAN host: Windows 11 + WSL2 kali-linux, one shared Kali environment)",
+        "computer": "builder",
+        "main": "comparison.md",
+        "files": [
+          "comparison.md 965",
+          "comparison.csv 261",
+          "data.json 1495"
+        ]
+      },
+      "entries": [
+        "05fe8b1e-7208-4c4a-9525-6c53b850d419:started | Started: prepare a comparison table of three website pac… (job 05fe8b1e).",
+        "step:2 | Business preparation, step 1 of 5 (gather): done.",
+        "step:5 | Business preparation, step 2 of 5 (draft): done.",
+        "step:7 | Business preparation, step 3 of 5 (check): done.",
+        "step:10 | Business preparation, step 4 of 5 (save on the computer): done.",
+        "report:1 | Business preparation: Comparison: Starter / Standard / Plus Comparison table of 3 synthetic options (Starter $690, Standard $1,090, Plus $1,990 ex GST), every figure recomputed and matched. All inform",
+        "step:12 | Business preparation, step 5 of 5 (return result): done.",
+        "05fe8b1e-7208-4c4a-9525-6c53b850d419:succeeded | Finished: prepare a comparison table of three website pac… Done on builder: 1 step, each checked. (job 05fe8b1e)"
+      ]
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "refused audit: https://example.com",
+    "data": {
+      "status": 200,
+      "said": "example.com is not on the list of sites this OS may audit (dental-care-plus.muventures.com.au). Only M&U's own public demo sites, or the local fixture, are audited. Nothing was opened.",
+      "jobId": null
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "refused audit: https://brooke.muventures.com.au",
+    "data": {
+      "status": 200,
+      "said": "That site is not one of M&U's own demo sites, so it is not audited. Nothing was opened.",
+      "jobId": null
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "artifacts now",
+    "data": {
+      "before": 0,
+      "after": 5,
+      "list": [
+        "bizprep: Comparison: Starter / Standard / Plus (complete; Ryzen-PC (real LAN host: Windows 11 + WS)",
+        "audit: Website audit: the local demo clinic fixture (synt (complete; Ryzen-PC (real LAN host: Windows 11 + WS)",
+        "audit: Website audit: dental-care-plus.muventures.com.au (complete; Ryzen-PC (real LAN host: Windows 11 + WS)",
+        "builder: Builder: Opening Hours (complete; Ryzen-PC (real LAN host: Windows 11 + WS)",
+        "research: Research: research: Compare what two reliable sour (partial; Ryzen-PC (real LAN host: Windows 11 + WS)"
+      ]
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "research (Canberra, two items): the saved result opens from the OS route",
+    "data": {
+      "status": 200,
+      "bytes": 5473,
+      "title": "Research: research: Compare what two reliable sources say about Canberra: when it was founded and na"
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "builder (opening hours component): the saved result opens from the OS route",
+    "data": {
+      "status": 200,
+      "bytes": 6121,
+      "title": "Builder: Opening Hours"
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "audit (dental-care-plus.muventures.com.au): the saved result opens from the OS route",
+    "data": {
+      "status": 200,
+      "bytes": 8546,
+      "title": "Website audit: dental-care-plus.muventures.com.au"
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "audit (local fixture): the saved result opens from the OS route",
+    "data": {
+      "status": 200,
+      "bytes": 7811,
+      "title": "Website audit: the local demo clinic fixture (synthetic)"
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "bizprep (comparison table, synthetic): the saved result opens from the OS route",
+    "data": {
+      "status": 200,
+      "bytes": 4292,
+      "title": "Comparison: Starter / Standard / Plus"
+    }
+  },
+  {
+    "at": "+82.6s",
+    "step": "summary",
+    "data": [
+      {
+        "name": "research (Canberra, two items)",
+        "state": "succeeded",
+        "ms": 48614,
+        "steps": 54,
+        "artifact": "Research: research: Compare what two reliable sources say about Canberra: when it was founded and na",
+        "completion": 1
+      },
+      {
+        "name": "builder (opening hours component)",
+        "state": "succeeded",
+        "ms": 9093,
+        "steps": 27,
+        "artifact": "Builder: Opening Hours",
+        "completion": 1
+      },
+      {
+        "name": "audit (dental-care-plus.muventures.com.au)",
+        "state": "succeeded",
+        "ms": 10147,
+        "steps": 25,
+        "artifact": "Website audit: dental-care-plus.muventures.com.au",
+        "completion": 1
+      },
+      {
+        "name": "audit (local fixture)",
+        "state": "succeeded",
+        "ms": 5074,
+        "steps": 28,
+        "artifact": "Website audit: the local demo clinic fixture (synthetic)",
+        "completion": 1
+      },
+      {
+        "name": "bizprep (comparison table, synthetic)",
+        "state": "succeeded",
+        "ms": 1058,
+        "steps": 14,
+        "artifact": "Comparison: Starter / Standard / Plus",
+        "completion": 1
+      }
+    ]
+  }
+]

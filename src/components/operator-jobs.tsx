@@ -29,16 +29,17 @@ export function OperatorJobs() {
 
   const load = useCallback(async () => {
     try {
-      const [jobsResponse, ledgerResponse, indexResponse] = await Promise.all([
-        fetch("/__design_jobs"),
-        fetch("/__design_ledger"),
-        fetch("/__design_index_status"),
-      ]);
-      const [jobData, ledgerData, indexData] = await Promise.all([
+      // The ledger is only read to count finished items per running job, so with no generation running it is not fetched
+      // at all (three reads every 30 s on every page became two).
+      const [jobsResponse, indexResponse] = await Promise.all([fetch("/__design_jobs"), fetch("/__design_index_status")]);
+      const [jobData, indexData] = await Promise.all([
         jobsResponse.json() as Promise<{ ok?: boolean; jobs?: GenerationJob[] }>,
-        ledgerResponse.json() as Promise<{ ok?: boolean; items?: LedgerItem[] }>,
         indexResponse.json() as Promise<{ ok?: boolean; job?: IndexJob }>,
       ]);
+      const running = jobData.ok && Array.isArray(jobData.jobs) && jobData.jobs.length > 0;
+      const ledgerData: { ok?: boolean; items?: LedgerItem[] } = running
+        ? await fetch("/__design_ledger").then((r) => r.json())
+        : { ok: true, items: [] };
       const ledgerItems = ledgerData.ok && Array.isArray(ledgerData.items) ? ledgerData.items : [];
       setJobs(
         jobData.ok && Array.isArray(jobData.jobs)
@@ -131,7 +132,7 @@ export function OperatorJobs() {
       >
         <Activity className="h-4 w-4" />
         {activeCount > 0 && (
-          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full border border-background bg-success px-1 text-[11px] font-bold tabular-nums text-background">
+          <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full border border-background bg-success px-1 text-xs font-bold tabular-nums text-background">
             {activeCount}
           </span>
         )}
@@ -146,11 +147,11 @@ export function OperatorJobs() {
           <div className="flex items-center justify-between border-b border-border px-3.5 py-3">
             <div>
               <div className="text-xs font-semibold">Background jobs</div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
+              <div className="mt-0.5 text-xs text-muted-foreground">
                 Keep working while the OS finishes the rest.
               </div>
             </div>
-            <span className="rounded-full border border-border px-2 py-1 text-[11px] tabular-nums text-muted-foreground">
+            <span className="rounded-full border border-border px-2 py-1 text-xs tabular-nums text-muted-foreground">
               {activeCount} active
             </span>
           </div>
@@ -160,8 +161,8 @@ export function OperatorJobs() {
                 <div className="flex items-start gap-2">
                   <span className="mt-1.5 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-success" />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] font-medium">{job.prompt}</div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">
+                    <div className="truncate text-xs font-medium">{job.prompt}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
                       {job.engineLabel} · {job.modelLabel} · {job.completed}/{job.total} ready
                     </div>
                   </div>
@@ -182,10 +183,10 @@ export function OperatorJobs() {
                 <div className="flex items-start gap-2">
                   <ScanSearch className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-pulse text-success" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-medium">
+                    <div className="text-xs font-medium">
                       {scan.mode === "vision" ? "Understanding visuals" : "Reading image text"}
                     </div>
-                    <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                    <div className="mt-1 text-xs tabular-nums text-muted-foreground">
                       {scan.done.toLocaleString()} / {scan.total.toLocaleString()} complete
                     </div>
                   </div>
@@ -203,8 +204,8 @@ export function OperatorJobs() {
             )}
             {activeCount === 0 && (
               <div className="px-4 py-8 text-center">
-                <div className="text-[11px] text-foreground/70">Nothing running</div>
-                <div className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                <div className="text-xs text-foreground/70">Nothing running</div>
+                <div className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Generations and scans appear here without blocking your workspace.
                 </div>
               </div>

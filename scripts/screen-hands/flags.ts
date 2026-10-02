@@ -31,6 +31,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type ScreenFlags = { recheck: boolean; jevIrreversible: boolean; denylist: boolean; refs: boolean; cdp: boolean; jevStep: boolean; formFill: boolean; replay: boolean; jevControl: boolean };
 export const FLAG_NAMES = ["recheck", "jevIrreversible", "denylist", "refs", "cdp", "jevStep", "formFill", "replay", "jevControl"] as const satisfies ReadonlyArray<keyof ScreenFlags>;
@@ -52,7 +53,7 @@ const ENV: Record<keyof ScreenFlags, string> = {
   replay: "JARVIS_SCREEN_REPLAY",
   jevControl: "JARVIS_SCREEN_JEV_CONTROL",
 };
-export const FLAGS_FILE = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", ".operator-data", "screen-hands-flags.json");
+export const FLAGS_FILE = join(dataDirFor(resolve(dirname(fileURLToPath(import.meta.url)), "..", "..")), "screen-hands-flags.json");
 
 /** "1", "true", "on", "yes" → true; "0", "false", "off", "no" → false; anything else → undefined. */
 function truthy(value: unknown): boolean | undefined {
@@ -99,4 +100,4 @@ export function screenFlags(env: Record<string, string | undefined> = process.en
 
 /** For the report and the status route: which are on. */
 export const describeFlags = (flags: ScreenFlags) => FLAG_NAMES.filter((n) => flags[n]).join(", ") || "none";
-export const flagsFileIn = (root: string) => join(root, ".operator-data", "screen-hands-flags.json");
+export const flagsFileIn = (root: string) => join(dataDirFor(root), "screen-hands-flags.json");

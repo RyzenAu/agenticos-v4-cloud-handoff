@@ -7,7 +7,8 @@ import type { ReactNode } from "react";
 import { BrandMark, Disclosure, fmtRelative } from "@/components/ds";
 import { cn } from "@/lib/utils";
 import { HARNESS_POLICY } from "@/lib/coding-pipeline";
-import type { CodingAccount, CodingAccounts, CodingRepo } from "@/lib/coding-client";
+import { claudeAccountLabel, isClaudeAccount, type ClaudeCodingAccount, type CodingAccount, type CodingAccounts, type CodingRepo } from "@/lib/coding-client";
+import { AllowanceMeter, knownPercent } from "./allowance-meter";
 
 function Card({ icon, title, children, className }: { icon: ReactNode; title: string; children: ReactNode; className?: string }) {
   return (
@@ -29,28 +30,63 @@ function Pill({ tone = "neutral", children }: { tone?: "neutral" | "success" | "
   );
 }
 
-const pct = (v: number | null | undefined) => (typeof v === "number" ? `${Math.round(v)}%` : "not read");
+const pct = (v: number | null | undefined) => (knownPercent(v) ? `${Math.round(v)}%` : "not read");
+
+const PLAN: Record<string, string> = { "claude-max-20x": "Max 20x", "claude-max-5x": "Max 5x", "claude-pro": "Pro" };
+const MODEL: Record<string, string> = { "claude-opus-5-5": "Opus 5.5", "claude-sonnet-5": "Sonnet 5", "claude-fable-5-1": "Fable 5.1", "claude-haiku-4-5": "Haiku 4.5" };
+const modelName = (id: string) => MODEL[id] ?? id;
+
+/** A Claude login: connected only on a real sign-in check of its own profile; unread usage says "unknown". */
+function ClaudeRow({ a }: { a: ClaudeCodingAccount }) {
+  const c = a.connection;
+  const state = c?.state ?? "unknown";
+  const windows = a.allowance?.windows ?? [];
+  const verified = a.modelsVerified ?? [];
+  return (
+    <li className="flex min-w-0 items-start gap-3 py-3" data-account={a.accountSlot} data-connection={state}>
+      <BrandMark agent="claude-code" size={20} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">
+          {claudeAccountLabel(a)} <span className="font-normal text-muted-foreground">· Claude Code{a.plan ? ` · ${PLAN[a.plan] ?? a.plan}` : ""}</span>
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {state === "connected"
+            ? `Signed in${c?.subscription ? ` (reports plan "${c.subscription}")` : ""}${c?.checkedAt ? `, checked ${fmtRelative(c.checkedAt)}` : ""}`
+            : state === "signed-out"
+              ? `Not connected: ${c?.reason ?? "not signed in"}`
+              : `Connection unknown${c?.reason ? `: ${c.reason}` : ""}`}
+          {a.profile ? ` · ${a.profile}` : ""}
+          {a.installed ? ` · CLI ${a.cliVersion ?? "version unknown"}` : " · CLI not found on this PC"}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Models: {a.models.map(modelName).join(", ")}
+          {verified.length ? ` · ran here: ${verified.map(modelName).join(", ")}` : " · none run on this account yet"}
+        </p>
+        {windows.length
+          ? windows.map((w, i) => <AllowanceMeter key={`${w.label}:${i}`} label={w.label} percent={w.usedPercent} resetsAt={w.resetsAt} />)
+          : <p className="mt-1 text-xs text-muted-foreground">Usage and reset: unknown (not read from this account yet)</p>}
+      </div>
+      <Pill tone={state === "connected" ? "success" : state === "signed-out" ? "warn" : "neutral"}>{state === "connected" ? "Connected" : state === "signed-out" ? "Not connected" : "Unknown"}</Pill>
+    </li>
+  );
+}
 
 function AccountRow({ a }: { a: CodingAccount }) {
-  const claude = a.accountSlot === "claude:max";
-  const name = claude ? "Claude Code · Max subscription" : `Codex · ${a.accountSlot.replace("codex:", "")}${"plan" in a ? ` (${a.plan === "chatgpt-pro" ? "Pro" : "Plus"})` : ""}`;
-  const windows = claude && "allowance" in a ? a.allowance?.windows ?? null : null;
-  const reading = !claude && "reading" in a ? a.reading : null;
+  if (isClaudeAccount(a)) return <ClaudeRow a={a} />;
+  const name = `Codex · ${a.accountSlot.replace("codex:", "")} (${a.plan === "chatgpt-pro" ? "Pro" : "Plus"})`;
+  const reading = a.reading;
   return (
     <li className="flex min-w-0 items-start gap-3 py-3" data-account={a.accountSlot}>
-      <BrandMark agent={claude ? "claude-code" : "codex"} size={20} />
+      <BrandMark agent="codex" size={20} />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{name}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {a.installed ? `CLI ${a.cliVersion ?? "version unknown"}` : "CLI not found on this PC"}
-          {claude
-            ? windows && windows.length
-              ? ` · ${windows.map((w) => `${w.label} ${pct(w.usedPercent)}`).join(" · ")}`
-              : " · allowance not read yet"
-            : ` · window ${pct(reading?.peakPercent)}${"creditsAllowed" in a && a.creditsAllowed ? " · may use its paid credits" : ""}`}
+          {` · window ${pct(reading?.peakPercent)}${a.creditsAllowed ? " · may use its paid credits" : ""}`}
         </p>
+        {reading && <AllowanceMeter label="Busiest account window" percent={reading.peakPercent} resetsAt={reading.resetsAt} />}
       </div>
-      <Pill tone={a.installed ? "success" : "warn"}>{a.installed ? "Ready" : "Not installed"}</Pill>
+      <Pill tone={a.installed ? "neutral" : "warn"}>{a.installed ? "Installed" : "Not installed"}</Pill>
     </li>
   );
 }
@@ -79,7 +115,7 @@ export function AgentsCard({ data, error }: { data: CodingAccounts | null; error
             </p>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            Each role stays on the account it started on. A new Codex job goes to the least-used connected account; nothing rotates mid-run.
+            Each role stays on the account it started on. A new Claude role goes to your first signed-in Claude account below its limit (you can pick another before Start); a new Codex job goes to the least-used connected account. Nothing rotates mid-run.
           </p>
         </>
       )}

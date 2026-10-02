@@ -118,7 +118,7 @@ function Cap({ cap }: { cap: string }) {
   // real brand favicon (true colours + white parts) on a light app-tile
   if (m.domain && !err) return <img className="aspect-square w-full rounded-md bg-[#fbfbfb] object-contain p-0.5" src={`https://icons.duckduckgo.com/ip3/${m.domain}.ico`} alt="" onError={() => setErr(true)} />;
   if (m.slug && !err) return <img className="h-[58%] w-[58%] object-contain" src={`https://cdn.simpleicons.org/${m.slug}/${m.color.replace("#", "")}`} alt="" onError={() => setErr(true)} />;
-  return <span className="font-mono text-[8px] font-semibold" style={{ color: m.color }}>{m.letter}</span>;
+  return <span className="font-mono text-xs font-semibold" style={{ color: m.color }}>{m.letter}</span>;
 }
 
 type Live = { status: "running" | "done" | "error"; result?: string; error?: string; n: number };
@@ -793,7 +793,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                 <Settings2 className="h-3 w-3" />
                 Configure voice
               </span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {voiceReady ? (openaiKey ? "OpenAI key saved · engine ready" : "engine ready · using its key") : engineUp ? "engine up · no key yet" : "not set up — connect a voice"}
               </span>
             </span>
@@ -804,7 +804,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
           </button>
           {openaiKey && (
             <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
-              <span className="text-[11px] text-success">Key on this machine only</span>
+              <span className="text-xs text-success">Key on this machine only</span>
               <Button variant="ghost" size="xs" onClick={() => { forgetKey(); setEngineKeyed(false); }} className="text-danger hover:text-danger">
                 Disconnect key
               </Button>
@@ -813,7 +813,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
           <button type="button" onClick={() => setDirectMode((d) => !d)} className="ds-interactive flex w-full items-center justify-between border-b border-border px-3.5 py-2.5 hover:bg-surface-raised">
             <span className="flex flex-col items-start gap-0.5 text-left leading-tight">
               <span className={cn("text-xs font-medium", directMode ? "text-brand" : "text-foreground")}>Hermes direct</span>
-              <span className="text-[11px] text-muted-foreground">every turn straight to Hermes · slower, fully real</span>
+              <span className="text-xs text-muted-foreground">every turn straight to Hermes · slower, fully real</span>
             </span>
             <span className={cn("relative h-[18px] w-[34px] shrink-0 rounded-full transition-colors", directMode ? "bg-brand/45" : "bg-inset")}>
               <span className={cn("absolute top-0.5 h-3.5 w-3.5 rounded-full transition-[left]", directMode ? "left-[18px] bg-brand" : "left-0.5 bg-muted-foreground")} />
@@ -835,7 +835,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     <StatusDot tone={sel ? "accent" : "neutral"} label="" />
                     <span className="flex flex-col leading-tight">
                       <span className="text-xs text-foreground">{v.label}</span>
-                      <span className="text-[11px] text-muted-foreground">{v.vibe}</span>
+                      <span className="text-xs text-muted-foreground">{v.vibe}</span>
                     </span>
                   </button>
                   <Button
@@ -850,7 +850,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                 </div>
               );
             })}
-            {FISH_VOICES.length > 0 && <div className="px-4 pb-1 pt-2.5 text-[11px] text-warn">Character · Fish Audio</div>}
+            {FISH_VOICES.length > 0 && <div className="px-4 pb-1 pt-2.5 text-xs text-warn">Character · Fish Audio</div>}
             {FISH_VOICES.map((v) => {
               const sel = voiceId === v.id;
               return (
@@ -866,7 +866,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     <StatusDot tone={sel ? "warn" : "neutral"} label="" />
                     <span className="flex flex-col leading-tight">
                       <span className="text-xs text-foreground">{v.label}</span>
-                      <span className="text-[11px] text-muted-foreground">{v.vibe}</span>
+                      <span className="text-xs text-muted-foreground">{v.vibe}</span>
                     </span>
                   </button>
                   <Button
@@ -882,7 +882,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
               );
             })}
           </div>
-          <div className="border-t border-border px-3.5 py-2 text-[11px] text-muted-foreground">
+          <div className="border-t border-border px-3.5 py-2 text-xs text-muted-foreground">
             Standard: applies to next call · character: speaks typed replies · ▶ preview
           </div>
         </div>
@@ -906,7 +906,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
               {([["1", "You speak"], ["2", "A speech engine turns voice into text and back"], ["3", "Hermes thinks, acts and speaks back"]] as const).map(([n, t]) => (
                 <div key={n} className="flex-1 rounded-lg border border-border bg-inset px-2 py-2 text-center">
                   <div className="text-sm text-brand">{n}</div>
-                  <div className="mt-1 text-[11px] leading-snug text-muted-foreground">{t}</div>
+                  <div className="mt-1 text-xs leading-snug text-muted-foreground">{t}</div>
                 </div>
               ))}
             </div>
@@ -917,14 +917,14 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                   <span className="text-xs font-medium text-foreground">Free · local</span>
                   <span className="text-sm text-success">$0</span>
                 </div>
-                <div className="text-[11px] leading-snug text-muted-foreground">Runs fully on your Mac. Private. A bit of setup.</div>
+                <div className="text-xs leading-snug text-muted-foreground">Runs fully on your Mac. Private. A bit of setup.</div>
               </Surface>
               <Surface variant="inset" padding="sm">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs font-medium text-foreground">Paid · OpenAI</span>
                   <span className="text-xs text-muted-foreground">~5–10¢/min</span>
                 </div>
-                <div className="text-[11px] leading-snug text-muted-foreground">Instant, top quality. Paste a key — one click.</div>
+                <div className="text-xs leading-snug text-muted-foreground">Instant, top quality. Paste a key — one click.</div>
               </Surface>
             </div>
             <div className="flex items-center gap-2.5 px-6 pb-2 pt-3">
@@ -969,9 +969,9 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     </div>
                     <div className="mb-2.5 rounded-lg border border-border bg-card px-2.5 py-2">
                       <div className="text-sm text-foreground">
-                        ≈ $3–6<span className="text-[11px] text-muted-foreground"> / hr talking</span>
+                        ≈ $3–6<span className="text-xs text-muted-foreground"> / hr talking</span>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">~5–10¢/min · only while audio flows</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">~5–10¢/min · only while audio flows</div>
                     </div>
                     <input
                       value={keyDraft}
@@ -984,17 +984,17 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     <Button variant="accent" size="sm" onClick={connectWithKey} disabled={!keyDraft.trim() || starting}>
                       {starting ? "Starting…" : "Connect"}
                     </Button>
-                    <div className="mt-1.5 text-center text-[11px] text-muted-foreground">starts the engine for you · no terminal</div>
+                    <div className="mt-1.5 text-center text-xs text-muted-foreground">starts the engine for you · no terminal</div>
                     {setupHint === "engine" && (
                       <Notice tone="warn" className="mt-2.5" title="Couldn't auto-start — run this, then Connect">
-                        <button type="button" onClick={() => copyCmd(`OPENAI_API_KEY=${shq(openaiKey || keyDraft.trim())} bun run voice`)} className="ds-interactive w-full rounded-md border border-border bg-inset px-2 py-1.5 text-left font-mono text-[11px] text-foreground">
+                        <button type="button" onClick={() => copyCmd(`OPENAI_API_KEY=${shq(openaiKey || keyDraft.trim())} bun run voice`)} className="ds-interactive w-full rounded-md border border-border bg-inset px-2 py-1.5 text-left font-mono text-xs text-foreground">
                           {copied ? "Copied to clipboard" : "Copy: OPENAI_API_KEY=… bun run voice"}
                         </button>
                       </Notice>
                     )}
                     <div className="mt-2 flex items-center gap-2.5">
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[11px] text-muted-foreground hover:text-foreground">Get a key →</a>
-                      <a href="https://platform.openai.com/settings/organization/billing" target="_blank" rel="noreferrer" className="text-[11px] text-muted-foreground hover:text-foreground">Add credits →</a>
+                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground">Get a key →</a>
+                      <a href="https://platform.openai.com/settings/organization/billing" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground">Add credits →</a>
                     </div>
                     <Notice tone="info" className="mt-2">
                       Getting a 401 or "key doesn't work"? A ChatGPT <span className="text-foreground">Plus/Pro</span> plan does{" "}
@@ -1011,33 +1011,33 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     </div>
                     <div className="mb-2.5 rounded-lg border border-border bg-card px-2.5 py-2">
                       <div className="text-sm text-foreground">
-                        $0<span className="text-[11px] text-muted-foreground"> · private</span>
+                        $0<span className="text-xs text-muted-foreground"> · private</span>
                       </div>
-                      <div className="mt-0.5 text-[11px] text-muted-foreground">runs on your Mac · ~20-min setup</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">runs on your Mac · ~20-min setup</div>
                     </div>
-                    <div className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+                    <div className="mb-2 text-xs leading-relaxed text-muted-foreground">
                       Run an OpenAI-compatible voice server locally, then start the engine pointed at it:
                     </div>
-                    <button type="button" onClick={() => copyCmd("OPENAI_BASE_URL=http://localhost:8080 OPENAI_API_KEY=local bun run voice")} className="ds-interactive mb-2 w-full rounded-md border border-border bg-inset px-2 py-1.5 text-left font-mono text-[11px] text-foreground">
+                    <button type="button" onClick={() => copyCmd("OPENAI_BASE_URL=http://localhost:8080 OPENAI_API_KEY=local bun run voice")} className="ds-interactive mb-2 w-full rounded-md border border-border bg-inset px-2 py-1.5 text-left font-mono text-xs text-foreground">
                       {copied ? "Copied to clipboard" : "Copy: OPENAI_BASE_URL=… bun run voice"}
                     </button>
-                    <div className="text-[11px] leading-relaxed text-muted-foreground">
+                    <div className="text-xs leading-relaxed text-muted-foreground">
                       Pieces: faster-whisper (STT) · Piper (TTS). Full guide: <span className="font-mono text-foreground">docs/local-voice-setup.md</span> — or ask Hermes to walk you through it.
                     </div>
                   </Surface>
                 </div>
-                <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
+                <p className="mt-3 text-xs leading-snug text-muted-foreground">
                   <span className="text-foreground">Not sure?</span> Start with OpenAI — one click, and you only pay while
                   you're actually talking. You can switch to local any time.
                 </p>
                 {openaiKey && (
                   <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                    <span className="text-[11px] text-success">Key saved on this machine only</span>
+                    <span className="text-xs text-success">Key saved on this machine only</span>
                     <Button variant="ghost" size="xs" onClick={forgetKey} className="text-danger hover:text-danger">Forget key</Button>
                   </div>
                 )}
                 <Button variant="outline" className="mt-3 w-full" onClick={skipAndTalk}>Skip — talk to Hermes anyway</Button>
-                <p className="mt-2 text-center text-[11px] text-muted-foreground">just exploring? the mind animates for free — no key needed</p>
+                <p className="mt-2 text-center text-xs text-muted-foreground">just exploring? the mind animates for free — no key needed</p>
               </div>
             </div>
           </div>
@@ -1062,7 +1062,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                 <Notice tone="warn" title="Give Hermes a voice" action={<Button variant="outline" size="xs" onClick={() => setVoiceSetupOpen(true)}>Options</Button>}>
                   Paste your OpenAI key and it just works — no terminal. ≈$3–6/hr · your key, your machine.
                 </Notice>
-                <div className="text-center text-[11px] text-muted-foreground">or just watch the mind — it's free</div>
+                <div className="text-center text-xs text-muted-foreground">or just watch the mind — it's free</div>
               </div>
             )}
             {turns.length === 0 && !caption && voiceReady && (
@@ -1101,7 +1101,7 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
           {/* text input — typing here talks to Hermes by text (no voice engine) unless a call is live */}
           <form onSubmit={sendText} className="flex shrink-0 flex-col gap-1.5 border-t border-border px-2.5 py-2">
             {!live && (
-              <div className="flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground">
                 <Keyboard className="h-2.5 w-2.5" />
                 Type-only — talks to Hermes · no voice, no cost
               </div>
@@ -1169,15 +1169,15 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                     <StatusDot tone={dispTone} pulse={live || attracting} label="" />
                     Neural core
                   </span>
-                  <span className="text-[11px] text-muted-foreground">{live ? "Live" : attracting ? "Demo" : "Idle"}</span>
+                  <span className="text-xs text-muted-foreground">{live ? "Live" : attracting ? "Demo" : "Idle"}</span>
                 </div>
                 <div className="flex flex-col gap-2 px-3 py-2.5">
                   <div>
-                    <div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>Neural load</span><span className="ds-num text-foreground">{loadPct}%</span></div>
+                    <div className="mb-1 flex justify-between text-xs text-muted-foreground"><span>Neural load</span><span className="ds-num text-foreground">{loadPct}%</span></div>
                     <div className="h-[3px] overflow-hidden rounded-full bg-inset"><div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${loadPct}%` }} /></div>
                   </div>
                   {(([["Capabilities", String(CAP_COUNT)], ["Clusters", String(CL.length)], ["Active", activeClusters.length ? activeClusters.map(clLabel).join(" · ") : "standby"], ["Channel", directMode ? "Hermes direct" : "Companion"]]) as [string, string][]).map(([k, v]) => (
-                    <div key={k} className="flex items-center justify-between gap-2 text-[11px]">
+                    <div key={k} className="flex items-center justify-between gap-2 text-xs">
                       <span className="shrink-0 text-muted-foreground">{k}</span>
                       <span className={cn("truncate text-right", v === "standby" ? "text-muted-foreground" : "text-foreground")}>{v}</span>
                     </div>
@@ -1262,8 +1262,8 @@ export function IntelligencePortal({ state, events, demo = true, onVoiceRequest,
                       >
                         <Cap cap={c} />
                         {st?.status === "running" && <StatusDot tone="accent" pulse label="" className="absolute -bottom-1 -right-1" />}
-                        {st?.status === "done" && <span className="absolute -bottom-1 -right-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-[8px] text-success">✓</span>}
-                        {st?.status === "error" && <span className="absolute -bottom-1 -right-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-[8px] text-danger">!</span>}
+                        {st?.status === "done" && <span className="absolute -bottom-1 -right-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-xs text-success">✓</span>}
+                        {st?.status === "error" && <span className="absolute -bottom-1 -right-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-xs text-danger">!</span>}
                       </div>
                     );
                   })}

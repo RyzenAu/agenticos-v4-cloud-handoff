@@ -1,0 +1,159 @@
+[
+  {
+    "at": "+0.9s",
+    "step": "hub up; real browser session",
+    "data": {
+      "person": "usman",
+      "actor": "human",
+      "hub": "http://127.0.0.1:8153"
+    }
+  },
+  {
+    "at": "+0.9s",
+    "step": "audit started",
+    "data": {
+      "job": "8b084036"
+    }
+  },
+  {
+    "at": "+3.0s",
+    "step": "input without the control lease is refused",
+    "data": {
+      "status": 409,
+      "error": "agent \"jarvis\" holds research right now; take control first."
+    }
+  },
+  {
+    "at": "+3.0s",
+    "step": "takeover requested mid-job",
+    "data": {
+      "status": 200,
+      "state": "pending"
+    }
+  },
+  {
+    "at": "+4.1s",
+    "step": "person holds it; the job is paused, not finished, nothing new runs",
+    "data": {
+      "controller": {
+        "kind": "person",
+        "who": "usman",
+        "jobId": null,
+        "expiresAt": 1790885473127,
+        "epoch": 6
+      },
+      "jobState": "running",
+      "steps": 9
+    }
+  },
+  {
+    "at": "+10.2s",
+    "step": "the person acts while holding the computer",
+    "data": {
+      "status": 200,
+      "jobStillRunning": "running",
+      "stepsAtPause": 9,
+      "stepsAfter6s": 9,
+      "noReplayWhilePaused": true
+    }
+  },
+  {
+    "at": "+10.2s",
+    "step": "the conversation said so",
+    "data": [
+      "Paused: usman is taking control of the computer. The job waits and does not run until control is returned."
+    ]
+  },
+  {
+    "at": "+10.2s",
+    "step": "handed back to the agent",
+    "data": {
+      "status": 200
+    }
+  },
+  {
+    "at": "+23.1s",
+    "step": "job resumed (page re-read first) and finished",
+    "data": {
+      "state": "succeeded",
+      "resumedAfterReturn": [
+        "note computer.lease: control returned to the agent; re-reading the computer before the next move of step 1",
+        "ok observe.page: refreshed state after the handover: Page: \"Marigold Dental — Dentist in Willoughby\" at dental-care-plus.muvent"
+      ],
+      "artifact": "Website audit: dental-care-plus.muventures.com.au",
+      "results": 1,
+      "ends": 1
+    }
+  },
+  {
+    "at": "+31.9s",
+    "step": "STOP of a workflow: stopped, no artifact, nothing ran afterwards",
+    "data": {
+      "said": "Stopped it. Nothing further will run.",
+      "state": "cancelled",
+      "msToStop": 8603,
+      "stepsAtStop": 7,
+      "stepsAfter8s": 7,
+      "artifact": false,
+      "entries": [
+        "started: Started: audit the demo clinic fixture (job 5630e0d3).",
+        "cancelled: Stopped: audit the demo clinic fixture. Nothing further ran. (job 5630"
+      ],
+      "auditFilesAfter": 5
+    }
+  },
+  {
+    "at": "+33.1s",
+    "step": "FORCE STOP of the Builder computer",
+    "data": {
+      "status": 200,
+      "ms": 1209,
+      "jobState": "cancelled",
+      "inputToStoppedComputer": 409,
+      "builderWork": [
+        "change-0f15bfb224d7.diff",
+        "change-4b4d561da742.diff",
+        "change-e2e9d60127cc.diff",
+        "comparison-starter-standard-plus.md",
+        "preview-0f15bfb224d7.html",
+        "preview-4b4d561da742.html",
+        "preview-e2e9d60127cc.html",
+        "repo",
+        "shot-preview-desktop.jpg",
+        "shot-preview-phone.jpg",
+        "wt-0f15bfb224d7",
+        "wt-4b4d561da742",
+        "wt-e2e9d60127cc"
+      ],
+      "counts": {
+        "companion": 1,
+        "xvfb": 1,
+        "x11vnc": 1,
+        "browserMain": 1,
+        "git": 0
+      }
+    }
+  },
+  {
+    "at": "+37.5s",
+    "step": "Builder started again",
+    "data": {
+      "status": 200,
+      "files": [
+        "change-0f15bfb224d7.diff",
+        "change-4b4d561da742.diff",
+        "change-e2e9d60127cc.diff",
+        "comparison-starter-standard-plus.md",
+        "preview-0f15bfb224d7.html",
+        "preview-4b4d561da742.html",
+        "preview-e2e9d60127cc.html",
+        "repo",
+        "shot-preview-desktop.jpg",
+        "shot-preview-phone.jpg",
+        "wt-0f15bfb224d7",
+        "wt-4b4d561da742",
+        "wt-e2e9d60127cc"
+      ]
+    }
+  }
+]

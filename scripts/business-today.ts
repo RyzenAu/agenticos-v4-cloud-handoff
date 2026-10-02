@@ -7,6 +7,8 @@ export type BusinessToday = {
   weatherError?: string;
   newsError?: string;
   updatedAt: string;
+  /** True when this is the last good read served while a refresh runs in the background: `updatedAt` says how old it is. */
+  stale?: boolean;
 };
 export type WeatherLocation = { name: string; latitude: number; longitude: number };
 export type WeatherCity = { name: string; source: "profile" | "timezone" | "environment" };
@@ -134,6 +136,10 @@ export function businessToday(options: { request?: typeof fetch; now?: () => num
     async read(): Promise<BusinessToday> {
       const city = chooseCity(), key = city ? `${city.source}:${city.name.toLowerCase()}` : "";
       if (cache && cache.expires > now() && cache.key === key) return structuredClone(cache.value);
+      // Stale-while-revalidate: an expired read of the same city is served at once, labelled stale with its own
+      // updatedAt, and refreshed in the background. A weather and news fetch used to hold the page for 2 to 3 s
+      // after every ten idle minutes. The very first read (nothing cached) still waits for the real answer.
+      const lastGood = cache && cache.key === key ? cache.value : undefined;
       if (!pending || pending.key !== key) {
         const promise = (async () => {
           const [weather, news] = await Promise.allSettled([
@@ -146,6 +152,10 @@ export function businessToday(options: { request?: typeof fetch; now?: () => num
           return value;
         })().finally(() => { if (pending?.promise === promise) pending = undefined; });
         pending = { key, promise };
+      }
+      if (lastGood) {
+        pending.promise.catch(() => undefined);
+        return { ...structuredClone(lastGood), stale: true };
       }
       return structuredClone(await pending.promise);
     },

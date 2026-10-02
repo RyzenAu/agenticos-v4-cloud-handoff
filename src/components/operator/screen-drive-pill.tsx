@@ -24,7 +24,7 @@ export function ScreenDrivePill() {
       className="fixed left-1/2 top-3 z-[2147483000] flex -translate-x-1/2 items-center gap-2 rounded-full border border-sky-400/40 bg-slate-950/90 py-1.5 pl-3 pr-1.5 text-xs text-sky-100 shadow-2xl backdrop-blur-md"
       title={s.goal ? `Doing: ${s.goal}` : undefined}
     >
-      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${teaching ? "bg-amber-300/15 text-amber-200" : watching ? "bg-emerald-300/15 text-emerald-200" : "bg-sky-400/15 text-sky-200"}`}>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${teaching ? "bg-amber-300/15 text-amber-200" : watching ? "bg-emerald-300/15 text-emerald-200" : "bg-sky-400/15 text-sky-200"}`}>
         {teaching ? <GraduationCap className="h-3.5 w-3.5" /> : watching ? <Eye className="h-3.5 w-3.5" /> : <MousePointerClick className="h-3.5 w-3.5 animate-pulse" />}
         {teaching ? "Teaching" : watching ? "Tutor on" : "Driving"}
       </span>

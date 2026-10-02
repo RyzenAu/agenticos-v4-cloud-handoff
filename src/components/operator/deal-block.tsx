@@ -2,24 +2,14 @@
 // Saves to /__operator/leads/deal (scripts/leads/deals.ts) — local CRM fields only.
 import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import { Badge, Button, Notice, fmtDate, fmtRelative } from "@/components/ds";
+import { Badge, Button, DetailSection, Notice, fmtDate, fmtRelative } from "@/components/ds";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { aud, leadsApi, OFFER_LABEL, STAGE_LABEL, type LeadDeal, type Offer, type Owner } from "@/lib/leads";
 
-function Block({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <section className="border-t border-border pt-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="ds-label text-muted-foreground">{title}</h3>
-        {actions}
-      </div>
-      {children}
-    </section>
-  );
-}
+const Block = DetailSection;
 
 const dollars = (cents: number | null) => (cents === null ? "" : String(cents / 100));
 /**
@@ -71,22 +61,22 @@ export function DealBlock({ leadId, deal, by, onSaved }: { leadId: number; deal:
 
   return (
     <Block title="Deal" actions={deal.stuck ? <Badge tone="warn">Stuck {deal.stuck.days} d · limit {deal.stuck.thresholdDays}</Badge> : undefined}>
-      <div className="grid grid-cols-3 gap-2 rounded-lg bg-inset p-3">
+      <div className="lead-deal-stats grid grid-cols-3 gap-2 rounded-lg bg-inset p-3">
         <div>
           <div className="ds-label text-muted-foreground">First-year value · ex GST</div>
           <div className="ds-num mt-1 text-base font-semibold text-foreground">{aud(e.valueCents)}</div>
-          <div className="text-[11px] text-muted-foreground">{dealBreakdown(e, deal.monthsCounted)}</div>
-          {e.packageState && e.packageState.state !== "chosen" && <div className={e.packageState.state === "unknown" ? "mt-1 text-[11px] text-danger" : "mt-1 text-[11px] text-warn"}>{e.packageState.note}</div>}
+          <details className="mt-2"><summary className="cursor-pointer text-sm text-muted-foreground">Price breakdown</summary><p className="mt-2 text-sm text-muted-foreground">{dealBreakdown(e, deal.monthsCounted)}</p></details>
+          {e.packageState && e.packageState.state !== "chosen" && <div className={e.packageState.state === "unknown" ? "mt-1 text-xs text-danger" : "mt-1 text-xs text-warn"}>{e.packageState.note}</div>}
         </div>
         <div>
           <div className="ds-label text-muted-foreground">Probability</div>
           <div className="ds-num mt-1 text-base font-semibold text-foreground">{Math.round(e.probability * 100)}%</div>
-          <div className="text-[11px] text-muted-foreground">{e.probabilitySource === "custom" ? `custom · stage says ${Math.round(deal.stageProbability * 100)}%` : e.probabilitySource}</div>
+          <div className="text-xs text-muted-foreground">{e.probabilitySource === "custom" ? `custom · stage says ${Math.round(deal.stageProbability * 100)}%` : e.probabilitySource}</div>
         </div>
         <div>
           <div className="ds-label text-muted-foreground">Weighted</div>
           <div className="ds-num mt-1 text-base font-semibold text-foreground">{aud(e.weightedCents)}</div>
-          <div className="text-[11px] text-muted-foreground">{e.expectedClose ? `close ${fmtDate(e.expectedClose)}` : "no close date"}</div>
+          <div className="text-xs text-muted-foreground">{e.expectedClose ? `close ${fmtDate(e.expectedClose)}` : "no close date"}</div>
         </div>
       </div>
       <p className="mt-2 text-sm text-foreground">
@@ -95,8 +85,8 @@ export function DealBlock({ leadId, deal, by, onSaved }: { leadId: number; deal:
       </p>
       {deal.stuck && <Notice tone="warn" className="mt-2" title="Suggested next step">{deal.stuck.action}</Notice>}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <label className="col-span-2 flex flex-col gap-1 text-xs text-muted-foreground">
+      <div className="lead-form mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="sm:col-span-2 flex flex-col gap-1 text-xs text-muted-foreground">
           Offer
           <Select value={form.offer || "default"} onValueChange={(v) => set("offer", v === "default" ? "" : v)}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -123,7 +113,7 @@ export function DealBlock({ leadId, deal, by, onSaved }: { leadId: number; deal:
           <Input type="date" className="h-8 text-xs" value={form.close} onChange={(ev) => set("close", ev.target.value)} />
         </label>
       </div>
-      <p className="mt-1.5 text-[11px] text-muted-foreground">Blank fields use the offer's price and the stage's probability.</p>
+      <p className="mt-1.5 text-xs text-muted-foreground">Blank fields use the offer's price and the stage's probability.</p>
       <div className="mt-2 flex items-center gap-2">
         <Button size="xs" variant={dirty ? "accent" : "outline"} onClick={save} disabled={busy || !dirty}>{busy ? <Loader2 className="animate-spin" /> : <Check />} Save deal</Button>
         {dirty && <Button size="xs" variant="ghost" onClick={() => setForm(initial)}>Undo</Button>}
@@ -131,8 +121,8 @@ export function DealBlock({ leadId, deal, by, onSaved }: { leadId: number; deal:
       </div>
       {error && <Notice tone="danger" className="mt-2">{error}</Notice>}
 
-      <h4 className="ds-label mt-4 text-muted-foreground">Stage history</h4>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">In date order. Checks and scores show when they last ran.</p>
+      <details className="ds-detail-secondary"><summary>Stage history</summary>
+      <p className="mt-0.5 text-xs text-muted-foreground">In date order. Checks and scores show when they last ran.</p>
       <ol className="mt-2 flex flex-col">
         {[...deal.timeline].sort((a, b) => (a.at ?? "9999").localeCompare(b.at ?? "9999")).map((s, i, all) => {
           const last = s.stage === deal.stage;
@@ -150,6 +140,7 @@ export function DealBlock({ leadId, deal, by, onSaved }: { leadId: number; deal:
           );
         })}
       </ol>
+      </details>
     </Block>
   );
 }

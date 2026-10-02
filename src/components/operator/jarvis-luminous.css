@@ -53,7 +53,7 @@
   border: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
   border-radius: 8px;
   padding: 6px 9px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--foreground);
 }
 .jarvis-build-trigger:hover {
@@ -95,14 +95,14 @@
   position: absolute;
   bottom: 20px;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: var(--text-xs);
   letter-spacing: .06em;
 }
 .jarvis-eyebrow {
   color: var(--foreground);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-size: var(--text-xs);
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 .jarvis-core-stage h1 {
   color: var(--foreground);
@@ -126,7 +126,7 @@
 }
 .jarvis-luminous .jarvis-spoken-caption > span {
   color: var(--muted-foreground);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .jarvis-luminous .jarvis-spoken-caption p {
   color: var(--foreground);
@@ -224,7 +224,7 @@
 }
 .jarvis-inline-loading small {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--muted-foreground);
   margin-top: 16px;
 }
@@ -253,12 +253,12 @@
   padding: 0;
 }
 .jarvis-luminous .jarvis-recent-heading {
-  font-size: 11px;
+  font-size: var(--text-xs);
   margin-bottom: 10px;
 }
 .jarvis-luminous .jarvis-mail-providers {
   margin-bottom: 14px;
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 .jarvis-luminous .jarvis-recent-mail-list {
   display: grid;
@@ -308,7 +308,7 @@
 }
 .jarvis-recent-mail summary small {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--foreground);
   white-space: nowrap;
   overflow: hidden;
@@ -317,7 +317,7 @@
 }
 .jarvis-recent-mail summary time {
   color: var(--foreground);
-  font-size: 10px;
+  font-size: var(--text-xs);
   flex-shrink: 0;
 }
 .jarvis-luminous .jarvis-recent-mail-meta {
@@ -395,7 +395,7 @@
   font-weight: 500;
 }
 .jarvis-workflows span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--foreground);
   line-height: 1.5;
 }
@@ -430,7 +430,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--foreground);
 }
 .jarvis-builder-choice button[aria-pressed="true"] {
@@ -444,7 +444,7 @@
 }
 .jarvis-build > small {
   display: block;
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.7;
   color: var(--foreground);
 }

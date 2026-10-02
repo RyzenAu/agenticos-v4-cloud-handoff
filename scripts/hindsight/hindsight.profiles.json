@@ -42,7 +42,7 @@
         {
           "provider": "openai-codex",
           "model": "gpt-6-astra",
-          "codex_home": "C:\\Users\\Nebula PC\\.codex",
+          "codex_home": "%USERPROFILE%\\.codex",
           "timeout": 120
         }
       ],

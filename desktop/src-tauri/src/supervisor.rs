@@ -309,6 +309,9 @@ impl Supervisor {
     /// Tray "Restart OS server". Returns false (and does nothing) when the
     /// live server belongs to someone else.
     pub fn request_restart(&self) -> bool {
+        if !self.config.is_local() {
+            return false;
+        }
         if !self.spawned_by_us() && self.port_open() {
             return false;
         }
@@ -324,7 +327,19 @@ impl Supervisor {
         format!("Local\\JarvisAppServer-{port}")
     }
 
+    /// Remote-hub mode: the tray's "Reload hub". Picked up by `remote::run`.
+    pub fn request_reload(&self) {
+        self.manual_restart.store(true, Ordering::SeqCst);
+    }
+
+    pub fn take_reload_request(&self) -> bool {
+        self.manual_restart.swap(false, Ordering::SeqCst)
+    }
+
     fn hold_app_lock(&self) {
+        if !self.config.is_local() {
+            return; // remote mode never takes Local\JarvisAppServer-<port>
+        }
         let mut lock = self.app_lock.lock().unwrap();
         if lock.is_none() {
             *lock = create_named_mutex(&Self::app_mutex_name(self.config.port));
@@ -335,6 +350,16 @@ impl Supervisor {
         if let Some(handle) = self.app_lock.lock().unwrap().take() {
             close_named_mutex(handle);
         }
+    }
+
+    #[cfg(test)]
+    pub fn spawn_for_test(&self) -> Result<u32, String> {
+        self.spawn()
+    }
+
+    #[cfg(test)]
+    pub fn holds_app_lock(&self) -> bool {
+        self.app_lock.lock().unwrap().is_some()
     }
 
     pub fn kill_our_tree(&self) {
@@ -374,6 +399,9 @@ impl Supervisor {
     /// Spawn the server from the configured checkout. Err carries a
     /// human-readable reason for the recovery screen.
     fn spawn(&self) -> Result<u32, String> {
+        if !self.config.is_local() {
+            return Err("remote hub mode never starts a local server".to_string());
+        }
         match config::check_repo(&self.config) {
             RepoCheck::Invalid(reason) => return Err(reason),
             RepoCheck::Warning(warning) => log::warn!("Jarvis: {warning}"),

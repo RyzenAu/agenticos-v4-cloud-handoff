@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { slackWorkspaceHints } from "./slack-workspaces";
 import type { OperatorState, InboxItem } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 type SlackAccount = {
   token: string;
@@ -17,7 +18,7 @@ export function slackConnection(
   save: (state: OperatorState) => void,
   options: { homeDir?: string } = {},
 ) {
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "slack.json");
   let syncing = false;
   const read = (): Partial<SlackAccount> =>

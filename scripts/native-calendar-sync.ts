@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { withConnectedRead, type ConnectedTool } from "./codex-connected-read";
 import { calendarRange, type CalendarCoverage } from "./calendar-read";
 import type { CalendarEvent, OperatorState } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 const required = [
   "google_calendar.get_profile",
@@ -149,7 +150,7 @@ export function nativeCalendarSync(
   },
 ) {
   const connectedRead = options.connectedRead || withConnectedRead;
-  const directory = join(root, ".operator-data"),
+  const directory = join(dataDirFor(root)),
     file = join(directory, "native-calendar.json");
   const read = (): Saved =>
     existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : { enabled: false };

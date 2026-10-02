@@ -72,7 +72,7 @@
   padding: 0 10px;
   height: 36px;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .jarvis-tools-trigger > i {
   width: 5px;
@@ -86,7 +86,7 @@
   align-items: center;
   gap: 4px;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: var(--text-xs);
   padding: 5px 7px;
 }
 .vc-focus-menu {
@@ -120,7 +120,7 @@
 }
 .jarvis-phase {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.5;
   min-height: 18px;
   margin-top: -15px;
@@ -154,7 +154,7 @@
 }
 .jarvis-dialog[data-has-dialogue="true"] .jarvis-phase {
   margin-top: -6px;
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .jarvis-dialogue-log {
   flex: 1;
@@ -172,7 +172,7 @@
   display: block;
   margin: 0 0 7px;
   color: var(--foreground);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 550;
 }
 .jarvis-message > p {
@@ -284,7 +284,7 @@
   border-radius: 12px;
   background: color-mix(in oklab, var(--warn) 12%, transparent);
   color: var(--warn);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.6;
 }
 .jarvis-save-recovery > span {
@@ -310,7 +310,7 @@
   display: block;
   margin: -10px 0 25px;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .jarvis-dialog .vc-focus-transcript p {
   color: var(--foreground);
@@ -348,7 +348,7 @@
 }
 .jarvis-result-caption > summary {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
 }
 .jarvis-result-caption > p {
@@ -368,7 +368,7 @@
 .jarvis-dialog .jarvis-source-row small,
 .jarvis-dialog .jarvis-sources > p {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .jarvis-dialog .jarvis-source-list h3 {
   color: var(--foreground);
@@ -532,7 +532,7 @@
 }
 .vc-portable .vv-heading > button {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .vc-portable .vv-workspace {
   background: var(--background);
@@ -562,7 +562,7 @@
 .vc-portable .vc-eyebrow {
   color: var(--foreground);
   letter-spacing: 1.5px;
-  font-size: 10px;
+  font-size: var(--text-xs);
 }
 .vc-portable .vv-schedule button,
 .vc-portable .vv-inbox button {
@@ -581,7 +581,7 @@
 .vc-portable .vv-inbox small,
 .vc-portable .vv-empty-line {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.65;
 }
 .vc-portable .vv-memory-detail {
@@ -598,7 +598,7 @@
 .vc-portable .vv-memory-sources {
   max-height: 150px;
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .vc-portable .vv-memory-sources .vv-sources button {
   font-size: 13px;
@@ -607,7 +607,7 @@
 .vc-portable .jarvis-local-search > p,
 .vc-portable .jarvis-local-results small {
   color: var(--foreground);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 .vc-portable .jarvis-local-search input {
   color: var(--foreground);
@@ -620,7 +620,7 @@
 }
 .vc-portable .jarvis-local-results strong {
   color: var(--foreground);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .vc-portable .vv-image-preview > img {
   max-height: 280px;
@@ -653,14 +653,14 @@
   align-items: center;
   gap: 7px;
   margin: 12px 0 22px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--success);
 }
 .jarvis-email-review > label {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--foreground);
   border-bottom: 1px solid color-mix(in oklab, var(--border-strong) 40%, transparent);
   padding: 11px 0;
@@ -715,7 +715,7 @@
 .jarvis-review-note {
   color: var(--foreground);
   line-height: 1.6;
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin: 11px 0;
 }
 .jarvis-dialog .jarvis-fetch-state {

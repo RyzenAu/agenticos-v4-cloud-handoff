@@ -53,7 +53,7 @@ export const QUICK_ACTIONS: QuickActionDef[] = [
   {
     id: "generate-preview", done: "Preview built",
     label: "Generate preview for lead…",
-    hint: "A local preview site for one lead",
+    hint: "Dental flagship or custom design, local only",
     gate: "spend",
     needs: "lead-with-site",
     pcOnly: true,

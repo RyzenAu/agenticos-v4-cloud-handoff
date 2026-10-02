@@ -8,7 +8,7 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Bot, Boxes, Clapperboard, Film, ImagePlus, Package, Sparkles, TriangleAlert } from "lucide-react";
+import { ArrowUpRight, Bot, Boxes, ImagePlus, TriangleAlert } from "lucide-react";
 import { Button, PageFoot, PageHeader, Widget, WidgetGrid } from "@/components/ds";
 import { useNow } from "@/components/workspace/panel-shell";
 import { HONEST_LABEL, honestFromQuery, type HonestState } from "@/lib/honest-state";
@@ -79,38 +79,56 @@ export function StudioPage() {
   const jobsState = honestFromQuery(jobs, now);
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="Studio" description="Make an image, a video or a motion piece." />
+      <PageHeader title="Studio" />
+      <nav aria-label="Studio actions" className="mb-6 flex flex-wrap gap-3">
+        <OpenLink to="/design" primary>
+          Make an image or video
+        </OpenLink>
+        <OpenLink to="/leads">Draft a client proposal</OpenLink>
+      </nav>
+      <p className="mb-6 text-sm text-muted-foreground">
+        <a href="/mu-creative-20261001/index.html" target="_blank" rel="noreferrer" className="font-medium text-foreground underline underline-offset-4">Promotional films</a>
+        {" "}Two films; they need an owner watch-through before any external use.
+      </p>
       <WidgetGrid aria-label="Make something" data-studio="make">
         <Widget
           icon={ImagePlus}
           title="Image or video"
           badge={jobs.isLoading ? undefined : stateWord(jobsState)}
-          value={jobs.isLoading ? null : jobs.error ? "Couldn't read" : jobs.data ?? null}
+          value={jobs.isLoading ? null : jobs.error ? "Couldn't read" : (jobs.data ?? null)}
           tone={jobs.error ? "danger" : "default"}
           line={jobs.data ? "generating now; open Design to follow them" : jobs.error ? "Generation queue unavailable" : jobs.isLoading ? "Reading the queue…" : "generating now; the queue is empty"}
-          action={<OpenLink to="/design" primary>Make in Design</OpenLink>}
         />
-        <Widget icon={Film} title="Motion library" line="Reusable motion styles for sites and films." action={<OpenLink to="/motion">Open library</OpenLink>} />
-        <Widget icon={Package} title="M&U kit" line="Our own motion kit: the moves every M&U site and film shares." action={<OpenLink to="/motion" search={{ tab: "kit" }}>Open the kit</OpenLink>} />
-        <Widget icon={Sparkles} title="Transition lab" line="Try page transitions before they ship." action={<OpenLink to="/transitions">Open the lab</OpenLink>} />
         <Widget
           icon={Boxes}
           title="Assets"
           badge={ledger.isLoading ? undefined : stateWord(ledgerState)}
           value={ledger.isLoading ? null : ledger.error ? "Couldn't read" : ledger.data && !ledgerEmpty ? ledger.data.total : null}
           tone={ledger.error ? "danger" : "default"}
-          line={ledger.data ? (ledgerEmpty && !ledger.data.missing ? "Nothing recorded in the media ledger yet" : "in the media ledger: images, video and documents that still exist") : ledger.error ? "Ledger unavailable" : "Reading the ledger…"}
+          line={
+            ledger.data
+              ? ledgerEmpty && !ledger.data.missing ? "Nothing recorded in the media ledger yet" : "in the media ledger: images, video and documents that still exist"
+              : ledger.error ? "Ledger unavailable" : "Reading the ledger…"
+          }
           action={<OpenLink to="/design">Open the ledger</OpenLink>}
         />
-        {ledger.data && <AgentTiles summary={ledger.data} state={ledgerState} now={now} />}
-        <Widget
-          icon={Clapperboard}
-          span={2}
-          title="Sales materials"
-          badge="Not listed yet"
-          line="Proposals, agreements and decks for the booking receptionist live in the repository (docs/sales). This page doesn't list them yet."
-        />
       </WidgetGrid>
+      <details className="mt-6 border-t border-border py-2">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+          Brand kit & asset records
+        </summary>
+        <div className="my-3 flex flex-wrap gap-3">
+          <OpenLink to="/motion" search={{ tab: "kit" }}>
+            M&U kit
+          </OpenLink>
+          <OpenLink to="/transitions">Transition lab</OpenLink>
+        </div>
+        {ledger.data && (
+          <WidgetGrid>
+            <AgentTiles summary={ledger.data} state={ledgerState} now={now} />
+          </WidgetGrid>
+        )}
+      </details>
       <div className="mt-10">
         <DrilldownList id="studio" />
       </div>
@@ -127,7 +145,11 @@ export function StudioPage() {
 }
 
 function LedgerHint({ summary, now }: { summary: LedgerSummary; now: number }) {
-  const fresh = summary.newest ? <span title={fmtDateTime(summary.newest)}>{fmtAgo(summary.newest, now)}</span> : "No dated items";
+  const fresh = summary.newest ? (
+    <span title={fmtDateTime(summary.newest)}>{fmtAgo(summary.newest, now)}</span>
+  ) : (
+    "No dated items"
+  );
   if (!summary.missing) return <>{fresh}</>;
   return (
     <>

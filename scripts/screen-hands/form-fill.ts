@@ -19,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { labelOf, secureField, SENSITIVE_FIELD, type Snapshot, type UiElement } from "./plan";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type Detail = { key: string; about: string; value: string };
 export type FillMatch = { field: UiElement; detail: Detail; via: "rules" | "jev"; confidence: number };
@@ -64,7 +65,7 @@ export function businessDetails(profile: unknown): Detail[] {
 }
 
 /** The details saved in .operator-data/business.json (read at call time; a missing file is none). */
-export function savedDetails(file = join(ROOT, ".operator-data", "business.json")): Detail[] {
+export function savedDetails(file = join(dataDirFor(ROOT), "business.json")): Detail[] {
   try {
     return businessDetails((JSON.parse(readFileSync(file, "utf8")) as { profile?: unknown }).profile);
   } catch {

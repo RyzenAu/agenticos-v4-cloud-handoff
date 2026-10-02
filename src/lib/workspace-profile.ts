@@ -36,7 +36,8 @@ export interface WorkspaceProfile {
 }
 /** Display currency to suggest for a timezone when the owner hasn't chosen one (AUD in Australia). */
 export function currencyForTimeZone(timeZone?: string | null) {
-  if (!timeZone) return "USD";
+  // M&U Ventures is an Australian business: an unknown or UTC zone (a headless or cloud browser) means AUD.
+  if (!timeZone || timeZone === "UTC" || timeZone === "Etc/UTC") return "AUD";
   if (/^Australia\//.test(timeZone)) return "AUD";
   if (timeZone === "Europe/London") return "GBP";
   return "USD";

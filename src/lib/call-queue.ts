@@ -43,13 +43,34 @@ export function callingHours(now = Date.now()) {
 }
 
 export function websiteVerification(lead: BoardLead): string {
-  if (!lead.website && lead.deal.websiteStatus === "no_website_verified") {
+  return websiteStateLine(lead, lead.deal.websiteStatus);
+}
+
+/** What a lead found by Find says about its own website search (stored on the lead, before any audit has run). */
+function discoveryState(lead: { website: string; websiteCheckedAt?: string | null; websiteCheck?: string }): string | null {
+  if (lead.website) return null;
+  // Wording comes only from the explicit outcome the server stored where the result was known: never from dates or reason text.
+  switch (lead.websiteCheck) {
+    case "search-unavailable": return "Search unavailable, so the website was not checked · owner to Google";
+    case "check-failed": return "Website check couldn't complete · owner to Google";
+    case "none-verified": return `Search found no site${lead.websiteCheckedAt ? ` (${lead.websiteCheckedAt.slice(0, 10)})` : ""} · not yet verified · owner to Google`;
+    default: return null; // not-checked, or an older API that does not send it
+  }
+}
+
+/** The one honest line for a lead's website: verified absence, an unknown, a failed check or a listed address. */
+export function websiteStateLine(lead: { website: string; websiteCheckedAt?: string | null; websiteCheck?: string }, status?: string): string {
+  if (!lead.website && status === "no_website_verified") {
     const date = lead.websiteCheckedAt?.slice(0, 10);
     return `No website (verified${date ? ` ${date}` : "; date not recorded"})`;
   }
-  if (lead.deal.websiteStatus === "not_their_site") return "Website not verified · wrong site";
-  if (lead.website && lead.deal.websiteStatus === "ok") return "Website verified";
-  return "Website not verified · owner to Google";
+  if (status === "not_their_site") return "Website not verified · wrong site";
+  if (lead.website && status === "ok") return "Website verified";
+  // A saved address is presence, not verification; and a check that did not complete is its own state, never "no website".
+  if (lead.website) return status === "unreachable" || status === "bot_protected" ? "Website listed · check failed" : "Website listed · not yet checked";
+  if (status === "unreachable" || status === "bot_protected") return "Website not verified · check failed · owner to Google";
+  if (status === "no_website_unverified") return "Website not verified · check inconclusive · owner to Google";
+  return discoveryState(lead) ?? "Website not verified · owner to Google";
 }
 
 /** Historical automated discovery claims are not human confirmation of absence. */

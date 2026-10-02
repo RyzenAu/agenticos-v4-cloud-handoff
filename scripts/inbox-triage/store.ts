@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { chmodSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Category, Flags, Importance, Relationship } from "./rules";
+import { dataDirFor } from "../cloud/data-dir";
 
 type Sql = string | number | null;
 type Row = Record<string, unknown>;
@@ -49,7 +50,7 @@ export type TriageRow = {
   backfill: boolean;
 };
 
-export const triageDbPath = (root: string) => join(root, ".operator-data", "inbox-triage.sqlite");
+export const triageDbPath = (root: string) => join(dataDirFor(root), "inbox-triage.sqlite");
 
 export function openTriageStore(root: string, options: { readonly?: boolean; path?: string } = {}) {
   const path = options.path ?? triageDbPath(root);

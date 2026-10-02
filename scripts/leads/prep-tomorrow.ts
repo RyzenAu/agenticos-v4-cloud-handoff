@@ -12,13 +12,14 @@ import { callList, type Lead } from "./crm";
 import { generatePreview, previewBlocker, type GenerateOptions } from "../lead-sites/generate";
 import { callOpener, callWindow, DEFAULT_SENDER, type Sender } from "./outreach";
 import { runSeoAudit, type SeoAuditRecord } from "./seo-audit";
+import { dataDirFor } from "../cloud/data-dir";
 
 export function tomorrow(now = new Date()): Date {
   return new Date(now.getTime() + 24 * 3_600_000);
 }
 
 export function prepDir(root: string, date: string) {
-  return join(root, ".operator-data", "prep", date);
+  return join(dataDirFor(root), "prep", date);
 }
 
 export type PrepItem = {

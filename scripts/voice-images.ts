@@ -2,6 +2,7 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "
 import { basename, join, resolve } from "node:path";
 import { brainEnabled, sourceOrigin } from "../src/lib/brain-sources";
 import type { MemorySource, OperatorState } from "../src/lib/operator";
+import { dataDirFor } from "./cloud/data-dir";
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const SOURCE_ID = /^[A-Za-z0-9_-]{1,100}$/;
@@ -55,7 +56,7 @@ function filename(source: MemorySource, mimeType: ImageMime) {
 
 /** Read-only access to images that the user already saved in this workspace. */
 export function voiceImages(root: string, loadState: () => ImageState) {
-  const dataDir = join(resolve(root), ".operator-data");
+  const dataDir = join(dataDirFor(resolve(root)));
   const uploads = join(dataDir, "uploads");
   const eligible = (state: ImageState, source: MemorySource) =>
     SOURCE_ID.test(source.id) && !source.deletedAt && brainEnabled(state, sourceOrigin(source));

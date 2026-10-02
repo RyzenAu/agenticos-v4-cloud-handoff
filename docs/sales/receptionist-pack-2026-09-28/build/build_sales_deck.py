@@ -140,7 +140,7 @@ def feats(t):
     out = [f"{q['includedMinutes']:,} minutes included",
            f"{aud_short(q['overagePerMinute']['cents'])} per extra minute",
            (f"Up to {cal} calendars" if cal > 1 else "1 calendar") + (f", {loc} locations" if loc > 1 else ", 1 location"),
-           "Cover: after hours, overflow" + (", all calls" if "All calls" in inc["coverModes"] else "") + (" (see decision (a) below)" if DECISION_A in cover_text(t) else "")]
+           "Cover: after hours, overflow" + (", all calls" if "All calls" in inc["coverModes"] else "")]
     out.append("SMS confirmations + reminders*" if "sms-reminder" in ids else "SMS booking confirmation*")
     if "assured-review" in ids:
         out.append("Weekly M&U call review*")
@@ -161,8 +161,6 @@ for i, t in enumerate(tiers):
     d.text(s, x + 20, 206, 232, 20, f"per month {GST_SHORT}", 12, colour=("CBD5E1" if hl else SLATE))
     d.text(s, x + 20, 234, 232, 190, feats(t), 12.5, colour=fg, bullets=True, space_after=3)
 _foot = "*At go-live. Not in any package: live transfer, practice-software integration."
-if DECISION_A in cover_text(ess):
-    _foot += f" Essential cover: {DECISION_A}"
 d.text(s, M, 436, W - 2 * M, 36, _foot, 10.5, colour=SLATE, italic=True)
 
 # 9 How billing works + value ------------------------------------------------

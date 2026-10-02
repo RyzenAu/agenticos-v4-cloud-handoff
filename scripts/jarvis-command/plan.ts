@@ -107,7 +107,16 @@ export function blankDeckTitle(text: string): string | null {
   const q = quoted(text);
   if (q) return q;
   const m = /\btitle(?: slide)?\s+(?:saying|that says|reading|with|of)\s+(.{1,120}?)\s*[.!?]?$/i.exec(text);
-  return m?.[1]?.trim() || "Title";
+  // No title asked for: "" (a blank new presentation), never a made-up "Title".
+  return m?.[1]?.trim() || "";
+}
+/** "open Chrome and create a new tab", "open a new tab": the whole request is one blank tab in Jarvis Chrome. Pure. */
+export function blankTabIn(text: string): boolean {
+  const t = text.trim().replace(/^(?:(?:hey )?jarvis[,\s]+)?(?:(?:can|could|would|will) you\s+)?(?:please\s+)?/i, "").replace(/[\s,.!?]+(?:please|thanks|thank you)?[.!?]*$/i, "");
+  return (
+    /^(?:open|launch|start|fire up)\s+(?:up\s+)?(?:google\s+)?chrome\s*(?:,|\band\b|\bthen\b)\s*(?:and\s+)?(?:then\s+)?(?:create|open|make|start|add|give me|get me|put up)\s+(?:me\s+)?(?:a\s+)?(?:new|blank|fresh|another)\s+tab$/i.test(t) ||
+    /^(?:create|open|make|start|add|give me|get me)\s+(?:me\s+)?(?:a\s+)?(?:new|blank|fresh)\s+(?:chrome\s+|browser\s+)?tab(?:\s+in\s+(?:google\s+)?chrome)?$/i.test(t)
+  );
 }
 /** A step asked for after the new deck's title ("… 'Q3' and send it to Mehroz"), or null. Pure. */
 export function blankDeckExtra(text: string): string | null {
@@ -139,11 +148,12 @@ export function planRules(utterance: string): RulePlan | null {
     return { lane: "executor", executor: "notepad.type", args: { text: np.line }, op: "notepad.type", target: "notepad", why: "a line typed into a NEW Notepad document, read back, never saved" };
   }
   const title = blankDeckTitle(t);
-  if (title) {
+  if (title !== null) {
     const extra = blankDeckExtra(t) ?? strayStep(t, OWN_DECK, 2);
     if (extra) return stray("deck.blank", "start a new PowerPoint with that title slide", extra);
     return { lane: "executor", executor: "deck.blank", args: { title }, op: "deck.blank", target: "powerpoint", why: "a new, never-saved PowerPoint with a title slide, read back from PowerPoint" };
   }
+  if (blankTabIn(t)) return { lane: "executor", executor: "browser.navigate", args: { blank: true }, op: "browser.newtab", target: "chrome", why: "a new blank tab in Jarvis Chrome, confirmed by the browser's own tab list" };
   const urlMatch = /\bopen\s+(https?:\/\/[^\s"']{3,200})/i.exec(t);
   if (urlMatch) {
     // REVIEW-T2 R3: the URL ends at trailing punctuation; ANY words after it (or an action before it) are

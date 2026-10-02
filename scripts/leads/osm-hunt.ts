@@ -36,6 +36,7 @@ import {
 import type { Vertical } from "./places";
 import { scoreLead } from "./score";
 import { EMPTY_SITE_AUDIT } from "./site-audit";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const HERMES_SKU = "hermes_discovery";
@@ -113,7 +114,7 @@ type HuntProgress = {
 };
 
 function progressPath(root: string): string {
-  return join(root, ".operator-data", "osm-hunt-progress.json");
+  return join(dataDirFor(root), "osm-hunt-progress.json");
 }
 
 function blankProgress(hermesBudget: number): HuntProgress {
@@ -133,7 +134,7 @@ function loadProgress(root: string, hermesBudget: number): HuntProgress {
 }
 
 function saveProgress(root: string, progress: HuntProgress): void {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   mkdirSync(dir, { recursive: true });
   progress.updatedAt = new Date().toISOString();
   const file = progressPath(root);
@@ -275,7 +276,7 @@ async function huntRegionVertical(
     }
     const usableEmails = [...emails].filter((e) => !looksPersonal(e));
     const scored = scoreLead(
-      { website: finalUrl, rating: null, reviews: null, hours: [], noWebsiteCheckedAt: finalUrl ? null : websiteCheckedAt },
+      { website: finalUrl, rating: null, reviews: null, hours: [], noWebsiteCheckedAt: null }, // the bulk hunt cannot prove an absence (it does not know whether search answered), so no check date reaches the scorer
       audit, vertical,
     );
     upsertLead(db, {
@@ -284,6 +285,9 @@ async function huntRegionVertical(
       emails: usableEmails, emailOk: usableEmails.length > 0 && !audit.noUnsolicited, score: scored.score,
       pitch: scored.pitch, reasons: scored.reasons, googleAt: null, source: "osm", attribution: item.attribution,
       websiteSource, websiteConfidence, websiteCheckedAt,
+      // The bulk hunt cannot tell whether a search engine answered for this lead, so an empty result is never "none-verified":
+      // it stays not-checked until a Find or rescan (which do know) establishes it.
+      websiteCheck: finalUrl ? "found" : "not-checked",
     });
     rp.added++;
     rp.processedIds.push(item.sourceId);

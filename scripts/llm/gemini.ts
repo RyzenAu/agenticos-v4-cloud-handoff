@@ -23,6 +23,7 @@ import { type HealthStore } from "../model-router/health";
 import { callHealth } from "../model-router/defaults";
 import { routerReceiptSink, type ReceiptSink } from "../model-router/receipts";
 import { ProviderError, RouteError, runRouted, type RouteChoice } from "../model-router/router";
+import { dataDirFor } from "../cloud/data-dir";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -246,7 +247,7 @@ async function callOpenRouter(
   return { text, model: data?.model ?? model, provider: "openrouter", ms: Date.now() - started, costUsd: typeof data?.usage?.cost === "number" ? data.usage.cost : undefined };
 }
 
-export const geminiLedgerDefault = (root: string = ROOT) => join(root, ".operator-data", "ai-usage-calls.json");
+export const geminiLedgerDefault = (root: string = ROOT) => join(dataDirFor(root), "ai-usage-calls.json");
 
 /** A failed direct attempt as a router ProviderError (no body text; quota bodies count as limits). */
 function directFailure(attempt: Extract<DirectAttempt, { ok: false }>): ProviderError {

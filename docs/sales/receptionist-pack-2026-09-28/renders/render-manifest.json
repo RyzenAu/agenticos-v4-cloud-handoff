@@ -45,13 +45,13 @@
   },
   "proposal-template": {
     "source": "proposal-template.docx",
-    "sourceSha256": "03f2b9f0efa4bf9fecaebc632a226a70963174308ec968896945a044d1e7accd",
+    "sourceSha256": "cd5c1e29c432c3d255a4283a35301ea3b14625ab02c7e1487d143a6cc52b9f2a",
     "pngs": {
-      "proposal-template-01.png": "442945821881e631ca1e106290be898b583e06366cee76b92e1cc7508b21599d",
-      "proposal-template-02.png": "ea9541df7ba52b6ff7fa1f3b68bee08ae257e85608208052883e75ef97b4f05e",
+      "proposal-template-01.png": "ffb4b568340edd4d728a354137802b893e152f2f77e2f8b684716649bb7d6e40",
+      "proposal-template-02.png": "1a5efa4b65f126f8cd1aad56c85cfb26584bf9638c6f66e0bcfc875e082558c5",
       "proposal-template-03.png": "03cc6b78f25d05a4ccf4ad31bf19017329af6ce92799ff535006ce05ad06cd93",
       "proposal-template-04.png": "72b9a1dd2fdf92abce86ffa0f194e69ac38e40c05547bdb88d8f24582209db05",
-      "proposal-template-05.png": "0cbb343215ada3d3accbcc80881bfdebdae9dea0fa315bc4e1b4e72eb5451e29"
+      "proposal-template-05.png": "1ed0fa4b0824fa36756b23a053717c4798421b69f6a619d8b33571f7e91707a5"
     }
   },
   "sales-presentation": {
@@ -77,14 +77,14 @@
   },
   "service-agreement-draft": {
     "source": "service-agreement-draft.docx",
-    "sourceSha256": "11ef5a23d6d2a4a32454ffc4bd332e7ee7be3ccbae8bd9d604bdd3b0e931158d",
+    "sourceSha256": "32137898c5f2d64e09c0fdd277efd734a8643908328c1623779b4859ef4c3967",
     "pngs": {
       "service-agreement-draft-01.png": "7379a60f09cf9479bfe2904f449fa73b96accac068c194f4ba62cd729f047e50",
       "service-agreement-draft-02.png": "84a83aecdbea9e951f69fe22f3e76bfb4fd5536fee6105e2363fd2aee16b6281",
       "service-agreement-draft-03.png": "a3610477a6c0d261830648eca8a4924ddd3e1ade97e5a1ade40af4e4f0424124",
       "service-agreement-draft-04.png": "a29ee888f73f0203b8d03c03a5e7db779910d5516810fe23e361308116440bec",
-      "service-agreement-draft-05.png": "b2c8afbf059a24f5f4dd6e5a45a97589e7a541296a8b77893bbc43655adaf77e",
-      "service-agreement-draft-06.png": "00faee1c49d49185b49fc8604ffee9b60c4fb93d616e2bc682f7f4318e71b74d"
+      "service-agreement-draft-05.png": "88782f853a2ddddfa4fb7e801d3b8dcc9468dcfc93fe5e1cc640f14b14b9a883",
+      "service-agreement-draft-06.png": "f42ab8d61096e1dd0c9876ce8f3c11be5a663d354301811e9ce507e0c99991b1"
     }
   }
 }

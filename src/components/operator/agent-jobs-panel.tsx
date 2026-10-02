@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { operatorRequest } from "@/lib/operator";
+import { refreshPanels } from "@/components/workspace/api";
 import { CODING_REQUEST_TOO_LONG, CODING_TASK_MAX } from "@/lib/commands/coding";
 import codexLogo from "@/assets/logo-openai.svg";
 import claudeLogo from "@/assets/logo-claude.svg";
@@ -120,6 +121,17 @@ export function AgentMark({ agent }: { agent: JobAgent }) {
       alt=""
     />
   );
+}
+
+/** Only paused work and its existing answer/approval controls. Opening it never starts an agent. */
+export function AgentQuestionsPanel() {
+  const jobs = useAgentJobs();
+  const client = useQueryClient();
+  const waiting = (jobs.data?.jobs ?? []).filter(job => job.runs.some(run => run.status === "needs_input" && run.pending));
+  return <section id="agent-questions" className="ds-detail jarvis-agent-jobs scroll-mt-20" aria-label="Agent questions" data-approval-open={waiting.length > 0 || undefined}>
+    <h2 className="mb-4 text-lg font-semibold">Agent questions</h2>
+    {jobs.error ? <div role="alert">Questions couldn't be loaded. <button className="underline" onClick={() => void jobs.refetch()}>Retry</button></div> : jobs.isPending ? <p role="status">Loading questions…</p> : !waiting.length ? <p className="text-muted-foreground">No agents waiting for your answer.</p> : waiting.map(job => <article key={job.id} className="mb-5 border-t border-border pt-4"><h3 className="mb-3 text-base font-medium">{job.prompt}</h3><div className="jaj-runs" data-agents={1}>{job.runs.filter(run => run.status === "needs_input" && run.pending).map(run => <AgentRunCard key={`${job.id}:${run.agent}`} job={job} run={run} onRefresh={async () => { await client.invalidateQueries({ queryKey: agentJobKey }); await refreshPanels(client, ["needsYou"]); }} />)}</div></article>)}
+  </section>;
 }
 
 export function AgentJobsPanel({

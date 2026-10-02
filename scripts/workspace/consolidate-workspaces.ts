@@ -44,10 +44,11 @@ import {
   type WorkspaceId,
   type WorkspacesFile,
 } from "./three-workspaces";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const WORKSPACES_FILE = "workspaces.json";
 
-export const workspacesFilePath = (root: string) => join(root, ".operator-data", WORKSPACES_FILE);
+export const workspacesFilePath = (root: string) => join(dataDirFor(root), WORKSPACES_FILE);
 
 export const stampOf = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
 
@@ -155,7 +156,7 @@ export function consolidateWorkspaces(options: {
   const now = (options.now ?? (() => new Date()))();
   const home = options.home ?? homedir();
   const git: GitParent | null = options.git === false ? null : (options.git ?? gitParent);
-  const dataDir = join(options.root, ".operator-data");
+  const dataDir = join(dataDirFor(options.root));
   const file = workspacesFilePath(options.root);
   const warnings: string[] = [];
 

@@ -1,0 +1,51 @@
+# AgenticOS hub on a Linux VM. One instance per environment: mu-hub@production, mu-hub@staging.
+#
+# ONE process is the single SQLite writer for its data directory. Never start two instances against the
+# same MU_DATA_DIR, and never run this and the Windows hub against copies of the same data at once.
+#
+# Layout (created by deploy/bin/install.sh, filled by deploy/bin/rollout.sh):
+#   /opt/mu-hub/bun/bin/bun                     pinned Bun
+#   /opt/mu-hub/releases/<git-sha>/             one checkout per release (git archive of that SHA)
+#   /opt/mu-hub/<instance>/current              symlink to the running release
+#   /etc/mu-hub/<instance>.env                  non-secret settings + secret env names (mode 0600, owner sets values by hand)
+#   /var/lib/mu-hub/<instance>/                 MU_DATA_DIR (local disk, single writer)
+[Unit]
+Description=AgenticOS hub (%i)
+Documentation=file:///opt/mu-hub/%i/current/docs/programme-20261001/CLOUD-ARCHITECTURE.md
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=muhub
+Group=muhub
+WorkingDirectory=/opt/mu-hub/%i/current
+EnvironmentFile=/etc/mu-hub/%i.env
+Environment=MU_HUB_ROLE=cloud
+Environment=MU_DATA_DIR=/var/lib/mu-hub/%i
+Environment=HOME=/var/lib/mu-hub/%i-home
+# Vite serves the hub's middleware. The app binds 127.0.0.1 (vite.config.ts); Tailscale Serve is the only way in.
+# `bun --bun` is required: without it Vite runs under Node and the SQLite FTS5 tables crash.
+ExecStart=/opt/mu-hub/bun/bin/bun --bun node_modules/vite/bin/vite.js dev --port ${ARGENTIC_PORT} --strictPort
+Restart=on-failure
+RestartSec=5
+# Give an in-flight write time to finish before the kill, then a hard stop.
+TimeoutStopSec=30
+KillMode=mixed
+
+# Hardening. The hub writes its data, its home and its own release folder, nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# Vite's cache and the seeded src/data live inside the release folder, so releases stay writable for muhub.
+ReadWritePaths=/var/lib/mu-hub /opt/mu-hub/releases
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Tailscale WhoIs is asked over tailscaled's local socket (read-only for the muhub user).
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

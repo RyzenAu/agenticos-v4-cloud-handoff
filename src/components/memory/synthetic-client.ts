@@ -100,7 +100,7 @@ export function createSyntheticMemoryClient(options: { rows?: MemoryRow[]; laten
         {
           ok: true as const,
           query,
-          facts: hits.map((r) => ({ id: r.id, kind: r.kind, title: r.title, text: r.text, source: r.source, version: r.version, version_hash: r.version_hash, date: r.date, via: ["local" as const], score: 1 })),
+          facts: hits.map((r) => ({ id: r.id, kind: r.kind, title: r.title, text: r.text, source: r.source, version: r.version, version_hash: r.version_hash, date: r.date, origin: (r.kind === "memory" ? "jarvis" : "obsidian") as "jarvis" | "obsidian", actor: r.actor, indexed: "confirmed" as const, processed_by: r.processed_by ?? null, via: ["local" as const], score: 1 })),
           facts_used: hits.map((r) => r.id),
           spoken: hits.length ? `Here's what's saved: ${hits[0].text}` : "I don't have anything saved about that.",
           hindsight: "ok" as const,

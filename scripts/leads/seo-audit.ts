@@ -11,6 +11,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { providerKey } from "../provider-config";
+import { dataDirFor } from "../cloud/data-dir";
 
 /** github.com/AgriciDaniel/jev-seo -- reviewed commit, installed at D:\jev-seo\src. Bump deliberately. */
 export const JEV_SEO_PINNED_COMMIT = "55a184a3b0d09565a4c84268f725a47784e62528";
@@ -18,7 +19,7 @@ export const JEV_SEO_PINNED_COMMIT = "55a184a3b0d09565a4c84268f725a47784e62528";
 const JEV_SEO_PYTHON = process.env.JEV_SEO_PYTHON || "D:\\jev-seo\\venv\\Scripts\\python.exe";
 const JEV_SEO_SRC = process.env.JEV_SEO_SRC || "D:\\jev-seo\\src";
 
-export const auditDir = (root: string, leadId: number) => join(root, ".operator-data", "seo-audits", String(leadId));
+export const auditDir = (root: string, leadId: number) => join(dataDirFor(root), "seo-audits", String(leadId));
 const recordPath = (root: string, leadId: number) => join(auditDir(root, leadId), "run.json");
 
 export type SeoFinding = { id: string; severity: string; priority: string; category: string; title: string; evidence: string };
@@ -100,6 +101,7 @@ function childEnv(key: string): NodeJS.ProcessEnv {
 
 function runChild(
   spawnFn: typeof spawn,
+  python: string,
   args: string[],
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -108,7 +110,7 @@ function runChild(
   return new Promise((resolve, reject) => {
     let child: ChildProcess;
     try {
-      child = spawnFn(JEV_SEO_PYTHON, args, { cwd, env, windowsHide: true });
+      child = spawnFn(python, args, { cwd, env, windowsHide: true });
     } catch (err) {
       reject(err);
       return;
@@ -142,6 +144,12 @@ export type RunSeoAuditOptions = {
    *  Once `jevseo doctor` reports weasyprint "ok" on a given machine, pass "pdf,xlsx,md". */
   formats?: string;
   spawnFn?: typeof spawn;
+  /** The Python interpreter and the jev-seo source folder. Default: the D: install (or JEV_SEO_PYTHON / JEV_SEO_SRC).
+   *  Injected by tests so nothing depends on which machine they run on: the "is it installed" check below runs before
+   *  the one-audit-at-a-time lock is taken, so a machine without the D: install used to fail the lock test with a
+   *  config error instead of the busy error it was written to see. */
+  python?: string;
+  src?: string;
   /** Test-only override for providerKey's lookup, so tests never depend on this machine's real
    *  ~/.config/agentic-os.env or process.env having (or lacking) a key. */
   env?: NodeJS.ProcessEnv;
@@ -160,7 +168,9 @@ export async function runSeoAudit(
   const keyOpts = opts.env || opts.home ? { env: opts.env, home: opts.home } : undefined;
   const key = providerKey(opts.root, "TYPESAFE_API_KEY", keyOpts) || providerKey(opts.root, "JEV_API_KEY", keyOpts);
   if (!key) throw new SeoAuditConfigError("No TYPESAFE_API_KEY or JEV_API_KEY configured -- add one to ~/.config/agentic-os.env.");
-  if (!existsSync(JEV_SEO_PYTHON)) throw new SeoAuditConfigError(`jev-seo isn't installed at ${JEV_SEO_PYTHON} -- set up the venv on D: first.`);
+  const python = opts.python ?? JEV_SEO_PYTHON;
+  const src = opts.src ?? JEV_SEO_SRC;
+  if (!existsSync(python)) throw new SeoAuditConfigError(`jev-seo isn't installed at ${python} -- set up the venv on D: first.`);
 
   const startedAt = new Date().toISOString();
   running = { leadId: lead.id, startedAt };
@@ -178,7 +188,7 @@ export async function runSeoAudit(
       "--time-budget", "240",
       "--formats", formats,
     ];
-    const { code, stderrTail } = await runChild(opts.spawnFn ?? spawn, args, JEV_SEO_SRC, childEnv(key), timeoutMs);
+    const { code, stderrTail } = await runChild(opts.spawnFn ?? spawn, python, args, src, childEnv(key), timeoutMs);
     if (code !== 0) throw new Error(`jev-seo exited ${code}${stderrTail ? `: ${stderrTail.slice(-500)}` : ""}`);
 
     const auditJsonPath = join(dir, "audit.json");
@@ -196,8 +206,9 @@ export async function runSeoAudit(
     try {
       await runChild(
         opts.spawnFn ?? spawn,
+        python,
         [join(opts.root, "scripts", "leads", "seo_audit_pdf.py"), "--dir", dir],
-        JEV_SEO_SRC,
+        src,
         childEnv(key),
         120_000,
       );
@@ -212,6 +223,7 @@ export async function runSeoAudit(
       try {
         await runChild(
           opts.spawnFn ?? spawn,
+          python,
           [
             join(opts.root, "scripts", "leads", "seo_audit_brand.py"),
             "--pdf", join(dir, "report.pdf"),
@@ -219,7 +231,7 @@ export async function runSeoAudit(
             ...(data?.scores?.overall != null ? ["--overall", String(data.scores.overall)] : []),
             ...(data?.scores?.grade ? ["--grade", String(data.scores.grade)] : []),
           ],
-          JEV_SEO_SRC,
+          src,
           childEnv(key),
           60_000,
         );

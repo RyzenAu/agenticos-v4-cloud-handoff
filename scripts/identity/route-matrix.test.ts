@@ -590,7 +590,7 @@ describe("T3c: /__operator/agent-jobs through the real gate can't start Codex or
 
 describe("every real mount at the gate (REVIEW-B1 B1-1/B1-2, no stand-ins)", () => {
   test("remote founders reach exactly the shared routes; the owner at the PC reaches all; strangers none", async () => {
-    const table = Object.entries(ROUTE_TABLE).filter(([p, r]) => r.read !== "self" && !r.expectedFrom && !r.within && !["/__operator", "/__receptionist", "/__workspace", "/__memory", "/__finance_manual", "/__ai_usage", "/__claude", "/__cline", "/__jev"].includes(p));
+    const table = Object.entries(ROUTE_TABLE).filter(([p, r]) => r.read !== "self" && !r.expectedFrom && !r.within && !["/__operator", "/__receptionist", "/__workspace", "/__memory", "/__finance_manual", "/__ai_usage", "/__claude", "/__cline", "/__jev", "/__computers", "/__events"].includes(p));
     expect(table.length).toBeGreaterThan(90);
     for (const [path, rule] of table) {
       for (const method of ["GET", "POST"] as const) {
@@ -604,6 +604,20 @@ describe("every real mount at the gate (REVIEW-B1 B1-1/B1-2, no stand-ins)", () 
       }
     }
   }, 120_000);
+
+  test("/__events (a stream that never ends) at the real gate: verified founders get an SSE stream; everyone else is refused; no writes", async () => {
+    // Read only the status and headers, then hang up: the body never finishes by design.
+    const open = async (who: Caller, method = "GET") => {
+      const ctl = new AbortController();
+      const res = await fetch(base + "/__events", { method, headers: headersFor(who), signal: ctl.signal });
+      const out = { status: res.status, type: res.headers.get("content-type") ?? "" };
+      ctl.abort();
+      return out;
+    };
+    for (const who of VERIFIED) expect([who, await open(who)]).toEqual([who, { status: 200, type: "text/event-stream; charset=utf-8" }]);
+    for (const who of UNVERIFIED) expect([who, [401, 403].includes((await open(who)).status)]).toEqual([who, true]);
+    for (const who of ["owner", "tsMehroz"] as const) expect([who, (await open(who, "POST")).status === 200]).toEqual([who, false]);
+  });
 
   test("a shell on the hub can't be had: the _variant of /__claude is not under the /__claude rule's exceptions", async () => {
     for (const p of ["/__claude_chat", "/__claude_attach", "/__claude_abort_all", "/__claude_session", "/__claude_file"])

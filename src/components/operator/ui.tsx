@@ -68,7 +68,7 @@ export function Modal({
 }) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="op-modal">
+      <DialogContent className="op-modal ds-detail">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
         {children}

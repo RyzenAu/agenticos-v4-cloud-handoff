@@ -2,9 +2,9 @@
 // shared by the server (scripts/jobs/service.ts) and the UI (src/lib/job-events.ts reads the JSON).
 import type { Principal } from "../approvals/principal";
 
-export type JobKind = "voice" | "command" | "screen" | "control" | "away" | "coding" | "memory" | "lesson";
+export type JobKind = "voice" | "command" | "screen" | "control" | "away" | "coding" | "memory" | "lesson" | "trigger";
 export type JobState = "queued" | "running" | "awaiting-approval" | "succeeded" | "failed" | "cancelled" | "interrupted" | "unknown";
-export const JOB_KINDS: readonly JobKind[] = ["voice", "command", "screen", "control", "away", "coding", "memory", "lesson"];
+export const JOB_KINDS: readonly JobKind[] = ["voice", "command", "screen", "control", "away", "coding", "memory", "lesson", "trigger"];
 export const TERMINAL_STATES: readonly JobState[] = ["succeeded", "failed", "cancelled", "interrupted", "unknown"];
 
 /** Jev's typed decision for a step (Stage C fills this; B2 stores it). */

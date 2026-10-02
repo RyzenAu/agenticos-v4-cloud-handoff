@@ -58,7 +58,9 @@ export function ReceptionistDashboardPage() {
     setRefreshing(true);
     setRefreshError(null);
     const results = await Promise.allSettled([actions.refresh(), sellActions.refresh()]);
-    const failed = results.flatMap((r, i) => (r.status === "rejected" ? [`${i === 0 ? "Dashboard" : "Sell status"}: ${r.reason instanceof Error ? r.reason.message : "refresh failed"}`] : []));
+    const failed = results.flatMap((r, i) =>
+      r.status === "rejected" ? [`${i === 0 ? "Dashboard" : "Sell status"}: ${r.reason instanceof Error ? r.reason.message : "refresh failed"}`] : [],
+    );
     if (failed.length) setRefreshError(failed.join(" · "));
     setRefreshing(false);
   }
@@ -74,10 +76,18 @@ export function ReceptionistDashboardPage() {
     { id: "health", label: "Health" },
   ];
   const panel = (id: RxTab, children: ReactNode) => (
-    <TabPanel idBase={TABS_ID} id={id} active={tab === id} className="pt-8">{children}</TabPanel>
+    <TabPanel idBase={TABS_ID} id={id} active={tab === id} className="pt-8">
+      {children}
+    </TabPanel>
   );
   const needsDashboard = (render: (d: DashboardViewModel) => ReactNode) =>
-    data ? render(data) : isLoading ? <LoadingShape /> : <p className="rounded-2xl bg-inset px-5 py-4 text-base text-muted-foreground">Dashboard couldn't be read. Refresh to try again.</p>;
+    data ? (
+      render(data)
+    ) : isLoading ? (
+      <LoadingShape />
+    ) : (
+      <p className="rounded-2xl bg-inset px-5 py-4 text-base text-muted-foreground">Dashboard couldn't be read. Refresh to try again.</p>
+    );
   const sellData = sell.data;
   return (
     // No page-wide overflow-wrap:anywhere (RX-11): it broke table words mid-word at 390. Long free
@@ -86,7 +96,7 @@ export function ReceptionistDashboardPage() {
       <PageHeader
         title="Receptionist"
         // L1 (29 Sep 2026): one headline; freshness and sources moved to the page foot.
-        description="Sell it, or fix what's stopping it."
+        description="Calls, clients and launch readiness."
         actions={
           <Button variant="outline" size="sm" className="h-10 rounded-full px-4" onClick={refresh} disabled={refreshing || isLoading}>
             <RefreshCw aria-hidden="true" className={cn(refreshing && "animate-spin motion-reduce:animate-none")} />
@@ -94,13 +104,26 @@ export function ReceptionistDashboardPage() {
           </Button>
         }
       />
-      {refreshError && <Notice tone="danger" title="Refresh failed" className="mb-6 rounded-2xl">{refreshError}</Notice>}
-      {error && <Notice tone={data ? "warn" : "danger"} title={data ? "Dashboard couldn't be updated" : "Dashboard couldn't be read"} className="mb-6 rounded-2xl">{error.message}{data && " Showing the last snapshot."}</Notice>}
-      {sell.error && sellData && <Notice tone="warn" title="Sell status couldn't be updated" className="mb-6 rounded-2xl">{sell.error.message} Showing the last read.</Notice>}
+      {refreshError && (
+        <Notice tone="danger" title="Refresh failed" className="mb-6 rounded-2xl">
+          {refreshError}
+        </Notice>
+      )}
+      {error && (
+        <Notice tone={data ? "warn" : "danger"} title={data ? "Dashboard couldn't be updated" : "Dashboard couldn't be read"} className="mb-6 rounded-2xl">
+          {error.message}
+          {data && " Showing the last snapshot."}
+        </Notice>
+      )}
+      {sell.error && sellData && (
+        <Notice tone="warn" title="Sell status couldn't be updated" className="mb-6 rounded-2xl">
+          {sell.error.message} Showing the last read.</Notice>
+      )}
       <FeedReadNotice dashboard={data} sell={sell} />
 
+      {/* The next step comes first, in the page order too (keyboard and screen readers read what is seen). */}
+      <NextStepBar sell={sell} onOpen={open} onRetry={retrySell} className="mb-4 lg:mb-6" />
       <SummaryTiles sell={sell} onOpen={open} controls={(t) => `${TABS_ID}-panel-${t}`} />
-      <NextStepBar sell={sell} onOpen={open} onRetry={retrySell} className="mt-4 lg:mt-6" />
 
       <div id={`${TABS_ID}-tabs`} className="mt-10 scroll-mt-6">
         <Tabs tabs={tabs} value={tab} onChange={choose} idBase={TABS_ID} label="Receptionist sections" />
@@ -109,24 +132,54 @@ export function ReceptionistDashboardPage() {
       {/* Every tile's "retry" runs this same forced re-read (POST /__receptionist/dashboard/refresh). */}
       <DashboardRetryProvider value={refreshing ? null : () => void refresh()}>
         {panel("overview", <TopAttention sell={sell} onOpen={open} />)}
-        {panel("calls", <>
-          {sellData && <FlaggedCalls incidents={sellData.incidents} awaitingRetest={sellData.awaitingRetest} callsUnread={sellData.calls.ok ? null : sellData.calls.reason} onFocusCall={onFocusCall} />}
-          {needsDashboard((d) => <><CallsAndBookings data={d} /><SmsPanel data={d} /></>)}
-        </>)}
-        {panel("golive", <>
-          <div className="mb-12"><SellVerdict sell={sell} onRetry={retrySell} /></div>
-          {sellData && <Gates data={sellData.readiness} automated={sellData.health.find((item) => item.id === "evals")?.headline} />}
-          {needsDashboard((d) => <GoLiveChecklist data={d} />)}
-        </>)}
+        {panel(
+          "calls",
+          <>
+            {sellData && (
+              <FlaggedCalls incidents={sellData.incidents} awaitingRetest={sellData.awaitingRetest} callsUnread={sellData.calls.ok ? null : sellData.calls.reason} onFocusCall={onFocusCall} />
+            )}
+            {needsDashboard((d) => (
+              <>
+                <CallsAndBookings data={d} />
+                <SmsPanel data={d} />
+              </>
+            ))}
+          </>,
+        )}
+        {panel(
+          "golive",
+          <>
+            <div className="mb-12">
+              <SellVerdict sell={sell} onRetry={retrySell} />
+            </div>
+            {sellData && (
+              <Gates data={sellData.readiness} automated={sellData.health.find((item) => item.id === "evals")?.headline} />
+            )}
+            {needsDashboard((d) => (
+              <GoLiveChecklist data={d} />
+            ))}
+          </>,
+        )}
         {panel("clients", needsDashboard((d) => <ClientsTable data={d} />))}
-        {panel("economics", needsDashboard((d) => <><UsageAndEconomics data={d} sell={sell} /><EconomicsByBasis data={d} /></>))}
+        {panel(
+          "economics",
+          needsDashboard((d) => (
+            <>
+              <UsageAndEconomics data={d} sell={sell} />
+              <EconomicsByBasis data={d} />
+            </>
+          )),
+        )}
         {panel("health", needsDashboard((d) => <Health data={d} sell={sell} />))}
       </DashboardRetryProvider>
 
       {/* L10 (29 Sep 2026): no "Updated just now · Sources: ..." line in the reading path. The foot shows
           only when the read is stale or missing; the sources sit on hover. */}
       {foot && (
-        <PageFoot title="Sources: the Retell calls, flags and go-live gates (/__receptionist), and the MU-Receptionist agency feed.">
+        <PageFoot
+          collapsible={false}
+          title="Sources: the Retell calls, flags and go-live gates (/__receptionist), and the MU-Receptionist agency feed."
+        >
           <span className="text-warn">{foot}</span>
         </PageFoot>
       )}
@@ -153,7 +206,11 @@ function LoadingShape() {
   return (
     <div className="space-y-8" aria-busy="true" aria-label="Loading receptionist dashboard">
       <Skeleton className="h-16 w-full rounded-2xl animate-none" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-20 rounded-2xl animate-none" />)}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <Skeleton key={i} className="h-20 rounded-2xl animate-none" />
+        ))}
+      </div>
       <Skeleton className="h-64 rounded-2xl animate-none" />
     </div>
   );
@@ -167,9 +224,14 @@ function Health({ data, sell }: { data: DashboardViewModel; sell: SellSource }) 
       <Overview data={data} exceptions={mergeSellExceptions({ items: data.exceptions, summary: data.exceptionSummary }, sell)} />
       {data.agentReadiness.ok && (
         <p className="text-sm text-muted-foreground">
-          Agent {data.agentReadiness.published ? `published v${data.agentReadiness.version ?? "?"}` : `draft v${data.agentReadiness.version ?? "?"}`}
-          {" · "}{data.agentReadiness.agentEditNote}
-          {" · "}<a href={agentHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">Open in Retell <ExternalLink className="size-3" aria-hidden="true" /></a>
+          Agent{" "}
+          {data.agentReadiness.published ? `published v${data.agentReadiness.version ?? "?"}` : `draft v${data.agentReadiness.version ?? "?"}`}
+          {" · "}
+          {data.agentReadiness.agentEditNote}
+          {" · "}
+          <a href={agentHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+            Open in Retell <ExternalLink className="size-3" aria-hidden="true" />
+          </a>
         </p>
       )}
     </>

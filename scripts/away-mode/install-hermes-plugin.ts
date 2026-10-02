@@ -25,6 +25,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { relayToken, relayTokenFile } from "./service";
 import { readPeople } from "../remote-access";
+import { dataDirFor } from "../cloud/data-dir";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const PLUGIN_SOURCE = join(here, "hermes-plugin-installed");
@@ -38,7 +39,7 @@ export function pluginTarget(env: Record<string, string | undefined> = process.e
 /** Copy what is installed now (if anything) aside; returns the backup folder, or null if nothing was installed. */
 export function backupInstalled(root: string, target: string, stamp = new Date().toISOString().replace(/[:.]/g, "-")): string | null {
   if (!FILES.some((f) => existsSync(join(target, f)))) return null;
-  const dir = join(root, ".operator-data", "away-mode", "plugin-backups", stamp);
+  const dir = join(dataDirFor(root), "away-mode", "plugin-backups", stamp);
   mkdirSync(dir, { recursive: true });
   for (const f of FILES) if (existsSync(join(target, f))) copyFileSync(join(target, f), join(dir, f));
   return dir;

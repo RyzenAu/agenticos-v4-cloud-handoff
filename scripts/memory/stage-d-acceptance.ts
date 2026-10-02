@@ -9,7 +9,12 @@
  *     no Telegram, every other mutating route refused) on its own port, MU_MEMORY_WRITES=on, pointed at
  *     the synthetic proxy with no key, and the synthetic approval secret for deletes.
  *
- * The OS reaches the synthetic proxy through a small HTTP relay owned by this script, which rewrites
+ * The OS reaches Hindsight through a client proxy THIS SCRIPT starts (the deployed rev 3.1 proxy.py, unchanged)
+ * from a temporary copy of the stage-d config: same API, bank rules and secrets, but the proxy's writer port is
+ * this run's OS port with the writer capability ON, exactly as the live OS on 8081 is. The shared stage-d proxy
+ * (8883) and its config file are never touched. The proxy sees the OS itself as the client (no relay in between),
+ * which is what lets the OS register as the writer. Old comment follows, kept for the record: a small HTTP relay
+ * owned by this script, which rewrote
  * Host to the proxy's own (the deployed rev 3.1 proxy refuses any other Host), so an OUTAGE is
  * simulated by closing the relay mid-sync (connections refused and reset), never by stopping the
  * shared synthetic instance other agents may be testing.
@@ -43,11 +48,15 @@ const PORT = Number(arg("port", "8095"));
 if (PORT === 8081 || PORT === 8888 || PORT === 8878) throw new Error("Refusing a live port.");
 const OUT = arg("out", "");
 const SKIP_OUTAGE = process.argv.includes("--skip-outage");
-const PROXY_PORT = Number(arg("proxy-port", "8883"));
+const PROXY_PORT = Number(arg("proxy-port", "8884"));
 if ([8878, 8888].includes(PROXY_PORT)) throw new Error("Refusing the pilot.");
 const PROXY = `http://127.0.0.1:${PROXY_PORT}`;
-const RELAY_PORT = Number(arg("relay-port", "8896"));
-const RELAY = `http://127.0.0.1:${RELAY_PORT}`;
+if (PROXY_PORT === 8883) throw new Error("Refusing the shared stage-d proxy: this script starts its own (default 8884).");
+/** The OS talks to its own proxy directly. */
+const RELAY = PROXY;
+const STAGE_CONFIG = arg("stage-config", "D:\\hindsight\\stage-d\\hindsight.stage-d.json");
+const PYTHON = arg("python", "D:\\hindsight\\venv\\Scripts\\python.exe");
+const PROXY_PY = arg("proxy-py", "D:\\hindsight\\service\\proxy.py");
 // Rev 3 keeps the synthetic document-delete secret in synth-docdelete.key, rev 2 in synth-approval.key.
 // Only existence is checked here; the OS process reads it at delete time.
 const SECRET_FILE = arg("delete-secret", "D:\\hindsight\\stage-d\\secrets\\stage-d-docdelete.key");
@@ -65,6 +74,7 @@ const results: Check[] = [];
 const check = (step: string, name: string, ok: boolean, observed: unknown) => {
   results.push({ step, check: name, ok, observed });
   console.log(`${ok ? "PASS" : "FAIL"}  [${step}] ${name}`);
+  if (!ok) console.log(`      observed: ${JSON.stringify(observed).slice(0, 900)}`);
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -132,29 +142,30 @@ async function say(utterance: string, extra: { spokenYes?: string } = {}) {
 }
 const proxy = (path: string, init: { method?: string; headers?: Record<string, string>; body?: unknown } = {}) => raw(`${PROXY}/v1/default/banks/${BANK}${path}`, init);
 
-// ── the outage switch: an HTTP relay to the synthetic proxy (Host rewritten) ────────────────
-let relay: Server | null = null;
-const relaySockets = new Set<Socket>();
-function relayUp() {
-  return new Promise<void>((ok, fail) => {
-    const srv = createHttpServer((req, res) => {
-      const up = httpRequest(
-        { host: "127.0.0.1", port: PROXY_PORT, path: req.url, method: req.method, headers: { ...req.headers, host: `127.0.0.1:${PROXY_PORT}` } },
-        (r) => (res.writeHead(r.statusCode ?? 502, r.headers), r.pipe(res)),
-      );
-      up.on("error", () => (res.headersSent ? res.destroy() : (res.writeHead(502), res.end())));
-      req.pipe(up);
-    });
-    srv.on("connection", (c) => (relaySockets.add(c), c.on("close", () => relaySockets.delete(c))));
-    srv.once("error", fail);
-    srv.listen(RELAY_PORT, "127.0.0.1", () => ((relay = srv), ok()));
-  });
+// ── the acceptance proxy: its own copy of the stage-d proxy, writer port = this run's OS port ─────────────
+let proxyProc: ChildProcess | null = null;
+function proxyConfig(): string {
+  const cfg = JSON.parse(readFileSync(STAGE_CONFIG, "utf8").replace(/^\uFEFF/, ""));
+  const p = cfg.profiles["stage-d"];
+  mkdirSync(join(WORK, "run"), { recursive: true });
+  // Writes on (synthetic only), as stage-d-instance.ps1 does for the shared proxy: the flag lives in THIS run's run dir.
+  writeFileSync(join(WORK, "run", "WRITES_ENABLED"), "on\n");
+  p.run_dir = join(WORK, "run");
+  p.proxy = { ...p.proxy, port: PROXY_PORT, writer_capability: "on", writer_port: PORT };
+  delete p.proxy.write_images;
+  const out = join(WORK, "hindsight.acceptance.json");
+  writeFileSync(out, JSON.stringify(cfg, null, 2));
+  return out;
 }
+function relayUp() {
+  const cfg = proxyConfig();
+  proxyProc = spawn(PYTHON, ["-X", "utf8", PROXY_PY, "--profile", "stage-d", "--config", cfg], { cwd: join(PROXY_PY, ".."), env: { ...process.env, PYTHONUTF8: "1", PYTHONDONTWRITEBYTECODE: "1" }, stdio: "ignore", windowsHide: true });
+  return Promise.resolve();
+}
+/** The outage switch: stop this script's own proxy (connections refused); relayUp() starts it again (the OS registers again). */
 function relayDown() {
-  relay?.close();
-  relay = null;
-  for (const x of relaySockets) x.destroy();
-  relaySockets.clear();
+  if (proxyProc?.pid) spawnSync("taskkill", ["/PID", String(proxyProc.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+  proxyProc = null;
 }
 
 // ── the quiet preview server ─────────────────────────────────────────────────────────────
@@ -175,6 +186,10 @@ const serverEnv = () => {
     MU_WIKI_ROOT: VAULT,
     MU_WIKI_VAULT_NAME: "stage-d-synthetic",
     MEMORY_STATE_DIR: STATE,
+    // A FRESH device store for this run (since S1 every hub session after the first trusted one starts pending, and a
+    // pending session is a program that can't approve a forget). The first page load here is trusted on first use,
+    // so this run's one browser session is a confirmed human, as the owner's own browser is.
+    MU_DATA_DIR: join(WORK, "data"),
   };
 };
 async function startServer() {
@@ -185,9 +200,13 @@ async function startServer() {
     if (r?.status === 200) {
       // The owner's browser: a page navigation mints the hub's HUMAN session cookie (Stage B1). The page
       // and Jarvis calls below carry it, as the real browser does; the agent calls don't.
-      const nav = await raw(`${OS}/memory/vault`, { headers: { ...host, "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", Accept: "text/html" } });
-      const set = ([] as string[]).concat((nav.headers["set-cookie"] as string[] | string | undefined) ?? []);
-      session = set.map((c) => c.split(";")[0]).find((c) => c.startsWith("mu_session=")) ?? "";
+      // After a restart the SAME session cookie is reused (the device store persists): a second page load would mint
+      // a second, pending session.
+      if (!session) {
+        const nav = await raw(`${OS}/memory/vault`, { headers: { ...host, "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", Accept: "text/html" } });
+        const set = ([] as string[]).concat((nav.headers["set-cookie"] as string[] | string | undefined) ?? []);
+        session = set.map((c) => c.split(";")[0]).find((c) => c.startsWith("mu_session=")) ?? "";
+      }
       token = (await raw(`${OS}/__token`, { headers: { ...host, ...(session ? { Cookie: session } : {}) } })).body?.token ?? "";
       return r.body;
     }
@@ -211,6 +230,7 @@ async function settle(ms = 900_000) {
   }
 }
 async function waitIndexed(id: string, ms = 600_000) {
+  if (!id) return null; // nothing was saved: the failed check above says why
   const until = Date.now() + ms;
   for (;;) {
     const r = (await mem(`/item/${id}`)).body;
@@ -231,8 +251,8 @@ const vaultRead = (rel: string) => readFileSync(join(VAULT, rel), "utf8");
 
 async function main() {
   // Pre-flight: the synthetic proxy only.
-  check("setup", "dedicated synthetic proxy healthy", await waitProxyHealthy(300_000), { proxy: PROXY, relay: RELAY, bank: BANK, work: WORK, delete_secret: SECRET_FILE.split("\\").pop() });
   await relayUp();
+  check("setup", "this script's own proxy (writer port = this OS port, capability on) healthy on the dedicated stage-d Hindsight", await waitProxyHealthy(300_000), { proxy: PROXY, bank: BANK, work: WORK, delete_secret: SECRET_FILE.split("\\").pop() });
   const st0 = await startServer();
   check("setup", "quiet preview up; ONE switch on; Hindsight via the proxy (relay); no key in the OS", st0.settings.mode === "on" && st0.settings.hindsight_url === RELAY && st0.settings.api_key === "missing", {
     port: PORT,
@@ -245,16 +265,17 @@ async function main() {
   check("1 save+recall", "initial sync of the synthetic vault: nothing pending", sync1.pending === 0 && sync1.counts.indexed === sync1.counts.docs, { pending: sync1.pending, counts: sync1.counts, errors: sync1.errors });
   const r1 = await say(`Remember that the synthetic Kittiwake${RUN} clinic opens at 7:15am on Mondays`);
   check("1 save+recall", "Jarvis 'remember that…' → Hindsight memory (rules, no model)", r1.status === 200 && /Hindsight memory/.test(r1.body.content) && r1.body.model === "rules", r1.body);
-  const memId = /mem-[0-9a-f]{10}/.exec(r1.body.content ?? "")?.[0] ?? "";
+  // The spoken reply no longer carries the id (1 Oct 2026): read it from the app's own item list.
+  const memId: string = (await mem(`/items?kind=memory&q=Kittiwake${RUN}`)).body?.items?.find((i: any) => /^mem-/.test(i.id))?.id ?? "";
   const r2 = await say(`Save this to the vault: the synthetic Kittiwake${RUN} clinic invoices on the 2nd of each month`);
-  check("1 save+recall", "Jarvis 'save this to the vault…' → Obsidian note + Hindsight index", r2.status === 200 && /wiki\/topics\/business\/memory-business-shared\.md/.test(r2.body.content), r2.body);
-  const factId = /mf-[0-9a-f]{10}/.exec(r2.body.content ?? "")?.[0] ?? "";
+  check("1 save+recall", "Jarvis 'save this to the vault…' → Obsidian note + Hindsight index", r2.status === 200 && /Saved to your "Business shared" note/.test(r2.body.content) && /indexed in Hindsight/i.test(r2.body.content), r2.body);
+  const factId: string = (await mem(`/items?kind=fact&q=Kittiwake${RUN}%20invoices`)).body?.items?.find((i: any) => /^mf-/.test(i.id))?.id ?? "";
   await waitIndexed(memId);
   await waitIndexed(factId);
   const note = vaultRead("wiki/topics/business/memory-business-shared.md");
   check("1 save+recall", "the vault note holds the fact block", note.includes(`Kittiwake${RUN} clinic invoices on the 2nd`) && note.includes(factId), { factId, excerpt: note.slice(note.indexOf(factId) - 200, note.indexOf(factId) + 20) });
   const r3 = await say(`What do we know about the Kittiwake${RUN} clinic?`);
-  check("1 save+recall", "Jarvis recall answers with the source cited", /from the (vault note wiki\/|Jarvis memory mem-)/.test(r3.body.content ?? ""), r3.body);
+  check("1 save+recall", "Jarvis recall answers with the source cited", /\(from (your memory|your "[^"]+" note)\)/.test(r3.body.content ?? ""), r3.body);
   const rec1 = await mem("/recall", { query: `When does the Kittiwake${RUN} clinic open?` });
   const hit = rec1.body.facts?.find((f: any) => f.id === memId);
   check("1 save+recall", "HTTP recall: the memory comes back via Hindsight with its source", !!hit && hit.via.includes("hindsight") && rec1.body.hindsight === "ok", {
@@ -334,12 +355,14 @@ async function main() {
 
   // 6 · single delete and forget a/b/c with approval ────────────────────────────────────
   const a6 = await mem("/forget", { kind: "unindex", target: "n-proposal-terms" });
-  const a6doc = await proxy("/documents/n-proposal-terms");
+  // The retract is queued behind the drain: wait (bounded) for Hindsight to drop it instead of reading it once.
+  let a6doc = await proxy("/documents/n-proposal-terms");
+  for (let i = 0; i < 30 && a6doc.status !== 404; i++) (await sleep(3000), (a6doc = await proxy("/documents/n-proposal-terms")));
   check("6 forget a (unindex)", "kind a: no approval; out of Hindsight; the note stays in the vault", a6.status === 200 && a6doc.status === 404 && existsSync(join(VAULT, termsRel)), { message: a6.body.message, hindsight_doc: a6doc.status });
 
   // kind b by voice, with a REAL spoken yes from the voice pipeline's own STT.
   const b1 = await say(`Remember that the synthetic Skua${RUN} account renews in July`);
-  const skua = /mem-[0-9a-f]{10}/.exec(b1.body.content ?? "")?.[0] ?? "";
+  const skua: string = (await mem(`/items?kind=memory&q=Skua${RUN}`)).body?.items?.find((i: any) => /^mem-/.test(i.id))?.id ?? "";
   await waitIndexed(skua);
   const b2 = await say("Forget that");
   check("6 forget b (voice)", "'forget that' reads the plan back and asks for a yes", /Say yes to approve/.test(b2.body.content ?? ""), b2.body);
@@ -529,8 +552,8 @@ async function main() {
   const verify = await new Promise<{ status: number | null; stdout: string; stderr: string }>((done) => {
     const child = spawn(
       process.execPath,
-      ["--no-env-file", "scripts/memory/stage-d-verify-live.ts", "--os-port", String(PORT), "--proxy-port", String(PROXY_PORT), "--bank", BANK, "--expect-url", RELAY, "--skip-hindsight-mcp"],
-      { cwd: ROOT, windowsHide: true },
+      ["--no-env-file", "scripts/memory/stage-d-verify-live.ts", "--os-port", String(PORT), "--proxy-port", String(PROXY_PORT), "--bank", BANK, "--expect-url", RELAY, "--skip-approval", "--skip-hindsight-mcp"],
+      { cwd: ROOT, windowsHide: true, env: { ...process.env, STAGE_D_SESSION: session } },
     );
     let stdout = "";
     let stderr = "";

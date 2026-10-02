@@ -13,7 +13,7 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export function CallQueuePanel({ now }: { now: number }) {
   const query = useWorkspacePanel("callQueue");
   return (
-    <PanelShell id="ws-calls" title="Calls to make" link={{ to: "/leads", label: "Leads" }} query={query} now={now} className="rounded-2xl p-5 sm:p-6">
+    <PanelShell id="ws-calls" title="Calls to make" link={{ to: "/leads", label: "Leads", search: { view: "today" } }} query={query} now={now} className="rounded-2xl p-5 sm:p-6">
       {(data) => (
         <div className="space-y-3">
           <CallingWindow now={now} />

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { LeadCards, CallQueue } from "../../src/components/operator/call-queue";
@@ -106,4 +108,54 @@ test("cards restore preview status, keyboard copy controls and stuck warning", (
   expect(html).toMatch(/<button[^>]*aria-label="Copy phone:/);
   expect(html).toMatch(/<button[^>]*aria-label="Copy email:/);
   expect(renderToStaticMarkup(<LeadCards leads={[lead(2)]} now={NOW} onOpen={() => {}} />)).toContain("Preview: Not generated");
+});
+
+test("round 6: verified none, unknown, check failed and a listed site are four different lines", () => {
+  const none = lead(1); none.deal.websiteStatus = "no_website_verified";
+  const unknown = lead(2);
+  const failed = lead(3); failed.deal.websiteStatus = "unreachable";
+  const inconclusive = lead(4); inconclusive.deal.websiteStatus = "no_website_unverified";
+  const listed = lead(5, { website: "https://example.com" });
+  const listedFailed = lead(6, { website: "https://example.com" }); listedFailed.deal.websiteStatus = "bot_protected";
+  const lines = [none, unknown, failed, inconclusive, listed, listedFailed].map(websiteVerification);
+  expect(new Set(lines).size).toBe(6);
+  expect(lines[1]).toBe("Website not verified · owner to Google");
+  expect(lines[2]).toContain("check failed");
+  expect(lines[3]).toContain("check inconclusive");
+  expect(lines[4]).toBe("Website listed · not yet checked");
+  expect(lines[5]).toBe("Website listed · check failed");
+  for (const line of lines.slice(1)) expect(line).not.toMatch(/^No website/);
+});
+
+test("round 6: the drawer's website block names verified absence instead of saying 'not verified'", async () => {
+  const { RealSite } = await import("../../src/components/operator/lead-drawer");
+  const base = { id: 7, vertical: "dental", area: "Testville NSW", name: "Harbour", phone: "", address: "", website: "", mapsUrl: "", emails: [], emailOk: false, score: 80, pitch: "website", reasons: [], status: "to_call", owner: "", nextAt: null, lastContactAt: null, createdAt: "2026-09-01T00:00:00Z" } as never;
+  const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
+  const html = (status?: string) => renderToStaticMarkup(<QueryClientProvider client={new QueryClient()}><RealSite lead={base} thumbAt={null} onChanged={() => {}} websiteStatus={status} /></QueryClientProvider>);
+  expect(html("no_website_verified")).toContain("No website (verified");
+  expect(html("no_website_verified")).not.toContain("Website not verified");
+  expect(html("unreachable")).toContain("check failed");
+  expect(html(undefined)).toContain("owner to Google");
+});
+
+test("round 6: the drawer header badge does not say 'not verified' for a verified absence", () => {
+  const src = readFileSync(join(import.meta.dir, "../../src/components/operator/lead-drawer.tsx"), "utf8");
+  expect(src).toContain('detail.data?.issues?.status === "no_website_verified"');
+  expect(src).toContain("No website (verified)");
+});
+
+test("round 6b: wording comes only from the stored website-check outcome, never from dates or reason text", () => {
+  const none = lead(1, { websiteCheckedAt: "2026-10-01T23:31:33.943Z", websiteCheck: "none-verified" });
+  const failed = lead(2, { websiteCheck: "check-failed" });
+  const down = lead(3, { websiteCheck: "search-unavailable" });
+  const notChecked = lead(4, { websiteCheckedAt: "2026-09-20T00:00:00Z", websiteCheck: "not-checked", reasons: ["no website found (checked 2026-09-20)"] }); // a legacy date proves nothing
+  const lines = [none, failed, down, notChecked].map(websiteVerification);
+  expect(new Set(lines).size).toBe(4);
+  expect(lines[0]).toContain("Search found no site (2026-10-01) · not yet verified");
+  expect(lines[1]).toContain("check couldn't complete");
+  expect(lines[2]).toContain("Search unavailable");
+  expect(lines[3]).toBe("Website not verified · owner to Google");
+  // reason text that mentions an outage changes nothing without the stored outcome
+  expect(websiteVerification(lead(5, { reasons: ["no web search backend answered ... Search was unavailable"] }))).toBe("Website not verified · owner to Google");
+  for (const l of lines) expect(l).not.toMatch(/no website/i);
 });

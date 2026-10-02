@@ -174,6 +174,11 @@ export type SnapshotDeps = {
   root?: string;
   /** Test hook: this month's router receipts instead of reading them under `root`. */
   routerReceipts?: () => RouterReceipt[];
+  /**
+   * The Claude logins to read (coding accounts.json, 30 Sep 2026). Each is read from its OWN profile's
+   * sign-in; missing = just the default ~/.claude login as "claude:max" (the previous behaviour).
+   */
+  claudeProfiles?: () => { slot: string; label: string; configDir: string | null }[];
 };
 
 const iso = (ms: number) => new Date(ms).toISOString();
@@ -304,16 +309,23 @@ export async function buildSnapshot(deps: SnapshotDeps): Promise<AiUsageSnapshot
   // ── Subscriptions ──────────────────────────────────────────────────────────────────────────
   const subscriptions: SubscriptionCard[] = [];
 
-  const claude = await deps.cache.get("claude-plan", PROVIDER_TTL_MS, () => fetchClaudePlan(request, home));
-  {
+  let profiles: { slot: string; label: string; configDir: string | null }[] = [{ slot: "claude:max", label: "Claude Max", configDir: null }];
+  try { const p = deps.claudeProfiles?.(); if (p?.length) profiles = p; } catch { /* accounts.json unreadable: the default login only */ }
+  // claude:max first: single-card readers (Jarvis's usage answer, the dream report) keep meaning the original account.
+  profiles.sort((a, b) => (a.slot === "claude:max" ? -1 : b.slot === "claude:max" ? 1 : 0));
+  for (const profile of profiles) {
+    const extra = profile.slot !== "claude:max";
+    // The default keeps its old cache key; every other login is cached under its own slot.
+    const claude = await deps.cache.get(extra ? `claude-plan:${profile.slot}` : "claude-plan", PROVIDER_TTL_MS, () => fetchClaudePlan(request, home, profile.configDir));
     const v = claude.value;
     const plan = claudePlanName(v.ok ? v.tier : null, v.ok ? v.subscriptionType : null);
-    const planKnown = v.ok ? plan : { name: "Claude Max 20x", priceId: "claude-max-20x" };
+    // An unreadable default is assumed to be the Max 20x it has always been; an unreadable EXTRA login is unknown.
+    const planKnown = v.ok ? plan : extra ? { name: "Claude (plan unknown)", priceId: null } : { name: "Claude Max 20x", priceId: "claude-max-20x" };
     const { money, note } = moneyFor(planKnown.priceId);
     const card: SubscriptionCard = {
-      id: "claude:max",
+      id: profile.slot,
       provider: "anthropic",
-      owner: "M&U Ventures",
+      owner: extra ? `M&U Ventures · ${profile.label}` : "M&U Ventures",
       plan: planKnown.name,
       planSlug: v.ok ? v.tier : null,
       monthly: money,
@@ -324,7 +336,7 @@ export async function buildSnapshot(deps: SnapshotDeps): Promise<AiUsageSnapshot
       peakPercent: v.ok ? Math.max(...v.plan.windows.map((w) => w.usedPercent)) : null,
     };
     subscriptions.push(card);
-    sources.push({ name: "Claude plan usage", ok: v.ok, reason: v.ok ? undefined : v.reason, freshness: fresh(claude.at, "api.anthropic.com/api/oauth/usage") });
+    sources.push({ name: extra ? `Claude plan usage · ${profile.label}` : "Claude plan usage", ok: v.ok, reason: v.ok ? undefined : v.reason, freshness: fresh(claude.at, "api.anthropic.com/api/oauth/usage") });
   }
 
   const pool = readCodexPool(deps.hermesHome);

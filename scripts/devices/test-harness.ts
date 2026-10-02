@@ -31,7 +31,7 @@ export type Who = "local" | "usman" | "mehroz" | "stranger";
 /** Each remote person's own device on the tailnet (Serve's X-Forwarded-For). */
 const TAILNET_SOURCE: Record<Exclude<Who, "local">, string> = { usman: "100.64.0.11", mehroz: "100.64.0.12", stranger: "100.64.0.13" };
 
-export async function startHub(opts: { start?: number; maxWaitMs?: number } = {}) {
+export async function startHub(opts: { start?: number; maxWaitMs?: number; observeWaitMs?: number; hubRole?: "pc" | "cloud" | "server" } = {}) {
   const root = mkdtempSync(join(tmpdir(), "devices-hub-"));
   mkdirSync(join(root, ".operator-data"));
   writeFileSync(
@@ -40,7 +40,7 @@ export async function startHub(opts: { start?: number; maxWaitMs?: number } = {}
   );
   let t = opts.start ?? Date.now();
   const clock = { now: () => t, advance: (ms: number) => (t += ms), set: (ms: number) => (t = ms) };
-  const svc: DevicesService = createDevicesService({ root, token: PAGE_TOKEN, tailnetName: TAILNET, servePeer: SIMULATED_SERVE, tailnet: SIMULATED_TAILNET, now: clock.now, maxWaitMs: opts.maxWaitMs ?? 2_000 });
+  const svc: DevicesService = createDevicesService({ root, token: PAGE_TOKEN, tailnetName: TAILNET, servePeer: SIMULATED_SERVE, tailnet: SIMULATED_TAILNET, now: clock.now, maxWaitMs: opts.maxWaitMs ?? 2_000, observeWaitMs: opts.observeWaitMs, hubRole: opts.hubRole ?? "pc" });
   const server: Server = createServer((req, res) => void svc.handle(req, res));
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
   const port = (server.address() as { port: number }).port;

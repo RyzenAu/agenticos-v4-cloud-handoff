@@ -8,6 +8,7 @@ const calls: FreeVoiceCall[] = [];
 let tracks: Array<{ enabled: boolean; stopped: boolean; stop(): void }>;
 let contexts: FakeAudio[];
 let ports: FakeWorklet[];
+let playbackSpeeds: number[];
 class FakeAudio {
   closed = false;
   destination = {};
@@ -19,7 +20,7 @@ class FakeAudio {
   createMediaStreamSource() { return { connect() {} }; }
   async decodeAudioData() { return { duration: 0.01 }; }
   createBufferSource() {
-    const source = { buffer: null, onended: null as null | (() => void), connect() {}, start() { queueMicrotask(() => source.onended?.()); }, stop() {} };
+    const source = { buffer: null, playbackRate: { value: 1 }, onended: null as null | (() => void), connect() {}, start() { playbackSpeeds.push(source.playbackRate.value); queueMicrotask(() => source.onended?.()); }, stop() {} };
     return source;
   }
   async resume() {}
@@ -36,7 +37,7 @@ function replace(name: string, value: unknown) {
   Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
 }
 beforeEach(() => {
-  tracks = []; contexts = []; ports = [];
+  tracks = []; contexts = []; ports = []; playbackSpeeds = [];
   replace("navigator", { mediaDevices: { getUserMedia: async () => {
     const track = { enabled: true, stopped: false, stop() { this.stopped = true; } };
     tracks.push(track);
@@ -67,7 +68,7 @@ async function fixture(over: Partial<FreeVoiceOptions> = {}) {
   const controller = new AbortController();
   const call = await startFreeVoice({
     signal: controller.signal,
-    stt: async () => { stt++; return "Synthetic request"; },
+    stt: async () => { stt++; return `Synthetic request ${stt}`; },
     turn: async () => { turns++; return { content: "Synthetic answer for this turn." }; },
     tts: async () => ({ audio: "AA==", mime: "audio/wav" }),
     onTool: async () => "Synthetic result",
@@ -90,6 +91,19 @@ test("actual client accepts two synthetic PCM turns and relistens after each pla
   }
   expect(f.stt).toBe(2);
   expect(f.messages.filter((t) => t === "Synthetic answer for this turn.")).toHaveLength(2);
+  expect(f.errors).toEqual([]);
+  expect(playbackSpeeds).toEqual([1, 1]);
+});
+test("speed changes apply to the next reply without reconnecting the actual client", async () => {
+  let speed = 0.85;
+  const f = await fixture({ speechSpeed: () => speed });
+  f.call.sendUserMessage("Synthetic first turn");
+  await until(() => f.turns === 1 && f.phases.at(-1) === "listening");
+  speed = 1.15;
+  f.call.sendUserMessage("Synthetic second turn");
+  await until(() => f.turns === 2 && f.phases.at(-1) === "listening");
+  expect(playbackSpeeds).toEqual([0.85, 1.15]);
+  expect(tracks).toHaveLength(1);
   expect(f.errors).toEqual([]);
 });
 test("interruption aborts the actual tool signal and suppresses late completion", async () => {

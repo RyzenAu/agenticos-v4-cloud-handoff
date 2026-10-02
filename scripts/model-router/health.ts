@@ -6,6 +6,7 @@
 // sanitised details only.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type HealthState = "ok" | "limited" | "exhausted" | "down" | "unlisted" | "unknown";
 
@@ -37,7 +38,7 @@ export type HealthFile = {
 };
 
 export const healthFile = (root: string) =>
-  join(root, ".operator-data", "model-router", "health.json");
+  join(dataDirFor(root), "model-router", "health.json");
 
 const EMPTY_MODEL: ModelHealth = {
   state: "unknown",

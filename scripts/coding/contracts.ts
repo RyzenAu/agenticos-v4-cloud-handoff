@@ -73,15 +73,20 @@ export type CodingPermission = "coding.view" | "coding.create" | "coding.control
 export type Provider = "anthropic" | "openai" | "router";
 /** Stage E receipt `route`; these values extend the catalogue enum. `model-router` = a routed text role. */
 export type CodingRoute = "claude-code-cli" | "codex-app-server" | "model-router";
-/** Named by slot, never by email. One Claude login; three connected Codex logins (owner decision 1):
- * rotation applies to NEW jobs only, and the slot that actually ran is recorded on every receipt. */
+/** Named by slot, never by email. Claude logins are "claude:max" (the default ~/.claude profile) and
+ * "claude:max-<n>" (each its own CLAUDE_CONFIG_DIR, signed in natively; 30 Sep 2026); three connected Codex
+ * logins (owner decision 1). A slot is chosen for NEW jobs only, and the slot that actually ran is recorded
+ * on every receipt. */
+export type ClaudeAccountSlot = "claude:max" | `claude:max-${number}`;
 export type CodexAccountSlot = "codex:openai-1" | "codex:openai-2" | "codex:openai-3";
 /** A routed role's account: the router provider that actually ran (e.g. "router:openrouter",
  * "router:codex" = Hermes' Codex pool, "router:cline"). Known only after the call; the binding holds
  * "router:auto" until then. */
 export type RouterAccountSlot = `router:${string}`;
-export type AccountSlot = "claude:max" | CodexAccountSlot | RouterAccountSlot;
-export type ClaudeModelId = "claude-opus-5-5" | "claude-sonnet-5" | "claude-fable-5-1" | "claude-haiku-4-5";
+export type AccountSlot = ClaudeAccountSlot | CodexAccountSlot | RouterAccountSlot;
+/** "claude-sonnet-5" is the LEGACY Sonnet id (a stored job may still carry it; the CLI still accepts and reports
+ * it). The current Sonnet is "claude-sonnet-5-5" (verified 1 Oct 2026 on Claude Code 2.1.280, claude:max-2). */
+export type ClaudeModelId = "claude-opus-5-5" | "claude-sonnet-5-5" | "claude-sonnet-5" | "claude-fable-5-1" | "claude-haiku-4-5";
 /** Verified in the native Codex 0.154.0 catalogue on 27 Sep 2026. gpt-6-sol is NOT available natively. */
 export type CodexModelId = "gpt-6-astra" | "gpt-5.6-sol" | "gpt-5.6-terra" | "gpt-5.6-luna" | "gpt-5.5";
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
@@ -90,7 +95,8 @@ export type AgentBinding =
   | {
       provider: "anthropic";
       route: "claude-code-cli";
-      accountSlot: "claude:max";
+      /** Chosen when the job is drafted; fixed for the life of the run (a resume keeps it unless the owner reassigns). */
+      accountSlot: ClaudeAccountSlot;
       model: ClaudeModelId;
       /** Pinned CLI version recorded at start, e.g. "2.1.280". */
       cliVersion: string;
@@ -218,6 +224,22 @@ export type JevShapingRecord = {
   clarifications: readonly { question: string; answer: string; at: IsoTime }[];
 };
 
+/**
+ * Who was chosen for a role and why (role-choice.ts), in words the draft summary can say. `basis`: "named" =
+ * the owner's own words; "jev" = Jev's typed pick was allowed; "preferred" = coding-prefs.json; "auto" = the
+ * deterministic default order. Recorded on the draft; the RECEIPT still says what actually ran.
+ */
+export type RoleChoice = {
+  role: "builder" | "reviewer" | "test-author";
+  /** The selected model (binding.model). */
+  model: string;
+  accountSlot: string;
+  /** Provider family used for independence: "anthropic" | "openai" | "router:<provider prefix>". */
+  family: string;
+  basis: "named" | "jev" | "preferred" | "auto";
+  why: string;
+};
+
 export type JevDecision = {
   question: "lane" | "repo" | "roleTemplate" | "modelFor" | "consequential" | "complete" | "target";
   /** For modelFor: which role. */
@@ -264,6 +286,8 @@ export type TaskSpec = {
   dataClass: "synthetic" | "business-internal";
   jobLimits: { maxWallMinutes: number; maxConcurrentAgents: number };
   jev: JevShapingRecord | null;
+  /** Optional: absent on specs drafted before role-choice.ts (their digests are unchanged). */
+  roleChoices?: readonly RoleChoice[];
   planner: { binding: AgentBinding; sessionId: string } | null;
   confirmation:
     | { state: "unconfirmed" }
@@ -497,6 +521,8 @@ export type TestResult = {
   counts: { passed: number | null; failed: number | null; skipped: number | null };
   /** Names of the failing tests, when the runner prints them and they match the count; else null. */
   failedTests: readonly string[] | null;
+  /** Each failing test with the assertion line(s) the runner printed for it (bounded, redacted); absent on runs recorded before round 6. */
+  failures?: readonly { name: string; assertion: string | null }[];
   durationMs: number;
   /** Redacted output tail. */
   output: ArtefactId;
@@ -541,6 +567,37 @@ export type ReviewVerdict = {
 
 // ───────────────────────────── usage (Stage E receipt v2 superset) ─────────────────────────────
 
+export type ExecutionLocation = "this-pc" | "cloud";
+/** What engineering guidance one role turn was given, or why not (see guidance.ts). A path and digest, never contents. */
+export type GuidanceUse = {
+  role: "builder" | "reviewer" | "planner";
+  /** Repo-relative path of the file. */
+  path: string;
+  /** Full sha256 of the injected text (LF line ends, trimmed); null when nothing was supplied. */
+  sha256: string | null;
+  chars: number;
+  /** The pinned guidance version (manifest.json), or null when unreadable. */
+  version: string | null;
+  supplied: boolean;
+  /** Why it was not supplied ("not supported on <route>", "too large", ...). */
+  reason?: string;
+  /** The file's digest differs from manifest.json (an edit that wasn't re-pinned). */
+  unpinned?: boolean;
+};
+export type ContextSource = {
+  kind: "shared-brief" | "repo-instructions" | "task-context" | "engineering-guidance";
+  /** File path (brief) or a short label ("TaskSpec objective"). Never contents. */
+  name: string;
+  /** Characters injected (null when not measurable). */
+  chars: number | null;
+  /** First 12 hex of the sha256 of what was injected, or null. */
+  sha256: string | null;
+  /** The source was cut to fit. */
+  truncated?: boolean;
+};
+/** How far a stored allowance reading can be trusted: "stale" = old, or a window it shows has already reset. */
+export type AllowanceReading = "fresh" | "stale" | "unknown";
+
 /** Field-compatible with model-catalogue.json `receipt.fields`; coding adds `coding` and `valueUsdEquivalent`. */
 export type UsageReceipt = {
   requestId: Uuid;
@@ -562,6 +619,21 @@ export type UsageReceipt = {
   model: string;
   /** Identity the provider reported (Claude modelUsage key / Codex model), or null. */
   providerModel: string | null;
+  /**
+   * 1 Oct 2026 provenance (all optional: receipts stored before this carry none of them).
+   * requestedModel = what the binding asked the CLI for; providerModel = what the CLI reported it ran.
+   * modelMismatch: true = reported differs from requested; false = same; null = the CLI never reported.
+   */
+  requestedModel?: string;
+  modelMismatch?: boolean | null;
+  /** Where the agent ran. "this-pc" today; "cloud" is reserved for remote execution. */
+  executionLocation?: ExecutionLocation;
+  /** The device whose profile ran the CLI (the hub's or a companion's device id), never an account or credential. */
+  executionDevice?: string;
+  /** Which context sources went into this turn (names, sizes, digests; never contents). Bounded. */
+  contextSources?: readonly ContextSource[];
+  /** Engineering guidance files (path + full sha256) supplied to this turn, or why none were. */
+  guidance?: readonly GuidanceUse[];
   costClass: "subscription" | "metered" | "free";
   dataClass: "synthetic" | "business-internal";
   outcome:
@@ -594,6 +666,8 @@ export type UsageReceipt = {
     window: string;
     usedPercentAtLastRead: number | null;
     readAt: IsoTime | null;
+    /** fresh / stale / unknown for the reading above (absent on older receipts). Unknown is never 0%. */
+    reading?: AllowanceReading;
     usedPercentAtEnd: number | null;
   } | null;
   /**
@@ -608,7 +682,7 @@ export type UsageReceipt = {
     readAt: IsoTime | null;
   } | null;
   contextTrimmed: boolean;
-  coding: { jobId: Uuid; roleId: RoleId; turn: number; cliVersion: string };
+  coding: { jobId: Uuid; roleId: RoleId; turn: number; cliVersion: string; /** The run record this turn belongs to (round 6): a role can have several run records, each counting its own turns. Absent on older receipts. */ runId?: Uuid };
 };
 
 export type AllowanceSnapshot = {
@@ -621,7 +695,8 @@ export type AllowanceSnapshot = {
   creditsBalance?: number | null;
   limitReached: boolean;
   source: "anthropic-oauth-usage-cached" | "codex-app-server-ratelimits";
-  readAt: IsoTime;
+  /** When the provider was last read; null = unknown (never "now"). */
+  readAt: IsoTime | null;
 };
 
 // ───────────────────────────── approvals (Stage B reference) ─────────────────────────────
@@ -749,14 +824,16 @@ export type GateCheck =
   | "secret-scan"
   | "checks-pass"
   | "review-approved-for-sha"
-  | "done-when-evidenced";
+  | "done-when-evidenced"
+  /** Present only when the orchestrator supplied the run list: every finished agent run has its usage receipt. */
+  | "receipts-recorded";
 
 export type DoneGateResult = {
   sha: GitSha;
   passed: boolean;
   checks: readonly { check: GateCheck; passed: boolean; detail: string }[];
   /** Failures on the base sha, by the same command, recorded before building. */
-  baselineFailures: readonly { commandId: CommandId; failed: number }[];
+  baselineFailures: readonly { commandId: CommandId; failed: number; /** The failing test names, all also failing on the base sha. Absent on gates recorded before 1 Oct. */ names?: readonly string[] }[];
   at: IsoTime;
 };
 
@@ -774,6 +851,17 @@ export type CodingJob = {
   gate: DoneGateResult | null;
   applies: readonly ApplyStep[];
   executorDevice: DeviceId;
+  /**
+   * Set when the owner marked a paused job superseded (its work landed another way). The job is then cancelled, its
+   * history, worktrees and receipts are kept, and it can never be resumed or applied. Recorded by supersede().
+   */
+  supersededBy?: { ref: string; reason: string; at: IsoTime; by: PersonId };
+  /**
+   * Why the job is waiting on the owner when no single role's own error says so: the builders' branches conflicted, a
+   * checkout outside the worktrees changed, an unexpected fault, or a merge that didn't happen. Written where the job
+   * stops; cleared by Resume. The Coding page turns it into the one blocker sentence (pause-reason.ts).
+   */
+  stoppedBecause?: { code: "integration_conflict" | "outside_worktrees" | "unexpected" | "apply_failed" | "repair_no_change"; message: string; at: IsoTime };
   createdAt: IsoTime;
   updatedAt: IsoTime;
   lastSeq: number;
@@ -821,6 +909,7 @@ export type CodingRoutes = {
   "POST /coding/jobs": { body: { specId: Uuid; specDigest: Digest; requestId: Uuid; confirmation: "ui" | "spoken-yes" | "typed"; spokenEventId?: string }; response: { job: CodingJob } };
   "POST /coding/jobs/:id/cancel": { body: CancelRequest; response: { job: CodingJob } };
   "POST /coding/jobs/:id/interrupt": { body: InterruptRequest; response: { job: CodingJob } };
+  "POST /coding/jobs/:id/supersede": { body: { requestId?: Uuid; ref: string; reason: string }; response: { job: CodingJob } };
   "POST /coding/jobs/:id/resume": { body: ResumeRequest; response: { job: CodingJob } };
   "POST /coding/jobs/:id/input": { body: InputResponse; response: { job: CodingJob } };
   "POST /coding/jobs/:id/apply": { body: { action: ApprovalAction; toRef: string; remote?: string; requestId: Uuid }; response: { apply: ApplyStep } };

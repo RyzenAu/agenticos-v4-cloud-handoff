@@ -231,11 +231,11 @@ describe("2b. the rest of the paraphrase misses (the audit's PASS-JEV rows, now 
 });
 
 describe("3. compound sentences are done, or said plainly", () => {
-  test("'search Google for dentists and open the first result' searches, then says it can only do the search", async () => {
+  test("'search Google for dentists and open the first result' searches and retains the continuation request", async () => {
     const t = await one("search Google for dentists and open the first result");
     expect(t.label).toBe("skill:browser:search");
     expect(args(t)).toMatchObject({ action: "search", engine: "google", query: "dentists", firstResult: true });
-    expect(t.execs[0].said).toBe('Searched Google for "dentists" in Chrome on your main screen. I can only do the search, so the first result is yours to open.');
+    expect(t.execs[0].said).toBe('Searched Google for "dentists" in Chrome on your main screen.');
     // Never a click with the sentence as its label.
     expect(t.calls.some((c) => c.function.name === "browser_act")).toBe(false);
   });

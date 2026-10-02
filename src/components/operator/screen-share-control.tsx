@@ -117,7 +117,7 @@ export function ScreenShareControl({ labels = "xl" }: { labels?: "xl" | "always"
 
   return (
     <div
-      className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 py-1 pl-2.5 pr-1 text-[11px] text-emerald-300"
+      className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 py-1 pl-2.5 pr-1 text-xs text-emerald-300"
       title={`Jarvis can see: ${s.label}`}
     >
       {s.paused ? <EyeOff className="h-3.5 w-3.5 text-amber-300" /> : <Eye className="h-3.5 w-3.5 animate-pulse" />}

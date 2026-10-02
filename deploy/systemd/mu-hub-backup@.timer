@@ -1,0 +1,11 @@
+# Nightly at 03:15 Sydney time. Copy the newest folder off the VM afterwards (deploy/README.md, Backups).
+[Unit]
+Description=Nightly AgenticOS hub backup (%i)
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Australia/Sydney
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

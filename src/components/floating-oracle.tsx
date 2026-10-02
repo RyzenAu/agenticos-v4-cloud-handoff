@@ -90,6 +90,8 @@ import { OraclePlasma } from "@/components/oracle-plasma";
 import { SyntheticVoice } from "@/lib/synthetic-voice";
 
 import { operatorRequest, useOperator } from "@/lib/operator";
+import { useActivity } from "@/lib/use-activity";
+import { ENTRY_LABEL, entryKind, foldEntry, foldMissing, hasSavedResult, jobIdOf, parseThreadEvent, withoutServerEntries } from "@/lib/thread-events";
 import { providerModelId } from "../../scripts/model-router/catalogue";
 
 const TEAL = "#7be0c8";
@@ -1016,7 +1018,8 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
     }
     if (!turns.length) return;
     const messages = serializeTurns(turns);
-    const signature = messageSignature(messages);
+    // Server entries shown in the transcript are not edits: only the person's and the models' own messages decide whether to save.
+    const signature = messageSignature(withoutServerEntries(messages));
     if (lastQueued.current.get(activeConversation) === signature) return;
     lastQueued.current.set(activeConversation, signature);
     const existing = conversationsRef.current.find((c) => c.id === activeConversation);
@@ -1141,6 +1144,25 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
     window.addEventListener("operator:conversations-changed", refreshList);
     return () => { mounted = false; window.removeEventListener("operator:conversations-changed", refreshList); };
   }, []);
+  // Server entries for the open conversation (a job's progress, the returned research, a job's end) arrive on the ONE activity stream and are folded
+  // into the transcript as they land: no refresh. A line already shown is left as it is, so a replay or a second tab is harmless. A notification
+  // only: this sends nothing and cannot start, resume or re-run a job. After a gap (a snapshot instead of a replay) the saved conversation is
+  // re-read once and anything missing is added.
+  useActivity((message) => {
+    const resync = async () => {
+      try {
+        const { conversations: stored } = await operatorRequest<{ conversations: SavedConversation[] }>("/conversations");
+        const open = stored.find((c) => c.id === activeConversationRef.current);
+        if (open) setTurns((current) => foldMissing(current, open.messages));
+      } catch { /* the stream will bring the next one */ }
+      window.dispatchEvent(new Event("operator:conversations-changed"));
+    };
+    if (message.kind === "snapshot") return void resync();
+    const event = parseThreadEvent(message.event);
+    if (!event) return;
+    if (event.conversationId === activeConversationRef.current) setTurns((current) => foldEntry(current, event.entry).turns);
+    else window.dispatchEvent(new Event("operator:conversations-changed"));
+  }, ["thread"], chatReady);
   async function retryConversationStorage() {
     if (saveConflict) return;
     setSaveError("");
@@ -3041,14 +3063,14 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
               </div>
             )}
             {turns.map((t, i) => (
-              <article key={i} className={`ar-chat-turn ${t.who}`}>
+              <article key={i} className={`ar-chat-turn ${t.who}${entryKind(t.via) ? ` is-job-entry is-${entryKind(t.via)}` : ""}`}>
                 {t.who === "you" && <Avatar className="ar-user-avatar">
                   <AvatarImage src={chatProfile.avatar || undefined} alt={chatProfile.name || "You"} />
                   <AvatarFallback aria-label={chatProfile.name || "You"}>{chatProfile.name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "Y"}</AvatarFallback>
                 </Avatar>}
                 {t.who === "oracle" && (
                   <small className="ar-answer-identity">
-                    {t.via === PRIVATE_ADVISOR_VIA ? (privateAdvisor.avatar ? <img className="ar-private-reply-avatar" src={privateAdvisor.avatar} alt="" /> : null) : t.via === "needs attention" ? (
+                    {entryKind(t.via) ? null : t.via === PRIVATE_ADVISOR_VIA ? (privateAdvisor.avatar ? <img className="ar-private-reply-avatar" src={privateAdvisor.avatar} alt="" /> : null) : t.via === "needs attention" ? (
                       <CircleAlert size={17} />
                     ) : (
                       <ChatModelLogo
@@ -3060,7 +3082,9 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
                         }
                       />
                     )}
-                    {t.via === "needs attention"
+                    {entryKind(t.via)
+                      ? ENTRY_LABEL[entryKind(t.via)!]
+                      : t.via === "needs attention"
                       ? "Couldn’t complete this reply"
                       : t.via || "Assistant"}
                   </small>
@@ -3087,6 +3111,16 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
                 <div className="ar-message-text">
                   {t.who === "oracle" ? t.via === PRIVATE_ADVISOR_VIA ? <AdvisorAnswer text={t.text} /> : <ChatMd text={t.text} /> : t.text}
                 </div>
+                {jobIdOf(t.via) && entryKind(t.via) === "result" && hasSavedResult(t.text) && (
+                  <a className="ar-job-entry-link" href={`/__computers/artifacts/${jobIdOf(t.via)}`} target="_blank" rel="noopener noreferrer" title="Opens the saved result in a new tab">
+                    Open saved result <ArrowUpRight size={12} />
+                  </a>
+                )}
+                {jobIdOf(t.via) && !["started", "progress", "update"].includes(entryKind(t.via) ?? "") && (
+                  <button type="button" className="ar-job-entry-link" title={`Job ${jobIdOf(t.via)!.slice(0, 8)} in Activity`} onClick={() => void router.navigate({ href: `/activity#job-${jobIdOf(t.via)}` })}>
+                    Open job {jobIdOf(t.via)!.slice(0, 8)} <ArrowUpRight size={12} />
+                  </button>
+                )}
                 {t.who === "oracle" && t.followUp && (t.followUp.syncApp || t.followUp.path) && (
                   <div className="ar-message-followup" aria-label="Suggested next steps">
                     {t.followUp.syncApp && (

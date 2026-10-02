@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
-import { checkHubUrl, checkRoot, configDir, configFile, defaultRoots, micLockFile, readConfig, rootsOf, writeConfig } from "./config";
-import { defaultExecutors } from "./executors";
+import { checkHubUrl, checkRoot, configDir, configFile, defaultRoots, ledgerFile, micLockFile, readConfig, rootsOf, writeConfig } from "./config";
+import { CommandLedger } from "./ledger";
+import { defaultExecutors, runCleanups } from "./executors";
 import { MicLock } from "./mic-lock";
-import { CompanionWorker } from "./worker";
+import { COMPANION_VERSION, CompanionWorker } from "./worker";
 
 /**
  * M&U companion — lets Jarvis act on YOUR PC when you ask it to, and on no one else's.
@@ -67,6 +68,7 @@ async function main() {
     const days = Math.ceil((c.expiresAt - Date.now()) / 86_400_000);
     console.log(`Paired "${c.label}" (${c.deviceId}) for ${c.owner} → ${c.hubUrl}. ${days >= 0 ? `${days} days left` : "EXPIRED — pair again"}.`);
     console.log(`Files Jarvis may open: ${rootsOf(c).join("; ")}`);
+    console.log(`Worker version ${COMPANION_VERSION}.`);
     const holder = new MicLock(micLockFile(dir)).holder();
     console.log(holder ? `Microphone held by pid ${holder}${holder === process.pid ? "" : " (the running companion or another Jarvis voice process)"}.` : "Microphone free.");
     return;
@@ -91,7 +93,8 @@ async function main() {
       deviceId: c.deviceId,
       owner: c.owner,
       micLock: new MicLock(micLockFile(dir)),
-      executors: defaultExecutors({ roots }),
+      executors: defaultExecutors({ roots, browser: { ...(c.browser ?? {}), session: c.browser?.session ?? `companion-${c.deviceId}` } }),
+      ledger: new CommandLedger(ledgerFile(dir)),
       onState: (state) => {
         // A revoked or expired pairing stops for good: nothing more runs until he pairs again.
         if (state === "unpaired") {
@@ -102,6 +105,7 @@ async function main() {
     }).start();
     const shutdown = async () => {
       await worker.stop();
+      await runCleanups();
       process.exit(0);
     };
     process.on("SIGINT", shutdown);

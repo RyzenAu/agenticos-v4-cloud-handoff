@@ -789,7 +789,7 @@ function LiveTurnStrip({
       // Fixed height + overflow-hidden: this row updates every second inside a
       // live message, and it must never reflow the transcript under the
       // reader's eyes. The one growable cell truncates.
-      className="font-mono mb-2 flex h-[26px] items-center gap-1.5 overflow-hidden rounded-full px-2.5 text-[11px]"
+      className="font-mono mb-2 flex h-[26px] items-center gap-1.5 overflow-hidden rounded-full px-2.5 text-xs"
       style={{
         color: "var(--muted-foreground)",
         border: `1px solid ${stallText ? stallTone : "var(--border)"}`,
@@ -1082,7 +1082,7 @@ function DiffView({ before, after }: { before: string; after: string }) {
     }
   });
   return (
-    <div className="font-mono mt-2 max-h-[300px] overflow-auto rounded-lg py-1.5 text-[11px] leading-[1.55]"
+    <div className="font-mono mt-2 max-h-[300px] overflow-auto rounded-lg py-1.5 text-xs leading-[1.55]"
       style={{ background: "var(--inset)", border: "1px solid var(--border)" }}>
       {shown.map((r, i) => (
         <div
@@ -1132,7 +1132,7 @@ function PermissionPrompt({
         ? String(card.input.command ?? "")
         : String(card.input.file_path ?? card.input.path ?? card.input.url ?? card.input.pattern ?? "");
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-inset px-3 py-1.5 text-[10.5px]">
+      <div className="flex items-center gap-2 rounded-lg bg-inset px-3 py-1.5 text-xs">
         <StatusDot tone={allowed ? "success" : "danger"} label={allowed ? "Allowed" : "Denied"} />
         <span className="font-mono text-muted-foreground">
           {card.tool}
@@ -1152,13 +1152,13 @@ function PermissionPrompt({
       return (
         <>
           <div
-            className="font-mono mt-2 whitespace-pre-wrap rounded-lg px-3 py-2 text-[12px]"
+            className="font-mono mt-2 whitespace-pre-wrap rounded-lg px-3 py-2 text-xs"
             style={{ background: "var(--inset)", border: "1px solid var(--border)", color: TEXT }}
           >
             {cmd}
           </div>
           {desc && (
-            <div className="mt-1.5 text-[11.5px]" style={{ color: "var(--muted-foreground)" }}>
+            <div className="mt-1.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
               {desc}
             </div>
           )}
@@ -1184,7 +1184,7 @@ function PermissionPrompt({
     return (
       <>
         <div
-          className="font-mono mt-2 max-h-[300px] overflow-auto whitespace-pre rounded-lg px-3 py-2 text-[11px]"
+          className="font-mono mt-2 max-h-[300px] overflow-auto whitespace-pre rounded-lg px-3 py-2 text-xs"
           style={{ background: "var(--inset)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
         >
           {truncated ? lines.slice(0, 40).join("\n") : json}
@@ -1193,7 +1193,7 @@ function PermissionPrompt({
           <button
             type="button"
             onClick={() => setShowAll(true)}
-            className="font-mono mt-1 text-[11px]"
+            className="font-mono mt-1 text-xs"
             style={{ color: ACCENT }}
           >
             show all {lines.length} lines
@@ -1241,18 +1241,18 @@ function PermissionPrompt({
       }}
     >
       <div
-        className="text-[12.5px] font-semibold"
+        className="text-xs font-semibold"
         style={{ color: ACCENT }}
       >
         {toolTitle(card.tool)}
         {filePath && (
-          <span className="font-mono ml-2 text-[11px] font-normal" style={{ color: "var(--muted-foreground)" }}>
+          <span className="font-mono ml-2 text-xs font-normal" style={{ color: "var(--muted-foreground)" }}>
             {filePath}
           </span>
         )}
       </div>
       {body}
-      <div className="mt-3 text-[11.5px]" style={{ color: "var(--muted-foreground)" }}>
+      <div className="mt-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
         Do you want to proceed?
       </div>
       {denyOpen ? (
@@ -1271,13 +1271,13 @@ function PermissionPrompt({
               }
             }}
             placeholder="What should Claude do instead?"
-            className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-[12px] focus:outline-none"
+            className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-xs focus:outline-none"
             style={{ border: "1px solid var(--danger)", color: TEXT }}
           />
           <button
             type="button"
             onClick={() => onDecide("deny", denyText.trim())}
-            className="font-mono rounded-lg px-3 py-1.5 text-[11px]"
+            className="font-mono rounded-lg px-3 py-1.5 text-xs"
             style={{ border: "1px solid var(--danger)", color: "var(--danger)" }}
           >
             send
@@ -1290,10 +1290,10 @@ function PermissionPrompt({
               key={o.n}
               type="button"
               onClick={o.run}
-              className="flex items-baseline gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-white/5"
+              className="flex items-baseline gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-white/5"
               style={{ color: o.tone ?? TEXT }}
             >
-              <span className="font-mono text-[11px]" style={{ color: ACCENT }}>
+              <span className="font-mono text-xs" style={{ color: ACCENT }}>
                 {o.n}.
               </span>
               {o.label}
@@ -1335,7 +1335,7 @@ function QuestionPrompt({
       .filter((s) => !/: $/.test(s))
       .join(" · ");
     return (
-      <div className="flex items-center gap-2 rounded-lg bg-inset px-3 py-1.5 text-[10.5px]">
+      <div className="flex items-center gap-2 rounded-lg bg-inset px-3 py-1.5 text-xs">
         <StatusDot tone={answered ? "success" : "danger"} label={answered ? "Answered" : "Unanswered"} />
         <span className="font-mono text-muted-foreground">
           {summary}
@@ -1370,13 +1370,13 @@ function QuestionPrompt({
           <div key={qi} className={qi > 0 ? "mt-4 border-t pt-3" : ""} style={qi > 0 ? { borderColor: "var(--border)" } : undefined}>
             <div className="flex items-center gap-2">
               <span
-                className="font-mono rounded px-1.5 py-[2px] text-[10.5px]"
+                className="font-mono rounded px-1.5 py-[2px] text-xs"
                 style={{ background: "var(--brand-soft)", color: ACCENT }}
               >
                 {q.header}
               </span>
               {q.multiSelect && (
-                <span className="font-mono text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                <span className="font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>
                   pick any
                 </span>
               )}
@@ -1421,12 +1421,12 @@ function QuestionPrompt({
                       </span>
                     )}
                     <span className="min-w-0">
-                      <span className="block text-[12.5px]" style={{ color: TEXT }}>
+                      <span className="block text-xs" style={{ color: TEXT }}>
                         {o.label}
                       </span>
                       {o.description && (
                         <span
-                          className="mt-0.5 block text-[11px] leading-snug"
+                          className="mt-0.5 block text-xs leading-snug"
                           style={{ color: "var(--muted-foreground)" }}
                         >
                           {o.description}
@@ -1458,7 +1458,7 @@ function QuestionPrompt({
                       }
                     }}
                     placeholder="Something else…"
-                    className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-[12px] focus:outline-none"
+                    className="flex-1 rounded-lg bg-transparent px-3 py-1.5 text-xs focus:outline-none"
                     style={{ border: "1px solid var(--brand)", color: TEXT }}
                   />
                   <button
@@ -1472,7 +1472,7 @@ function QuestionPrompt({
                       setOtherText("");
                       if (singleShot) submit(next);
                     }}
-                    className="font-mono rounded-lg px-3 py-1.5 text-[11px]"
+                    className="font-mono rounded-lg px-3 py-1.5 text-xs"
                     style={{ border: "1px solid var(--brand)", color: ACCENT }}
                   >
                     send
@@ -1485,7 +1485,7 @@ function QuestionPrompt({
                     setOtherOpen(qi);
                     setOtherText(chosen.length && !q.options.some((o) => o.label === chosen[0]) ? chosen[0] : "");
                   }}
-                  className="font-mono mt-0.5 self-start rounded-lg px-2.5 py-1 text-[11px] transition-colors hover:bg-white/5"
+                  className="font-mono mt-0.5 self-start rounded-lg px-2.5 py-1 text-xs transition-colors hover:bg-white/5"
                   style={{ border: "1px dashed var(--border)", color: "var(--muted-foreground)" }}
                 >
                   other…
@@ -1493,7 +1493,7 @@ function QuestionPrompt({
               )}
             </div>
             {chosen.length > 0 && !q.options.some((o) => o.label === chosen[0]) && (
-              <div className="mt-1.5 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+              <div className="mt-1.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
                 you said: <span style={{ color: TEXT }}>{chosen[0]}</span>
               </div>
             )}
@@ -1639,7 +1639,7 @@ function ModelPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg pl-2.5 pr-2 py-1.5 text-[12px] font-mono max-w-[220px]"
+        className="flex items-center gap-2 rounded-lg pl-2.5 pr-2 py-1.5 text-xs font-mono max-w-[220px]"
         style={{ background: "var(--surface-raised)", border: `1px solid ${BORDER}`, color: TEXT }}
       >
         <LogoChip src={model ? brandLogo(model.name) : null} size={15} />
@@ -1661,7 +1661,7 @@ function ModelPicker({
             {groups.map(([provider, { shown, hidden }]) => (
               <div key={provider}>
                 <div
-                  className="flex items-center gap-2 px-3 pt-2.5 pb-1 text-[11px] font-mono"
+                  className="flex items-center gap-2 px-3 pt-2.5 pb-1 text-xs font-mono"
                   style={{ color: "var(--muted-foreground)" }}
                 >
                   <LogoChip src={PROVIDER_LOGOS[provider.toLowerCase()] ?? null} size={13} />
@@ -1674,7 +1674,7 @@ function ModelPicker({
                   <button
                     type="button"
                     onClick={() => setShowSuperseded((v) => !v)}
-                    className="block w-full px-3 pb-1 text-left text-[10.5px] font-mono"
+                    className="block w-full px-3 pb-1 text-left text-xs font-mono"
                     style={{ color: "var(--muted-foreground)" }}
                   >
                     {showSuperseded
@@ -1706,12 +1706,12 @@ function ModelPicker({
                     >
                       <LogoChip src={brandLogo(m.name)} size={16} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12.5px]" style={{ color: TEXT }}>
+                        <span className="block truncate text-xs" style={{ color: TEXT }}>
                           {shortModel(m.name)}
                         </span>
                         {backend === "claude" && modelDesc(m.name) && (
                           <span
-                            className="block truncate text-[10.5px]"
+                            className="block truncate text-xs"
                             style={{ color: "var(--muted-foreground)" }}
                           >
                             {modelDesc(m.name)}
@@ -1722,7 +1722,7 @@ function ModelPicker({
                           one. It is the same model on someone else's meter. */}
                       {m.supersededBy && (
                         <span
-                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-[10px]"
+                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-xs"
                           style={{ border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
                         >
                           metered
@@ -1733,7 +1733,7 @@ function ModelPicker({
                       {/* Route from the catalogue: a plan is never shown as free. */}
                       {m.route && !m.supersededBy && (
                         <span
-                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-[10px]"
+                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-xs"
                           style={{ border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
                           title={m.cost}
                         >
@@ -1742,14 +1742,14 @@ function ModelPicker({
                       )}
                       {m.name === CLAUDE_FLAGSHIP && (
                         <span
-                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-[10px]"
+                          className="font-mono shrink-0 rounded-full px-1.5 py-0.5 text-xs"
                           style={{ border: "1px solid var(--brand)", color: ACCENT }}
                         >
                           flagship
                         </span>
                       )}
                       {active && (
-                        <span className="font-mono text-[10.5px]" style={{ color: ACCENT }}>
+                        <span className="font-mono text-xs" style={{ color: ACCENT }}>
                           ●
                         </span>
                       )}
@@ -1766,7 +1766,7 @@ function ModelPicker({
               style={{ background: "var(--popover)", borderTop: `1px solid ${BORDER_SOFT}` }}
             >
               <div
-                className="pb-1.5 text-[11px] font-mono"
+                className="pb-1.5 text-xs font-mono"
                 style={{ color: "var(--muted-foreground)" }}
               >
                 Effort
@@ -1779,7 +1779,7 @@ function ModelPicker({
                     key={lvl}
                     type="button"
                     onClick={() => onEffort(lvl)}
-                    className="flex-1 rounded-md px-1 py-1 text-[11px] font-mono transition-colors"
+                    className="flex-1 rounded-md px-1 py-1 text-xs font-mono transition-colors"
                     style={{
                       border: `1px solid ${active ? ACCENT : BORDER}`,
                       color: active ? ACCENT : "var(--muted-foreground)",
@@ -3249,7 +3249,7 @@ function ChatPane({
                   ? "Auto-accept edits — file edits go through, everything else still asks (click for yolo)"
                   : "Yolo — nothing is ever asked, the agent runs unattended (click to go back to Ask)"
             }
-            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-mono transition-colors"
+            className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-mono transition-colors"
             style={{
               border: `1px solid ${toolMode === "yolo" ? "var(--danger)" : toolMode === "acceptEdits" ? backendCfg.tone : BORDER}`,
               color: toolMode === "yolo" ? "var(--danger)" : toolMode === "acceptEdits" ? backendCfg.tone : "var(--muted-foreground)",
@@ -3301,7 +3301,7 @@ function ChatPane({
                 What are we building today?
               </div>
               <div
-                className="mt-3 flex items-center justify-center gap-2 text-[12px] font-mono"
+                className="mt-3 flex items-center justify-center gap-2 text-xs font-mono"
                 style={{ color: "var(--muted-foreground)" }}
               >
                 <img
@@ -3324,7 +3324,7 @@ function ChatPane({
 
           {loadingSession && (
             <div
-              className="flex items-center gap-2 text-[12px] font-mono"
+              className="flex items-center gap-2 text-xs font-mono"
               style={{ color: "var(--muted-foreground)" }}
             >
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading chat…
@@ -3348,7 +3348,7 @@ function ChatPane({
             ) : m.note ? (
               <div key={m.id} className="flex justify-center">
                 <div
-                  className="font-mono rounded-full px-3 py-1 text-[11px]"
+                  className="font-mono rounded-full px-3 py-1 text-xs"
                   style={{ border: "1px solid var(--brand)", color: "var(--brand)" }}
                 >
                   {m.note}
@@ -3385,7 +3385,7 @@ function ChatPane({
                 </div>
                 {!m.queued && m.ts && (
                   <div
-                    className="font-mono mt-1 pr-1 text-[10.5px]"
+                    className="font-mono mt-1 pr-1 text-xs"
                     style={{ color: "var(--muted-foreground)" }}
                     title={fmtDateTime(new Date(m.ts), { year: true })}
                   >
@@ -3422,7 +3422,7 @@ function ChatPane({
                     !m.streaming && (
                     <details className="mb-2">
                       <summary
-                        className="font-mono inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+                        className="font-mono inline-flex cursor-pointer list-none items-center gap-1.5 rounded-full px-2.5 py-1 text-xs"
                         style={{ color: "var(--muted-foreground)", border: "1px solid var(--border)" }}
                       >
                         {m.ts ? `${clockTime(m.ts)} · ` : ""}✓ worked
@@ -3448,7 +3448,7 @@ function ChatPane({
                         )}
                       </summary>
                       <div
-                        className="font-mono mt-1.5 space-y-0.5 rounded-lg px-2.5 py-2 text-[10.5px]"
+                        className="font-mono mt-1.5 space-y-0.5 rounded-lg px-2.5 py-2 text-xs"
                         style={{ background: "var(--inset)", border: "1px solid var(--border)", color: "var(--muted-foreground)" }}
                       >
                         {m.thinking && (
@@ -3496,7 +3496,7 @@ function ChatPane({
                           {m.thinking && (
                             <>
                               <div
-                                className="font-mono mb-1 text-[10.5px]"
+                                className="font-mono mb-1 text-xs"
                                 style={{ color: "var(--brand)" }}
                               >
                                 thinking…
@@ -3528,7 +3528,7 @@ function ChatPane({
                                 return (
                                   <div
                                     key={si}
-                                    className="font-mono truncate text-[10.5px]"
+                                    className="font-mono truncate text-xs"
                                     style={{
                                       color: running
                                         ? "var(--brand)"
@@ -3582,7 +3582,7 @@ function ChatPane({
                           ))}
                         </span>
                         <span
-                          className="font-mono truncate text-[10.5px]"
+                          className="font-mono truncate text-xs"
                           style={{ color: "var(--muted-foreground)" }}
                         >
                           {activity || `${model ? shortModel(model.name) : backendCfg.label} is thinking`}
@@ -3622,7 +3622,7 @@ function ChatPane({
                     // named and did not produce are simply absent.
                     <div className="mt-3">
                       <div
-                        className="font-mono mb-1.5 text-[10.5px]"
+                        className="font-mono mb-1.5 text-xs"
                         style={{ color: "var(--muted-foreground)" }}
                       >
                         ✓ written to disk — verified after the turn
@@ -3637,7 +3637,7 @@ function ChatPane({
                             target="_blank"
                             rel="noreferrer"
                             title={f.path}
-                            className="font-mono flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px]"
+                            className="font-mono flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs"
                             style={{
                               border: "1px solid var(--border)",
                               background: "var(--inset)",
@@ -3665,7 +3665,7 @@ function ChatPane({
                         )
                       }
                       disabled={sending}
-                      className="font-mono mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] disabled:opacity-60"
+                      className="font-mono mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs disabled:opacity-60"
                       style={{ border: "1px solid var(--brand)", color: ACCENT }}
                     >
                       ↻ resume this turn
@@ -3678,7 +3678,7 @@ function ChatPane({
                       type="button"
                       onClick={() => void handleSend(m.retryText)}
                       disabled={sending}
-                      className="font-mono mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] disabled:opacity-60"
+                      className="font-mono mt-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs disabled:opacity-60"
                       style={{ border: "1px solid var(--border)", color: TEXT }}
                     >
                       ↻ retry
@@ -3711,7 +3711,7 @@ function ChatPane({
             }}
           >
             <div
-              className="flex items-center gap-3 font-mono text-[11px]"
+              className="flex items-center gap-3 font-mono text-xs"
               style={{ color: awaitingApproval ? ACCENT : "var(--foreground)" }}
             >
               {awaitingApproval ? (
@@ -3809,7 +3809,7 @@ function ChatPane({
         {uploadError && (
           <div
             role="alert"
-            className="mx-auto max-w-4xl 2xl:max-w-5xl mb-2 flex items-start gap-2 rounded-lg px-3 py-2 text-[12px]"
+            className="mx-auto max-w-4xl 2xl:max-w-5xl mb-2 flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
             style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", color: "var(--destructive, #f87171)" }}
           >
             <span className="min-w-0 flex-1">{uploadError}</span>
@@ -3844,7 +3844,7 @@ function ChatPane({
                   style={{ border: `1px solid ${BORDER}`, background: "var(--popover)", maxWidth: 220 }}
                 >
                   <span
-                    className="font-mono flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[10px] font-bold"
+                    className="font-mono flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xs font-bold"
                     style={{
                       background:
                         /pdf$/i.test(a.name) ? "var(--danger)" :
@@ -3861,10 +3861,10 @@ function ChatPane({
                     {(a.name.split(".").pop() ?? "file").slice(0, 4)}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[11.5px]" style={{ color: TEXT }}>
+                    <span className="block truncate text-xs" style={{ color: TEXT }}>
                       {a.name}
                     </span>
-                    <span className="font-mono block text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                    <span className="font-mono block text-xs" style={{ color: "var(--muted-foreground)" }}>
                       {a.size >= 1048576 ? `${(a.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(a.size / 1024))} KB`}
                     </span>
                   </span>
@@ -3895,7 +3895,7 @@ function ChatPane({
               className="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-xl"
               style={{ background: "var(--popover)", border: "1px solid var(--border)", boxShadow: "var(--elev-3)" }}
             >
-              <div className="font-mono px-3 pt-2 pb-1 text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+              <div className="font-mono px-3 pt-2 pb-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
                 Commands
               </div>
               {slashMatches.map((c, ci) => (
@@ -3910,13 +3910,13 @@ function ChatPane({
                   className="flex w-full items-baseline gap-3 px-3 py-1.5 text-left"
                   style={{ background: ci === slashIdx ? "var(--surface-raised)" : "transparent" }}
                 >
-                  <span className="font-mono text-[12px]" style={{ color: ACCENT }}>{c.name}</span>
-                  <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                  <span className="font-mono text-xs" style={{ color: ACCENT }}>{c.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs" style={{ color: "var(--muted-foreground)" }}>
                     {c.description}
                   </span>
                 </button>
               ))}
-              <div className="font-mono px-3 pb-2 pt-1 text-[10px]" style={{ color: "var(--muted-foreground)" }}>
+              <div className="font-mono px-3 pb-2 pt-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
                 ↑↓ navigate · tab/enter complete · esc dismiss
               </div>
             </div>
@@ -4048,7 +4048,7 @@ function ChatPane({
           // and the turn cost were cut off the right edge entirely. That is the
           // literal reason you "can't see all the things at the bottom": they
           // were not dim, they were not on screen.
-          className="mx-auto mt-1.5 flex max-w-4xl 2xl:max-w-5xl flex-wrap items-center gap-x-3 gap-y-1.5 px-1 font-mono text-[11px]"
+          className="mx-auto mt-1.5 flex max-w-4xl 2xl:max-w-5xl flex-wrap items-center gap-x-3 gap-y-1.5 px-1 font-mono text-xs"
           style={{ color: "var(--muted-foreground)" }}
         >
           {canEffort && (
@@ -4065,7 +4065,7 @@ function ChatPane({
                     key={lvl}
                     type="button"
                     onClick={() => { pickEffort(lvl); setEffortMenuOpen(false); }}
-                    className="px-4 py-1.5 text-left text-[10px] font-mono transition-colors"
+                    className="px-4 py-1.5 text-left text-xs font-mono transition-colors"
                     style={{ color: effortShown === lvl ? ACCENT : "var(--muted-foreground)", background: effortShown === lvl ? "var(--brand-soft)" : "transparent" }}
                   >
                     {lvl}
@@ -4106,7 +4106,7 @@ function ChatPane({
                     className="absolute bottom-full left-0 z-50 mb-2 w-[210px] overflow-hidden rounded-xl normal-case tracking-normal"
                     style={{ background: "var(--popover)", border: "1px solid var(--border)", boxShadow: "var(--elev-3)" }}
                   >
-                    <div className="font-mono px-3 pt-2 pb-1 text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                    <div className="font-mono px-3 pt-2 pb-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
                       Session mode
                     </div>
                     {(["default", "plan"] as const).map((pm) => (
@@ -4117,7 +4117,7 @@ function ChatPane({
                           setPermMode(pm);
                           setPermOpen(false);
                         }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px]"
+                        className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs"
                         style={{
                           background: permMode === pm ? "var(--surface-raised)" : "transparent",
                           color: TEXT,
@@ -4127,7 +4127,7 @@ function ChatPane({
                         {permMode === pm && <span style={{ color: ACCENT }}>✓</span>}
                       </button>
                     ))}
-                    <div className="px-3 pb-2 pt-1 text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                    <div className="px-3 pb-2 pt-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
                       Plan mode researches and proposes without touching anything. Who gets asked about
                       tools is the {TOOL_MODE_LABEL[toolMode]} switch up in the header.
                     </div>
@@ -4138,7 +4138,7 @@ function ChatPane({
                 type="button"
                 onClick={() => setPermOpen((v) => !v)}
                 title="Session mode — work normally, or plan first without touching anything"
-                className="font-mono flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors"
+                className="font-mono flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors"
                 style={{
                   border: `1px solid ${permMode === "plan" ? "var(--brand)" : BORDER}`,
                   color: permMode === "plan" ? ACCENT : "var(--muted-foreground)",
@@ -4159,7 +4159,7 @@ function ChatPane({
                 autoCountRef.current = 0;
               }}
               title="Autopilot — when a turn ends, this pane automatically sends the next 'continue' so long builds keep rolling without you. Stops on errors, BLOCKED, or a question for you."
-              className="font-mono flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors"
+              className="font-mono flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors"
               style={{
                 border: `1px solid ${autoPilot ? "var(--brand)" : BORDER}`,
                 color: autoPilot ? ACCENT : "var(--muted-foreground)",
@@ -4178,7 +4178,7 @@ function ChatPane({
                 className="absolute bottom-full right-0 z-50 mb-2 max-h-[70vh] w-[340px] overflow-y-auto rounded-xl p-3.5 normal-case tracking-normal"
                 style={{ background: "var(--popover)", border: "1px solid var(--border)", boxShadow: "var(--elev-3)" }}
               >
-                <div className="font-mono mb-2 text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                <div className="font-mono mb-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
                   Usage · {model ? shortModel(model.name) : ""}
                 </div>
                 <ContextBreakdown
@@ -4187,7 +4187,7 @@ function ChatPane({
                   // Codex manages its own context and never auto-compacts.
                   compactAt={lane === "codex" ? undefined : 0.72}
                 />
-                <div className="mt-3 space-y-1.5 border-t pt-2.5 text-[11px]" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
+                <div className="mt-3 space-y-1.5 border-t pt-2.5 text-xs" style={{ borderColor: "var(--border)", color: "var(--foreground)" }}>
                   {!lastCost && costUnreported && (
                     <div className="flex justify-between">
                       <span>Last turn</span>
@@ -4231,7 +4231,7 @@ function ChatPane({
                     if (!win?.windows?.length) return null;
                     return (
                       <div className="mt-1 border-t pt-2" style={{ borderColor: "var(--border)" }}>
-                        <div className="font-mono mb-1.5 text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                        <div className="font-mono mb-1.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
                           Plan usage · {win.plan ?? (lane === "codex" ? "ChatGPT" : "Claude")}
                         </div>
                         {win.windows.map((w: any, wi: number) => {
@@ -4249,7 +4249,7 @@ function ChatPane({
                           const pct = Number(w.pct) || 0;
                           return (
                           <div key={wi} className="mb-1.5">
-                            <div className="flex justify-between text-[10.5px]" style={{ color: "var(--foreground)" }}>
+                            <div className="flex justify-between text-xs" style={{ color: "var(--foreground)" }}>
                               <span>{w.label}</span>
                               <span>
                                 {resetClock(w.resetsAt) ? `resets ${resetClock(w.resetsAt)} · ` : ""}
@@ -4285,7 +4285,7 @@ function ChatPane({
                           </div>
                           );
                         })}
-                        <div className="text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+                        <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                           synced by the aggregator — refresh on Dashboard for live numbers
                         </div>
                       </div>
@@ -4803,7 +4803,7 @@ export function HomeCommand() {
         <div className={`${railOpen ? "px-4" : "px-0 justify-center"} pt-4 pb-2 flex items-center`}>
           {railOpen && (
             <span
-              className="flex-1 text-[10px]"
+              className="flex-1 text-xs"
               style={{ color: "var(--muted-foreground)" }}
             >
               Chats
@@ -4891,12 +4891,12 @@ export function HomeCommand() {
                     setRenamingKey(null);
                     setTitlesTick((n) => n + 1);
                   }}
-                  className="min-w-0 flex-1 rounded bg-transparent text-[11.5px] leading-tight outline-none"
+                  className="min-w-0 flex-1 rounded bg-transparent text-xs leading-tight outline-none"
                   style={{ color: TEXT, border: `1px solid var(--border)`, padding: "1px 4px" }}
                 />
               ) : (
                 <span
-                  className="min-w-0 flex-1 truncate text-[11.5px] leading-tight"
+                  className="min-w-0 flex-1 truncate text-xs leading-tight"
                   style={{ color: "var(--foreground)" }}
                   title={s.title}
                 >
@@ -4905,7 +4905,7 @@ export function HomeCommand() {
               )}
               {(s as { origin?: string }).origin === "headless" && (
                 <span
-                  className="font-mono flex shrink-0 items-center gap-[3px] rounded px-1 py-[1px] text-[10px]"
+                  className="font-mono flex shrink-0 items-center gap-[3px] rounded px-1 py-[1px] text-xs"
                   style={{
                     border: "1px solid var(--border)",
                     color: "var(--muted-foreground)",
@@ -4933,7 +4933,7 @@ export function HomeCommand() {
                 const startedAt = liveById.get(s.id);
                 if (startedAt === undefined)
                   return (
-                    <span className="font-mono shrink-0 text-[10.5px] group-hover:hidden" style={{ color: "var(--muted-foreground)" }}>
+                    <span className="font-mono shrink-0 text-xs group-hover:hidden" style={{ color: "var(--muted-foreground)" }}>
                       {relTime(s.ts)}
                     </span>
                   );
@@ -4941,7 +4941,7 @@ export function HomeCommand() {
                 return (
                   <span className="flex shrink-0 items-center gap-1.5">
                     <span
-                      className="font-mono flex shrink-0 items-center gap-1 text-[10.5px]"
+                      className="font-mono flex shrink-0 items-center gap-1 text-xs"
                       style={{ color: "var(--brand)" }}
                       title="This chat's agent is still working — click to re-join it"
                     >
@@ -4994,7 +4994,7 @@ export function HomeCommand() {
             type="button"
             onClick={() => openJarvis("memory")}
             title="Jarvis — memory brain"
-            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[10.5px] font-mono transition-colors"
+            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs font-mono transition-colors"
             style={{ border: `1px solid ${BORDER}`, color: "var(--foreground)" }}
           >
             <Brain className="h-3.5 w-3.5" /> Brain
@@ -5003,7 +5003,7 @@ export function HomeCommand() {
             type="button"
             onClick={() => openJarvis("voice")}
             title="Jarvis — voice mode"
-            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-[10.5px] font-mono transition-colors"
+            className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-lg text-xs font-mono transition-colors"
             style={{ border: `1px solid ${BORDER}`, color: "var(--foreground)" }}
           >
             <Mic className="h-3.5 w-3.5" /> Voice
@@ -5104,7 +5104,7 @@ export function HomeCommand() {
                   setRenameDraft(ctxMenu.title);
                   setCtxMenu(null);
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
                 style={{ color: TEXT }}
               >
                 <Pencil className="h-3 w-3" /> Rename
@@ -5117,12 +5117,12 @@ export function HomeCommand() {
                   setCtxMenu(null);
                   refreshSessions();
                 }}
-                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-white/5"
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs transition-colors hover:bg-white/5"
                 style={{ color: "var(--danger)" }}
               >
                 <X className="h-3 w-3" /> Delete chat
               </button>
-              <div className="px-3 pb-1.5 pt-0.5 text-[10.5px]" style={{ color: "var(--muted-foreground)" }}>
+              <div className="px-3 pb-1.5 pt-0.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
                 Removes it from this list — agent history on disk is untouched.
               </div>
             </div>
@@ -5184,7 +5184,7 @@ export function HomeCommand() {
                 key={id}
                 type="button"
                 onClick={() => setJarvisMode(id)}
-                className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10.5px] font-mono transition-colors"
+                className="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-mono transition-colors"
                 style={{
                   background: jarvisMode === id ? "var(--surface-raised)" : "transparent",
                   color: jarvisMode === id ? TEXT : "var(--muted-foreground)",
@@ -5196,7 +5196,7 @@ export function HomeCommand() {
             <button
               type="button"
               onClick={() => setJarvis(false)}
-              className="ml-1 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[10.5px] font-mono transition-colors"
+              className="ml-1 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-mono transition-colors"
               style={{ border: `1px solid var(--border)`, color: TEXT }}
             >
               <X className="h-3.5 w-3.5" /> Exit · Esc
@@ -5207,7 +5207,7 @@ export function HomeCommand() {
           {pulledNotes.length > 0 && (
             <div className="absolute bottom-5 left-5 z-20 flex max-w-[320px] flex-col gap-1.5">
               <div
-                className="font-mono text-[10.5px]"
+                className="font-mono text-xs"
                 style={{ color: "var(--muted-foreground)" }}
               >
                 Pulled from memory
@@ -5217,7 +5217,7 @@ export function HomeCommand() {
                   key={`${n.vault}-${n.id}`}
                   type="button"
                   onClick={() => setSelNode({ name: n.title, noteId: n.id, vault: n.vault } as any)}
-                  className="truncate rounded-lg px-3 py-2 text-left text-[12px] transition-colors"
+                  className="truncate rounded-lg px-3 py-2 text-left text-xs transition-colors"
                   style={{
                     background: "var(--popover)",
                     border: `1px solid ${BORDER}`,
@@ -5245,7 +5245,7 @@ export function HomeCommand() {
                   <div className="text-[13px] font-medium truncate" style={{ color: TEXT }}>
                     {(selNode as any).name ?? (selNode as any).id}
                   </div>
-                  <div className="text-[10px]" style={{ color: "var(--muted-foreground)" }}>
+                  <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                     {(selNode as any).vault ?? "memory"}
                   </div>
                 </div>
@@ -5260,12 +5260,12 @@ export function HomeCommand() {
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3">
                 {noteBody === null ? (
-                  <div className="flex items-center gap-2 text-[12px]" style={{ color: "var(--muted-foreground)" }}>
+                  <div className="flex items-center gap-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading note…
                   </div>
                 ) : (
                   <pre
-                    className="whitespace-pre-wrap text-[12.5px] leading-relaxed font-sans"
+                    className="whitespace-pre-wrap text-xs leading-relaxed font-sans"
                     style={{ color: "var(--muted-foreground)" }}
                   >
                     {noteBody}

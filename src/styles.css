@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "./components/ds/detail.css";
 
 /*
  * Self-hosted UI type (docs/DESIGN-SYSTEM.md): Inter for the UI, JetBrains Mono for code, IDs and
@@ -591,7 +592,7 @@
  * 12px is the floor, for caps labels only; running text never goes below 13px.
  * Each step carries its own line height (Tailwind reads --text-*--line-height). */
 :root {
-  --text-2xs: 0.75rem; /* 12px — caps labels, tags */
+  --text-2xs: 0.8125rem; /* 13px — labels, badges (floor; 1 Oct 2026) */
   --text-2xs--line-height: 1.4;
   --text-xs: 0.8125rem; /* 13px — captions, meta, dense controls */
   --text-xs--line-height: 1.5;
@@ -636,6 +637,9 @@
   --dur-slow: 280ms; /* panels, page enter */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-task: 420ms; /* a task bar filling to its new value */
+  --move-sm: 6px; /* enter travel */
+  --move-drawer: 24px; /* drawer/sheet travel */
 
   /* Focus — one ring everywhere */
   --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
@@ -676,10 +680,11 @@
 
 /* ── Design-system primitives (src/components/ds) ─────────────────────── */
 .ds-label {
+  /* Sentence case at the 13px floor (1 Oct 2026): important labels are not tiny caps. */
   font-size: var(--text-2xs);
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--muted-foreground);
 }
 .ds-num {
@@ -697,6 +702,81 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* A search field draws its own box around a bare <input>: the ring belongs to the box, not the input. */
+.op-search:focus-within,
+.cp-search:focus-within {
+  border-color: var(--ring);
+  box-shadow: var(--focus-ring);
+}
+/* Any label that wraps a bare, outline-less input (Models search, filters) shows the ring on the label. */
+label:has(> input.outline-none:focus-visible) {
+  border-color: var(--ring);
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Motion language (src/lib/ui-motion.ts) ───────────────────────────────
+ * One vocabulary. Arrivals (enter, drawer, pop) use transform ONLY, so content is fully legible even when
+ * animation frames never run (throttled or hidden window); only the breathing dot fades opacity:
+ *   mo-enter      a page or panel arriving (navigation)
+ *   mo-select     a selected row/tab/nav item changing state (colour + its marker's transform)
+ *   mo-drawer-in  a drawer/sheet opening
+ *   mo-pop        a confirmation landing (saved, done)
+ *   mo-task       start -> progress -> complete (bar scales on X; unknown length slides)
+ *   mo-conn       reconnecting (dot breathes in opacity), live and offline hold still
+ * prefers-reduced-motion zeroes every duration (block further down); a hidden tab pauses every loop. */
+@keyframes mo-enter {
+  from { transform: translateY(var(--move-sm)); }
+  to { transform: none; }
+}
+@keyframes mo-drawer-in {
+  from { transform: translateX(var(--move-drawer)); }
+  to { transform: none; }
+}
+@keyframes mo-pop {
+  from { transform: scale(0.94); }
+  to { transform: none; }
+}
+@keyframes mo-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(260%); }
+}
+@keyframes mo-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.mo-enter { animation: mo-enter var(--dur-slow) var(--ease-out-quart) both; }
+.mo-drawer-in { animation: mo-drawer-in var(--dur-slow) var(--ease-out-quart) both; }
+.mo-pop { animation: mo-pop var(--dur-base) var(--ease-out-quart) both; }
+.mo-select {
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-base) var(--ease-out-quart);
+}
+.mo-track { height: 4px; border-radius: 9999px; background: var(--inset); overflow: hidden; }
+.mo-fill {
+  display: block; height: 100%; width: 100%; border-radius: inherit; background: var(--brand);
+  transform-origin: left center; transition: transform var(--dur-task) var(--ease-out-quart);
+}
+.mo-fill-indeterminate { width: 40%; animation: mo-slide 1.4s var(--ease-standard) infinite; }
+.mo-track[data-phase="done"] .mo-fill { background: var(--success); }
+.mo-task-word[data-phase="failed"] { color: var(--danger); }
+.mo-task-word[data-phase="waiting"] { color: var(--warn); }
+.mo-task-word[data-phase="done"] { color: var(--success); }
+.mo-task-word[data-phase="queued"] { color: var(--muted-foreground); }
+.mo-conn-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--muted-foreground); }
+.mo-conn[data-state="live"] .mo-conn-dot { background: var(--success); }
+.mo-conn[data-state="reconnecting"] .mo-conn-dot { background: var(--warn); animation: mo-breathe 1.2s var(--ease-standard) infinite; }
+.mo-conn[data-state="offline"] .mo-conn-dot { background: transparent; box-shadow: inset 0 0 0 2px var(--muted-foreground); }
+.mo-device[data-state="online"] .mo-device-state { color: var(--success); }
+@media (prefers-reduced-motion: reduce) {
+  /* An unknown-length bar can't slide; it shows as a steady half-strength fill instead of vanishing. */
+  .mo-fill-indeterminate { width: 100%; opacity: 0.5; animation: none; transform: none; }
+}
+/* A background tab runs no loops at all (installMotionGuards sets the attribute). */
+html[data-doc-hidden] *,
+html[data-doc-hidden] *::before,
+html[data-doc-hidden] *::after { animation-play-state: paused !important; }
 
 /* Anyone who hasn't asked for motion gets none — decorative drifts, sweeps
  * and pulses finish instantly instead of playing out, without changing the
@@ -987,9 +1067,9 @@ button.focus-orange:focus {
 
 /* Website OS community connection surface. */
 .wos-c-grid { background-image: radial-gradient(#c7cdb754 0.7px, transparent 0.7px); background-size: 11px 11px; }
-.wos-c-button { display:inline-flex; align-items:center; gap:7px; border:1px solid #d6dccb; border-radius:7px; padding:7px 11px; background:#ffffffe0; color:#65744f; font-size:11px; transition:background .15s; }
+.wos-c-button { display:inline-flex; align-items:center; gap:7px; border:1px solid #d6dccb; border-radius:7px; padding:7px 11px; background:#ffffffe0; color:#65744f; font-size: var(--text-xs); transition:background .15s; }
 .wos-c-button:hover { background:#f1f5e9; }
-.wos-c-primary { display:inline-flex; align-items:center; gap:8px; border-radius:7px; padding:12px 16px; background:#30372b; color:#f8faf1; font-size:11px; transition:background .15s; }
+.wos-c-primary { display:inline-flex; align-items:center; gap:8px; border-radius:7px; padding:12px 16px; background:#30372b; color:#f8faf1; font-size: var(--text-xs); transition:background .15s; }
 .wos-c-primary:hover { background:#4c583f; }
 .wos-c-primary:disabled { opacity:.55; cursor:wait; }
 .wos-c-button:focus-visible,.wos-c-primary:focus-visible { outline:2px solid #81965e; outline-offset:3px; }
@@ -1022,5 +1102,5 @@ html[data-hydration-blocked]::after {
 
 /* The 3D graphs (react-force-graph) inject a 10 px "Left-click: rotate…" hint; nothing is under 12 px. */
 .scene-nav-info {
-  font-size: 12px !important;
+  font-size: var(--text-xs) !important;
 }

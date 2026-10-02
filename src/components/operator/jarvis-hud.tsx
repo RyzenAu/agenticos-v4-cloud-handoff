@@ -11,8 +11,9 @@ import {
   agoLabel,
   clockLabel,
   healthTone,
-  HUD_OFFLINE_AFTER_MS,
   HUD_POLL_MS,
+  HUD_SAFETY_POLL_MS,
+  hudOffline,
   sourceAge,
   untilLabel,
   type EventsResponse,
@@ -22,6 +23,8 @@ import {
   type Source,
   type StatusSnapshot,
 } from "@/lib/jarvis-hud";
+import { activityHub } from "@/lib/activity-stream";
+import { streamRefetchInterval, useActivityStatus, useStreamInvalidate } from "@/lib/use-activity";
 import "./jarvis-hud.css";
 import { HudCore } from "./hud-core";
 import { useWorkspacePanel } from "@/components/workspace/api";
@@ -56,8 +59,8 @@ export function useJarvisHud(enabled = true) {
   const status = useQuery<StatusSnapshot>({
     queryKey: ["jarvis-status"],
     queryFn: () => getJson<StatusSnapshot>("/jarvis/status"),
-    refetchInterval: HUD_POLL_MS,
-    refetchIntervalInBackground: true,
+    refetchInterval: streamRefetchInterval(HUD_SAFETY_POLL_MS, HUD_POLL_MS),
+    refetchIntervalInBackground: false,
     enabled,
     retry: false,
     staleTime: 0,
@@ -65,8 +68,8 @@ export function useJarvisHud(enabled = true) {
   const events = useQuery<EventsResponse>({
     queryKey: ["jarvis-events"],
     queryFn: () => getJson<EventsResponse>("/jarvis/events?since=0"),
-    refetchInterval: HUD_POLL_MS,
-    refetchIntervalInBackground: true,
+    refetchInterval: streamRefetchInterval(HUD_SAFETY_POLL_MS, HUD_POLL_MS),
+    refetchIntervalInBackground: false,
     enabled,
     retry: false,
     staleTime: 0,
@@ -75,12 +78,24 @@ export function useJarvisHud(enabled = true) {
   const timers = useQuery<TimersResponse>({
     queryKey: ["jarvis-timers"],
     queryFn: () => getJson<TimersResponse>("/jarvis/timers"),
-    refetchInterval: HUD_POLL_MS,
-    refetchIntervalInBackground: true,
+    refetchInterval: streamRefetchInterval(HUD_SAFETY_POLL_MS, HUD_POLL_MS),
+    refetchIntervalInBackground: false,
     enabled,
     retry: false,
     staleTime: 0,
   });
+  // The live stream (S-stream) tells us when something changed; the timers above are only the safety net.
+  const stream = useActivityStatus();
+  useStreamInvalidate([["jarvis-status"], ["jarvis-events"], ["jarvis-timers"]], ["jarvis"], { enabled });
+  useStreamInvalidate([["jarvis-status"]], ["approval"], { enabled });
+  useStreamInvalidate([["jarvis-status"]], ["job"], { enabled, match: (m) => m.kind === "event" && m.event.final });
+  // A read that answers while the stream is waiting out a backoff means the hub is back: reconnect now.
+  // (Only on a NEW answer, never on a state change, or a hub that is down would be retried in a loop.)
+  const streamState = useRef(stream.state);
+  streamState.current = stream.state;
+  useEffect(() => {
+    if (enabled && status.dataUpdatedAt && streamState.current === "retrying") activityHub().retryNow();
+  }, [enabled, status.dataUpdatedAt]);
   const { refetch: refetchStatus } = status;
   const { refetch: refetchEvents } = events;
   const { refetch: refetchTimers } = timers;
@@ -112,7 +127,13 @@ export function useJarvisHud(enabled = true) {
   const needsYouQuery = pendingUntilHydrated(useWorkspacePanel("needsYou"), useHydrated());
   const needsYou = needsYouQuery.data?.ok ? needsYouQuery.data.data : null;
   const lastOk = Math.min(status.dataUpdatedAt || 0, events.dataUpdatedAt || 0);
-  const offline = !status.data || now - (status.dataUpdatedAt || 0) > HUD_OFFLINE_AFTER_MS || status.isError;
+  const offline = hudOffline({
+    hasData: Boolean(status.data),
+    isError: status.isError,
+    dataUpdatedAt: status.dataUpdatedAt || 0,
+    now,
+    stream: { state: stream.state, everOpened: stream.everOpened, lastSignalAt: stream.lastSignalAt, lostAt: stream.lostAt },
+  });
   return {
     status: status.data ?? null,
     needsYou,

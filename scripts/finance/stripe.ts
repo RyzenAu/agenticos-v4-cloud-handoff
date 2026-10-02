@@ -23,6 +23,7 @@ import { Database } from "bun:sqlite";
 import { providerKey } from "../provider-config";
 import { financeDbPath, readTransactionsSince } from "./store";
 import { LEGACY_NAB_LIVE_AUTHORISATION, legacyNabAdmission, type LegacyNabLiveAuthorisation } from "./legacy-admission";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const STRIPE_SOURCE = "stripe";
 const API_BASE = "https://api.stripe.com/v1";
@@ -699,7 +700,7 @@ export type StripeSync = ReturnType<typeof createStripeSync>;
 // Re-export so callers (e.g. a future UI hook, or Jarvis) don't need to import from node:fs /
 // node:path themselves just to check whether .operator-data exists yet.
 export function ensureOperatorDataDir(root: string): void {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 

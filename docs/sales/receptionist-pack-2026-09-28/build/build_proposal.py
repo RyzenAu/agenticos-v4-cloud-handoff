@@ -21,8 +21,7 @@ def price_rows(p):
 
 
 EXAMPLE = invoice_example()
-# Decision (a) placeholder wherever the selected package's cover is stated (Essential only, while open).
-ESS_A = f" {DECISION_A}" if DECISION_A in cover_text(sel) else ""
+ESS_A = ""  # decision (a) settled 1 Oct 2026: no placeholder
 SETTLE = settle_in(sel)
 state_label = {"available": "Live today", "at-go-live": "At go-live", "not-offered": "Not included"}
 scope_rows = [[f["label"], state_label[f["state"]]] for f in sel["scope"]]

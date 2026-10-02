@@ -1,5 +1,5 @@
 // /memory/vault: the memory track's curated vault — search, sources ("facts used"), corrections
-// and forgetting, scoped to Usman, Mehroz or shared. Mounted from src/components/memory/destination.tsx.
+// and forgetting in the shared business pool. Mounted from src/components/memory/destination.tsx.
 import { Link } from "@tanstack/react-router";
 import { BookMarked } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/ds";
@@ -21,7 +21,10 @@ export function VaultPage() {
         inspect={publish}
         fallback={
           <>
-            <PageHeader title="Vault" description="Curated facts with their sources. Search, correct and forget, per person or shared." />
+            <PageHeader
+              title="Vault"
+              description="Shared business memory: search, sources and corrections."
+            />
             <EmptyState
               icon={BookMarked}
               title="The curated vault isn't in this build yet"

@@ -7,6 +7,7 @@ import { HUB_DEVICE_ID } from "../devices/registry";
 import { resolveTarget as defaultResolveTarget } from "../devices/route";
 import { DeviceStore, type SessionRow } from "../devices/store";
 import { normalisePersonId, type PersonId, type ResolveContext, type ResolveResult } from "../devices/types";
+import { dataDirFor } from "../cloud/data-dir";
 
 /**
  * Stage B1: the ONE identity contract (TARGET-ARCHITECTURE §3.1 with the V7 amendments).
@@ -150,6 +151,52 @@ export function parseCookies(header: string | string[] | undefined): Record<stri
   return out;
 }
 
+/** How many WELL-FORMED mu_session values one request may make the hub verify (each is an HMAC check). */
+export const MAX_SESSION_COOKIES = 32;
+/** A session cookie as the store mints it: a 43-character secret, a dot, a 43-character signature (base64url). Junk is skipped, never counted. */
+const WELL_FORMED_SESSION = /^[A-Za-z0-9_-]{43}.[A-Za-z0-9_-]{43}$/;
+
+/** Every mu_session value a request presented, in order (parseCookies keeps only the first), capped. */
+export function sessionCookieValues(header: string | string[] | undefined): string[] {
+  const out: string[] = [];
+  for (const part of String(Array.isArray(header) ? header.join(";") : header ?? "").split(";")) {
+    const eq = part.indexOf("=");
+    if (eq <= 0 || part.slice(0, eq).trim() !== SESSION_COOKIE) continue;
+    const raw = part.slice(eq + 1).trim();
+    let value = raw;
+    try {
+      value = decodeURIComponent(raw);
+    } catch {
+      /* use it as sent */
+    }
+    if (WELL_FORMED_SESSION.test(value) && !out.includes(value)) out.push(value);
+    if (out.length >= MAX_SESSION_COOKIES) break;
+  }
+  return out;
+}
+
+/** Verify the candidates in order and stop at the first that satisfies `done` (the session this request is for). */
+/** Did the request present ANY mu_session cookie, well-formed or not? (Only junk presented still means "signed out".) */
+export function sessionCookiePresented(header: string | string[] | undefined): boolean {
+  return String(Array.isArray(header) ? header.join(";") : header ?? "")
+    .split(";")
+    .some((part) => {
+      const eq = part.indexOf("=");
+      return eq > 0 && part.slice(0, eq).trim() === SESSION_COOKIE && part.slice(eq + 1).trim() !== "";
+    });
+}
+
+function verifiedRows(store: DeviceStore, cookies: string[], done: (row: SessionRow) => boolean): SessionRow[] {
+  const rows: SessionRow[] = [];
+  for (const value of cookies) {
+    const row = store.verifySession(value);
+    if (!row || rows.some((r) => r.id === row.id)) continue;
+    rows.push(row);
+    if (done(row)) break;
+  }
+  return rows;
+}
+
 export function isLoopbackSocket(req: ReqLike) {
   return LOOPBACK_SOCKET.has(req.socket?.remoteAddress ?? "");
 }
@@ -190,6 +237,12 @@ export function displayNameFor(root: string, personId: PersonId): string {
   return cached.byId.get(personId) ?? personId.charAt(0).toUpperCase() + personId.slice(1);
 }
 
+const unprovenLoopback = new WeakSet<object>();
+/** Server role only (the gate calls it): this loopback request carries no local-owner proof, so it is not the owner. */
+export function markLoopbackUnproven(req: object) {
+  unprovenLoopback.add(req);
+}
+
 export type SessionCookieState = "none" | "valid" | "other-person" | "dead";
 
 export type RequestIdentity = {
@@ -221,9 +274,16 @@ export function identifyRequest(req: ReqLike, ctx?: Partial<IdentityContext>): R
 
   if (local) {
     if (companion) return { ...none, principal: companion };
+    // MU_HUB_ROLE=server: the gate marks a loopback request that lacks the local-owner proof (local-owner-token.ts).
+    // It is nobody: any local process, or a WSL user over mirrored networking, is not the owner. The WeakSet is
+    // empty in every other role, so this line changes nothing there. Companion tokens (above) are unaffected.
+    if (unprovenLoopback.has(req)) return none;
     const owner: Principal = { personId: "usman", via: "loopback-owner", actor: "process", deviceId: HUB_DEVICE_ID, displayName: displayNameFor(c.root, "usman") };
-    const cookie = parseCookies(req.headers?.cookie)[SESSION_COOKIE];
-    const row = cookie ? c.store.verifySession(cookie) : null;
+    const cookies = sessionCookieValues(req.headers?.cookie);
+    const rows = verifiedRows(c.store, cookies, (r) => r.personId === "usman" && !r.pending);
+    const cookie = cookies.length > 0 || sessionCookiePresented(req.headers?.cookie);
+    // Whichever presented mu_session verifies is the one used (a page on another port can set a junk one that sorts first).
+    const row = rows.find((r) => r.personId === "usman" && !r.pending) ?? rows.find((r) => r.personId === "usman") ?? rows[0] ?? null;
     // The owner's browser at this PC holds a hub session cookie (minted by the gate on navigation).
     // A local process doesn't. A dead or someone else's cookie never locks the owner out: he stays
     // the loopback owner, just not an interactive session until the next page load mints one.
@@ -240,9 +300,13 @@ export function identifyRequest(req: ReqLike, ctx?: Partial<IdentityContext>): R
   const base = { ...none, tailnet, secure: true };
   if (companion) return { ...base, principal: companion };
 
-  const cookie = parseCookies(req.headers?.cookie)[SESSION_COOKIE];
-  if (cookie) {
-    const row = c.store.verifySession(cookie);
+  const cookies = sessionCookieValues(req.headers?.cookie);
+  if (!cookies.length && sessionCookiePresented(req.headers?.cookie)) return { ...base, sessionCookie: "dead" };
+  if (cookies.length) {
+    // Duplicate mu_session cookies (the browser sends the longer Path first, and a page on another port of this host
+    // can set one): accept whichever presented value verifies for this person, never just the first.
+    const rows = verifiedRows(c.store, cookies, (r) => r.personId === tailnet && !r.pending);
+    const row = rows.find((r) => r.personId === tailnet && !r.pending) ?? rows[0];
     if (!row) return { ...base, sessionCookie: "dead" };
     if (row.personId === tailnet && !row.pending)
       return {
@@ -288,9 +352,13 @@ function companionPrincipal(req: ReqLike, c: IdentityContext & { store: DeviceSt
   if (req.headers?.origin) return null;
   const device = c.store.verifyCompanion(auth.slice(7).trim());
   if (!device) return null;
+  // A shared cloud computer's token is valid only on /__devices/companion/* (devices/identity.ts identifyCompanion); it is no identity here.
+  if (device.kind === "cloud-computer") return "refused";
+  // A request that came through the computers bridge is never a person's companion (devices/identity.ts identifyCompanion).
+  if (req.headers?.["x-mu-bridge"] === "1") return "refused";
   const owner: PersonId | null = local ? "usman" : servePerson(req, c);
   if (owner !== device.owner) return "refused";
-  return { personId: device.owner, via: "companion", actor: "process", deviceId: device.id, displayName: displayNameFor(c.root, device.owner) };
+  return { personId: device.owner as PersonId, via: "companion", actor: "process", deviceId: device.id, displayName: displayNameFor(c.root, device.owner) };
 }
 
 /** THE function. Null means: no verified caller; the route answers 401. */
@@ -324,7 +392,7 @@ export function gatewayBearerOk(req: ReqLike, root: string): boolean {
   const presented = String(req.headers?.authorization ?? "").replace(/^Bearer\s+/i, "");
   let expected = "";
   try {
-    expected = readFileSync(join(root, ".operator-data", "away-mode", "relay.token"), "utf8").trim();
+    expected = readFileSync(join(dataDirFor(root), "away-mode", "relay.token"), "utf8").trim();
   } catch {
     return false;
   }

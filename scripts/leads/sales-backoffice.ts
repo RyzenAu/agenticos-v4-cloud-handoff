@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { formatAud, getReceptionistPackage, projectPackageProposal, type PackageId } from "../../src/lib/receptionist-packages";
 import { splitGst } from "../../src/lib/business-economics";
 import type { Lead } from "./crm";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type Offer = "website" | "redesign" | "receptionist" | "both";
 export function offerForPitch(pitch: string): Offer {
@@ -11,7 +12,7 @@ export function offerForPitch(pitch: string): Offer {
 }
 export function draftDir(root: string, id: number): string {
   if (!Number.isSafeInteger(id) || id < 1) throw new Error("Invalid lead id.");
-  return join(root, ".operator-data", "drafts", String(id));
+  return join(dataDirFor(root), "drafts", String(id));
 }
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const money = (cents: number) => formatAud(cents);

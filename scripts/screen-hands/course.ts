@@ -25,6 +25,7 @@ import type { WindowInfo } from "../jarvis-skills/windows";
 import type { LessonOutcome, LessonReply, LessonRequest } from "./lesson";
 import { appName } from "./teach";
 import { taskChain } from "../model-router/catalogue";
+import { dataDirFor } from "../cloud/data-dir";
 
 export type CourseLesson = { id: string; title: string; goal: string; why?: string };
 export type LessonRecord = { result: "passed" | "struggled" | "failed" | "known"; style: LessonStyle; at: string; hints: number; steps: number; seen: number };
@@ -41,7 +42,7 @@ export type Course = {
 };
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-export const COURSES_FILE = join(ROOT, ".operator-data", "screen-courses.json");
+export const COURSES_FILE = join(dataDirFor(ROOT), "screen-courses.json");
 export const SEARXNG = "http://127.0.0.1:18888";
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9+#]+/g, " ").replace(/\s+/g, " ").trim();
 const clip = (s: string, n: number) => s.replace(/\s+/g, " ").trim().slice(0, n);

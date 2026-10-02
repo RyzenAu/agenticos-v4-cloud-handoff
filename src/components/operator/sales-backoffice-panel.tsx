@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { operatorRequest } from "@/lib/operator";
-import { Button, Notice } from "@/components/ds";
+import { Button, DetailSection, Notice } from "@/components/ds";
 import { leadsApi, type Offer, type Owner } from "@/lib/leads";
 import { formatAud, RECEPTIONIST_PACKAGES } from "@/lib/receptionist-packages";
 
@@ -54,11 +54,11 @@ export function SalesBackofficePanel({ id, pipeline, initialFiles, refresh, by, 
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (e) { setError((e as Error).message); }
   }
-  return <section className="border-t border-border pt-4" aria-label="Sales pipeline and drafts">
-    <h3 className="ds-label text-muted-foreground">Sales pipeline</h3>
-    {pipeline && <p className="mt-1 text-sm">{pipeline.stage} · {pipeline.evidence}<br />Next: {pipeline.nextAction} ({pipeline.owner})</p>}
+  return <DetailSection title="Proposals and invoices">
+    {pipeline?.closed && <Notice tone="warn">This lead is closed. Drafting is disabled.</Notice>}
+    {pipeline && <details className="mb-3"><summary className="cursor-pointer text-sm text-muted-foreground">Pipeline details</summary><p className="mt-2 text-sm">{pipeline.stage} · {pipeline.evidence}<br />Next: {pipeline.nextAction} ({pipeline.owner})</p></details>}
     {showPackage && <label htmlFor={`${uid}-pkg`} className="mt-3 flex flex-col gap-1 text-xs text-muted-foreground">
-      Receptionist package (prices the deal and the drafts)
+      Receptionist package
       <select id={`${uid}-pkg`} value={pkg} disabled={busy} onChange={(e) => void choosePackage(e.target.value)}
         className="h-9 rounded-md border border-border bg-transparent px-2 text-sm text-foreground">
         {!pkg && <option value="" disabled>Choose a package…</option>}
@@ -66,12 +66,12 @@ export function SalesBackofficePanel({ id, pipeline, initialFiles, refresh, by, 
       </select>
     </label>}
     {showPackage && !pkg && <p className="mt-1 text-xs text-warn">Package not chosen: the deal value assumes Essential for the estimate. Choose one to draft.</p>}
-    <p className="mt-2 text-xs text-muted-foreground">Local drafts only. Nothing is sent or charged. Founder review required before use.</p>
+    <p className="mt-2 text-xs text-muted-foreground">Drafts stay local. Review before sending; nothing is charged here.</p>
     <div className="mt-2 flex flex-wrap gap-2">
       <Button size="xs" variant="outline" disabled={busy || pipeline?.closed || (showPackage && !pkg)} onClick={() => draft("proposal")}>Draft proposal</Button>
       <Button size="xs" variant="outline" disabled={busy || pipeline?.closed || (showPackage && !pkg)} onClick={() => draft("deposit-invoice")}>Draft deposit invoice</Button>
     </div>
     {error && <Notice tone="danger" className="mt-2">{error}</Notice>}
     {files.length > 0 && <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">{files.map(file => <li key={file}><button className="underline underline-offset-2" onClick={() => open(file)}>Download DRAFT {file}</button></li>)}</ul>}
-  </section>;
+  </DetailSection>;
 }

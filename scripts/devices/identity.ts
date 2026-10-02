@@ -56,6 +56,9 @@ export function identify(req: IncomingMessage, opts: IdentifyOptions): RequestId
 }
 
 /** A companion's bearer token, cross-checked against the Tailscale login it arrived with. */
+/** The bridge stamps this on every request it forwards (and strips any incoming copy). */
+export const viaBridge = (req: { headers: IncomingMessage["headers"] }) => req.headers["x-mu-bridge"] === "1";
+
 export function identifyCompanion(
   req: IncomingMessage,
   opts: IdentifyOptions,
@@ -66,11 +69,22 @@ export function identifyCompanion(
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   const device = opts.store.verifyCompanion(token);
   if (!device) return { error: "This companion is not paired, or its pairing expired or was revoked.", status: 401 };
+  // Through the companion bridge (scripts/computers/bridge.ts) only a shared cloud computer's token is accepted: anything that can reach the
+  // bridge's port on another host must not be able to use a person's companion token.
+  if (viaBridge(req) && device.kind !== "cloud-computer") return { error: "A person's companion does not connect through the computers bridge.", status: 403 };
+  // A shared cloud computer is not a person's PC: its bearer token is its whole identity, it arrives only on a loopback
+  // socket (the same host, or the allow-listed bridge), and it answers to no Tailscale login. It is never a principal
+  // anywhere else (scripts/identity/principal.ts refuses its token outside /__devices/companion).
+  // Lead review (1 Oct): Serve-relayed tailnet requests also arrive on a loopback socket, so "loopback" alone would
+  // let a copied computer token be used from any tailnet peer. Require the direct local path: no Serve login, local Host.
+  if (device.kind === "cloud-computer" && (!id.local || id.tailnet))
+    return { error: "A cloud computer connects only from the hub's own host.", status: 403 };
+  if (device.kind === "cloud-computer") return { device, principal: { personId: device.computer?.createdBy ?? "usman", via: "companion", deviceId: device.id } };
   // Over the tailnet the Serve-stamped login must be the device's owner; at this PC only
   // Usman's own companions may connect (a local process is already Usman's).
   if (id.principal?.via !== "companion" || id.principal.deviceId !== device.id)
     return { error: "This companion's Tailscale login does not match its owner.", status: 403 };
-  return { device, principal: { personId: device.owner, via: "companion", deviceId: device.id } };
+  return { device, principal: { personId: device.owner as PersonId, via: "companion", deviceId: device.id } };
 }
 
 /** People listed in people.json, as person ids (for the name picker). */

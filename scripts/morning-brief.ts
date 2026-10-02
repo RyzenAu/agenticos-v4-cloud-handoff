@@ -1,5 +1,6 @@
 /** Refresh the saved morning report through the running local OS, without printing its contents. */
 import { pathToFileURL } from "node:url";
+import { localOwnerHeaders } from "./identity/local-owner-token";
 
 export function morningBriefOptions(args: string[]) {
   const options = { baseUrl: "http://127.0.0.1:8081", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
@@ -49,12 +50,12 @@ export async function refreshMorningBrief(
   const options = morningBriefOptions(["--base-url", input.baseUrl, "--timezone", input.timezone]);
   const request = dependencies.request || fetch, now = dependencies.now || (() => new Date());
   const startedAt = now();
-  const get = (path: string) => request(`${options.baseUrl}${path}`, { redirect: "error", signal: AbortSignal.timeout(20000) }).then(readJson);
+  const get = (path: string) => request(`${options.baseUrl}${path}`, { redirect: "error", signal: AbortSignal.timeout(20000), headers: localOwnerHeaders() }).then(readJson);
   const { token } = await get("/__token");
   if (typeof token !== "string" || token.length < 8 || token.length > 512) throw new Error("The local OS did not provide a valid request token.");
   const generated = await request(`${options.baseUrl}/__operator/business/brief/refresh`, {
     method: "POST", redirect: "error", signal: AbortSignal.timeout(210000),
-    headers: { "Content-Type": "application/json", "x-claude-os-token": token, Origin: options.baseUrl },
+    headers: { "Content-Type": "application/json", "x-claude-os-token": token, Origin: options.baseUrl, ...localOwnerHeaders() },
     body: JSON.stringify({ timezone: options.timezone }),
   }).then(readJson);
   const state = await get("/__operator/business/brief");

@@ -22,6 +22,11 @@
 #   powershell -File scripts/windows/install-jarvis-desktop.ps1 -DryRun       # print the plan only
 #   -RepoRoot <path>   the AgenticOS checkout the app runs (default ~\source\repos\AgenticOS-v4)
 #   -NoLaunch          don't start the app afterwards
+#   -HubUrl <url>      remote-hub mode: the app opens this hub (https://<machine>.<tailnet>.ts.net[:port])
+#                      and never starts a local server. Written to config.json as hubUrl. Omit it for
+#                      the normal local mode (an existing hubUrl in config.json is left as it is).
+#   -LocalMode         remove hubUrl from config.json: the way back from remote-hub mode to a local server.
+#                      An unparseable existing config.json stops the install and is left untouched.
 #
 # Rollback: every file this replaces is copied first to ~\.jarvis-desktop\backup\<timestamp>\
 # (app.exe, the shortcuts, config.json) with manifest.txt listing each shortcut's old target.
@@ -32,10 +37,24 @@ param(
   [switch]$DryRun,
   [switch]$NoLaunch,
   [string]$RepoRoot = (Join-Path $env:USERPROFILE 'source\repos\AgenticOS-v4'),
-  [int]$Port = 8081
+  [int]$Port = 8081,
+  [string]$HubUrl = '',
+  [switch]$LocalMode
 )
 
 $ErrorActionPreference = 'Stop'
+# Same rule as desktop/src-tauri/src/config.rs parse_hub_url: https on a .ts.net host, or http on
+# localhost / 127.0.0.1 (tests); origin only. Refuse here so a typo never reaches config.json.
+$hubPattern = '^(https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.ts\.net|http://(localhost|127\.0\.0\.1))(:([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5]))?/?$'
+function Hide-Userinfo([string]$u) { $u -replace '(://)[^/?#]*@', '$1<redacted>@' -replace '^[^/:]*:[^/@]*@', '<redacted>@' }
+if ($HubUrl -and $LocalMode) {
+  Write-Output 'FAILED: -HubUrl and -LocalMode contradict each other.'
+  exit 1
+}
+if ($HubUrl -and $HubUrl -notmatch $hubPattern) {
+  Write-Output "FAILED: -HubUrl '$(Hide-Userinfo $HubUrl)' is not allowed. Use https://<machine>.<tailnet>.ts.net[:port] (or http://localhost / http://127.0.0.1 for tests)."
+  exit 1
+}
 $here = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)   # scripts/windows -> repo holding this script
 $desktop = Join-Path $here 'desktop'
 $srcTauri = Join-Path $desktop 'src-tauri'
@@ -61,6 +80,20 @@ try {
       'outside the sandbox (Invoke-CimMethod Win32_Process Create, see this script''s header).')
   }
   Write-Step "Not sandboxed: %LOCALAPPDATA% writes land in $env:LOCALAPPDATA"
+
+  # 0b. Read the existing runtime config now, before anything is installed. An unparseable file is
+  # never reset (that would silently drop hubUrl and every other key): stop and leave it untouched.
+  $configPath = Join-Path $stateDir 'config.json'
+  $existingConfig = [pscustomobject]@{}
+  if (Test-Path $configPath) {
+    try { $existingConfig = Get-Content $configPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop }
+    catch { throw "$configPath exists but can't be parsed as JSON. It was left untouched. Fix it, or delete it, then run the installer again." }
+    if ($null -eq $existingConfig -or $existingConfig -isnot [pscustomobject]) { throw "$configPath is not a JSON object. It was left untouched. Fix it, or delete it, then run the installer again." }
+  }
+  $existingHub = $existingConfig.PSObject.Properties['hubUrl']
+  $existingHubValid = $existingHub -and ($existingHub.Value -is [string]) -and ($existingHub.Value -match $hubPattern)
+  # Remote-only when -HubUrl is given, or the config already holds a valid hubUrl and -LocalMode isn't.
+  $remoteOnly = [bool]($HubUrl -or ($existingHubValid -and -not $LocalMode))
 
   # 1. Build (unless reusing an existing installer).
   if (-not $SkipBuild) {
@@ -89,13 +122,18 @@ try {
   Write-Step "Installer: $($installer.FullName) ($([Math]::Round($installer.Length / 1MB, 2)) MB, $($installer.LastWriteTime))"
 
   # 2. Sanity-check the checkout the app will run.
-  foreach ($needed in 'package.json', 'vite.config.ts', '.git\HEAD') {
-    if (-not (Test-Path (Join-Path $RepoRoot $needed))) {
-      throw "$RepoRoot has no $needed. -RepoRoot must be the main AgenticOS checkout (not a worktree)."
+  if ($remoteOnly) {
+    $hubShown = if ($HubUrl) { $HubUrl } else { $existingHub.Value }
+    Write-Step "Remote hub mode: the app will open $hubShown and never start a local server (no checkout needed)"
+  } else {
+    foreach ($needed in 'package.json', 'vite.config.ts', '.git\HEAD') {
+      if (-not (Test-Path (Join-Path $RepoRoot $needed))) {
+        throw "$RepoRoot has no $needed. -RepoRoot must be the main AgenticOS checkout (not a worktree)."
+      }
     }
+    $head = (Get-Content (Join-Path $RepoRoot '.git\HEAD') -Raw).Trim()
+    Write-Step "App will run $RepoRoot ($head) on port $Port"
   }
-  $head = (Get-Content (Join-Path $RepoRoot '.git\HEAD') -Raw).Trim()
-  Write-Step "App will run $RepoRoot ($head) on port $Port"
 
   # 3. Back up what gets replaced.
   $installDir = Join-Path $env:LOCALAPPDATA 'Jarvis'
@@ -167,16 +205,15 @@ try {
   }
 
   # 6. Runtime config the app reads (config.rs): which checkout, which port.
-  $config = [pscustomobject]@{}
-  if (Test-Path $configPath) {
-    try { $config = Get-Content $configPath -Raw | ConvertFrom-Json } catch { $config = [pscustomobject]@{} }
-  }
+  $config = $existingConfig
   $config | Add-Member -NotePropertyName repoRoot -NotePropertyValue $RepoRoot -Force
   $config | Add-Member -NotePropertyName port -NotePropertyValue $Port -Force
-  Write-Step "Config $configPath : $($config | ConvertTo-Json -Compress)"
+  if ($HubUrl) { $config | Add-Member -NotePropertyName hubUrl -NotePropertyValue $HubUrl.TrimEnd('/') -Force }
+  if ($LocalMode -and $config.PSObject.Properties['hubUrl']) { $config.PSObject.Properties.Remove('hubUrl'); Write-Step 'Local mode: removed hubUrl from the config' }
+  Write-Step "Config $configPath : keys $($config.PSObject.Properties.Name -join ', ') (values not logged: env may hold secrets)"
   if (-not $DryRun) {
     # UTF-8 without BOM (serde_json also tolerates a BOM, but keep it clean).
-    [IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
+    [IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding($false)))
   }
 
   # 7. Point every Jarvis shortcut at the installed exe (Startup and Start Menu always; Desktop if present).

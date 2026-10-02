@@ -83,13 +83,18 @@ const FILL_CLAUSE = /^((?:please |now |then |jarvis,? )*(?:fill(?: in| out)?|set
 const SAVE_CLAUSE = /^((?:please |now |then |jarvis,? )*save(?: (?:it|this|that|the (?:file|note|document|doc|text)))? (?:as|to|into|under) (?:a file (?:called|named) )?)(.+)$/i;
 const OPEN_CLAUSE = /^((?:please |now |then |jarvis,? )*open (?:the )?file (?:called |named )?)(.+)$|^((?:please |now |then |jarvis,? )*open )(["“']?(?:[a-z]:[\\/]|\\\\).+)$/i;
 const QUOTED = /"[^"]{2,}"|“[^”]{2,}”|'[^']{3,}'/g;
-const PATH = /(?:[a-z]:[\\/]|\\\\)[^\s"'`]+|\b[\w-]+\.(?:txt|docx?|xlsx?|csv|pdf|pptx?|md|json|png|jpe?g|zip)\b/gi;
+const PATH = /(?:(?<![a-z0-9])[a-z]:[\\/]|\\\\)[^\s"'`]+|\b[\w-]+\.(?:txt|docx?|xlsx?|csv|pdf|pptx?|md|json|png|jpe?g|zip)\b/gi;
 
 /** His dictated goal with typed text as ⟨text N⟩ and files as ⟨file N⟩, then maskLine. Pure. */
+/** A web address as it may be shown: its query string and fragment (tokens, keys, codes, signatures) are never displayed. */
+const URL_TAIL = /(\b[a-z][a-z0-9+.-]*:\/\/[^\s"'`?#]+)[?#][^\s"'`]*/gi;
+export const withoutUrlSecrets = (text: unknown) => String(text ?? "").replace(URL_TAIL, "$1");
+
 export function maskGoal(goal: unknown, max = 160): string {
   let texts = 0;
   let files = 0;
-  const parts = String(goal ?? "").replace(/\s+/g, " ").trim().split(CLAUSE_SPLIT);
+  // Every caller gets the same secret handling: key/token patterns redacted and URL query strings dropped BEFORE the clause masking.
+  const parts = redactText(withoutUrlSecrets(goal), 2000).replace(/\s+/g, " ").trim().split(CLAUSE_SPLIT);
   const out = parts.map((part, i) => {
     if (i % 2 === 1) return part; // a separator kept by the capture group
     let m = TYPE_CLAUSE.exec(part);

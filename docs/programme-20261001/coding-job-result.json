@@ -1,0 +1,133 @@
+{
+  "jobId": "20cef94d-4b6d-497e-a91b-8e6b4e39838e",
+  "state": "completed",
+  "head": "748d990c66800420cd671ae8f06840140dd3a3bb",
+  "gate": [
+    "committed-and-clean: pass",
+    "ownership: pass",
+    "no-eol-only-churn: pass",
+    "secret-scan: pass",
+    "checks-pass: pass",
+    "review-approved-for-sha: pass",
+    "done-when-evidenced: pass",
+    "receipts-recorded: pass"
+  ],
+  "diffStat": [
+    "src/greet.test.ts +5 -1",
+    "src/greet.ts +2 -0"
+  ],
+  "tests": [
+    {
+      "sha": "4b5561953fc9ba15759ffaf7a71fdbec8d70848e",
+      "exitCode": 0,
+      "counts": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": null
+      }
+    },
+    {
+      "sha": "748d990c66800420cd671ae8f06840140dd3a3bb",
+      "exitCode": 0,
+      "counts": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": null
+      }
+    }
+  ],
+  "review": {
+    "verdict": "approve",
+    "findings": 0
+  },
+  "receipts": [
+    {
+      "role": "builder-1",
+      "account": "claude:max-2",
+      "requestedModel": "claude-sonnet-5-5",
+      "providerModel": "claude-sonnet-5-5",
+      "modelMismatch": false,
+      "cliVersion": "2.1.280",
+      "executionLocation": "this-pc",
+      "contextSources": [
+        {
+          "kind": "shared-brief",
+          "name": "C:/Users/Nebula PC/source/repos/MU-Workspace/MU-BUSINESS-CONTEXT-20260930.txt",
+          "chars": 11809,
+          "sha256": "1f041305256b"
+        },
+        {
+          "kind": "task-context",
+          "name": "job spec: objective, done-when, owned paths",
+          "chars": 1425,
+          "sha256": "bb2b0e338775"
+        }
+      ],
+      "allowance": {
+        "plan": "claude-max-20x",
+        "accountSlot": "claude:max-2",
+        "window": "5-hour / weekly",
+        "usedPercentAtLastRead": null,
+        "readAt": null,
+        "reading": "unknown",
+        "usedPercentAtEnd": 4
+      },
+      "outcome": "succeeded",
+      "tokens": {
+        "inputTokens": 12,
+        "outputTokens": 1038,
+        "cacheReadTokens": 124134,
+        "cacheWriteTokens": 3002,
+        "reasoningTokens": null,
+        "audioSeconds": null,
+        "characters": null,
+        "images": null
+      },
+      "valueUsdEquivalent": 0.06965080000000001
+    },
+    {
+      "role": "reviewer",
+      "account": "claude:max-2",
+      "requestedModel": "claude-opus-5-5",
+      "providerModel": "claude-opus-5-5",
+      "modelMismatch": false,
+      "cliVersion": "2.1.280",
+      "executionLocation": "this-pc",
+      "contextSources": [
+        {
+          "kind": "shared-brief",
+          "name": "C:/Users/Nebula PC/source/repos/MU-Workspace/MU-BUSINESS-CONTEXT-20260930.txt",
+          "chars": 11809,
+          "sha256": "1f041305256b"
+        },
+        {
+          "kind": "task-context",
+          "name": "job spec: objective, done-when, owned paths",
+          "chars": 2397,
+          "sha256": "e86a90e5963a"
+        }
+      ],
+      "allowance": {
+        "plan": "claude-max-20x",
+        "accountSlot": "claude:max-2",
+        "window": "5-hour / weekly",
+        "usedPercentAtLastRead": null,
+        "readAt": null,
+        "reading": "unknown",
+        "usedPercentAtEnd": 4
+      },
+      "outcome": "succeeded",
+      "tokens": {
+        "inputTokens": 4,
+        "outputTokens": 425,
+        "cacheReadTokens": 15675,
+        "cacheWriteTokens": 16082,
+        "reasoningTokens": null,
+        "audioSeconds": null,
+        "characters": null,
+        "images": null
+      },
+      "valueUsdEquivalent": 0.14030700000000002
+    }
+  ]
+}

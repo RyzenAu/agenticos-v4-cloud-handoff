@@ -17,6 +17,7 @@ import { financeDbPath, openFinanceDb, readAccounts, readCreditsSince, readTrans
 import { loadOpenInvoices, matchInvoices } from "./invoice-matching";
 import { computeCategorySpend, type CategorySpend } from "./categories";
 import { assertLegacyNabAdmitted, LEGACY_NAB_LIVE_AUTHORISATION, legacyNabAdmission, type LegacyNabCapability, type LegacyNabLiveAuthorisation } from "./legacy-admission";
+import { dataDirFor } from "../cloud/data-dir";
 
 export const SYNC_WINDOW_DAYS = 90;
 const SYDNEY_TZ = "Australia/Sydney";
@@ -24,13 +25,13 @@ const SYDNEY_TZ = "Australia/Sydney";
 export type FinanceState = { userId?: string; connectionIds?: string[]; lastSyncAt?: string; lastSyncError?: string; lastConsentAt?: string; lastCsvImportAt?: string };
 
 function stateFile(root: string): string {
-  return join(root, ".operator-data", "finance.json");
+  return join(dataDirFor(root), "finance.json");
 }
 function readState(root: string): FinanceState {
   try { return JSON.parse(readFileSync(stateFile(root), "utf8")); } catch { return {}; }
 }
 function writeState(root: string, state: FinanceState): void {
-  const dir = join(root, ".operator-data");
+  const dir = join(dataDirFor(root));
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   const file = stateFile(root), temp = `${file}.tmp`;
   writeFileSync(temp, JSON.stringify(state, null, 2), { mode: 0o600 });

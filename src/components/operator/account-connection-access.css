@@ -10,7 +10,7 @@
 .ar-existing-connections { padding:24px; border:1px solid var(--op-border); border-radius:18px; background:var(--op-panel); }
 .ar-existing-heading { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
 .ar-existing-heading h3 { margin:0 0 5px; font-size:19px; letter-spacing:-.4px; }
-.ar-existing-heading p,.ar-existing-footnote,.ar-native-details p { color:var(--op-muted); font-size:12px; line-height:1.7; margin:0; }
+.ar-existing-heading p,.ar-existing-footnote,.ar-native-details p { color:var(--op-muted); font-size: var(--text-xs); line-height:1.7; margin:0; }
 .ar-existing-marks { display:flex; flex-shrink:0; align-items:center; }
 .ar-existing-marks img { height:37px; width:37px; padding:6px; border:1px solid var(--op-border); border-radius:11px; background:#242327; object-fit:contain; }
 .ar-existing-marks img+img { margin-left:-6px; background:#d77b56; }
@@ -21,9 +21,9 @@
 .ar-existing-selection .ar-provider-logo { width:28px; height:28px; flex-shrink:0; }
 .ar-existing-selection span { display:grid; gap:4px; min-width:0; }
 .ar-existing-selection strong { font-size:13px; }
-.ar-existing-selection small { font-size:12px; color:var(--op-muted); overflow-wrap:anywhere; }
+.ar-existing-selection small { font-size: var(--text-xs); color:var(--op-muted); overflow-wrap:anywhere; }
 .ar-existing-actions { display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin:16px 0; }
-.ar-native-details { font-size:12px; color:var(--op-muted); margin-top:12px; }
+.ar-native-details { font-size: var(--text-xs); color:var(--op-muted); margin-top:12px; }
 .ar-native-details summary { cursor:pointer; }
 .ar-native-details p { margin-top:8px; }
 @media(max-width:550px) { .ar-existing-connections { padding:16px; } .ar-existing-heading { align-items:flex-start; } }
@@ -36,7 +36,7 @@
   accent-color: var(--op-accent);
 }
 .op-form label.ar-mail-access-choice span {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-ink);
 }
 
@@ -92,7 +92,7 @@
 }
 .ar-direct-heading p {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
 }
 .ar-account-direct .op-form {
@@ -126,7 +126,7 @@
 }
 .ar-client-drop small {
   color: var(--op-muted);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ar-client-drop input {
   position: absolute;
@@ -140,7 +140,7 @@
   outline-offset: 3px;
 }
 .ar-client-instructions {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--op-muted);
   line-height: 1.75;
 }
@@ -167,7 +167,7 @@
 }
 .ar-client-instructions .ar-redirect-uri {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin-top: 8px;
   overflow-wrap: anywhere;
 }
@@ -177,7 +177,7 @@
   gap: 20px;
 }
 .ar-account-direct .ar-direct-private {
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 .ar-existing-connections{padding:14px 16px;margin-bottom:18px;border:1px solid color-mix(in srgb,var(--foreground,#ddd) 14%,transparent);border-radius:14px;background:color-mix(in srgb,var(--foreground,#ddd) 3%,transparent);font-size:13px;line-height:1.55}
 .ar-existing-connections>summary{cursor:pointer;font-weight:600}

@@ -1,0 +1,68 @@
+
+# hub A (original): cloud role, MU_DATA_DIR=<scratch>\data, port 8114, pid 310544
+  /__health -> HTTP 200 status=ok hubRole=cloud gitSha=0e520d8 stores=6 store(s) open, 3 not created yet.
+PASS  hub A is healthy before anything is seeded
+
+$ bun scripts/cloud/role-proof.ts seed --hub http://127.0.0.1:8114 --cookie-file <scratch>\owner.cookie --out <scratch>\seed.json   # seed a job record and a pairing code in hub A
+  PASS  hub answers /__health with role cloud
+  PASS  the owner's browser has a confirmed human session (first navigation on a fresh hub, or the saved cookie after a restart)
+  PASS  a companion pairing code can be made (not printed)
+  PASS  a personal-PC command with no companion fails and leaves a job record that did not run
+  PASS  the job list shows it as not succeeded
+  {"passed":5,"failed":0}
+  (exit 0)
+PASS  seed passed
+
+$ bun scripts/cloud/backup-cli.ts backup --data-dir <scratch>\data --out <scratch>\backups   # online backup of hub A's data (hub still running)
+  backup: <scratch>\backups\backup-20261001T065829Z
+  files: 9 (6 SQLite stores), 443284 bytes
+    approvals.sqlite: 3 tables, 0 rows
+    coding/coding.sqlite: 4 tables, 1 rows
+    crm.sqlite: 12 tables, 0 rows
+    jobs.sqlite: 6 tables, 6 rows
+    mail-archive.sqlite: 8 tables, 3 rows
+    triggers.sqlite: 7 tables, 4 rows
+  (exit 0)
+PASS  backup written
+
+$ bun scripts/cloud/backup-cli.ts verify --from <scratch>\backups\backup-20261001T065829Z   # verify the backup against its manifest
+  verified: 9 files match the manifest
+  (exit 0)
+# hub stopped (pid 310544, whole tree)
+
+$ bun scripts/cloud/backup-cli.ts verify --from <scratch>\backup-tampered   # verify a TAMPERED copy of the backup (one byte flipped)
+  FAILED: approvals.sqlite: checksum differs
+  (exit 1)
+PASS  a tampered backup is refused
+
+# disaster: take a COPY of the data and wipe it (the original data folder is not touched)
+PASS  the copy is now empty
+
+$ bun scripts/cloud/backup-cli.ts restore --from <scratch>\backups\backup-20261001T065829Z --to <scratch>\data-copy   # restore the backup into the wiped copy
+  restored: <scratch>\data-copy (9 files, checksums verified)
+    approvals.sqlite: 3 tables, 0 rows, matches manifest
+    coding/coding.sqlite: 4 tables, 1 rows, matches manifest
+    crm.sqlite: 12 tables, 0 rows, matches manifest
+    jobs.sqlite: 6 tables, 6 rows, matches manifest
+    mail-archive.sqlite: 8 tables, 3 rows, matches manifest
+    triggers.sqlite: 7 tables, 4 rows, matches manifest
+  next: start the hub with MU_DATA_DIR=<scratch>\data-copy (deploy/README.md, Restore)
+  (exit 0)
+PASS  restore verified checksums and row counts
+
+# hub B (restored copy): cloud role, MU_DATA_DIR=<scratch>\data-copy, port 8114, pid 309796
+  /__health -> HTTP 200 status=ok hubRole=cloud gitSha=0e520d8 stores=6 store(s) open, 3 not created yet.
+PASS  hub B on the restored data is healthy
+
+$ bun scripts/cloud/role-proof.ts after --hub http://127.0.0.1:8114 --cookie-file <scratch>\owner.cookie --out <scratch>\after.json   # seeded job and pairing code survive on the restored data (same cookie file: the session survives too)
+  PASS  hub answers /__health with role cloud
+  PASS  the owner's browser has a confirmed human session (first navigation on a fresh hub, or the saved cookie after a restart)
+  PASS  after the restart the same jobs are listed with the same states (nothing re-run, nothing lost)
+  PASS  the pairing code made BEFORE the restart still redeems (the hub kept it); the companion pairs
+  PASS  the paired companion is in the device list (offline: it is not running)
+  {"passed":5,"failed":0}
+  (exit 0)
+PASS  after-restore proof passed
+# hub stopped (pid 309796, whole tree)
+
+rehearsal PASSED (0 failures)

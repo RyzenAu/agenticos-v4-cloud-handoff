@@ -473,3 +473,58 @@ version label, port-scoped app URLs, starting-page escaping).
      `Local\JarvisAppServer-8081` and the supervisor leaves restarts and hang-kills to it.
 4. **NotebookLM keepalive:** nothing to install; the task runs the main tree's `.vbs`, so after the merge
    its Last Run Result is the refresh's real exit code. The owner still has to sign in again.
+
+## Remote hub mode (2 Oct 2026)
+
+For a PC that should use a hub running elsewhere (the always-on Ryzen-PC, reached over Tailscale)
+instead of starting its own server. Local mode is unchanged and stays the default.
+
+**Turn it on** with `hubUrl` in `~\.jarvis-desktop\config.json`, the `JARVIS_HUB_URL` environment
+variable (it wins over the file), or the installer:
+
+```powershell
+powershell -File scripts/windows/install-jarvis-desktop.ps1 -HubUrl https://ryzen-pc.<tailnet>.ts.net:8443
+```
+
+```json
+{ "hubUrl": "https://ryzen-pc.<tailnet>.ts.net:8443" }
+```
+
+To go back to local mode run the installer with `-LocalMode` (removes `hubUrl`), or delete it from
+`config.json` by hand, and unset `JARVIS_HUB_URL`. Re-running the installer without either flag leaves an
+existing `hubUrl` alone and, if it is valid, skips the checkout check (a remote-only PC has no checkout). The
+installer stops, leaving the file untouched, if an existing `config.json` can't be parsed.
+
+A `config.json` that exists but can't be parsed (trailing comma, truncated, a wrong type such as
+`"port":"8443"`) is treated like an invalid hub URL: the window names the file and the error class and
+nothing starts, because the app can't tell whether a hub was intended. A missing file is local mode. A valid
+`JARVIS_HUB_URL` still wins over a broken file. In that error state no origin is trusted (no mic grant).
+
+**Allowed values** (`config.rs::parse_hub_url`, mirrored by the installer): `https://` with a host ending
+`.ts.net`, or `http://localhost` / `http://127.0.0.1` for tests; the address only (no credentials, path,
+query or fragment). Anything else (`http://192.168.1.120:8081`, `https://evil.example`,
+`https://x.ts.net.evil.com`) is refused: the window shows "Jarvis won't open this hub address" with the
+reason, and the app does not fall back to a local hub. An invalid `JARVIS_HUB_URL` does not fall through
+to the file's value either.
+
+**What changes in remote mode**
+- No `bun` is started; the supervisor and restart loop, the repo/branch check and the `bun.exe` lookup do
+  not run, and `Local\JarvisAppServer-<port>` is never taken, so it can't compete with a local hub.
+- The window opens the hub URL. Navigation within the hub origin stays in the window; every other link
+  opens in the default browser. The microphone is auto-granted to the hub origin only (not to
+  `localhost:8081`).
+- If the hub can't be reached the window says "Cannot reach the hub at <url>" with the reason, retries
+  by itself (and the tray's "Reload hub", which replaces "Restart OS server", retries at once). When a
+  page load fails after the port answers, the WebView2 error code is shown and it retries with backoff.
+- Reachability is a TCP connect to the hub's host and port (the bundled HTTP client has no TLS); whether
+  the page really loaded is WebView2's `NavigationCompleted`. The title shows `hub <host>`; the version
+  from `/__version` is not read in this mode.
+
+**Not covered:** a real GUI run against a real remote hub. Unit tests cover config precedence, URL
+validation, the startup plan (no spawn, no mutex), and origin matching; the WebView2 handlers
+themselves are only compile-checked.
+
+**Web UI served from a remote origin:** `localhost:8081` literals in `src/routes/-pages/hermes.tsx`
+(Hermes skill text, ~8284-8351) and `src/components/hermes-mission-control.tsx` (~340, 375) are
+instructions for Hermes/curl, correct as long as that runs on the hub PC itself, so they
+were left alone. `src/routes/hud.tsx:14` is a comment.

@@ -53,7 +53,7 @@ export function marginText(f: MarginFigure): string {
 function Provenance({ f }: { f: Figure }) {
   return (
     <span className="block text-2xs leading-4 text-muted-foreground">
-      {f.source} · as of {asOfText(f.asOf)}
+      {fmtProse(f.source)} · as of {asOfText(f.asOf)}
     </span>
   );
 }
@@ -225,7 +225,7 @@ function Portfolio({ econ }: { econ: UsageEconomics }) {
             <span className="text-foreground">SMS segments sent</span>{" "}
             <span className="ds-num font-medium">{m.smsSegments.count ?? "Unknown"}</span>
             <span className="block text-xs text-muted-foreground">{m.smsSegments.note}</span>
-            <span className="block text-2xs text-muted-foreground">{m.smsSegments.source} · as of {asOfText(m.smsSegments.asOf)}</span>
+            <span className="block text-2xs text-muted-foreground">{fmtProse(m.smsSegments.source)} · as of {asOfText(m.smsSegments.asOf)}</span>
           </li>
         </ul>
       </Surface>

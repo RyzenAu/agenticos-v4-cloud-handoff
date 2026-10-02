@@ -36,7 +36,7 @@ export type PwPage = {
   evaluateHandle(fn: (i: number) => unknown, arg: number): Promise<PwElementHandle>;
   keyboard: { insertText(text: string): Promise<void>; press(key: string): Promise<void> };
   mouse: { click(x: number, y: number): Promise<void>; wheel(dx: number, dy: number): Promise<void> };
-  route(url: string, handler: (route: PwRoute) => unknown): Promise<void>;
+  route(url: string, handler: (route: PwRoute) => unknown): Promise<unknown>;
   on(event: "dialog" | "download" | "popup", handler: (x: any) => unknown): unknown;
   bringToFront(): Promise<void>;
   close(): Promise<void>;

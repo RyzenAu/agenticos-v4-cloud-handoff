@@ -568,7 +568,7 @@ function SourceTogglePill({
 
 function LegendSwatch({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
       <span className="inline-block h-[7px] w-[7px] rounded-full" style={{ background: color }} />
       {label}
     </span>

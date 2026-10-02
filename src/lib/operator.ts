@@ -301,7 +301,7 @@ export function useOperator() {
     queryKey: ["operator-state"],
     queryFn: () => operatorRequest("/state"),
     refetchInterval: (q) =>
-      q.state.data?.sources.some((s) => s.status === "indexing") ? 1200 : 15000,
+      q.state.data?.sources.some((s) => s.status === "indexing") ? 1200 : 30000,
   });
   return {
     ...query,

@@ -10,8 +10,9 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { mailArchive } from "./mail-archive";
+import { dataDirFor } from "./cloud/data-dir";
 export function ingestMailStage(root: string) {
-const base = join(root, ".operator-data/mail-staging");
+const base = join(dataDirFor(root), "mail-staging");
 mkdirSync(base, { recursive: true, mode: 0o700 });
 const lock = join(base, "import.lock");
 if (existsSync(lock)) {

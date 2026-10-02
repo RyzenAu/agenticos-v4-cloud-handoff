@@ -77,7 +77,7 @@ type WidgetBase = {
   headingLevel?: 2 | 3;
   id?: string;
   className?: string;
-} & { [key: `data-${string}`]: string | undefined };
+} & { [key: `data-${string}`]: string | undefined; };
 
 function WidgetShell({
   icon: Icon,
@@ -117,7 +117,9 @@ function WidgetShell({
           {title}
         </H>
         {badge != null && badge !== "" && (
-          <span data-widget-count="" className="ds-num shrink-0 text-sm text-muted-foreground">{badge}</span>
+          <span data-widget-count="" className="ds-num shrink-0 text-sm text-muted-foreground">
+            {badge}
+          </span>
         )}
       </div>
       {children}
@@ -182,17 +184,15 @@ export function WidgetList({
         <ul role="list" className="mt-4 divide-y divide-border">
           {children}
         </ul>
-      ) : (
-        // A string is one line of text (<p>); a node (WidgetEmpty is a <div> holding <p>s) needs a <div>:
-        // a block inside a <p> is invalid HTML and logs a hydration error (audit P3-1, 29 Sep 2026).
-        typeof empty === "string" ? (
+      ) : // A string is one line of text (<p>); a node (WidgetEmpty is a <div> holding <p>s) needs a <div>:
+      // a block inside a <p> is invalid HTML and logs a hydration error (audit P3-1, 29 Sep 2026).
+      typeof empty === "string" ? (
           <p data-widget-empty="" className="mt-5 text-sm text-muted-foreground">
             {empty}
           </p>
         ) : (
           <div className="mt-5 text-sm text-muted-foreground">{empty}</div>
-        )
-      )}
+        )}
     </WidgetShell>
   );
 }
@@ -211,13 +211,19 @@ export function WidgetRow({
   aside?: ReactNode;
   lead?: ReactNode;
   className?: string;
-} & { [key: `data-${string}`]: string | undefined }) {
+} & { [key: `data-${string}`]: string | undefined; }) {
   return (
     <li className={cn("flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0", className)} {...data}>
       {lead && <span className="shrink-0">{lead}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium leading-snug text-foreground [overflow-wrap:anywhere] sm:text-base">{title}</span>
-        {meta && <span className="mt-0.5 block text-xs text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">{meta}</span>}
+        <span className="block text-sm font-medium leading-snug text-foreground [overflow-wrap:anywhere] sm:text-base">
+          {title}
+        </span>
+        {meta && (
+          <span className="mt-0.5 block text-xs text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
+            {meta}
+          </span>
+        )}
       </span>
       {aside && <span className="flex shrink-0 items-center gap-2">{aside}</span>}
     </li>
@@ -234,11 +240,30 @@ export function WidgetEmpty({ title, body, className }: { title: ReactNode; body
   );
 }
 
-/** The one small line at the foot of a page for freshness and sources. */
-export function PageFoot({ children, className, title }: { children: ReactNode; className?: string; title?: string }) {
+/** Secondary sources fold away; an important stale/error notice can stay visible. */
+export function PageFoot({
+  children,
+  className,
+  title,
+  collapsible = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  collapsible?: boolean;
+}) {
   return (
     <footer data-page-foot="" title={title} className={cn("mt-10 border-t border-border pt-4 text-xs leading-relaxed text-muted-foreground", className)}>
-      {children}
+      {collapsible ? (
+        <details>
+          <summary className="min-h-11 w-fit cursor-pointer py-3 text-sm hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+            Sources & details
+          </summary>
+          <div className="max-w-[75ch] pb-3">{children}</div>
+        </details>
+      ) : (
+        <div className="max-w-[75ch]">{children}</div>
+      )}
     </footer>
   );
 }

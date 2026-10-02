@@ -55,8 +55,13 @@ const ACTIONS: Record<string, ActionPolicy> = {
   // Other consequential actions named in V7.
   "message.send": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
   "content.publish": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
+  // Taking published content back down (a lead preview's public site). The same evidence and lifetime as publishing it
+  // (scripts/lead-sites/publish-approval.ts); the one registry line the server role's remote take-down needed.
+  "content.unpublish": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
   "file.delete": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
   "account.change": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
+  // A trigger or routine job that is drafted/held for the owner to look at before it goes any further (scripts/triggers).
+  "trigger.review": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 24 * 60 * MIN, screenText: false },
   // Releasing a job kind quarantined by an unacknowledged stop (owner-visible, asked once).
   "jobs.release-quarantine": { evidence: ["spokenYes", "uiConfirm"], maxTtlMs: 10 * MIN, screenText: false },
 };

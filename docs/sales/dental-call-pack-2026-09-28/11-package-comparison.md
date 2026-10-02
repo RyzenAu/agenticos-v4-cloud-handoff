@@ -9,7 +9,7 @@ Source of truth: `src/lib/receptionist-packages.ts` → `docs/receptionist-packa
 <!-- generated:comparison (build/build_markdown.py; don't hand-edit) -->
 |  | **Essential** | **Professional** | **Premium** |
 | --- | --- | --- | --- |
-| Best for | One location that wants its calls answered and booked. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.] | A busy practice with several practitioners that wants reminders and a weekly report. | Multi-location or high-volume practices that want all calls covered and M&U reviewing call quality every week. |
+| Best for | One location that wants its calls answered and booked in business hours, after hours or as overflow. | A busy practice with several practitioners that wants reminders and a weekly report. | Multi-location or high-volume practices that want all calls covered and M&U reviewing call quality every week. |
 | Monthly, ex GST | **A$699** | **A$1,099** | **A$1,999** |
 | Monthly incl. 10% GST | A$768.90 | A$1,208.90 | A$2,198.90 |
 | Setup | Quoted separately once approved | Quoted separately once approved | Quoted separately once approved |
@@ -19,8 +19,8 @@ Source of truth: `src/lib/receptionist-packages.ts` → `docs/receptionist-packa
 | Extra SMS, ex GST | A$0.15/segment | A$0.15/segment | A$0.15/segment |
 | Phone numbers / locations | 1 / 1 | 1 / 1 | 3 / 3 |
 | Connected calendars (Google Calendar or Cal.com) | 1 | 3 | 10 |
-| Cover modes (per configuration) | After hours; When busy / no answer [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.] | After hours; When busy / no answer; All calls | After hours; When busy / no answer; All calls |
-| Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded | ✓ live: Answers calls in the cover configured for each business; says it is automated and the call is recorded. [OWNER DECISION (a) PENDING: is Essential cover after hours and busy / no answer only, or business hours alongside the team too? Not decided.] | ✓ live | ✓ live |
+| Cover modes (per configuration) | After hours; When busy / no answer; All calls | After hours; When busy / no answer; All calls | After hours; When busy / no answer; All calls |
+| Answers calls in business hours, after hours, alongside your team or as overflow, as configured for each business; says it is automated and the call is recorded | ✓ live | ✓ live | ✓ live |
 | Takes a structured message and callback request | ✓ live | ✓ live | ✓ live |
 | Urgent or life-threatening wording gets the 000 line first | ✓ live | ✓ live | ✓ live |
 | Checks availability and books into a connected Google Calendar or Cal.com calendar, with a reference (a booking request otherwise) | at go-live | at go-live | at go-live |

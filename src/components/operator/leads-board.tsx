@@ -91,7 +91,7 @@ export function LeadsBoard({ leads, by, onOpen, onMoved }: { leads: BoardLead[];
               col.key === "prospects" && !showProspects ? (
                 <section key={col.key} id={`board-col-${col.key}`} aria-label={`${col.label}: ${items.length}, folded`} className="flex w-[148px] shrink-0 snap-start flex-col gap-2 rounded-xl border border-dashed border-border p-3">
                   <h3 className="text-sm font-semibold text-foreground">{col.label} <span className="ds-num font-normal text-muted-foreground">{items.length}</span></h3>
-                  <p className="text-[11px] leading-snug text-muted-foreground">Not contacted yet. Work these from “To do today”.</p>
+                  <p className="text-xs leading-snug text-muted-foreground">Not contacted yet. Work these from “To do today”.</p>
                   <Button variant="outline" size="xs" onClick={() => setShowProspects(true)}>Show</Button>
                 </section>
               ) : (
@@ -111,7 +111,7 @@ export function LeadsBoard({ leads, by, onOpen, onMoved }: { leads: BoardLead[];
                   <h3 className="text-sm font-semibold text-foreground">{col.label} <span className="ds-num font-normal text-muted-foreground">{items.length}</span></h3>
                   {col.key !== "prospects" && col.key !== "lost" && value > 0 && <span className="ds-num text-xs text-muted-foreground" title="First-year value, ex GST">{aud(value, { compact: true })} ex GST</span>}
                 </header>
-                <p className="px-1 pb-2 text-[11px] leading-snug text-muted-foreground">{col.hint}</p>
+                <p className="px-1 pb-2 text-xs leading-snug text-muted-foreground">{col.hint}</p>
                 <ol className="flex flex-col gap-1.5">
                   {items.slice(0, cap).map((l) => (
                     <BoardCard key={l.id} lead={l} dim={col.key === "lost"} onOpen={() => onOpen(l.id)} onMove={(to) => setMove({ lead: l, to })}

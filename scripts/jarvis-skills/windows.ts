@@ -68,7 +68,8 @@ export function appNamedIn(text: string): string | null {
   return null;
 }
 export function windowIsApp(app: string, process: string): boolean {
-  const procs = PROCESS_ALIASES[app] ?? [app.replace(/ /g, "")];
+  const key = app.toLowerCase().trim();
+  const procs = PROCESS_ALIASES[key] ?? [key.replace(/ /g, "")];
   return procs.includes(process.toLowerCase());
 }
 

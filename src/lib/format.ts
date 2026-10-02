@@ -216,7 +216,7 @@ export function fmtProse(text: string | null | undefined): string {
   if (!text) return text ?? "";
   return text
     // A date inside a file path or an id ("dental-call-pack-2026-09-28/v3-live-2026-09-27.md") is part of a name: left alone.
-    .replace(/(?<![\w/\\.-])(20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(?![\w/\\-])(?!\.\w)/g, (m) => fmtDay(m, { year: true }))
+    .replace(/(?<![\w/\\.-])(20\d\d)-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])(?![\w/\\-])(?!\.\w)/g, (m) => fmtDay(m, { year: true, timeZone: "UTC" }))
     .replace(/(?<![\w/\\.-])(20\d\d)-(0[1-9]|1[0-2])(?![\w/\\-])(?!\.\w)/g, (_m, y: string, mo: string) => `${MONTHS[Number(mo) - 1]} ${y}`)
     .replace(/\b(\d{1,2}) Sep\b(?!t)/g, "$1 Sept")
     .replace(/\b([01]?\d|2[0-3]):([0-5]\d)Z\b/g, (_m, h: string, mi: string) => `${Number(h) % 12 === 0 ? 12 : Number(h) % 12}:${mi} ${Number(h) < 12 ? "am" : "pm"} UTC`);

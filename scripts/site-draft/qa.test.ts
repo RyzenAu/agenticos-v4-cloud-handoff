@@ -42,6 +42,17 @@ describe("auditClaims", () => {
     expect(issues.some((i) => i.severity === "fail" && /star/.test(i.detail))).toBe(true);
   });
 
+  test("a phone number before a Start CTA is not a star rating", () => {
+    const html = '<a href="tel:0290003761">02 9000 3761</a><h2>Start with one conversation.</h2>';
+    expect(auditClaims(html, evidence({ vertical: "real-estate" }))).toEqual([]);
+  });
+
+  for (const rating of ["5 stars", "1 star", "4.8 stars", "5-star", "4.8/5", "★★★★★"]) {
+    test(`still refuses an unsupported ${rating} rating`, () => {
+      expect(auditClaims(`<p>Rated ${rating}</p>`, evidence()).some((i) => /star rating/.test(i.detail))).toBe(true);
+    });
+  }
+
   test("fails on a named staff member", () => {
     const html = "<html><body><p>Meet Dr. Jane Smith, our lead dentist.</p></body></html>";
     const issues = auditClaims(html, evidence());

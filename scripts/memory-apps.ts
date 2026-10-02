@@ -16,6 +16,7 @@ import { homedir } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import { memoryRefresh } from "./memory-refresh";
 import { isOperatorSelfPath, isOperatorSelfTranscript } from "../src/lib/memory-self-filter";
+import { dataDirFor } from "./cloud/data-dir";
 
 export type AppScope = "memories" | "conversations" | "skills";
 export type MemoryAppId =
@@ -858,7 +859,7 @@ export function memoryApps(options: {
   syncInfo?: () => unknown | Promise<unknown>;
 }) {
   const home = options.home || homedir(),
-    dir = join(options.root, ".operator-data"),
+    dir = join(dataDirFor(options.root)),
     file = join(dir, "memory-apps.json");
   const load = (): Partial<Record<MemoryAppId, AppPreferences>> => {
     if (!existsSync(file)) return {};
