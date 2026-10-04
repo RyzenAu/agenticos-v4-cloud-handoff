@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["./*.ts", "./ws.d.ts", "./env.d.ts", "../../companion/linux/*.ts"],
+  "exclude": ["./*.test.ts", "../../companion/linux/*.test.ts"],
+  "compilerOptions": { "types": ["node"], "noEmit": true }
+}

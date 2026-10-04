@@ -1,0 +1,20 @@
+# One consistent online backup of an instance's data directory (VACUUM INTO per store + JSON/files).
+# Runs beside the hub; never stops it. Output goes outside the data directory, mode 0700.
+[Unit]
+Description=AgenticOS hub backup (%i)
+
+[Service]
+Type=oneshot
+User=muhub
+Group=muhub
+WorkingDirectory=/opt/mu-hub/%i/current
+EnvironmentFile=/etc/mu-hub/%i.env
+Environment=MU_DATA_DIR=/var/lib/mu-hub/%i
+Environment=HOME=/var/lib/mu-hub/%i-home
+UMask=0077
+ExecStart=/opt/mu-hub/bun/bin/bun scripts/cloud/backup-cli.ts backup --out /var/backups/mu-hub/%i --keep 14
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mu-hub /var/backups/mu-hub

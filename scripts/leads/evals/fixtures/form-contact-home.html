@@ -1,0 +1,24 @@
+<!-- Same business, but with a real enquiry <form> on the home page — must NOT be flagged
+     phone_only (it should fall through to the weaker no_booking issue instead, since there's
+     still no online booking widget). -->
+<!doctype html>
+<html>
+<head>
+  <title>Smile Dental</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Family dentist in Parramatta, open six days.">
+</head>
+<body>
+  <h1>Smile Dental</h1>
+  <p>We look after families across Western Sydney with gentle, modern dentistry. Send us an
+     enquiry below and our friendly reception team will get back to you within one business day.</p>
+  <form action="/contact" method="post">
+    <input type="text" name="name" placeholder="Your name">
+    <input type="email" name="email" placeholder="Your email">
+    <textarea name="message" placeholder="Your message"></textarea>
+    <button type="submit">Send enquiry</button>
+  </form>
+  <p>Call <a href="tel:0299990000">(02) 9999 0000</a> to make an appointment.</p>
+  <footer>&copy; 2026 Smile Dental</footer>
+</body>
+</html>

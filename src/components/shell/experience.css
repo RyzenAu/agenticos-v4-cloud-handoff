@@ -1,0 +1,485 @@
+/* Track 1 experience layer: the command palette, the motion control, progress steps and honest-state
+   markers. Tokens only (src/styles.css). Motion here explains something real and is brief (≤ 240 ms),
+   interruptible, and absent under prefers-reduced-motion or the "still" motion setting. */
+
+/* ── Command palette ───────────────────────────────────────────────────── */
+.cp-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+.cp-trigger:hover {
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+.cp-trigger:focus-visible,
+.cp-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+/* Inline by default, so a Tailwind "hidden" on the trigger's shortcut hint wins on phones. */
+.cp-kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  line-height: 1.4;
+}
+.cp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: oklch(0 0 0 / 0.55);
+}
+.cp-dialog {
+  position: fixed;
+  z-index: 61;
+  top: min(12vh, 96px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 24px));
+  max-height: min(620px, calc(100dvh - 48px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-2xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: var(--elev-3);
+  overflow: hidden;
+}
+.cp-dialog:focus {
+  outline: none;
+}
+.cp-overlay[data-state="open"],
+.cp-dialog[data-state="open"] {
+  animation: cp-in 160ms var(--ease-out-quart);
+}
+@keyframes cp-in {
+  from {
+    opacity: 0;
+  }
+}
+.cp-command {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.cp-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cp-input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: var(--text-base);
+  color: var(--foreground);
+}
+.cp-input::placeholder {
+  color: var(--muted-foreground);
+}
+.cp-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+}
+.cp-close:hover {
+  color: var(--foreground);
+  background: var(--inset);
+}
+.cp-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+.cp-list {
+  overflow-y: auto;
+  max-height: 440px;
+  padding: 6px;
+  scrollbar-width: thin;
+}
+.cp-group-label {
+  padding: 8px 10px 4px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--muted-foreground);
+}
+.cp-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  position: relative;
+}
+.cp-item[data-selected="true"] {
+  background: var(--inset);
+}
+.cp-item[data-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+.cp-target-line {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cp-target-line[data-target="device"] {
+  color: var(--brand);
+}
+.cp-target-line[data-ok="false"] {
+  color: var(--danger);
+}
+.cp-kind {
+  flex-shrink: 0;
+  font-size: var(--text-2xs);
+  color: var(--muted-foreground);
+}
+.cp-empty {
+  padding: 24px 12px;
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--muted-foreground);
+}
+.cp-detail {
+  border-left: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 440px;
+}
+.cp-eyebrow {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--brand);
+}
+.cp-detail-title {
+  margin-top: 2px;
+  font-family: var(--font-display, var(--font-sans));
+  font-size: var(--text-lg);
+  line-height: 1.25;
+  color: var(--foreground);
+}
+.cp-answer,
+.cp-target,
+.cp-run {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--inset);
+}
+.cp-target {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted-foreground);
+}
+.cp-target[data-ok="false"] {
+  border-color: color-mix(in oklch, var(--danger) 45%, var(--border));
+}
+.cp-figures {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin: 0;
+}
+.cp-figures > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-xs);
+}
+.cp-figures dt {
+  color: var(--muted-foreground);
+}
+.cp-figures dd {
+  margin: 0;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.cp-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  max-height: 72px;
+  overflow-y: auto;
+}
+
+/* Honest-state word (also used on metric tiles). The word carries the meaning; colour only helps. */
+.cp-state,
+.hs-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+.cp-state::before,
+.hs-state::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
+}
+.cp-state[data-state="live"],
+.hs-state[data-state="live"] {
+  color: var(--success);
+}
+.cp-state[data-state="stale"],
+.hs-state[data-state="stale"] {
+  color: var(--warn);
+}
+.cp-state[data-state="failed"],
+.hs-state[data-state="failed"] {
+  color: var(--danger);
+}
+.cp-state[data-state="simulated"],
+.hs-state[data-state="simulated"] {
+  color: var(--info);
+}
+.cp-state[data-state="unknown"]::before,
+.hs-state[data-state="unknown"]::before,
+.cp-state[data-state="setup-required"]::before,
+.hs-state[data-state="setup-required"]::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* A section the palette just opened: one brief gold outline, then gone. */
+[data-command-focus] {
+  outline: 1px solid color-mix(in oklch, var(--brand) 70%, transparent);
+  outline-offset: 6px;
+  border-radius: var(--radius-lg);
+  transition: outline-color 1.2s var(--ease-standard);
+}
+[data-command-focus]:focus {
+  outline-style: solid;
+}
+
+@media (max-width: 719px) {
+  .cp-dialog {
+    top: 8px;
+    max-height: calc(100dvh - 16px);
+  }
+  .cp-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .cp-list {
+    max-height: 46dvh;
+  }
+  .cp-detail {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    max-height: 30dvh;
+    padding: 12px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-overlay[data-state="open"],
+  .cp-dialog[data-state="open"] {
+    animation: none;
+  }
+  .cp-trigger {
+    transition: none;
+  }
+}
+
+/* ── Stillness (src/lib/motion.ts) ─────────────────────────────────────────
+   Ambient loops (decoration, not status) run only when <html data-motion="ambient">: the motion control
+   is on, reduced motion is off, and he isn't editing, reading, deciding or talking to Jarvis. Status
+   motion (a spinner, the Jarvis chip while it works, a generation in progress) is not listed here.
+   New ambient effects opt in with [data-ambient]. */
+html:not([data-motion="ambient"]) :is(
+    [data-ambient],
+    .ambient-drift,
+    .ar-brand-cycle img,
+    .ar-provider-rotation .ar-brand-provider-image,
+    .vc-orbit-line,
+    .jarvis-orb-currents,
+    .jarvis-orb-orbits,
+    .jarvis-orb-light,
+    .brief-weather-motion > *,
+    .brief-river,
+    .biz-overview-target-ring svg,
+    .design-spectrum-frame,
+    .design-spectrum-live,
+    .model-share-bar,
+    .token-flow-shimmer,
+    .mc-source-brand.is-circle .mc-info-orb,
+    .mc-source-brand.is-circle .mc-skill-spark,
+    .mc-source-brand.is-circle .mc-skill-layer-2,
+    .cs-mark,
+    .design-render-gleam,
+    .design-render-field,
+    .design-render-sheen,
+    .design-render-bloom,
+    .design-render-rim,
+    .ar-site-showcase-track,
+    .jarvis-orb-flow,
+    .jarvis-orb-ribbon,
+    .rainbow-button
+  ),
+html:not([data-motion="ambient"]) :is(.vc-orbit, .jarvis-luminous, .biz-overview-money-card, .dream-stars, .rainbow-button, .mc-source-brand.is-circle .mc-info-orb, .mc-source-brand.is-circle .mc-info-current)::before,
+html:not([data-motion="ambient"]) :is(.vc-orbit, .jarvis-luminous, .biz-overview-money-card, .dream-stars, .os-setup-invitation)::after {
+  animation-play-state: paused !important;
+}
+html[data-reduced-motion] :is([data-ambient], .ambient-drift, .vc-orbit-line, .jarvis-orb-currents, .jarvis-orb-orbits, .jarvis-orb-light, .brief-river, .design-spectrum-frame, .model-share-bar, .token-flow-shimmer) {
+  animation: none !important;
+}
+
+.mc-toggle[aria-pressed="true"] {
+  color: var(--brand);
+}
+.mc-toggle[data-motion-state="held"] {
+  color: var(--muted-foreground);
+}
+.mc-toggle[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ── Progress steps (src/components/shell/progress-steps.tsx) ──────────────
+   A step moves only on its confirming event; only a step that became done while you watch animates. */
+.ps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 8px;
+}
+.ps-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.ps-dot {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  color: var(--muted-foreground);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+.ps-step[data-state="active"] .ps-dot {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.ps-step[data-state="done"] .ps-dot {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+.ps-step[data-state="failed"] .ps-dot {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ps-label {
+  display: block;
+  /* A step name wraps between words, never inside one ("Assign/ed", "Calend/ar"): the page's overflow-wrap:anywhere does not apply here. */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--foreground);
+}
+.ps-meta {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.ps-rail {
+  display: none;
+}
+/* One brief fill when the event lands. */
+.ps-step[data-fresh] .ps-dot {
+  animation: ps-confirm 240ms var(--ease-out-quart);
+}
+.ps-step[data-fresh] {
+  animation: ps-edge 240ms var(--ease-out-quart);
+}
+@keyframes ps-confirm {
+  from {
+    transform: scale(0.6);
+    background: transparent;
+  }
+}
+@keyframes ps-edge {
+  from {
+    border-color: var(--brand);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-step[data-fresh],
+  .ps-step[data-fresh] .ps-dot {
+    animation: none;
+  }
+}
+html[data-reduced-motion] .ps-step[data-fresh],
+html[data-reduced-motion] .ps-step[data-fresh] .ps-dot {
+  animation: none;
+}

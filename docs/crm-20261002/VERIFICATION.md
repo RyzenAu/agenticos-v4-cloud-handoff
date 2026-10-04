@@ -1,0 +1,63 @@
+# Verification · final development package
+
+> Historical first-pass evidence. Read `RESUME-ACCEPTANCE.md`, `RESUME-VERIFICATION.md` and `resume-verification.json` for the current resumed CRM-owned checkpoint. Earlier full-candidate counts are not current branch passes.
+
+All data used here was synthetic/disposable. No user's PC, live database, provider account or outreach was used. Bun 1.4.2, the supplied frozen `bun.lock`, and the repository's TypeScript compiler were used.
+
+## Passed
+
+| Check                            | Observed result                                                                                                                                                             |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline verification            | 3,210 Git blobs and 3,206 manifest files; zero mismatches                                                                                                                   |
+| `bun install --frozen-lockfile`  | Exit 0; 589 packages installed; lockfile unchanged                                                                                                                          |
+| Final safe combined suite below  | **1,129 pass, 3 Windows-only skips, 0 fail; 11,575 assertions across 91 files, 33.35 s**                                                                                    |
+| UI TypeScript                    | `node --max-old-space-size=3072 node_modules/typescript/bin/tsc --noEmit`, exit 0                                                                                           |
+| Scripts TypeScript               | `node --max-old-space-size=3072 node_modules/typescript/bin/tsc -p tsconfig.scripts.json`, exit 0                                                                           |
+| True simultaneous SQLite retries | Four independent processes at a barrier; migration once/preserved originals, activity once, stale CAS conflict, one durable automation job/enquiry; 3 tests / 32 assertions |
+| Migration/rollback example       | Actual report in `migration-example.json`; apply true, repeated apply false, rollback version 0, original-row hash unchanged                                                |
+| Finance accessor                 | 17 tests / 87 assertions, including committed WAL payments and main DB/WAL content unchanged                                                                                |
+| Independent final scoped review  | No unresolved reproduced findings; 119 scoped tests / 636 assertions at review snapshot, followed by the final combined suite                                               |
+| DOM interaction checks           | 20 outer UI/type-floor tests; behaviour wrapper runs 9 isolated React/linkedom tests. Modal portal flattened only in that test harness                                      |
+| Diff formatting                  | `git diff --check`, clean                                                                                                                                                   |
+
+Safe combined suite (do not set one shared `MU_DATA_DIR` for these tests; tests create their own temporary stores):
+
+```sh
+HOME=/path/to/empty-test-home USERPROFILE=/path/to/empty-test-home \
+HINDSIGHT_URL=off MU_MEMORY_WRITES=off AGENTIC_OS_NO_CODEX=1 \
+bun test scripts/crm src/components/crm scripts/leads \
+  scripts/meeting-mode/meeting-mode.test.ts scripts/identity \
+  scripts/approvals scripts/jobs scripts/events scripts/ui-type-floor.test.ts
+```
+
+An earlier test attempt incorrectly supplied a shared MU_DATA_DIR and caused fixture interference. It was not counted; the corrected isolated command above passed. Earlier piped/overlapping Bun TypeScript attempts were inconclusive or killed and are not counted; the explicit-exit Node compiler checks above are the authoritative results.
+
+## Blocked, skipped or unverified
+
+| Gate                                                                                            | Exact observed limit                                                                                                                                                                                                                                                                                                    | Required next step                                                                                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full repository release suite (`bun test scripts src`)                                          | Safety review stopped the baseline attempt because a Typesafe HTTPS path could run without established safe payload/credential boundaries. A smaller provider-path diagnostic was also stopped despite an external-fetch blocking preload. No further retries or provider authority requested                           | Audit the inherited Jev/free-voice warm paths and make the full suite hermetic before running it with no live credentials. The exact fall-through test is not conclusively isolated; mocked tests are not proof of no other egress |
+| Production build                                                                                | Normal `bun run build` transformed 3,793 modules, then was killed during chunk rendering with SIGKILL/exit137. A serial `bun --smol --bun ... vite.js build --configLoader native` retry was also killed. Resource pressure in the 10 GB environment is the suspected cause; no successful production bundle is claimed | Run the unchanged production build on Claude's adequately provisioned integration environment; inspect any actual diagnostics. A scoped typecheck is not a build pass                                                              |
+| Browser render/interaction/screenshots                                                          | Single permitted cloud-browser visit to `http://127.0.0.1:8131/crm` returned `net::ERR_BLOCKED_BY_CLIENT` (new tab 19). No alternate port, tunnel, browser or network workaround was used                                                                                                                               | Run the journeys below in a permitted browser. No rendered screenshot is supplied because none was successfully captured                                                                                                           |
+| Native Windows/Tailscale peer checks                                                            | Three explicitly Windows-only tests skipped on Linux                                                                                                                                                                                                                                                                    | Run on the relevant Windows host                                                                                                                                                                                                   |
+| Real founders, provider replies, email sends, invitations, microphone/voice, live Jobs subjects | Not exercised; real outreach explicitly forbidden. Trusted hooks default to fail-closed                                                                                                                                                                                                                                 | Claude integrates the owning Jobs/Jarvis/provider readers and verifies with approved disposable records; no real outreach needed for this gate                                                                                     |
+| Production migration/cutover                                                                    | Never attempted                                                                                                                                                                                                                                                                                                         | Verify Ryzen cutover, back up, review live dry run, then follow the separately authorised integration plan                                                                                                                         |
+
+The first build also encountered an unavailable default Wrangler log directory; the retry pointed XDG_CONFIG_HOME at an owned disposable directory. No filesystem permission bypass was attempted. Finance opens its existing database read-only: SQLite may maintain WAL/SHM coordination metadata, but the adapter does not write ledger rows/schema/main DB/WAL content.
+
+## Browser journeys Claude must verify before release
+
+Use an isolated data directory and empty HOME. For a read-only rendered visit, use the handoff command with `AGENTIC_OS_NO_BACKGROUND=1`; for edit journeys use a disposable write-enabled hub without provider credentials under the existing approved local workflow. Keep any optional jobs/providers disconnected. Do not run against production data.
+
+1. At desktop and 390/360 px, inspect Today, Pipeline board/table, Companies/Contacts and all four company tabs; no clipping, horizontal page overflow or unreadable text. Test actual focus trap/return, Escape, keyboard-only form/tab navigation and reduced motion.
+2. Create a company without a directory ID, add two contacts and two deals, choose primary contact, owners and next actions. Refresh and restart: all values persist; both verified founders see the same workspace.
+3. Complete/reopen/reassign a task. Log a call, note, promise and linked meeting/thread. Every Today item opens its target; a note does not erase a follow-up.
+4. Move a deal through qualification, meeting, proposal, negotiation and Won; capture agreed AUD/GST pricing in immutable versions. Record issued/accepted statuses without sending or signing. Verify one onboarding project/task and independent delivery stages.
+5. Edit milestones, requests, preview/revision/deliverable links and renewal dates. A lost second opportunity must not close the company or first deal.
+6. Open two tabs on the same record: first save wins, second sees a conflict while retaining its draft. Simulate a disconnected save: UI warns the result may be unknown and does not blindly retry.
+7. Import CSV: preview validation, explicit duplicate decisions, stale conflict, rollback, repeat the same commit, export formula-looking text. Test search by phone formats, accents and exact IDs; shared saved views persist.
+8. Merge A into B and B into C. Old company/lead links and later old-API activity resolve to C; original rows and histories remain. Suppress an address shared by another company: all effective contact restrictions update and only imported outreach follow-ups cancel.
+9. Link an existing Finance invoice URL. Confirm exact-match only, unknown when absent/ambiguous, recorded timestamp/stale label, current saved payment status after Finance updates, and no implication that Won equals received money.
+10. Exercise each event rule with authenticated synthetic occurrences, duplicate/restart/concurrent delivery, enabled/disabled state and failure recovery. Wire Jobs subjects and target-bound provider/agent readers; repeat saved job-result activity twice and confirm one event with a working gated artifact link. Verify actual account/model only where the existing job reports it.
+11. Keep `/leads?lead=<id>` and prior commands working, including manual corrections/import persistence, website found/verified-absent/failed/unchecked distinctions and expandable original evidence.
+12. Rehearse backup restoration and full migration reconciliation, then run the complete release gate. Do not merge/deploy while these release gates remain unresolved.

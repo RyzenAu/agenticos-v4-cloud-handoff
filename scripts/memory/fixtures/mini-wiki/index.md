@@ -1,0 +1,2 @@
+# Index
+Synthetic fixture index.

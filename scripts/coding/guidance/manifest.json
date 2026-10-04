@@ -1,0 +1,15 @@
+{
+  "version": "2026-10-01.1",
+  "upstream": {
+    "repo": "https://github.com/mattpocock/skills",
+    "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+    "licence": "MIT",
+    "note": "Adapted, not copied: see docs/programme-20261001/ENGINEERING-SKILLS.md"
+  },
+  "maxChars": 6000,
+  "files": {
+    "builder.md": "2cb7dbe7aa0fb622562273d58370aa9edb7fa1987173d7e46c594ef31d719461",
+    "reviewer.md": "508569075292d20d1a5b9d63fff5cb54bc9d48faef3eff65d84dff2bbab4466d",
+    "planner.md": "417220523068626e0f269b2c7996d469da6d1ab86f6827870e43e5069dcea0b1"
+  }
+}

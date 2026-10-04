@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "repos": [
+    {
+      "id": "muv-marketing",
+      "description": "M&U Ventures marketing site (Next.js; linked worktree of M-U-Ventures, no main branch)",
+      "canonicalPath": "C:\\Users\\Nebula PC\\source\\repos\\muv-marketing",
+      "defaultBaseRef": "marketing/flagships-receptionist-2026-09-25",
+      "worktreeParent": "C:\\Users\\Nebula PC\\source\\repos\\_coding-worktrees\\muv-marketing",
+      "protectedBranches": [
+        "main",
+        "master",
+        "production"
+      ],
+      "remotes": [],
+      "commands": [
+        {
+          "id": "marketing.build",
+          "kind": "build",
+          "argv": [
+            "bun",
+            "run",
+            "build"
+          ],
+          "cwd": ".",
+          "timeoutMs": 600000,
+          "counts": "none"
+        }
+      ],
+      "nodeModules": "junction",
+      "allowedPeople": [
+        "usman",
+        "mehroz"
+      ]
+    },
+    {
+      "id": "muv-demo-dental",
+      "description": "Dental demonstration site (Next.js)",
+      "canonicalPath": "C:\\Users\\Nebula PC\\source\\repos\\muv-demo-dental",
+      "defaultBaseRef": "flagship/breathtaking-2026-09-25",
+      "worktreeParent": "C:\\Users\\Nebula PC\\source\\repos\\_coding-worktrees\\muv-demo-dental",
+      "protectedBranches": [
+        "main",
+        "master",
+        "production"
+      ],
+      "remotes": [],
+      "commands": [
+        {
+          "id": "demo-dental.build",
+          "kind": "build",
+          "argv": [
+            "bun",
+            "run",
+            "build"
+          ],
+          "cwd": ".",
+          "timeoutMs": 600000,
+          "counts": "none"
+        }
+      ],
+      "nodeModules": "junction",
+      "allowedPeople": [
+        "usman",
+        "mehroz"
+      ]
+    },
+    {
+      "id": "muv-demo-conveyancing",
+      "description": "Conveyancing demonstration site (Next.js)",
+      "canonicalPath": "C:\\Users\\Nebula PC\\source\\repos\\muv-demo-conveyancing",
+      "defaultBaseRef": "main",
+      "worktreeParent": "C:\\Users\\Nebula PC\\source\\repos\\_coding-worktrees\\muv-demo-conveyancing",
+      "protectedBranches": [
+        "main",
+        "master",
+        "production"
+      ],
+      "remotes": [],
+      "commands": [
+        {
+          "id": "demo-conveyancing.build",
+          "kind": "build",
+          "argv": [
+            "bun",
+            "run",
+            "build"
+          ],
+          "cwd": ".",
+          "timeoutMs": 600000,
+          "counts": "none"
+        }
+      ],
+      "nodeModules": "junction",
+      "allowedPeople": [
+        "usman",
+        "mehroz"
+      ]
+    },
+    {
+      "id": "aldergate",
+      "description": "Aldergate real-estate demonstration site (Next.js)",
+      "canonicalPath": "C:\\Users\\Nebula PC\\source\\repos\\aldergate",
+      "defaultBaseRef": "flagship/breathtaking-2026-09-25",
+      "worktreeParent": "C:\\Users\\Nebula PC\\source\\repos\\_coding-worktrees\\aldergate",
+      "protectedBranches": [
+        "main",
+        "master",
+        "production"
+      ],
+      "remotes": [],
+      "commands": [
+        {
+          "id": "aldergate.typecheck",
+          "kind": "typecheck",
+          "argv": [
+            "bun",
+            "run",
+            "typecheck"
+          ],
+          "cwd": ".",
+          "timeoutMs": 600000,
+          "counts": "none"
+        },
+        {
+          "id": "aldergate.build",
+          "kind": "build",
+          "argv": [
+            "bun",
+            "run",
+            "build"
+          ],
+          "cwd": ".",
+          "timeoutMs": 600000,
+          "counts": "none"
+        }
+      ],
+      "nodeModules": "junction",
+      "allowedPeople": [
+        "usman",
+        "mehroz"
+      ]
+    },
+    {
+      "id": "muv-flagship-legal",
+      "description": "Marden & Rowe legal flagship (static site, no git remote)",
+      "canonicalPath": "C:\\Users\\Nebula PC\\source\\repos\\muv-flagship-legal",
+      "defaultBaseRef": "flagship/breathtaking-2026-09-25",
+      "worktreeParent": "C:\\Users\\Nebula PC\\source\\repos\\_coding-worktrees\\muv-flagship-legal",
+      "protectedBranches": [
+        "main",
+        "master",
+        "production"
+      ],
+      "remotes": [],
+      "commands": [
+        {
+          "id": "flagship-legal.lint",
+          "kind": "lint",
+          "argv": [
+            "node",
+            "--check",
+            "serve.mjs"
+          ],
+          "cwd": ".",
+          "timeoutMs": 60000,
+          "counts": "none"
+        }
+      ],
+      "nodeModules": "none",
+      "allowedPeople": [
+        "usman",
+        "mehroz"
+      ]
+    }
+  ]
+}

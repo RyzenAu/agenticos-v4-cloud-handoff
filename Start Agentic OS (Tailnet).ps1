@@ -1,0 +1,68 @@
+#Requires -Version 5.1
+# M&U: start Agentic OS reachable from the company tailnet only.
+# Binds to the Tailscale interface, never 0.0.0.0, so the app is not exposed
+# on whatever local Wi-Fi this machine is attached to.
+$ErrorActionPreference = "Stop"
+Set-Location -LiteralPath $PSScriptRoot
+$env:Path = "$env:USERPROFILE\.bun\bin;$env:APPDATA\npm;$env:ProgramFiles\nodejs;$env:LOCALAPPDATA\Programs\nodejs;$env:Path"
+
+# Windows: Hermes keeps its home in %LOCALAPPDATA%\hermes, not ~\.hermes.
+# Without this the OS finds no ~/.hermes and the Hermes page falls back to demo data.
+if (-not $env:HERMES_HOME) {
+  $hermesHome = Join-Path $env:LOCALAPPDATA 'hermes'
+  if ((Test-Path -LiteralPath (Join-Path $hermesHome 'config.yaml')) -and
+      -not (Test-Path -LiteralPath (Join-Path $env:USERPROFILE '.hermes'))) {
+    $env:HERMES_HOME = $hermesHome
+  }
+}
+
+function Fail([string] $message) {
+  Write-Host ""
+  Write-Host $message
+  Read-Host "Press Return to close" | Out-Null
+  exit 1
+}
+
+$tailscale = Join-Path $env:ProgramFiles "Tailscale\tailscale.exe"
+if (-not (Test-Path $tailscale)) { Fail "Tailscale is not installed. Run: winget install --id Tailscale.Tailscale" }
+if (-not (Get-Command bun -ErrorAction SilentlyContinue)) { Fail "Bun is not installed. Run: npm install -g bun" }
+
+# Native stderr + $ErrorActionPreference="Stop" throws in PS 5.1, so soften it here.
+$ip = $null
+try {
+  $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  $ip = (& $tailscale ip -4 2>$null | Select-Object -First 1)
+  $ErrorActionPreference = $prev
+} catch { $ErrorActionPreference = $prev }
+if (-not $ip) {
+  Fail @"
+Tailscale is installed but not signed in on this machine.
+Run this, sign in with the company account, then start again:
+  & '$tailscale' up
+"@
+}
+$ip = $ip.Trim()
+
+$name = $null
+try {
+  $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  $status = & $tailscale status --json 2>$null | ConvertFrom-Json
+  if ($status.Self.DNSName) { $name = $status.Self.DNSName.TrimEnd('.') }
+  $ErrorActionPreference = $prev
+} catch { $ErrorActionPreference = $prev }
+
+Write-Host "Agentic OS: installing locked dependencies."
+& bun install --frozen-lockfile
+if ($LASTEXITCODE -ne 0) { Fail "Dependencies could not be installed. Check your network connection." }
+
+Write-Host ""
+Write-Host "Reachable from the tailnet at:"
+Write-Host "  http://$ip`:8081"
+if ($name) { Write-Host "  http://$name`:8081" }
+Write-Host "Keep this window open. Control+C stops the app."
+Write-Host ""
+
+# --bun forces Bun's runtime for bin shims. Without it Windows runs vite through
+# a Node .cmd shim, which falls back to node:sqlite and crashes on missing FTS5.
+& bun --bun run start --host $ip
+if ($LASTEXITCODE -ne 0) { Fail "The server stopped. If port 8081 is busy, stop the older server first." }

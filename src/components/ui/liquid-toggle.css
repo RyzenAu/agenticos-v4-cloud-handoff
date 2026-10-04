@@ -1,0 +1,12 @@
+.liquid-toggle { --liquid-active: var(--brand); display: inline-block; position: relative; flex-shrink: 0; width: 52px; height: 32px; vertical-align: middle; }
+.liquid-toggle[data-variant="success"] { --liquid-active: var(--success); }
+.liquid-toggle[data-variant="warning"] { --liquid-active: var(--warn); }
+.liquid-toggle[data-variant="danger"] { --liquid-active: var(--danger); }
+.liquid-toggle input { appearance: none; display: block; margin: 0; width: 100%; height: 100%; cursor: pointer; border: 0; border-radius: 999px; background: var(--border-strong); transition: background-color .4s; }
+.liquid-toggle input:checked { background: var(--liquid-active); }
+.liquid-toggle input:focus-visible { outline: 2px solid var(--liquid-active); outline-offset: 4px; }
+.liquid-toggle input:disabled { cursor: not-allowed; }
+.liquid-toggle[data-disabled] { opacity: .5; }
+.liquid-toggle svg { pointer-events: none; position: absolute; inset: 0; width: 100%; height: 100%; fill: #fff; overflow: hidden; }
+.liquid-toggle circle { transition: transform .5s cubic-bezier(.4, 0, .2, 1); }
+@media (prefers-reduced-motion: reduce) { .liquid-toggle input, .liquid-toggle circle { transition: none; } }

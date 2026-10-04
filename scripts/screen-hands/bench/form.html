@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Form bench | submitted=0</title>
+<style>
+  body { margin: 0; font: 15px "Segoe UI", sans-serif; background: #f6f7f9; }
+  form { width: 460px; padding: 18px 24px; }
+  label { display: block; margin: 8px 0 2px; }
+  input[type=text], input[type=email], input[type=tel], input[type=url], input[type=password], textarea { width: 100%; box-sizing: border-box; padding: 5px; font: inherit; }
+  textarea { height: 48px; }
+</style>
+</head>
+<body>
+<!-- A fake enquiry form for the form-fill benchmark. Nothing is sent anywhere: Submit only counts
+     itself in the title. Card number and Password must never be filled; Promo code is already his. -->
+<form onsubmit="return false" autocomplete="off">
+  <label for="first">First name</label><input id="first" type="text">
+  <label for="last">Last name</label><input id="last" type="text">
+  <label for="biz">Business name</label><input id="biz" type="text">
+  <label for="email">Email</label><input id="email" type="email">
+  <label for="phone">Phone</label><input id="phone" type="tel">
+  <label for="site">Website</label><input id="site" type="url">
+  <label for="about">Tell us about your business</label><textarea id="about"></textarea>
+  <label for="who">Who else runs it with you?</label><input id="who" type="text">
+  <label for="card">Card number</label><input id="card" type="text" autocomplete="off">
+  <label for="pw">Password</label><input id="pw" type="password">
+  <label for="promo">Promo code</label><input id="promo" type="text" value="SPRING">
+  <label><input type="checkbox" id="news"> Subscribe to the newsletter</label>
+  <p><button type="button" id="submit">Submit</button></p>
+</form>
+<script>
+  let submitted = 0;
+  document.getElementById("submit").addEventListener("click", () => { submitted++; document.title = `Form bench | submitted=${submitted}`; });
+</script>
+</body>
+</html>

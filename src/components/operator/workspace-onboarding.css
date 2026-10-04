@@ -1,0 +1,837 @@
+/* Base layer for the onboarding page. Layout for the current step UI lives in
+   workspace-onboarding-calm.css and workspace-onboarding-frame.css; the rules
+   below are the pieces still shared by every step (root wrapper, focus ring,
+   fields, discovery/connections lists, hourly rate, mail archive receipt).
+   Dead selectors from an earlier two-panel layout have been removed — every
+   class here is confirmed to render via workspace-onboarding.tsx and the
+   step components it imports. */
+.ws-fullscreen-route {
+  width: 100%;
+  min-height: 100dvh;
+  background: var(--background);
+}
+.ws-onboarding {
+  color: var(--foreground);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  --ws-muted: var(--muted-foreground);
+}
+.ws-onboarding :is(input, textarea, select, button) {
+  font-family: inherit;
+}
+.ws-brand-orbit {
+  --orbit-size: 40px;
+  --orbit-logo: 13px;
+  --orbit-radius: 13px;
+}
+.ws-load-error {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  padding: 20px 0;
+}
+.ws-codex-connections {
+  margin-top: 16px;
+}
+.ws-codex-connections > p {
+  margin: 12px 0;
+}
+.ws-codex-connections ul {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+.ws-codex-connections li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.ws-codex-connections li strong {
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.ws-codex-connections li > span {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.ws-profile-photo {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  margin: 0 0 19px;
+}
+.ws-profile-photo > img {
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--inset);
+}
+.ws-profile-photo > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+}
+.ws-profile-photo > div > span {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  width: 100%;
+}
+.ws-profile-photo > div > button {
+  color: var(--brand);
+  font-size: var(--text-xs);
+}
+.ws-photo-button {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-xs);
+  color: var(--brand);
+  cursor: pointer;
+}
+.ws-photo-button input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  cursor: pointer;
+}
+.ws-photo-button:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+.ws-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px 16px;
+}
+.ws-field-grid > label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.ws-field-grid > label > span {
+  color: var(--foreground);
+  font-size: var(--text-xs);
+}
+.ws-field-grid > label > span > small {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin-left: 5px;
+}
+.ws-wide {
+  grid-column: 1 / -1;
+}
+.ws-field-grid input,
+.ws-field-grid select,
+.ws-field-grid textarea {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--inset);
+  border-radius: 9px;
+  padding: 10px 11px;
+  color: var(--foreground);
+  outline: none;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
+}
+.ws-field-grid textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+.ws-field-grid input:focus,
+.ws-field-grid select:focus,
+.ws-field-grid textarea:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.ws-field-grid input::placeholder,
+.ws-field-grid textarea::placeholder {
+  color: var(--muted-foreground);
+}
+.ws-money-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  background: var(--inset);
+  border-radius: 9px;
+  padding: 0 12px;
+}
+.ws-money-input > span {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.ws-money-input > input {
+  border: 0;
+  background: transparent;
+  padding-left: 0;
+}
+.ws-money-input:focus-within {
+  border-color: var(--brand);
+}
+.ws-money-input input:focus {
+  box-shadow: none;
+}
+.ws-details {
+  margin-top: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.ws-details > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  list-style: none;
+}
+.ws-details > summary::-webkit-details-marker {
+  display: none;
+}
+.ws-details > summary > span {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.ws-details[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.ws-details > .ws-field-grid {
+  padding: 0 12px 14px;
+}
+.ws-primary {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  padding: 11px 17px;
+  font-size: var(--text-xs);
+  font-weight: 550;
+  cursor: pointer;
+}
+.ws-primary:hover {
+  background: var(--brand-strong);
+}
+.ws-primary:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.ws-error {
+  color: var(--danger);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  margin: 13px 0;
+}
+.ws-muted {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.ws-success {
+  color: var(--success);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  margin: 13px 0;
+}
+.ws-discovery > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 13px;
+  gap: 15px;
+}
+.ws-discovery h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 5px;
+}
+.ws-discovery > header p {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  margin: 0;
+  line-height: 1.5;
+}
+.ws-icon {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted-foreground);
+}
+.ws-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.ws-tool {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  background: var(--inset);
+  border-radius: 10px;
+}
+.ws-tool > div {
+  min-width: 0;
+  flex: 1;
+}
+.ws-tool strong {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  display: block;
+}
+.ws-tool small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin-top: 3px;
+}
+.ws-tool-mark {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.ws-tool-mark img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+.ws-tool-mark.is-chatgpt img {
+  filter: invert(1);
+}
+.ws-status {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.ws-status.ready {
+  color: var(--success);
+}
+.ws-discovery-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.ws-discovery-note > svg {
+  flex-shrink: 0;
+}
+.ws-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand);
+  font-size: var(--text-xs);
+  margin-top: 11px;
+}
+.ws-discovery.is-compact .ws-status:not(.ready) {
+  display: none;
+}
+.ws-account-choices {
+  display: grid;
+  gap: 9px;
+  margin-top: 23px;
+}
+.ws-account-choices > button {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--inset);
+}
+.ws-account-choices > button:hover {
+  border-color: var(--border-strong);
+}
+.ws-account-choices strong,
+.ws-export-entry strong {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.ws-account-choices small,
+.ws-export-entry small {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.ws-account-choices > button > svg,
+.ws-export-entry > svg {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.ws-account-logos {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ws-account-logos > img,
+.ws-account-logos > .biz-provider-logo {
+  width: 23px;
+  height: 23px;
+}
+.ws-import-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  border: none;
+  padding: 0;
+  margin: 21px 0 18px;
+}
+.ws-import-scopes legend {
+  font-size: var(--text-xs);
+  margin-bottom: 10px;
+  color: var(--muted-foreground);
+}
+.ws-import-scopes label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-xs);
+  color: var(--foreground);
+}
+.ws-import-scopes input {
+  accent-color: var(--brand);
+}
+.ws-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ws-import-actions > span {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.ws-export-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 15px;
+  margin-top: 23px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.ws-export-entry:hover {
+  border-color: var(--border-strong);
+}
+.ws-onboarding button:focus-visible,
+.ws-onboarding a:focus-visible,
+.ws-onboarding summary:focus-visible,
+.ws-onboarding input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+@media (max-height: 780px) and (min-width: 801px) {
+  .ws-profile-photo {
+    margin-bottom: 14px;
+  }
+  .ws-field-grid {
+    gap: 12px 14px;
+  }
+}
+@media (max-width: 450px) {
+  .ws-field-grid {
+    grid-template-columns: 1fr;
+    gap: 13px 11px;
+  }
+  .ws-field-grid > label > span {
+    font-size: var(--text-xs);
+  }
+  .ws-field-grid input,
+  .ws-field-grid select,
+  .ws-field-grid textarea {
+    padding: 10px;
+    font-size: 16px;
+  }
+  .ws-account-choices > button {
+    gap: 10px;
+    padding: 12px;
+  }
+  .ws-account-logos {
+    gap: 2px;
+  }
+  .ws-account-logos > img,
+  .ws-account-logos .mc-source-brand,
+  .ws-account-logos > .biz-provider-logo {
+    width: 20px !important;
+    height: 20px !important;
+  }
+}
+
+.ws-mail-archive {
+  margin-top: 17px;
+  padding: 13px;
+  border: 1px solid var(--success);
+  border-radius: 10px;
+  background: var(--success-soft);
+}
+.ws-mail-archive summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.ws-mail-archive summary::-webkit-details-marker {
+  display: none;
+}
+.ws-mail-archive summary > span:not(.mc-source-brand) {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--success);
+}
+.ws-mail-archive summary > svg {
+  flex-shrink: 0;
+  color: var(--success);
+  transition: transform 0.18s;
+}
+.ws-mail-archive[open] summary {
+  margin-bottom: 10px;
+}
+.ws-mail-archive[open] summary > svg {
+  transform: rotate(180deg);
+}
+.ws-mail-archive strong {
+  font-weight: 500;
+  font-size: var(--text-xs);
+  color: var(--success);
+}
+.ws-mail-archive > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 10px;
+  font-size: var(--text-xs);
+  color: var(--foreground);
+  margin: 7px 0;
+}
+.ws-mail-archive > div > span {
+  overflow-wrap: anywhere;
+}
+.ws-mail-archive small {
+  font-size: var(--text-xs);
+  color: var(--success);
+}
+.ws-mail-archive p {
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  margin: 10px 0 0;
+}
+
+/* Keep the account choices and archive in view on the Connections step. */
+.ws-connections-step .ws-discovery > header {
+  margin-bottom: 9px;
+}
+.ws-connections-step .ws-discovery h3 {
+  font-size: var(--text-xs);
+  margin-bottom: 3px;
+}
+.ws-connections-step .ws-discovery > header p {
+  font-size: var(--text-xs);
+}
+.ws-connections-step .ws-tools {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.ws-connections-step .ws-tool {
+  padding: 9px 8px;
+  gap: 7px;
+  align-items: flex-start;
+}
+.ws-connections-step .ws-tool small {
+  line-height: 1.35;
+  margin-top: 3px;
+}
+.ws-connections-step .ws-tool-mark,
+.ws-connections-step .ws-tool-mark img {
+  width: 23px;
+  height: 23px;
+}
+.ws-connections-step .ws-tool .ws-status {
+  display: none;
+}
+.ws-connections-step .ws-text-button {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+}
+.ws-connections-step .ws-discovery-note {
+  margin-top: 8px;
+  font-size: var(--text-xs);
+}
+.ws-connections-step .ws-account-choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+  gap: 8px;
+}
+.ws-connections-step .ws-account-choices > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.ws-connections-step .ws-account-logos {
+  grid-column: 1;
+}
+.ws-connections-step .ws-account-choices > button > span:nth-child(2) {
+  grid-column: 1;
+  min-width: 0;
+}
+.ws-connections-step .ws-account-choices small {
+  display: none;
+}
+.ws-connections-step .ws-account-choices > button > svg {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+}
+.ws-connections-step .ws-mail-archive {
+  padding: 10px 12px;
+  margin-top: 11px;
+}
+@media (max-width: 600px) {
+  .ws-connections-step .ws-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ws-connections-step .ws-tool {
+    min-height: 57px;
+  }
+  .ws-connections-step .ws-account-choices > button {
+    padding: 11px;
+    gap: 10px;
+  }
+  .ws-connections-step .ws-account-choices strong {
+    font-size: var(--text-xs);
+  }
+  .ws-mail-archive summary {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ws-mail-archive summary > span:not(.mc-source-brand) {
+    font-size: var(--text-xs);
+  }
+}
+
+.ws-profile-intro {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.ws-profile-intro .ws-profile-photo {
+  margin: 0;
+}
+.ws-profile-intro .ws-profile-photo > img {
+  width: 52px;
+  height: 52px;
+}
+.ws-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ws-name-field > span {
+  color: var(--foreground);
+  font-size: var(--text-xs);
+}
+.ws-name-field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--inset);
+  color: var(--foreground);
+  padding: 11px 12px;
+  font-size: var(--text-xs);
+  outline: none;
+}
+.ws-name-field input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.ws-personal-context textarea {
+  line-height: 1.6;
+  min-height: 90px;
+}
+.ws-profile-resources {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 21px;
+  font-size: var(--text-xs);
+}
+.ws-profile-resources > span {
+  color: var(--muted-foreground);
+}
+.ws-profile-resources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand);
+}
+.ws-personal-settings {
+  border: 0;
+  background: transparent;
+}
+.ws-personal-settings > summary {
+  padding: 12px 0;
+}
+.ws-personal-settings > .ws-field-grid {
+  padding: 5px 0 10px;
+}
+.ws-hourly-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 9px 0 13px;
+}
+.ws-hourly-heading label {
+  color: var(--foreground);
+  font-size: var(--text-xs);
+}
+.ws-hourly-heading > span {
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+}
+.ws-hourly-control {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.ws-hourly-control > input[type="range"] {
+  width: 100%;
+  min-width: 70px;
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  height: 6px;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.ws-hourly-control .ws-money-input {
+  width: 128px;
+  flex-shrink: 0;
+  gap: 7px;
+}
+.ws-hourly-control .ws-money-input > input {
+  min-width: 0;
+  padding-right: 0;
+}
+.ws-hourly-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  padding-right: 148px;
+  margin-top: 8px;
+}
+.ws-hourly-field > .ws-muted {
+  font-size: var(--text-xs);
+  margin: 12px 0 0;
+}
+.ws-existing-tools .ar-existing-connections {
+  margin-top: 0;
+}
+.ws-social-profiles {
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.ws-social-profiles h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.ws-social-profiles > header {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ws-social-profiles > header > span {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+}
+.ws-social-profiles > p {
+  margin: 7px 0 18px;
+}
+.ws-social-profiles input {
+  font-size: var(--text-xs);
+}
+@media (max-width: 520px) {
+  .ws-profile-intro {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .ws-profile-intro .ws-profile-photo > img {
+    width: 46px;
+    height: 46px;
+  }
+  .ws-name-field input,
+  .ws-social-profiles input {
+    font-size: 16px;
+  }
+  .ws-social-profiles h2 {
+    font-size: 14px;
+  }
+  .ws-personal-settings > summary > span {
+    font-size: var(--text-xs);
+  }
+  .ws-hourly-control {
+    gap: 12px;
+  }
+  .ws-hourly-control .ws-money-input {
+    width: 115px;
+  }
+  .ws-hourly-scale {
+    padding-right: 127px;
+  }
+}
+
+.ws-flow-next.flow-button {
+  --action-ink: var(--brand);
+  --action-paper: var(--brand-foreground);
+}

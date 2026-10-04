@@ -1,0 +1,20 @@
+# One health check of an instance (hub /__health, backup freshness, free disk). Exits 1 when bad, so `systemctl --failed` shows it.
+# Alerts on a state CHANGE only (Telegram if TELEGRAM_BOT_TOKEN and MU_ALERT_TELEGRAM_CHAT_ID are set in the env file; always the journal).
+[Unit]
+Description=AgenticOS hub health watch (%i)
+
+[Service]
+Type=oneshot
+User=muhub
+Group=muhub
+WorkingDirectory=/opt/mu-hub/%i/current
+EnvironmentFile=/etc/mu-hub/%i.env
+Environment=MU_DATA_DIR=/var/lib/mu-hub/%i
+Environment=HOME=/var/lib/mu-hub/%i-home
+UMask=0077
+ExecStart=/bin/bash -c 'exec /opt/mu-hub/bun/bin/bun scripts/cloud/health-watch.ts --instance %i --hub "http://127.0.0.1:$${ARGENTIC_PORT}" --backups /var/backups/mu-hub/%i --state /var/lib/mu-hub/%i-home/health-watch.json'
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mu-hub

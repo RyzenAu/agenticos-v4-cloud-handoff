@@ -1,0 +1,17 @@
+<!-- Recorded 25 Sep 2026: DuckDuckGo's anomaly/bot-detection page for html.duckduckgo.com, served
+     instead of results when it decides the request looks automated. Has no result__a markup at
+     all, so parsing it for links used to read as "zero results" instead of "couldn't search". -->
+<!doctype html>
+<html>
+<head><title>DuckDuckGo</title></head>
+<body>
+  <div id="anomaly-modal">
+    <h1>Unfortunately, bots use DuckDuckGo too.</h1>
+    <p>Please complete the following challenge to confirm this search was made by a human.</p>
+    <form class="challenge-form" action="/html/" method="get">
+      <input type="hidden" name="vqd" value="4-111111111">
+      <button type="submit">I am not a robot</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,126 @@
+/* Jarvis page (W-C, 29 Sep 2026): the HUD as the page's centrepiece, larger and calmer than the
+   floating HUD and /hud window (those keep their compact sizes; this file only styles .jv-page).
+   Sizes follow the design-system steps: 13 (labels), 15 (body), 18 (titles), 28 (the big count). */
+.jv-page .jv-hud .jh-body {
+  padding: 24px 26px 20px;
+  border-radius: 24px;
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+.jv-page .jv-hud .jh-head {
+  gap: 10px;
+  padding-bottom: 16px;
+}
+.jv-page .jv-hud .jh-mark {
+  font-size: var(--text-sm);
+  letter-spacing: 0.18em;
+}
+.jv-page .jv-hud .jh-mode {
+  padding: 4px 12px;
+  font-size: var(--text-sm);
+}
+.jv-page .jv-hud .jh-dot {
+  width: 10px;
+  height: 10px;
+}
+.jv-page .jv-hud .jh-row {
+  padding: 18px 0;
+}
+.jv-page .jv-hud .jh-label {
+  margin-bottom: 8px;
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+}
+.jv-page .jv-hud .jh-fresh {
+  font-size: var(--text-sm);
+}
+.jv-page .jv-hud .jh-value {
+  gap: 3px;
+}
+.jv-page .jv-hud .jh-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  white-space: normal;
+}
+.jv-page .jv-hud .jh-meta,
+.jv-page .jv-hud .jh-foot,
+.jv-page .jv-hud .jh-foot .jh-num,
+.jv-page .jv-hud .jh-alert,
+.jv-page .jv-hud .jh-banner {
+  font-size: var(--text-sm);
+}
+.jv-page .jv-hud .jh-calls {
+  gap: 12px;
+}
+.jv-page .jv-hud .jh-founder {
+  grid-template-columns: 76px 1fr auto;
+  gap: 12px;
+}
+.jv-page .jv-hud .jh-who {
+  font-size: var(--text-base);
+}
+.jv-page .jv-hud .jh-bar {
+  height: 8px;
+}
+.jv-page .jv-hud .jh-num {
+  font-size: var(--text-base);
+  min-width: 52px;
+}
+.jv-page .jv-hud .jh-num small {
+  font-size: var(--text-sm);
+}
+.jv-page .jv-hud .jh-num-lg {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+}
+.jv-page .jv-hud .jh-health {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+.jv-page .jv-hud .jh-split {
+  gap: 20px;
+}
+.jv-page .jv-hud .jh-events {
+  gap: 12px;
+}
+.jv-page .jv-hud .jh-events li {
+  padding-left: 12px;
+  border-left-width: 1px;
+  border-radius: 2px;
+}
+.jv-page .jv-hud .jh-event-text {
+  font-size: var(--text-base);
+}
+.jv-page .jv-hud .jh-card {
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+.jv-page .jv-hud .jh-foot {
+  padding-top: 14px;
+}
+
+/* The progress pipelines on this page: the same steps, larger. */
+.jv-page .ps-label {
+  font-size: var(--text-base);
+}
+.jv-page .ps-meta {
+  font-size: var(--text-sm);
+}
+
+/* L2: the HUD is one widget in the page grid; it fills its cell like the others. */
+.jv-page .jv-hud .jh-body {
+  height: 100%;
+  border-radius: var(--radius-2xl);
+}
+/* Freshness leaves the reading path (L-wave rule 4): "just now" chips and the HUD's "Updated" foot
+   hide here; a stale or unavailable source still shows its word. */
+.jv-page .jv-hud .jh-fresh[data-fresh-age]:not(.is-stale) {
+  display: none;
+}
+.jv-page .jv-hud .jh-foot .jh-num {
+  display: none;
+}
+/* Two steps across in a two-column widget: four across left each name about 60 px and broke it mid-word ("Assign/ed"). */
+.jv-page .ps-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}

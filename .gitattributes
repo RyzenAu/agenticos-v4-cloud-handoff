@@ -1,0 +1,8 @@
+# Preserve bytes exactly. Do NOT normalise line endings.
+#
+# Two reasons this matters here:
+#  1. MANIFEST.sha256 is the vendor's integrity list and our only way to identify
+#     which files we have patched. Any line-ending conversion changes every hash
+#     and makes that comparison useless.
+#  2. Several parsers in this app are line-ending sensitive (see PATCHES.md #5).
+* -text

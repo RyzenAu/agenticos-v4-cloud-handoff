@@ -1,0 +1,100 @@
+// The command service's coding turn: typed and spoken words reach the coding entry with the VERIFIED caller, a non-coding turn
+// falls through, a money-worded request never reaches it, and nothing here starts a job. Synthetic; no model, no device.
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { Principal } from "../identity/principal";
+import { JobService } from "../jobs/service";
+import { createCommandService, type Delegates } from "./service";
+
+const usman: Principal = { personId: "usman", via: "loopback-owner", actor: "human", displayName: "Usman" };
+const mehroz: Principal = { personId: "mehroz", via: "tailnet-person", actor: "human", displayName: "Mehroz" };
+const program: Principal = { personId: "usman", via: "loopback-owner", actor: "process", displayName: "Usman" };
+
+const cleanups: Array<() => void> = [];
+afterEach(() => cleanups.splice(0).reverse().forEach((c) => c()));
+
+function rig(reply: (u: string) => { say: string; navigate?: string; jobId?: string; jobState?: string } | null) {
+  const dir = mkdtempSync(join(tmpdir(), "coding-delegate-"));
+  const jobs = new JobService({ path: join(dir, "jobs.sqlite"), stopGraceMs: 500, snapshotMs: 0 });
+  cleanups.push(() => { try { jobs.close(); } catch { /* closing */ } rmSync(dir, { recursive: true, force: true }); });
+  const calls: Array<{ utterance: string; personId: string; actor: string; via: string; spokenYes: string | null; channel?: string }> = [];
+  const coding: NonNullable<Delegates["coding"]> = async (utterance, turn) => (calls.push({ utterance, ...turn }), reply(utterance));
+  const service = createCommandService({
+    jobs: () => jobs, entry: () => null, hubDeviceId: "usman-pc", resolveTarget: () => ({ ok: false, reason: "no device in this test" }),
+    delegates: { coding }, graceMs: 50, dedupeMs: 0,
+  });
+  const say = (principal: Principal, utterance: string, body: Record<string, unknown> = {}) => service.run({ principal, body: { utterance, source: "typed", ...body } });
+  return { calls, say };
+}
+
+const DRAFT = { say: "Drafted. Codex builds, Opus reviews. Start it?", navigate: "/coding", jobId: "11111111-2222-3333-4444-555555555555", jobState: "awaiting_confirmation" };
+
+describe("coding words through the command service", () => {
+  test("'assign a builder to fix X and a reviewer to check it' is handed to the coding entry with the verified caller, and starts nothing", async () => {
+    const { calls, say } = rig((u) => (/assign a builder/i.test(u) ? DRAFT : null));
+    const done = await say(mehroz, "Jarvis, assign a builder to fix the calls table and a reviewer to check it", { spokenYes: "y1" });
+    expect(calls).toEqual([{ utterance: "Jarvis, assign a builder to fix the calls table and a reviewer to check it", personId: "mehroz", actor: "human", via: "tailnet", spokenYes: "y1", channel: "typed" }]);
+    expect(done.ok).toBe(true);
+    expect(done.said).toContain("Start it?");
+    expect(done.navigate?.path).toBe("/coding");
+    expect(done.numbers).toMatchObject({ codingJobId: DRAFT.jobId, codingJobState: "awaiting_confirmation" });
+  });
+
+  test("the caller is the principal, never the words: 'as usman' from Mehroz is still mehroz; a program is a process", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    await say(mehroz, "assign a builder as usman to fix the calls table and a reviewer to check it");
+    await say(program, "assign a builder to fix the calls table and a reviewer to check it");
+    expect(calls.map((c) => [c.personId, c.actor, c.via])).toEqual([["mehroz", "human", "tailnet"], ["usman", "process", "local"]]);
+  });
+
+  test("a turn the coding entry doesn't own carries on to the other rules", async () => {
+    const { calls, say } = rig(() => null);
+    const done = await say(usman, "open the receptionist page");
+    expect(calls.length).toBe(1);
+    expect(done.kind).toBe("navigate");
+  });
+
+  test("a money-worded request never reaches the coding entry", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    await say(usman, "pay the invoice from the bank with a builder and reviewer");
+    expect(calls.length).toBe(0);
+  });
+});
+
+describe("money words stay out of the coding entry", () => {
+  test("'have Codex buy 10 Tesla shares and Opus review it' is refused before the harness sees it", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    const done = await say(usman, "have Codex buy 10 Tesla shares and Opus review it");
+    expect(calls.length).toBe(0);
+    expect(done.ok).toBe(false);
+  });
+});
+
+describe("plain code work that only names a money feature still reaches the entry", () => {
+  test("'fix the checkout bug in the dental site, Opus builds and Codex reviews' is coding, not a payment", async () => {
+    const { calls, say } = rig(() => DRAFT);
+    await say(usman, "fix the checkout bug in the dental site, Opus builds and Codex reviews");
+    expect(calls.length).toBe(1);
+  });
+});
+
+describe("a coding draft is short to SAY and complete to READ (round 3)", () => {
+  const long = "Draft ready: muv-marketing — Pin the footer copyright year to the literal 2026. Source snapshot: marketing/x at b7a778002cf9; uncommitted checkout changes are excluded. Selected routes: builder-1: claude-opus-5-5 on Claude account 2; reviewer: claude-sonnet-5-5 on Claude account 2. Reviewer: Sonnet, a different model than the builder. Start it?";
+  const draft = { jobId: "11111111-2222-3333-4444-555555555555", specDigest: "d", roles: [{ role: "builder", model: "claude-opus-5-5", accountSlot: "claude:max-2" }, { role: "reviewer", model: "claude-sonnet-5-5", accountSlot: "claude:max-2" }] };
+  test("spoken: who builds and reviews, on which login, and the question; typed: the whole receipt, and the voice's full text is kept in numbers", async () => {
+    const { say } = rig(() => ({ say: long, navigate: "/coding", jobId: draft.jobId, jobState: "awaiting_confirmation", draft } as never));
+    const spoken = await say(usman, "assign this fix to Claude Max 2", { source: "voice" });
+    expect(spoken.said).toBe("Draft ready in muv-marketing on Claude Max 2: Opus builds, Sonnet reviews. Start it?");
+    expect(spoken.said.length).toBeLessThan(100);
+    expect((spoken.numbers as { fullSummary?: string }).fullSummary).toBe(long);
+    const typed = await say(usman, "assign this fix to Claude Max 2 please", { source: "typed" });
+    expect(typed.said).toBe(long);
+    expect(typed.ok && spoken.ok).toBe(true);
+  });
+  test("a clarifying question is marked as asked, so the voice keeps listening", async () => {
+    const { say } = rig(() => ({ say: "Which one: muv-marketing or muv-demo-dental?" }));
+    expect(await say(usman, "assign this fix to Claude Max 2", { source: "voice" })).toMatchObject({ ask: true });
+  });
+});

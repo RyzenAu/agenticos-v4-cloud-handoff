@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "receptionist-retest-calls",
+      "title": "Make the 5 receptionist retest calls",
+      "area": "receptionist",
+      "detail": "Five owner retest calls on the rebuilt prompt before any gate can pass. Then review each call's flags on /receptionist.",
+      "href": "/receptionist",
+      "since": "2026-09-26",
+      "source": "receptionist readiness"
+    },
+    {
+      "id": "receptionist-deploy-prereqs",
+      "title": "Vercel Pro, TRUST_PROXY_HEADERS and alert email before the receptionist deploy",
+      "area": "receptionist",
+      "detail": "Upgrade to Vercel Pro, set TRUST_PROXY_HEADERS and choose the alert email address in the MU-Receptionist project before its next production deploy.",
+      "href": "/receptionist",
+      "since": "2026-09-27",
+      "source": "receptionist delivery SOP"
+    },
+    {
+      "id": "brooke-reply-draft",
+      "title": "Brooke reply draft is unsent",
+      "area": "email",
+      "detail": "A reply to Brooke is drafted and waiting. Read it, edit if needed and send it yourself; nothing sends automatically.",
+      "href": "/inbox",
+      "since": "2026-09-27",
+      "source": "client correspondence"
+    },
+    {
+      "id": "website-merges-deploys",
+      "title": "Website merges and deploys",
+      "area": "websites",
+      "detail": "Marketing, dental, property and legal design branches need your reviewed release decision. No merge or deploy happens without it.",
+      "href": "/websites",
+      "since": "2026-09-27",
+      "source": "Operations delivery checks"
+    },
+    {
+      "id": "dental-opening-choice",
+      "title": "Choose the dental site opening",
+      "area": "websites",
+      "detail": "The dental flagship's opening (the R14 faceless opening proof) is waiting on your choice before the dental release.",
+      "href": "/websites",
+      "since": "2026-09-27",
+      "source": "Operations delivery checks"
+    },
+    {
+      "id": "nab-legacy-routes-closed",
+      "title": "Decide: keep the legacy NAB routes closed",
+      "area": "finance",
+      "detail": "Legacy NAB/Basiq access now fails closed without reviewed, code-owned authorisation. Confirm it stays closed or name what should reopen.",
+      "href": "/operations",
+      "since": "2026-09-27",
+      "source": "NAB connection review"
+    },
+    {
+      "id": "video-narration-voice",
+      "title": "Choose the video narration voice",
+      "area": "operations",
+      "detail": "0 of 24 planned voice editions are narrated. Pick a voice from the comparison samples before the narrated cuts are made.",
+      "href": "/operations",
+      "since": "2026-09-27",
+      "source": "Operations delivery checks",
+      "status": "decided",
+      "decision": "Scotty (ElevenLabs) narrates the films.",
+      "decidedOn": "2026-09-28"
+    },
+    {
+      "id": "call-plan-28-sep",
+      "title": "Check the 28 September call plan",
+      "area": "sales",
+      "detail": "The dated call plan needs current readiness and contact checks before use. Prepared client drafts stay unsent until you approve them.",
+      "href": "/leads",
+      "since": "2026-09-27",
+      "source": "Operations delivery checks",
+      "expires": "2026-09-28"
+    }
+  ]
+}

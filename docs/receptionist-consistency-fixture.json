@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "rx-consistency-professional-1200min",
+  "synthetic": true,
+  "generatedBy": "AgenticOS-v4 src/lib/business-economics.ts receptionistConsistencyFixture()",
+  "catalogueVersion": "2026-09-27",
+  "ratesAsOf": "2026-09-28",
+  "purpose": "The receptionist app, CRM proposal and Finance must reproduce expectedInvoice exactly from this usage. Synthetic data only.",
+  "customer": {
+    "packageId": "receptionist-professional",
+    "name": "Synthetic Dental Pty Ltd (fixture)",
+    "gstRegistered": true,
+    "currency": "AUD",
+    "roundingMode": "PER_PERIOD",
+    "minimumBillableSeconds": 5
+  },
+  "usage": {
+    "calls": [
+      {
+        "count": 480,
+        "seconds": 150
+      }
+    ],
+    "billableSeconds": 72000,
+    "billableMinutes": 1200,
+    "smsSegments": 40,
+    "transfers": {
+      "legs": [
+        {
+          "count": 2,
+          "seconds": 180
+        }
+      ],
+      "customerBillable": false,
+      "note": "Transfer is not offered in any tier today. Post-transfer minutes are carrier cost only: Retell's AI fee stops at the handoff and the client is billed for AI minutes only."
+    }
+  },
+  "expectedInvoice": {
+    "includedMinutes": 1000,
+    "overageMinutes": 200,
+    "overageRateExGstCents": 75,
+    "includedSmsSegments": 600,
+    "smsOverageSegments": 0,
+    "lines": [
+      {
+        "id": "monthly",
+        "description": "Booking Receptionist · Professional, monthly fee",
+        "quantity": 1,
+        "unitExGstCents": 109900,
+        "exGstCents": 109900,
+        "gstCents": 10990,
+        "inclGstCents": 120890
+      },
+      {
+        "id": "overage-minutes",
+        "description": "Extra AI minutes beyond 1,000 included",
+        "quantity": 200,
+        "unitExGstCents": 75,
+        "exGstCents": 15000,
+        "gstCents": 1500,
+        "inclGstCents": 16500
+      },
+      {
+        "id": "sms-overage",
+        "description": "Extra SMS segments beyond 600 included",
+        "quantity": 0,
+        "unitExGstCents": 15,
+        "exGstCents": 0,
+        "gstCents": 0,
+        "inclGstCents": 0
+      }
+    ],
+    "totals": {
+      "exGstCents": 124900,
+      "gstCents": 12490,
+      "totalInclGstCents": 137390
+    },
+    "gstMethod": "GST per line = round-half-up(ex GST × 10%); totals are the sum of lines.",
+    "setupFee": {
+      "status": "proposed",
+      "invoiced": false,
+      "note": "Setup fees are PROPOSED; no app may add a setup line."
+    }
+  },
+  "mustNotProduce": [
+    {
+      "case": "PER_CALL rounding",
+      "billableMinutes": 1440,
+      "overageMinutes": 440,
+      "overageExGstCents": 33000,
+      "why": "The catalogue bills per second summed per period (PER_PERIOD). The receptionist's default PER_CALL mode would bill 480 × 3 min."
+    },
+    {
+      "case": "transfer minutes billed",
+      "billableMinutes": 1206,
+      "why": "Post-transfer minutes are not AI minutes."
+    },
+    {
+      "case": "setup fee invoiced",
+      "why": "setupStatus is proposed."
+    }
+  ],
+  "financeEstimate": {
+    "basis": "estimate",
+    "measured": null,
+    "measuredReason": "No paying receptionist client and no provider invoice yet; fill from reconciled invoices after the review trigger.",
+    "costLinesCents": {
+      "retell": 21131,
+      "carrier": 1268,
+      "number": 1211,
+      "sms": 302,
+      "transfer-termination": 63,
+      "transfer-origination": 5,
+      "webhook": 0
+    },
+    "paymentFeeNetCents": 3025,
+    "directCostCents": 27005,
+    "contributionCents": 97895,
+    "contributionMarginBps": 7838,
+    "excluded": "Support labour, shared hosting and every unknown cost (see unknownCostRegister())."
+  }
+}

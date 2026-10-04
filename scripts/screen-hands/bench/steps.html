@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Steps bench | clicks: | email=on sms=off digest=on search=on usage=on theme=light page=profile tab=plan help=none</title>
+<style>
+  body { margin: 0; font: 15px "Segoe UI", sans-serif; background: #f6f7f9; display: flex; height: 100vh; }
+  nav { width: 170px; background: #fff; border-right: 1px solid #ddd; padding: 12px 0; }
+  nav button { display: block; width: 100%; text-align: left; padding: 9px 16px; border: 0; background: none; font: inherit; cursor: pointer; }
+  nav button[aria-selected="true"] { background: #e8eefc; font-weight: 600; }
+  main { flex: 1; padding: 18px 24px; overflow: auto; }
+  section { display: none; }
+  section.on { display: block; }
+  label { display: block; margin: 10px 0; }
+  .row button, .tabs button { margin: 6px 6px 6px 0; padding: 7px 12px; font: inherit; }
+  .tabs button[aria-selected="true"] { background: #e8eefc; }
+  .panel { display: none; }
+  .panel.on { display: block; }
+</style>
+</head>
+<body>
+<!-- A fake settings app for open-goal benchmarks (scripts/screen-hands/hardening-bench.ts steps).
+     Nothing here does anything real. Every click on a control records its label in the title, and
+     the title also carries the app's state, so completion and wrong-target clicks are exact. -->
+<nav role="tablist" aria-label="Sections">
+  <button role="tab" data-page="profile" aria-selected="true">Profile</button>
+  <button role="tab" data-page="notifications" aria-selected="false">Notifications</button>
+  <button role="tab" data-page="privacy" aria-selected="false">Privacy</button>
+  <button role="tab" data-page="appearance" aria-selected="false">Appearance</button>
+  <button role="tab" data-page="billing" aria-selected="false">Billing</button>
+  <button role="tab" data-page="help" aria-selected="false">Help</button>
+</nav>
+<main>
+  <section id="profile" class="on">
+    <h2>Profile</h2>
+    <p>Signed in as a test account.</p>
+    <div class="row"><button type="button">Change photo</button><button type="button">Sign out</button></div>
+  </section>
+  <section id="notifications">
+    <h2>Notifications</h2>
+    <label><input type="checkbox" data-key="email" checked> Email alerts</label>
+    <label><input type="checkbox" data-key="sms"> SMS alerts</label>
+    <label><input type="checkbox" data-key="digest" checked> Weekly digest</label>
+    <div class="row"><button type="button">Mute all for an hour</button></div>
+  </section>
+  <section id="privacy">
+    <h2>Privacy</h2>
+    <label><input type="checkbox" data-key="search" checked> Show my profile in search engines</label>
+    <label><input type="checkbox" data-key="usage" checked> Share usage data</label>
+    <div class="row"><button type="button">Download my data</button><button type="button">Delete account</button></div>
+  </section>
+  <section id="appearance">
+    <h2>Appearance</h2>
+    <fieldset><legend>Theme</legend>
+      <label><input type="radio" name="theme" value="light" checked> Light</label>
+      <label><input type="radio" name="theme" value="dark"> Dark</label>
+      <label><input type="radio" name="theme" value="system"> Use system setting</label>
+    </fieldset>
+    <label><input type="checkbox" data-key="compact"> Compact layout</label>
+  </section>
+  <section id="billing">
+    <h2>Billing</h2>
+    <div class="tabs" role="tablist" aria-label="Billing">
+      <button role="tab" data-tab="plan" aria-selected="true">Plan</button>
+      <button role="tab" data-tab="invoices" aria-selected="false">Invoices</button>
+      <button role="tab" data-tab="payment" aria-selected="false">Payment methods</button>
+    </div>
+    <div class="panel on" id="tab-plan"><p>Starter plan.</p><button type="button">Upgrade plan</button></div>
+    <div class="panel" id="tab-invoices"><ul><li>Invoice 1001, August</li><li>Invoice 1002, September</li></ul></div>
+    <div class="panel" id="tab-payment"><p>No payment methods saved.</p></div>
+  </section>
+  <section id="help">
+    <h2>Help</h2>
+    <div class="row"><button type="button" data-help="shortcuts">Keyboard shortcuts</button><button type="button" data-help="support">Contact support</button><button type="button" data-help="new">What's new</button></div>
+    <div id="help-out"></div>
+  </section>
+</main>
+<script>
+  const state = { email: "on", sms: "off", digest: "on", search: "on", usage: "on", theme: "light", page: "profile", tab: "plan", help: "none" };
+  const clicks = [];
+  const render = () => {
+    document.title = `Steps bench | clicks: ${clicks.join(">")} | ${Object.entries(state).map(([k, v]) => `${k}=${v}`).join(" ")}`;
+  };
+  const labelOf = (el) => (el.closest("label")?.textContent || el.textContent || "").trim();
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("button, input");
+    if (!el) return;
+    clicks.push(labelOf(el).slice(0, 40));
+    if (el.dataset.page) {
+      state.page = el.dataset.page;
+      for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-selected", String(b === el));
+      for (const s of document.querySelectorAll("section")) s.classList.toggle("on", s.id === state.page);
+    }
+    if (el.dataset.tab) {
+      state.tab = el.dataset.tab;
+      for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b === el));
+      for (const p of document.querySelectorAll(".panel")) p.classList.toggle("on", p.id === `tab-${state.tab}`);
+    }
+    if (el.dataset.help) {
+      state.help = el.dataset.help;
+      document.getElementById("help-out").textContent = el.dataset.help === "shortcuts" ? "Ctrl+K search. Ctrl+, settings." : "Opened.";
+    }
+    render();
+  });
+  document.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.key) state[el.dataset.key] = el.checked ? "on" : "off";
+    if (el.name === "theme") state.theme = el.value;
+    render();
+  });
+  render();
+</script>
+</body>
+</html>

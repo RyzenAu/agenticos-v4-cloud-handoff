@@ -1,0 +1,218 @@
+.brief-weather {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 230px;
+  padding: 0 0 0 24px;
+  border-left: 1px solid var(--op-border);
+  flex-shrink: 0;
+  color: var(--op-ink);
+}
+.brief-weather-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  position: relative;
+  z-index: 1;
+}
+.brief-weather-main > div:first-child {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 9px;
+  align-items: center;
+}
+.brief-weather-place {
+  grid-column: 1/-1;
+  font-size: var(--text-xs);
+  color: var(--op-muted);
+  margin-bottom: 5px;
+}
+.brief-weather strong {
+  font-size: 29px;
+  letter-spacing: -1.2px;
+  font-weight: 450;
+  line-height: 1.2;
+}
+.brief-weather strong small {
+  font-size: var(--text-xs);
+  letter-spacing: 0;
+  margin-left: 2px;
+  color: var(--op-muted);
+}
+.brief-weather-description {
+  font-size: var(--text-xs);
+  color: var(--op-muted);
+}
+.brief-weather-motion {
+  width: 42px;
+  height: 42px;
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 10px;
+  color: #d5a95b;
+}
+.brief-weather-motion > svg {
+  width: 36px;
+  height: 36px;
+  filter: drop-shadow(0 0 10px #d5a95b25);
+}
+.is-sun .brief-weather-motion > svg {
+  animation: brief-sun-turn 80s linear infinite;
+}
+.is-cloud .brief-weather-motion > svg,
+.is-fog .brief-weather-motion > svg,
+.is-night .brief-weather-motion > svg {
+  animation: brief-cloud-drift 7s ease-in-out infinite;
+}
+.is-cloud .brief-weather-motion,
+.is-fog .brief-weather-motion,
+.is-rain .brief-weather-motion,
+.is-snow .brief-weather-motion {
+  color: #93b7d4;
+}
+.is-night .brief-weather-motion {
+  color: #aaa7df;
+}
+.is-unavailable .brief-weather-motion,
+.is-unknown .brief-weather-motion {
+  color: var(--op-muted);
+  opacity: 0.4;
+}
+.brief-weather-motion > i {
+  display: none;
+}
+.is-rain .brief-weather-motion > i,
+.is-snow .brief-weather-motion > i {
+  display: block;
+  position: absolute;
+  top: 28px;
+  left: 8px;
+  width: 2px;
+  height: 4px;
+  border-radius: 3px;
+  background: currentColor;
+  animation: brief-rain 1.7s linear infinite;
+}
+.is-snow .brief-weather-motion > i {
+  width: 3px;
+  height: 3px;
+  animation-duration: 3s;
+}
+.brief-weather-motion > i:nth-of-type(2) {
+  left: 18px;
+  animation-delay: -0.6s;
+}
+.brief-weather-motion > i:nth-of-type(3) {
+  left: 28px;
+  animation-delay: -1.2s;
+}
+.brief-skyline {
+  position: absolute;
+  z-index: -1;
+  right: -30px;
+  bottom: 22px;
+  width: 135px;
+  opacity: 0.09;
+  stroke: var(--op-muted);
+  stroke-width: 1;
+}
+.brief-river {
+  stroke: var(--op-accent);
+  animation: brief-river-light 6s ease-in-out infinite;
+}
+.brief-weather-range {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--text-xs);
+  color: var(--op-muted);
+  margin-top: 7px;
+  position: relative;
+  z-index: 1;
+}
+.brief-weather-range a {
+  display: inline-flex;
+  width: fit-content;
+  gap: 2px;
+  align-items: center;
+  color: var(--op-muted);
+  text-decoration: none;
+}
+.brief-news {
+  margin: 0 28px;
+  padding: 20px 0 24px;
+  border-top: 1px solid var(--op-border);
+}
+@keyframes brief-sun-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes brief-cloud-drift {
+  50% {
+    transform: translateX(4px);
+  }
+}
+@keyframes brief-rain {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-3px, 10px);
+    opacity: 0;
+  }
+}
+@keyframes brief-river-light {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (max-width: 850px) {
+  .brief-weather {
+    width: 200px;
+    padding-left: 17px;
+  }
+}
+@media (max-width: 650px) {
+  .brief-weather {
+    width: 100%;
+    border: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 17px;
+  }
+  .brief-weather-main {
+    justify-content: flex-start;
+    gap: 13px;
+  }
+  .brief-weather-motion {
+    width: 35px;
+  }
+  .brief-weather-range {
+    border-left: 1px solid var(--op-border);
+    padding-left: 16px;
+    margin-top: 0;
+  }
+  .brief-skyline {
+    display: none;
+  }
+  .brief-news {
+    margin: 0 20px;
+    padding: 19px 0 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brief-weather-motion > svg,
+  .brief-weather-motion > i,
+  .brief-river {
+    animation: none !important;
+  }
+  .brief-weather-motion > i {
+    opacity: 0.5;
+  }
+}

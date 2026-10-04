@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Drag bench | rows= values= filters= zoom=50 clip=0</title>
+<style>
+  body { margin: 0; font: 15px "Segoe UI", sans-serif; background: #f6f7f9; display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 16px; height: 100vh; box-sizing: border-box; }
+  .fields button { display: block; width: 100%; margin: 6px 0; padding: 8px; font: inherit; text-align: left; cursor: grab; background: #fff; border: 1px solid #bbb; border-radius: 4px; }
+  .areas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-content: start; }
+  .area { list-style: none; margin: 0; padding: 8px; min-height: 120px; background: #fff; border: 2px dashed #99a; border-radius: 6px; }
+  .area li { padding: 6px; margin: 4px 0; background: #e8eefc; border-radius: 3px; }
+  .area h3 { margin: 0 0 6px; font-size: 13px; }
+  .track { grid-column: 1 / -1; position: relative; height: 56px; background: #fff; border: 1px solid #bbb; border-radius: 4px; margin-top: 18px; }
+  .clip { position: absolute; top: 8px; left: 0; width: 110px; height: 38px; font: inherit; background: #ffd66b; border: 1px solid #b90; border-radius: 4px; cursor: grab; }
+  .ghost { position: fixed; pointer-events: none; padding: 6px 10px; background: #c6d5fb; border-radius: 4px; opacity: 0.9; }
+  label { display: block; margin-top: 14px; }
+</style>
+</head>
+<body>
+<!-- A fake PivotTable field list, a slider and a timeline for the drag benchmark
+     (scripts/screen-hands/teach-demo.ts drag). Nothing here does anything real: every drop only
+     records itself in the title, so what was dragged where is exact. Drags are pointer events, as
+     in most apps (not HTML5 drag and drop). -->
+<div class="fields" aria-label="PivotTable Fields">
+  <strong>PivotTable Fields</strong>
+  <button type="button" data-field="Region">Region</button>
+  <button type="button" data-field="Product">Product</button>
+  <button type="button" data-field="Sales">Sales</button>
+  <label>Zoom <input type="range" aria-label="Zoom" min="0" max="100" value="50" id="zoom"></label>
+</div>
+<div class="areas">
+  <div><h3>Filters</h3><ul class="area" role="list" aria-label="Filters area" data-area="filters"></ul></div>
+  <div><h3>Rows</h3><ul class="area" role="list" aria-label="Rows area" data-area="rows"></ul></div>
+  <div><h3>Values</h3><ul class="area" role="list" aria-label="Values area" data-area="values"></ul></div>
+  <div class="track" role="list" aria-label="Timeline" id="track"><button type="button" class="clip" id="clip">Clip 1</button></div>
+</div>
+<script>
+  const state = { rows: [], values: [], filters: [] };
+  const render = () => {
+    const clip = Math.round(parseFloat(document.getElementById("clip").style.left || "0"));
+    document.title = `Drag bench | rows=${state.rows.join(",")} values=${state.values.join(",")} filters=${state.filters.join(",")} zoom=${document.getElementById("zoom").value} clip=${clip}`;
+  };
+  let drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    const field = e.target.closest("[data-field]");
+    const clip = e.target.closest("#clip");
+    if (field) {
+      const ghost = document.createElement("div");
+      ghost.className = "ghost"; ghost.textContent = field.dataset.field; document.body.appendChild(ghost);
+      drag = { kind: "field", name: field.dataset.field, ghost };
+    } else if (clip) {
+      const track = document.getElementById("track").getBoundingClientRect();
+      drag = { kind: "clip", dx: e.clientX - clip.getBoundingClientRect().left, track };
+    } else return;
+    e.preventDefault();
+    document.body.setPointerCapture?.(e.pointerId);
+  });
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (drag.kind === "field") { drag.ghost.style.left = `${e.clientX + 6}px`; drag.ghost.style.top = `${e.clientY + 6}px`; }
+    else {
+      const clip = document.getElementById("clip");
+      const max = drag.track.width - clip.offsetWidth - 2;
+      clip.style.left = `${Math.max(0, Math.min(max, e.clientX - drag.track.left - drag.dx))}px`;
+    }
+  });
+  document.addEventListener("pointerup", (e) => {
+    if (!drag) return;
+    if (drag.kind === "field") {
+      drag.ghost.remove();
+      const zone = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-area]");
+      if (zone && !state[zone.dataset.area].includes(drag.name)) {
+        state[zone.dataset.area].push(drag.name);
+        const li = document.createElement("li"); li.setAttribute("role", "listitem"); li.textContent = drag.name; zone.appendChild(li);
+      }
+    }
+    drag = null;
+    render();
+  });
+  document.getElementById("zoom").addEventListener("input", render);
+  render();
+</script>
+</body>
+</html>

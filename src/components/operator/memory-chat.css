@@ -1,0 +1,74 @@
+.memory-chat-card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 330px;
+  padding: 42px 28px;
+  margin-top: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+.memory-chat-stack {
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.memory-chat-heading {
+  text-align: center;
+}
+.memory-chat-heading h2 {
+  font-size: clamp(24px, 2.1vw, 32px);
+  font-weight: 500;
+  letter-spacing: -1.1px;
+  margin: 0;
+}
+.memory-chat-heading p {
+  font-size: var(--text-xs);
+  color: var(--muted-foreground);
+  margin: 9px 0 0;
+}
+.memory-chat-scope {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: var(--inset);
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  margin-top: -7px;
+}
+.memory-chat-scope > span:not(.memory-chat-scope-dot) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.memory-chat-scope-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  flex: none;
+}
+.memory-chat-scope button {
+  display: flex;
+  padding: 2px;
+}
+@media (max-width: 700px) {
+  .memory-chat-card {
+    padding: 32px 16px;
+    min-height: 290px;
+  }
+  .memory-chat-heading p {
+    max-width: 260px;
+    line-height: 1.65;
+  }
+}

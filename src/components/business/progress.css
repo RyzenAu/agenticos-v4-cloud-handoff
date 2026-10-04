@@ -1,0 +1,358 @@
+/* Goals → this week, month and quarter (L3, 29 Sep 2026). The horizons, "What changed?" and the
+ * earlier updates are widgets on the shared grid (ds/widget-grid.tsx); this file styles only what
+ * goes INSIDE them: the goal rows, the add box, the history and the update form. Every size is a
+ * readable one (13 px minimum, 15-17 px for text you act on). */
+.progress-workspace {
+  color: var(--op-ink);
+}
+.progress-horizon-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.progress-goal-list {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.progress-goal-list:empty {
+  display: none;
+}
+.progress-goal-list article {
+  min-width: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--op-border);
+}
+.progress-goal-list article:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.progress-goal-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.progress-check {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--op-muted);
+  border-radius: 8px;
+  margin-top: 2px;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.progress-check[aria-checked="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #292130;
+}
+.progress-goal-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  text-align: left;
+  font-size: 17px;
+  line-height: 1.55;
+  letter-spacing: -0.2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.progress-goal-title svg {
+  margin: 6px 0 0 auto;
+  flex-shrink: 0;
+  color: var(--op-muted);
+  transition: transform 0.2s;
+}
+.progress-goal-title[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.is-done .progress-goal-title {
+  color: var(--op-muted);
+  text-decoration: line-through;
+}
+.progress-goal-meta {
+  padding-left: 38px;
+  margin-top: 10px;
+}
+.progress-workspace select {
+  color: var(--op-muted);
+  background: var(--op-panel);
+  border: 1px solid var(--op-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  max-width: 100%;
+}
+.progress-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--op-border);
+  border-radius: 14px;
+  padding: 7px 9px 7px 14px;
+  margin-top: auto;
+  background: var(--op-inset);
+}
+.progress-add input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  font-size: 15px;
+  color: var(--op-ink);
+  border: 0;
+  outline: 0;
+  padding: 7px 0;
+}
+.progress-add button {
+  color: var(--op-ink);
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.progress-add button:disabled {
+  opacity: 0.35;
+}
+.progress-goal-detail {
+  margin-top: 16px;
+}
+.progress-goal-detail label {
+  display: block;
+  font-size: 13px;
+  color: var(--op-muted);
+  margin-top: 12px;
+}
+.progress-workspace textarea,
+.progress-goal-detail input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--op-inset);
+  color: var(--op-ink);
+  border: 1px solid var(--op-border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.progress-workspace textarea {
+  resize: vertical;
+}
+.progress-goal-detail > div {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.progress-goal-detail button {
+  font-size: 14px;
+  color: var(--op-ink);
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--op-inset);
+  border: 1px solid var(--op-border);
+}
+
+/* What changed? */
+.progress-update-form > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.progress-update-form button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--brand-foreground, #14110a);
+  font-size: 15px;
+  padding: 10px 18px;
+  white-space: nowrap;
+}
+.progress-update-form button:disabled {
+  opacity: 0.5;
+}
+.progress-saved-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--op-green, #4a9c82);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 12px 0 0;
+}
+.progress-saved-note svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+html:not(.dark) .progress-saved-note {
+  color: #246c53;
+}
+
+/* Earlier updates */
+.progress-updates {
+  min-width: 0;
+}
+.progress-updates-nav {
+  display: flex;
+  gap: 8px;
+}
+.progress-updates-nav button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--op-border);
+  color: var(--op-ink);
+}
+.progress-updates-nav button:disabled {
+  opacity: 0.3;
+}
+.progress-updates time {
+  color: var(--op-muted);
+  font-size: 13px;
+}
+.progress-update-body {
+  font-size: 17px;
+  line-height: 1.7;
+  margin: 10px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.progress-updates small,
+.progress-update-empty {
+  font-size: 14px;
+  color: var(--op-muted);
+  line-height: 1.7;
+}
+
+.progress-error {
+  color: var(--danger);
+  font-size: 14px;
+  padding: 12px 0;
+}
+.progress-workspace :is(button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+/* Goal history (per horizon) */
+.progress-period-history {
+  margin-top: 20px;
+  border-top: 1px solid var(--op-border);
+  padding-top: 16px;
+}
+.progress-period-history > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--op-muted);
+}
+.progress-period-history > summary::-webkit-details-marker {
+  display: none;
+}
+.progress-period-history > summary > svg {
+  margin-left: auto;
+}
+.progress-period-history > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--op-muted);
+  margin: 12px 0;
+}
+.progress-period-history article {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid var(--op-border);
+}
+.progress-period-history article > div {
+  flex: 1;
+  min-width: 0;
+}
+.progress-period-history strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.progress-period-history small {
+  display: block;
+  font-size: 13px;
+  color: var(--op-muted);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+.progress-period-history select {
+  border: 1px solid var(--op-border);
+  border-radius: 8px;
+  background: var(--op-inset);
+  font-size: 13px;
+  color: var(--op-muted);
+  padding: 6px;
+  max-width: 130px;
+}
+.progress-period-history article > p {
+  width: 100%;
+  font-size: 14px;
+  color: var(--op-muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.progress-period-history article > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--brand);
+  padding: 6px 0;
+}
+
+.progress-goal-list article {
+  animation: progress-note-enter 0.35s ease-out;
+}
+@keyframes progress-note-enter {
+  from {
+    opacity: 0.4;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-workspace *,
+  .progress-workspace *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* The measures button lives in a widget: pill-sized and readable like the other widget actions. */
+.progress-workspace .op-button {
+  font-size: 15px;
+  min-height: 40px;
+  border-radius: 999px;
+  padding: 0 18px;
+}
