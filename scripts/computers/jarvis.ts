@@ -124,7 +124,7 @@ export async function computerCommand(computers: ComputersService, utterance: st
     });
     if (!r.ok) return { ok: false, said: r.reason, deviceId: computers.deviceFor(computers.store.get(cmd.name)!)?.id };
     const view = computers.view(cmd.name);
-    return { ok: true, said: `Started on ${cmd.name}: ${cmd.goal.slice(0, 120)}. It runs there whether or not your PC is on; say "show me the ${cmd.name} computer" to follow it, or stop to cancel.`, jobId: r.jobId, deviceId: view.id ?? undefined };
+    return { ok: true, started: true, said: `Started on ${cmd.name}: ${cmd.goal.slice(0, 120)}. It runs there whether or not your PC is on; say "show me the ${cmd.name} computer" to follow it, or stop to cancel.`, jobId: r.jobId, deviceId: view.id ?? undefined };
   }
 
   if (cmd.kind === "show") {
