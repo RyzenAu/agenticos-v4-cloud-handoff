@@ -454,7 +454,7 @@ export function createCodingVoice(deps: CodingVoiceDeps) {
           : resumed.state === "reviewing" && review?.verdict === "cannot-assess"
             ? "Resumed. The reviewer will assess the work again."
             : "Resumed. It continues on the same agent sessions; nothing that already ran is repeated.";
-        return { say, jobId: j.id };
+        return { say, jobId: j.id, started: true };
       } catch (e) { return { say: redactText((e as Error).message, 200), jobId: j.id }; }
     }
     // ── merge / deploy ──
