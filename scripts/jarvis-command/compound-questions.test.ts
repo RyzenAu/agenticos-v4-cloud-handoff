@@ -20,6 +20,7 @@ import { openCrm, upsertLead, mergeLead } from "../leads/crm";
 import { pipelineSummary } from "../leads/lead-pipeline";
 
 const REPRO = "what's the next action for the Westpoint Dental Clinic opportunity deal, and how many open leads do we have?";
+const SMART_APOSTROPHE_REPRO = "what’s the next action for the Westpoint Dental Clinic opportunity deal, and how many open leads do we have?";
 const owner: Principal = { personId: "usman", via: "loopback-owner", actor: "human", displayName: "Usman" };
 const cleanups: Array<() => void> = [];
 afterEach(() => cleanups.splice(0).reverse().forEach(c => c()));
@@ -85,16 +86,73 @@ function rig(options: { lane?: string; noController?: boolean; unavailable?: boo
   return { say, calls, queries, asked, jobs, rt, service };
 }
 
-test("exact founder compound keeps the record name and answers both questions in order through the real route", async () => {
+test.each([REPRO, SMART_APOSTROPHE_REPRO])("exact founder compound keeps the record name and answers both questions in order through the real route: %s", async utterance => {
   const r = rig();
-  const done = await r.say(REPRO);
+  const done = await r.say(utterance);
   expect(done.ok).toBe(true);
   expect(done.said).toContain("Review the synthetic scope");
   expect(done.said).toContain("7 open leads");
   expect(done.said.indexOf("Review the synthetic scope")).toBeLessThan(done.said.indexOf("7 open leads"));
   expect(r.queries).toEqual(["Westpoint Dental Clinic opportunity"]);
-  expect(r.asked).toEqual([REPRO]);
+  expect(r.asked).toEqual([utterance]);
+  expect(r.calls).toEqual(["crm.search", "crm.next.list", "GET /leads/pipeline?summary=1"]);
   expect(done.decision).toMatchObject({ source: "jev", requestId: "synthetic-compound" });
+});
+
+test("smart apostrophes preserve original clause words and named-record text", () => {
+  const question = "what’s the next action for the O’Malley and Sons deal";
+  const count = "how many open leads do we have?";
+  expect(businessClauses(`${question}, and ${count}`)).toEqual([question, count]);
+  expect(businessQuestionsIn(`${question}, and ${count}`)).toEqual({ kind: "questions", questions: [
+    { to: "crm", intent: { kind: "next", name: "O’Malley and Sons" }, words: question },
+    { to: "leads", action: { action: "count" }, words: count },
+  ] });
+});
+
+test.each([["O’Malley and Sons", "O’Malley and Sons"], ["D’Arcy, Dental Clinic", "D’Arcy, Dental Clinic"],
+  ['"Smith’s and how many open leads"', "Smith’s and how many open leads"],
+  ["“Smith’s and how many open leads”", "Smith’s and how many open leads"],
+  ["'Smith’s and how many open leads'", "Smith’s and how many open leads"],
+  ["‘Smith’s and how many open leads’", "Smith’s and how many open leads"],
+])("smart-apostrophe questions retain quoted and unquoted names: %s", async (target, name) => {
+  const r = rig({ title: name });
+  const done = await r.say(`what’s the next action for the ${target} deal, and how many open leads do we have?`);
+  expect(done.ok).toBe(true);
+  expect(r.queries).toEqual([name]);
+  expect(r.calls).toEqual(["crm.search", "crm.next.list", "GET /leads/pipeline?summary=1"]);
+});
+
+test("smart-apostrophe standalone and reverse compound questions retain operation order", async () => {
+  const r = rig();
+  const single = await r.say("what’s the next action for the Westpoint Dental Clinic opportunity deal?");
+  expect(single).toMatchObject({ ok: true, decision: { op: "crm.operation" } });
+  expect(r.calls).toEqual(["crm.search", "crm.next.list"]);
+  const done = await r.say("how many open leads do we have, and what’s the next action for the Westpoint Dental Clinic opportunity deal?");
+  expect(done.ok).toBe(true);
+  expect(done.said.indexOf("7 open leads")).toBeLessThan(done.said.indexOf("Review the synthetic scope"));
+  expect(r.calls.slice(2)).toEqual(["GET /leads/pipeline?summary=1", "crm.search", "crm.next.list"]);
+});
+
+test.each(["typed", "voice"])("smart-apostrophe %s questions work without Jev and with the unavailable fallback", async source => {
+  for (const options of [{ noController: true }, { unavailable: true }]) {
+    const r = rig(options);
+    const done = await r.say(SMART_APOSTROPHE_REPRO, { source });
+    expect(done).toMatchObject({ ok: true, verified: true, decision: { source: options.unavailable ? "fallback" : "rules" } });
+    expect(done.said).toContain("Review the synthetic scope");
+    expect(done.said).toContain("7 open leads");
+    expect(r.calls).toEqual(["crm.search", "crm.next.list", "GET /leads/pipeline?summary=1"]);
+  }
+});
+
+test.each(["email the client", "update the website code", "crm.task.complete {}", "what’s the weather?"])("smart-apostrophe mixed request remains fail-closed: %s", async suffix => {
+  for (const options of [{}, { noController: true }, { unavailable: true }]) {
+    const r = rig({ ...options, mutatingDelegates: true });
+    const before = { ...r.rt.store.snapshot(), generatedAt: "ignored" };
+    const done = await r.say(`what’s the next action for the Westpoint Dental Clinic opportunity deal, and ${suffix}`);
+    expect(done).toMatchObject(options.unavailable ? { ok: false, kind: "unavailable" } : { ok: false, ask: true });
+    expect(r.calls).toEqual([]);
+    expect({ ...r.rt.store.snapshot(), generatedAt: "ignored" }).toEqual(before);
+  }
 });
 
 
