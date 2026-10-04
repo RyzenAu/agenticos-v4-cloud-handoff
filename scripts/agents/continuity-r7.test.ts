@@ -127,7 +127,7 @@ describe("a command the conversation already holds is never run again", () => {
     expect(r.started).toHaveLength(1);
   });
 
-  test("a run that THROWS writes a failure reply (ok:false, nothing started) instead of leaving a request with no answer, and the resend runs", async () => {
+  test("a run that THROWS leaves an unverified reply and durable admission; resend never guesses that nothing started", async () => {
     const r = await rig();
     r.setBody(async () => ({ ok: true, note: "x" }));
     const create = r.jobs.create.bind(r.jobs);
@@ -141,15 +141,15 @@ describe("a command the conversation already holds is never run again", () => {
     expect(failed).toBe(true);
     const reply = entries(r).find((e) => e.key === "evt-throw-1:ack");
     expect(reply).toMatchObject({ ok: false });
-    expect(reply!.unverified).toBeUndefined();
-    expect(r.jobs.list({ bot: "research" })).toHaveLength(0); // no job exists, so nothing is unconfirmed
+    expect(reply!.unverified).toBe(true);
+    expect(r.jobs.list({ bot: "research" })).toHaveLength(0); // missing job metadata cannot prove an external call did not happen
     broken = false;
     const second = await commandFor(r).say(usman, "find the best dental software", { conversationId: research, target: { bot: "research" }, eventId: "evt-throw-1" });
-    expect(second.ok).toBe(true);
-    expect(r.jobs.list({ bot: "research" }).length).toBeGreaterThan(0);
+    expect(second).toMatchObject({ ok: false, outcome: "unverified", numbers: { replayed: true } });
+    expect(r.jobs.list({ bot: "research" })).toHaveLength(0);
     const ack = entries(r).filter((e) => e.key === "evt-throw-1:ack");
     expect(ack).toHaveLength(1);
-    expect(ack[0].ok).not.toBe(false); // the failure reply was replaced by the real one
+    expect(ack[0]).toMatchObject({ ok: false, unverified: true }); // the unresolved result is not replaced with invented success
   });
 
   test("a replay carries the ORIGINAL verdict: a command that failed (or was a stop) is not reported as a success after a restart", async () => {

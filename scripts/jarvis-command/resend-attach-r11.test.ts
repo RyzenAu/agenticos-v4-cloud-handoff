@@ -4,7 +4,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CommandDoneEvent, CommandStreamEvent } from "./contracts";
 import { createLinkedRunner } from "./linked-run";
-import type { JobService } from "../jobs/service";
+import { JobService } from "../jobs/service";
 
 const principal = { personId: "usman", via: "loopback-owner", actor: "human", displayName: "Usman" } as never;
 const DONE: CommandDoneEvent = { type: "done", ok: true, said: "Opened it.", kind: "app", jobId: "job-1", runId: "", targetDeviceId: "hub" };
@@ -13,6 +13,7 @@ describe("a resend follows the first run's stream", () => {
   test("the resend sees the job event (replayed), later events live, and the done once; the command runs once", async () => {
     let release!: () => void;
     let runs = 0;
+    const jobs = new JobService({ path: ":memory:", snapshotMs: 0 });
     const run = createLinkedRunner({
       core: async (_input, emit) => {
         runs++;
@@ -22,7 +23,7 @@ describe("a resend follows the first run's stream", () => {
         emit(DONE);
         return DONE;
       },
-      jobs: () => ({}) as JobService,
+      jobs: () => jobs,
       isStop: () => false,
     });
     const first: CommandStreamEvent[] = [];
@@ -40,5 +41,6 @@ describe("a resend follows the first run's stream", () => {
     expect(db.said).toBe("Opened it.");
     expect(second.map((e) => e.type)).toEqual(["job", "narrate", "done"]);
     expect(first.map((e) => e.type)).toEqual(["job", "narrate", "done"]);
+    jobs.close();
   });
 });

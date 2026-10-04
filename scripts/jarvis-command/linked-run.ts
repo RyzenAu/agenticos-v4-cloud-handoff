@@ -13,6 +13,8 @@
  * It starts nothing itself: every action is the core's, the job service's cancel, or the coding delegate's own stop.
  */
 import { stopOutcome, type JobService } from "../jobs/service";
+import { commandRequestId, type CommandAdmission } from "../jobs/command-admission";
+import { commandAdmissionKey, commandPrevented } from "./admission";
 import type { CommandDoneEvent, CommandStreamEvent, PageContext } from "./contracts";
 import type { RunInput } from "./service";
 import { randomUUID } from "node:crypto";
@@ -61,7 +63,7 @@ export function createLinkedRunner(deps: {
 }) {
   const now = deps.now ?? Date.now;
   /** Per person+eventId: the first run's outcome, and its stream so far (a resend replays it, the `job` event included, then follows it live). */
-  const events = new Map<string, { at: number; promise: Promise<CommandDoneEvent>; seen: CommandStreamEvent[]; followers: Set<(e: CommandStreamEvent) => void> }>();
+  const events = new Map<string, { at: number; binding: string; failed: boolean; settled: boolean; promise: Promise<CommandDoneEvent>; seen: CommandStreamEvent[]; followers: Set<(e: CommandStreamEvent) => void> }>();
 
   const done = (said: string, extra: Partial<CommandDoneEvent> = {}): CommandDoneEvent => ({ type: "done", ok: true, said, kind: "answer", jobId: null, runId: "", targetDeviceId: null, ...extra });
 
@@ -71,6 +73,7 @@ export function createLinkedRunner(deps: {
   async function followUp(input: RunInput, conversationId: string | undefined, active: ActiveJob[], alone = false): Promise<CommandDoneEvent | null> {
     const { principal, body } = input;
     const threads = deps.threads!;
+    if (input.admission && deps.jobs().commandAdmission(input.admission.personId, input.admission.eventId)?.stoppedAt != null) return commandPrevented();
     const f = classifyFollowUp(String(body.utterance ?? ""), active, now());
     if (f.kind === "none") return null;
     // "Stop that task" with open jobs in more than one conversation (the default thread and a bot's, or two bots'): when the words don't single one
@@ -136,6 +139,7 @@ export function createLinkedRunner(deps: {
    */
   async function runLinked(input: RunInput, emit: (e: CommandStreamEvent) => void): Promise<CommandDoneEvent> {
     const { principal, body } = input;
+    if (input.admission && deps.jobs().commandAdmission(input.admission.personId, input.admission.eventId)?.stoppedAt != null) return commandPrevented();
     const source = body?.source;
     const threads = deps.threads;
     const eligible = !!threads && source !== "acceptance" && source !== "away" && !body?.steps?.length;
@@ -183,11 +187,11 @@ export function createLinkedRunner(deps: {
       result = await runPlain(botTurn, emit, scope.conversationId, scope.bot, origin !== scope.conversationId ? origin : undefined);
     } catch (error) {
       // The run threw: write the reply anyway, so the conversation never holds a request with no answer. If something may have started, say the
-      // outcome is not known (it is then never run again); if nothing did, a resend may run it.
+      // outcome is not known. A durable admission is not proof that a delegate never dispatched before throwing.
       let started = false;
       try {
-        started = !!threads!.priorCommand({ personId: principal.personId, bot: scope.bot, commandId })?.mayHaveStarted;
-        threads!.note({ personId: principal.personId, bot: scope.bot, commandId, role: "ack", text: started ? "That hit a fault after a job for this bot started, and it may or may not be this one. I can't confirm how it ended, so it will not be run again: check this conversation before asking twice." : "That did not run: the hub hit a fault before it started anything. Sending it again is safe.", ok: false, ...(started ? { unverified: true } : {}), replace: true });
+        started = !!input.admission || !!threads!.priorCommand({ personId: principal.personId, bot: scope.bot, commandId })?.mayHaveStarted;
+        threads!.note({ personId: principal.personId, bot: scope.bot, commandId, role: "ack", text: started ? "That request hit a fault and its outcome is not confirmed. It will not be run again automatically: check this conversation and its jobs before starting new work." : "That did not run: the hub hit a fault before it started anything. Sending it again is safe.", ok: false, ...(started ? { unverified: true } : {}), replace: true });
       } catch { /* the reply could not be saved either: the thrown error below still reaches the person */ }
       throw error;
     }
@@ -218,7 +222,7 @@ export function createLinkedRunner(deps: {
         const open = active.filter((j) => isOpenState(j.state));
         if (!open.length) return done(`Nothing is running for ${bot.name}, so there is nothing to stop.`);
         if (open.length > 1) return done(`Which one to stop: ${open.slice(0, 3).map(whose).join(" or ")}?`, { ok: false, kind: "ask", ask: true });
-        const f = await followUp({ principal, body: { ...body, utterance: "stop that task" } }, conversationId, active, true).catch(() => null);
+        const f = await followUp({ ...input, principal, body: { ...body, utterance: "stop that task" } }, conversationId, active, true).catch(() => null);
         if (f) return f;
       }
       const handled = await followUp(input, conversationId, active, !!bot).catch(() => null);
@@ -232,7 +236,7 @@ export function createLinkedRunner(deps: {
     if (result.stopped && !result.jobId && deps.isStop(String(body.utterance ?? "").trim())) {
       const open = active.filter((j) => isOpenState(j.state));
       if (open.length === 1) {
-        const f = await followUp({ principal, body: { ...body, utterance: "stop that task" } }, conversationId, active).catch(() => null);
+        const f = await followUp({ ...input, principal, body: { ...body, utterance: "stop that task" } }, conversationId, active).catch(() => null);
         // Both facts (review, round 11): the job it stopped AND the coding question it dropped.
         if (f) return (result.numbers as { codingDraftDropped?: boolean } | undefined)?.codingDraftDropped ? { ...f, said: `${f.said} I've also dropped the coding request that was waiting for your answer.` } : f;
       }
@@ -272,29 +276,70 @@ export function createLinkedRunner(deps: {
     return { ...result, said: ack, jobId: result.jobId ?? target.id, numbers: { ...(result.numbers as object | undefined), jobId: target.id, conversationId: linked.conversationId } };
   }
 
-  /** The one run: dedupe by event id, then the linked run. */
+  /** Read existing results only. An admission with no observed result is never dispatched again. */
+  async function replay(input: RunInput, record: CommandAdmission): Promise<CommandDoneEvent> {
+    if (record.admittedAt === null) return commandPrevented();
+    const { principal, body } = input;
+    if (deps.threads && deps.bots && mayUseBots(principal) && record.outcome !== "unknown") {
+      const scope = deps.bots.scope({ principal, utterance: String(body.utterance ?? ""), body });
+      if (scope?.kind === "bot") {
+        const prior = deps.threads.priorCommand({ personId: principal.personId, bot: scope.bot, commandId: record.eventId });
+        const a = prior?.ack;
+        if (a) return done(a.text, { ok: a.ok ?? !a.blocker, ...(a.stopped ? { stopped: true } : {}), jobId: a.jobId || null, numbers: { replayed: true, ...(a.jobId ? { jobId: a.jobId } : {}) } });
+      }
+    }
+    const taskId = record.taskKind === "coding" ? record.taskId : record.jobKind === "coding" ? record.jobId : null;
+    if (taskId) {
+      // threads.status() refreshes lastReferencedAt. A duplicate must not retarget later follow-ups.
+      return done("That request already reached the coding job. Check its original conversation or job; it was not started again.", {
+        jobId: taskId, numbers: { replayed: true, codingJobId: taskId }, verified: null,
+      });
+    }
+    const taskJob = record.taskKind === "job" ? record.taskId : record.jobKind === "job" ? record.jobId : null;
+    const job = taskJob ? deps.jobs().get(taskJob) : deps.jobs().byRequest(commandRequestId(principal.personId, record.eventId));
+    if (job && job.principal.personId === principal.personId) {
+      const open = ["running", "queued", "awaiting-approval"].includes(job.state);
+      return done(open ? `That request is already ${job.state === "awaiting-approval" ? "waiting for your yes" : "running"}, so I didn't start it again.` : `That request already ran (${job.state}). It was not run again.`, {
+        ok: open || job.state === "succeeded", jobId: job.id, targetDeviceId: job.targetDeviceId,
+        numbers: { replayed: true, jobId: job.id, state: job.state }, verified: null,
+      });
+    }
+    if (record.outcome === "stopped") return done("The stop for that request was recorded. It will not be started again.", { stopped: true, numbers: { replayed: true }, verified: null });
+    const complete = record.outcome === "completed" || record.outcome === "no-work";
+    return done(complete ? "That request was already handled. Check its original conversation or job; it was not run again." : "That request was received, but its outcome is not confirmed. It was not run again; check the original conversation or job before starting new work.", {
+      ok: complete, ...(complete ? {} : { outcome: "unverified" }), jobId: record.jobId,
+      numbers: { replayed: true, ...(record.jobId ? { [record.jobKind === "coding" ? "codingJobId" : "jobId"]: record.jobId } : {}) }, verified: null,
+    });
+  }
+
+  /** Claim before any follow-up, thread mutation, planner or executor can run. */
   return async function run(input: RunInput, emit: (e: CommandStreamEvent) => void = () => undefined): Promise<CommandDoneEvent> {
     const eventId = typeof input.body?.eventId === "string" && EVENT_ID.test(input.body.eventId) ? input.body.eventId : null;
     if (!eventId) return runLinked(input, emit);
+    const admission = commandAdmissionKey(input, eventId);
+    const claim = deps.jobs().claimCommand(admission);
+    if (claim.status === "conflict") return done("That request id belongs to a different conversation, target or request. Nothing new was started. Send a new request with a new id.", { ok: false, kind: "refused", refused: true });
+    if (claim.record.admittedAt === null) return commandPrevented();
     const key = `${input.principal.personId}|${eventId}`;
     const t = now();
     const hit = events.get(key);
-    if (hit && t - hit.at <= EVENT_WINDOW_MS) {
-      // Review M3: the resend is attached to the first run's stream (its `job` event first), so a Stop on the resend can cancel that job by id.
+    if (hit && hit.binding === admission.binding && !hit.failed && (!hit.settled || t - hit.at <= EVENT_WINDOW_MS)) {
       let sawDone = false;
-      const follow = (e: CommandStreamEvent) => {
-        if (e.type === "done") sawDone = true;
-        emit(e);
-      };
+      const follow = (e: CommandStreamEvent) => { if (e.type === "done") sawDone = true; emit(e); };
       for (const e of hit.seen) follow(e);
       hit.followers.add(follow);
       try {
         const d = await hit.promise;
         if (!sawDone) emit(d);
         return d;
-      } finally {
-        hit.followers.delete(follow);
-      }
+      } finally { hit.followers.delete(follow); }
+    }
+    if (claim.status === "existing") return replay(input, claim.record);
+    // A legacy job may predate the ledger. Preserve its existing request-id receipt before doing anything else.
+    const prior = deps.jobs().byRequest(commandRequestId(admission.personId, admission.eventId));
+    if (prior && prior.principal.personId === admission.personId) {
+      const record = deps.jobs().settleCommand(admission.personId, admission.eventId, admission.binding, { jobId: prior.id, jobKind: "job", outcome: "completed" });
+      return replay(input, record!);
     }
     const seen: CommandStreamEvent[] = [];
     const followers = new Set<(e: CommandStreamEvent) => void>();
@@ -303,10 +348,24 @@ export function createLinkedRunner(deps: {
       emit(e);
       for (const f of [...followers]) try { f(e); } catch { /* a follower never breaks the first run */ }
     };
-    const promise = runLinked(input, fanout);
-    events.set(key, { at: t, promise, seen, followers });
-    if (events.size > EVENT_MAX) for (const [k, v] of events) if (t - v.at > EVENT_WINDOW_MS || events.size > EVENT_MAX) events.delete(k);
-    promise.catch(() => events.delete(key));
-    return promise;
+    const holder = { at: t, binding: admission.binding, failed: false, settled: false, promise: null as unknown as Promise<CommandDoneEvent>, seen, followers };
+    // A microtask installs the local fanout before even a synchronous core can emit or re-enter.
+    holder.promise = Promise.resolve().then(() => runLinked({ ...input, admission }, fanout)).then((result) => {
+      // Dispatch identity is written by the core only when it observes an actual start. A returned
+      // status/reference is not cancellation authority and must never become a task binding here.
+      deps.jobs().settleCommand(admission.personId, admission.eventId, admission.binding, {
+        outcome: result.outcome === "unverified" || result.outcome === "uncertain" ? "unknown" : result.stopped && result.ok ? "stopped" : result.ok ? "completed" : "unknown",
+      });
+      holder.settled = true;
+      return result;
+    }).catch((error) => {
+      holder.failed = true; holder.settled = true;
+      // The claim itself already prevents replay if even the settlement write failed.
+      try { deps.jobs().settleCommand(admission.personId, admission.eventId, admission.binding, { outcome: "unknown" }); } catch { /* retain the original error and durable claim */ }
+      throw error;
+    });
+    events.set(key, holder);
+    if (events.size > EVENT_MAX) for (const [k, v] of events) if (v.settled && (t - v.at > EVENT_WINDOW_MS || events.size > EVENT_MAX)) events.delete(k);
+    return holder.promise;
   };
 }

@@ -20,6 +20,7 @@ import { isPrincipal, principalRef, publicPrincipal, type Principal } from "../a
 import { stopOwnedChild } from "../jarvis-execution/child";
 import { captureTree, systemProcessTable, treeStillPresent, type ProcessAccounting, type ProcessRow, type TreeMember } from "../jarvis-execution/process-accounting";
 import { maskLine } from "../screen-hands/run-log";
+import { CommandAdmissionStore, commandRequestId, type CommandAdmissionKey, type CommandSettlement, type CommandTask } from "./command-admission";
 import {
   JOB_KINDS,
   TERMINAL_STATES,
@@ -36,6 +37,8 @@ import {
 } from "./types";
 
 export * from "./types";
+export { commandRequestId } from "./command-admission";
+export type { CommandAdmission, CommandAdmissionKey, CommandClaim, CommandOutcome, CommandSettlement, CommandStop, CommandTask } from "./command-admission";
 import { BOT_SLUG, SUBJECT_REF } from "./types";
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -54,6 +57,8 @@ type JobRow = {
 };
 type StepRow = { job_id: string; seq: number; data: string };
 type ReceiptRow = { job_id: string; data: string };
+
+export type CreateJobInput = { kind: JobKind; principal: Principal; targetDeviceId: string; title: string; requestId?: string; approvalId?: string; /** The agent bot this job is for (Agents workspace). */ bot?: string; /** CRM references this work is about (invalid entries are dropped, at most 8). */ subjects?: readonly string[] };
 
 const iso = (ms: number) => new Date(ms).toISOString();
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -273,6 +278,7 @@ export type JobServiceOptions = {
 
 export class JobService {
   private db: Database;
+  private commands: CommandAdmissionStore;
   private now: () => number;
   private kill: (pid: number) => Promise<boolean>;
   private graceMs: number;
@@ -295,6 +301,7 @@ export class JobService {
     if (!this.readOnly && options.path !== ":memory:" && !existsSync(dirname(options.path))) mkdirSync(dirname(options.path), { recursive: true });
     this.db = new Database(options.path, this.readOnly ? { readonly: true } : { create: true });
     this.db.exec("PRAGMA busy_timeout=3000;");
+    this.commands = new CommandAdmissionStore(this.db, this.now, this.readOnly);
     if (this.readOnly) return;
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;
       CREATE TABLE IF NOT EXISTS jobs (
@@ -374,7 +381,56 @@ export class JobService {
     return row ? this.get(row.id) : null;
   }
 
-  create(input: { kind: JobKind; principal: Principal; targetDeviceId: string; title: string; requestId?: string; approvalId?: string; /** The agent bot this job is for (Agents workspace). */ bot?: string; /** CRM references this work is about (invalid entries are dropped, at most 8). */ subjects?: readonly string[] }): Job {
+  claimCommand(input: CommandAdmissionKey) {
+    return this.commands.claim(input);
+  }
+  commandAdmission(personId: string, eventId: string) {
+    return this.commands.get(personId, eventId);
+  }
+  requestCommandStop(personId: string, eventId: string) {
+    return this.commands.stop(personId, eventId);
+  }
+  settleCommand(personId: string, eventId: string, binding: string, settlement: CommandSettlement) {
+    return this.commands.settle({ personId, eventId, binding }, settlement);
+  }
+  /** Bind only a task this command explicitly started, before creating its wrapper or acknowledging it. */
+  bindCommandTask(admission: CommandAdmissionKey, task: CommandTask) {
+    return this.commands.bindTask(admission, task);
+  }
+
+  /**
+   * Check the durable Stop and create/bind the queued job in one write transaction. A Stop on another
+   * connection therefore either wins before creation or finds the bound job afterwards. No notification
+   * escapes before commit. This only admits the already-claimed event; it never claims or retries one.
+   */
+  createCommandJob(input: CreateJobInput, admission: CommandAdmissionKey): Job | null {
+    this.writable();
+    if (!isPrincipal(input.principal) || input.principal.personId !== admission.personId) throw new Error("The command and job must have the same verified person");
+    const result = this.db.transaction(() => {
+      const record = this.commandAdmission(admission.personId, admission.eventId);
+      if (!record || record.admittedAt === null || record.binding !== admission.binding || record.stoppedAt !== null) return null;
+      if (record.jobId) return record.jobKind === "job" ? { job: this.get(record.jobId), created: false } : null;
+      if (record.outcome !== null) return null;
+      const created = this.insertJob({ ...input, requestId: commandRequestId(admission.personId, admission.eventId) });
+      if (created.job.principal.personId !== admission.personId) throw new Error("The existing command job belongs to another person");
+      if (!this.commands.bindJob(admission, created.job.id, "job")) throw new Error("The command job could not be bound");
+      return created;
+    }).immediate();
+    if (result?.created) this.createdJob(result.job!.id);
+    return result?.job ? this.get(result.job.id) : null;
+  }
+
+  create(input: CreateJobInput): Job {
+    const result = this.insertJob(input);
+    if (result.created) this.createdJob(result.job.id);
+    return this.get(result.job.id)!;
+  }
+  private createdJob(id: string) {
+    this.jobChanged(id);
+    if (++this.creates % 100 === 0) this.prune();
+  }
+  /** Insert without publishing, so createCommandJob can bind its admission before the commit. */
+  private insertJob(input: CreateJobInput): { job: Job; created: boolean } {
     this.writable();
     if (!JOB_KINDS.includes(input.kind)) throw new Error("Unknown job kind");
     if (!isPrincipal(input.principal)) throw new Error("A verified principal is required");
@@ -382,7 +438,7 @@ export class JobService {
     if (input.requestId !== undefined && (typeof input.requestId !== "string" || !/^[\w:.-]{1,80}$/.test(input.requestId))) throw new Error("Invalid request id");
     if (input.requestId) {
       const existing = this.db.query("SELECT id FROM jobs WHERE request_id=?").get(input.requestId) as { id: string } | null;
-      if (existing) return this.get(existing.id)!;
+      if (existing) return { job: this.get(existing.id)!, created: false };
     }
     const id = randomUUID(), now = this.now();
     const bot = typeof input.bot === "string" && BOT_SLUG.test(input.bot) ? input.bot : null;
@@ -391,9 +447,7 @@ export class JobService {
       .query("INSERT INTO jobs (id, kind, principal, target_device_id, state, title, request_id, approval_id, created_at, updated_at, bot, subjects) VALUES (?, ?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)")
       .run(id, input.kind, JSON.stringify(principalRef(input.principal)), input.targetDeviceId, maskJobText(input.title, 200) || input.kind,
         input.requestId ?? null, input.approvalId && UUID.test(input.approvalId) ? input.approvalId : null, now, now, bot, subjects.length ? JSON.stringify(subjects) : null);
-    this.jobChanged(id);
-    if (++this.creates % 100 === 0) this.prune();
-    return this.get(id)!;
+    return { job: this.get(id)!, created: true };
   }
   /** Keep the newest KEEP_JOBS jobs; older FINISHED ones go with their steps and receipts (never a quarantined one). */
   private prune() {

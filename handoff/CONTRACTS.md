@@ -1,7 +1,7 @@
 # HTTP contracts the frontend depends on
 
-Read from the code at `82d6962d`. Where a server file documents its own routes, that file is the source of truth and is
-named. Shapes here are abridged: check the named type before changing either side.
+Baseline routes are read from `82d6962d`; the Stop/idempotency section includes this branch's proposed durable-admission
+update and is not a production-release claim. Where a server file documents its own routes, that file is the source of truth and is named. Shapes here are abridged: check the named type before changing either side.
 
 ## Common rules
 
@@ -147,13 +147,22 @@ frontend renders either form through `src/lib/commands/decided-by.ts`, which rea
    as such (`outcome: "unverified"`, the job ids in `numbers.unconfirmed`).
 2. **While the coding planner is waiting for an answer**, soft stop words ("forget it", "hold on") go to the harness as
    the answer; only an explicit stop command stops.
-3. **Same `eventId`, same person, same command.** The job is created with request id `cmd:<personId>:<eventId>` (event
-   ids up to 64 characters key it exactly). A resend is answered from the stored job and never run again:
-   `numbers.replayed: true`, with "already running", "waiting for your yes" or "already ran (state)". This survives a hub
-   restart because it reads the job store.
-4. **Stop before the job exists.** `cancel { eventId }` records the event as stopped for 30 minutes; the command never
-   starts and a resend returns `stopped: true, numbers.stoppedBeforeStart: true`. This record is **memory-only**: after a
-   hub restart a resend runs the command (see `BACKEND-BACKLOG.md`).
+3. **Same `eventId`, same person, same immutable request binding.** The jobs SQLite store claims an event before
+   follow-ups, planners or executors run. Its digest binds the founder, conversation, origin device, requested target,
+   words (including explicit account/model pins), page context and steps. Capture timestamps do not affect the digest.
+   A changed binding is refused; it cannot attach to another request. All valid 6–80 character event ids are supported:
+   short job keys retain `cmd:<personId>:<eventId>`, and longer keys use a digest rather than truncation.
+   Reconnects follow the original in-process stream. After restart, replies use existing job/bot records or a truthful
+   already-received/unverified response. An accepted event is never automatically dispatched again, including when
+   no job existed at the crash or an executor threw. An uncertain result must be checked before deliberately issuing
+   a new event. Duplicate reads do not refresh conversation-reference recency.
+4. **Stop before the job exists.** `cancel { eventId }` writes a durable Stop tombstone. Never-admitted tombstones retain
+   the existing 30-minute expiry; admitted events and their Stop flags do not expire. Atomic wrapper creation checks
+   the Stop and binds the queued job in the same transaction. A previously admitted request with an unknown outcome
+   remains `unconfirmed`, never falsely `prevented` after restart. Explicitly started coding/computer tasks are bound
+   separately from command wrappers so Stop reaches the actual task. Status/show/attach references never become
+   cancellation authority. If work started before Stop, the reply reports its observed stop outcome rather than saying
+   nothing ran. The ledger stores identifiers, a digest and bounded outcome flags only, never prompts, outputs or tokens.
 5. **Same words, no `eventId`.** A repeat of the same words, target and page context from the same person within 5 s
    while that job runs (or just finished OK) attaches to it instead of starting another. Answers ("yes", "no") are always new.
 6. **Client rule.** Mint one `eventId` per utterance, reuse it on a reconnect's replay, and send Stop with the same

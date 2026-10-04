@@ -57,6 +57,7 @@ import { createRecentTargets, resolveSwitch, switchBackIn, targetFrom, type Swit
 import { codingDraftFor } from "./coding";
 import { crmIntentIn, type CrmAnswer, type CrmIntent } from "./crm";
 import { BOT_NEEDS_SESSION, createLinkedRunner, type RunMeta } from "./linked-run";
+import { commandRequestId, type CommandAdmissionKey } from "../jobs/command-admission";
 import type { JobThreads } from "./threads";
 import { codeChangeNotPayment, codingMoneyRefusal, readOnlyMoneyQuestion } from "../jarvis-execution/spoken-money";
 import { parseComputerCommand } from "../computers/jarvis";
@@ -89,7 +90,7 @@ export type Delegates = {
    * computer job for the VERIFIED person. Null = not a computer request. The agent gets exactly that person's permitted targets; a named
    * computer that isn't there is refused, never replaced by another machine (scripts/computers/jarvis.ts).
    */
-  computers?: (utterance: string, principal: Principal) => Promise<{ ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string } | null>;
+  computers?: (utterance: string, principal: Principal) => Promise<{ ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string; started?: boolean } | null>;
   /** A lead's website from the CRM itself (never from the page's words): "open this lead's website". Null = no such lead. */
   leadSite?: (leadId: string) => Promise<{ name: string; website: string | null } | null>;
   /** A CRM action on a named lead (log a call, set a status, who's next), read back after any write. */
@@ -149,7 +150,7 @@ export type CommandServiceDeps = {
     threadIds: (personId: string) => string[];
     /** The bots Jev may hand a task to (id, name, what it is for). Absent: the controller offers no agent lane. */
     list?: () => { id: string; name: string; purpose?: string }[];
-    run(input: { principal: Principal; bot: string; utterance: string; source: CommandSource; spokenYes?: string | null; subjects?: string[]; pageContext?: PageContext | null; /** Jev's choice of task kind for the agent. */ lane?: "coding" | "computer"; /** The decision record (decidedBy, op, confidence, ms, requestId, model, options, cached) kept on the agent's task. */ decision?: JevDecisionRef | null }): Promise<{ ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string; ask?: boolean; numbers?: Record<string, unknown> } | null>;
+    run(input: { principal: Principal; bot: string; utterance: string; source: CommandSource; spokenYes?: string | null; subjects?: string[]; pageContext?: PageContext | null; /** Jev's choice of task kind for the agent. */ lane?: "coding" | "computer"; /** The decision record (decidedBy, op, confidence, ms, requestId, model, options, cached) kept on the agent's task. */ decision?: JevDecisionRef | null }): Promise<{ ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string; ask?: boolean; numbers?: Record<string, unknown>; started?: boolean } | null>;
   };
   /**
    * The Jev controller (scripts/jev-controller.ts): ONE typed decision for words no exact rule planned (which lane, which agent). Absent:
@@ -167,7 +168,7 @@ export type CommandServiceDeps = {
 type Live = { events: CommandStreamEvent[]; listeners: Set<(e: CommandStreamEvent) => void>; done: CommandDoneEvent | null; grace?: ReturnType<typeof setTimeout>; personId: string; seq: number };
 
 /** `memoryCaller`: the memory plugin's own verified caller for this request (its principalFor(req)). */
-export type RunInput = { principal: Principal; body: CommandBody; memoryCaller?: unknown };
+export type RunInput = { principal: Principal; body: CommandBody; memoryCaller?: unknown; /** Internal only: never accepted from an HTTP body. */ admission?: CommandAdmissionKey };
 
 const HANDOFF_SPECIALISTS: SpecialistId[] = ["brain", "vision", "voice-tools"];
 /** A whole-request stop. Anything longer ("stop the music and open Notepad") is a new request. */
@@ -226,14 +227,8 @@ export function createCommandService(deps: CommandServiceDeps) {
   const pageMemory = createContextMemory();
   /** An identical command from the same person, still running or just finished OK, is the same command (typed + voice echo). */
   const recent = new Map<string, { jobId: string; at: number }>();
-  /** Event ids a person stopped before any job existed (person|eventId -> when): such a command never starts, and a resend says so. */
-  const stoppedEvents = new Map<string, number>();
-  const STOPPED_EVENT_MS = 30 * 60_000;
-  const eventStopped = (personId: string, eventId: unknown) => {
-    if (typeof eventId !== "string") return false;
-    const at = stoppedEvents.get(`${personId}|${eventId}`);
-    return at !== undefined && Date.now() - at <= STOPPED_EVENT_MS;
-  };
+  /** Durable Stop applies across restart; a request with an ambiguous outcome is never replayed. */
+  const eventStopped = (personId: string, eventId: unknown) => typeof eventId === "string" && /^[\w:.-]{6,80}$/.test(eventId) && deps.jobs().commandAdmission(personId, eventId)?.stoppedAt != null;
   /** person|eventId -> how many runs of it are in progress (final review B1). */
   const inProgress = new Map<string, number>();
   const stoppedBeforeStart = (): CommandDoneEvent => ({ type: "done", ok: true, stopped: true, said: "Stopped before it started. Nothing ran.", kind: "answer", jobId: null, runId: "", targetDeviceId: null, numbers: { stoppedBeforeStart: true }, verified: true });
@@ -411,25 +406,40 @@ export function createCommandService(deps: CommandServiceDeps) {
     // they call out, and stop what the call started if his Stop arrived during it, then report what really happened.
     /** A lane already stopped what it started for this event and says so: the job record that follows is not "stopped before it started". */
     let stopHandled = false;
+    let dispatchedTask: { id: string; kind: "job" | "coding" } | null = null;
+    const rememberTask = (id: string, kind: "job" | "coding") => {
+      dispatchedTask = { id, kind };
+      if (input.admission && !deps.jobs().bindCommandTask(input.admission, { taskId: id, taskKind: kind })) throw new Error("The started task could not be recorded; its outcome needs checking.");
+    };
+    const stopDispatched = async (): Promise<CommandDoneEvent> => {
+      const task = dispatchedTask!;
+      const result = input.admission ? await cancelEvent(input.admission.eventId, principal) : { ok: false, state: null, outcome: "unconfirmed" as const };
+      const confirmed = result.outcome === "stopped";
+      return { type: "done", ok: confirmed, stopped: confirmed, said: confirmed ? "Your stop arrived after the job started, and it is now stopped. Nothing further will run." : result.outcome === "already-ended" ? "Your stop arrived after the job had already ended." : "The job had already started. Stop requested; not yet confirmed. Check its job before trusting that it stopped.", kind: "answer", jobId: task.kind === "job" ? task.id : null, runId: "", targetDeviceId: null, ...(confirmed ? {} : { outcome: "unverified" }), numbers: { ...(task.kind === "coding" ? { codingJobId: task.id, ...(result.state ? { codingJobState: result.state } : {}) } : { jobId: task.id }) }, verified: confirmed ? true : null };
+    };
     const stopGuard = () => {
       if (eventStopped(principal.personId, body.eventId)) throw new StoppedBeforeStart();
     };
     const stopTurnOf = { personId: principal.personId, actor: principal.actor === "human" ? ("human" as const) : ("process" as const), via: principal.via === "loopback-owner" ? "local" : principal.via === "telegram-owner" ? "telegram" : "tailnet", spokenYes: null };
     const afterCoding = async <R extends { say: string; jobId?: string; jobState?: string; started?: boolean } | null>(r: R): Promise<R> => {
+      if (r?.started && r.jobId) rememberTask(r.jobId, "coding");
       if (!r || !r.jobId || !eventStopped(principal.personId, body.eventId)) return r;
-      if (!r.started && (!r.jobState || ["draft", "awaiting_confirmation", "completed", "failed", "cancelled"].includes(r.jobState))) return r;
+      if (!r.started) return r; // A status/reference reply never grants this event authority to cancel existing work.
       stopHandled = true;
       const stopped = await deps.delegates?.coding?.(`stop the coding job ${r.jobId}`, stopTurnOf).catch(() => null);
       return { ...r, say: `Your stop arrived as it was starting. ${stopped?.say ?? "I couldn't reach the coding harness to stop it, so it may still be running: check the job."}`, started: false } as R;
     };
     const afterJob = async <B extends { ok: boolean; said: string } | null>(b: B): Promise<B> => {
-      const jobId = b && "jobId" in b ? (b as { jobId?: unknown }).jobId : null;
       if (!b) return b;
-      if (typeof jobId !== "string" || !eventStopped(principal.personId, body.eventId)) return b;
+      const reply = b as B & { jobId?: string; started?: boolean; numbers?: Record<string, unknown> };
+      const codingId = reply.numbers?.codingStarted === true && typeof reply.numbers.codingJobId === "string" ? reply.numbers.codingJobId : null;
+      if (codingId) rememberTask(codingId, "coding");
+      else if (reply.started === true && typeof reply.jobId === "string") rememberTask(reply.jobId, "job");
+      else return b; // A status/show/attach result does not grant this request cancellation of existing work.
+      if (!eventStopped(principal.personId, body.eventId)) return b;
       stopHandled = true;
-      const outcome = stopOutcome(await deps.jobs().cancel(jobId).catch(() => null));
-      const said = outcome === "stopped" ? "Your stop arrived as it was starting, and it is stopped. Nothing further will run." : outcome === "already-ended" ? "Your stop arrived after it had already ended." : "Your stop arrived as it was starting. Stop requested; not yet confirmed. It may still be running: check Activity.";
-      return { ...b, ok: outcome === "stopped", said } as B;
+      const stopped = await stopDispatched();
+      return { ...b, ok: stopped.ok, said: stopped.said } as B;
     };
     const decisionOf = (d: Omit<JevDecision, "calibrationRunId">): JevDecision => ({ ...d, calibrationRunId: thresholds.calibrationRunId });
 
@@ -462,8 +472,8 @@ export function createCommandService(deps: CommandServiceDeps) {
 
     // The same event id from the same person again (a resend after a hub restart, or after the in-memory window): the job store already holds
     // the command (its request id), so it is answered from that record and never run a second time, exactly as a bot conversation does.
-    // (Event ids up to 64 characters key it exactly: "cmd:<person>:<id>" then fits the job store's 80, never cut to collide.)
-    const commandKey = typeof body.eventId === "string" && /^[\w:.-]{6,64}$/.test(body.eventId) && source !== "acceptance" && `cmd:${principal.personId}:${body.eventId}`.length <= 80 ? `cmd:${principal.personId}:${body.eventId}` : null;
+    // Full event ids keep the legacy key where it fits, otherwise use a stable digest; never truncate to collide.
+    const commandKey = typeof body.eventId === "string" && /^[\w:.-]{6,80}$/.test(body.eventId) && source !== "acceptance" ? commandRequestId(principal.personId, body.eventId) : null;
     const priorJob = commandKey ? (jobs.byRequest?.(commandKey) ?? null) : null;
     // Stopped before any job existed (his Stop arrived first): it never starts, and a resend of the same event says so (release re-check B1).
     if (!priorJob && eventStopped(principal.personId, body.eventId)) return stoppedBeforeStart();
@@ -484,12 +494,14 @@ export function createCommandService(deps: CommandServiceDeps) {
     /** Start a job and stream it; `work` runs inside the job service (its signal is the stop). */
     const start = async (targetDeviceId: string, work: (ctx: ExecutorContext, out: (e: CommandStreamEvent) => void) => Promise<CommandDoneEvent>, opts: { dedupe?: boolean } = {}): Promise<CommandDoneEvent> => {
       // The Stop may have arrived while this was still being decided (Jev, a lookup): checked again at the last moment before a job exists.
-      if (eventStopped(principal.personId, body.eventId) && !stopHandled) return stoppedBeforeStart();
+      if (eventStopped(principal.personId, body.eventId) && !stopHandled) return dispatchedTask ? stopDispatched() : stoppedBeforeStart();
       // The job records WHO (person, via, actor, device), never the server-only session key (B1: it stays out of every JSON).
       const recorded = { personId: principal.personId, via: principal.via, actor: principal.actor, ...(principal.deviceId ? { deviceId: principal.deviceId } : {}) };
       // CRM subjects are recorded only on bot/agent jobs (scripts/agents/jarvis.ts, computers/service.ts), never on a plain command job: a question
       // asked on a CRM page must not become a CRM activity (scripts/crm/hub-integration.ts writes results for bot jobs only).
-      const job = jobs.create({ kind, principal: recorded, targetDeviceId, title: slots.goal || "Jarvis command", ...(commandKey ? { requestId: commandKey } : {}) });
+      const jobInput = { kind, principal: recorded, targetDeviceId, title: slots.goal || "Jarvis command", ...(commandKey ? { requestId: commandKey } : {}) };
+      const job = input.admission && !stopHandled ? jobs.createCommandJob(jobInput, input.admission) : jobs.create(jobInput);
+      if (!job) return dispatchedTask ? stopDispatched() : stoppedBeforeStart();
       timings.set(job.id, { received: receivedAt, ...(earlyDispatch !== undefined ? { dispatched: earlyDispatch } : {}), ...(jevMs !== undefined ? { jevMs } : {}) });
       const l: Live = { events: [], listeners: new Set([emit]), done: null, personId: principal.personId, seq: 0 };
       live.set(job.id, l);
@@ -774,11 +786,11 @@ export function createCommandService(deps: CommandServiceDeps) {
       // (where the agent stands) and an answer to its own question go straight to it.
       if (jevLed && raw.trim() && !isAnswer) return jevFirst({ bot: body.target.bot });
       stopGuard(); // final review B1: never start an agent or computer job for a stopped event
-      const b = await afterJob(await deps.bots.run({ principal, bot: body.target.bot, utterance: raw, source, spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null, ...(body.subjects?.length ? { subjects: body.subjects } : {}), pageContext }).catch((e: Error) => ({ ok: false, said: `The bot didn't answer (${String(e?.message ?? e).slice(0, 100)}), so nothing ran.` })));
+      const b = await afterJob(await deps.bots.run({ principal, bot: body.target.bot, utterance: raw, source, spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null, ...(body.subjects?.length ? { subjects: body.subjects } : {}), pageContext }).catch((e: Error) => ({ ok: false, said: `The bot didn't answer (${String(e?.message ?? e).slice(0, 100)}), so its outcome is not confirmed. Check its jobs before starting new work.`, unverified: true as const })));
       if (b) {
         const navigate = "navigate" in b ? b.navigate : undefined;
         const numbers = "numbers" in b ? b.numbers : undefined;
-        return { type: "done", ok: b.ok, said: b.said, kind: navigate ? "navigate" : numbers && ("codingJobId" in numbers || "draft" in numbers) ? "answer" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), ...("ask" in b && b.ask ? { ask: true } : {}), ...(numbers ? { numbers } : {}), jobId: ("jobId" in b && b.jobId) || null, runId: "", targetDeviceId: ("deviceId" in b && b.deviceId) || "none", verified: null };
+        return { type: "done", ok: b.ok, said: b.said, ...("unverified" in b && b.unverified === true ? { outcome: "unverified" } : {}), kind: navigate ? "navigate" : numbers && ("codingJobId" in numbers || "draft" in numbers) ? "answer" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), ...("ask" in b && b.ask ? { ask: true } : {}), ...(numbers ? { numbers } : {}), jobId: ("jobId" in b && b.jobId) || null, runId: "", targetDeviceId: ("deviceId" in b && b.deviceId) || "none", verified: null };
       }
       // The bot had nothing to say to this and the words are not the person's own device: nothing ran, and it is never sent anywhere else.
       return { type: "done", ok: false, said: "That isn't something this bot can do from here, so nothing ran. Nothing went to any other machine.", kind: "refused", refused: true, jobId: null, runId: "", targetDeviceId: "none" };
@@ -822,10 +834,10 @@ export function createCommandService(deps: CommandServiceDeps) {
       const named = jevLed ? parseComputerCommand(utterance, []) : null;
       if (named?.kind === "use") return jevFirst({ computer: named.name });
       stopGuard(); // final review B1: never start an agent or computer job for a stopped event
-      const c = await afterJob(await deps.delegates.computers(utterance, principal).catch((e: Error) => ({ ok: false, said: `The computers service didn't answer (${String(e?.message ?? e).slice(0, 100)}), so nothing ran.` })));
+      const c = await afterJob(await deps.delegates.computers(utterance, principal).catch((e: Error) => ({ ok: false, said: `The computers service didn't answer (${String(e?.message ?? e).slice(0, 100)}), so its outcome is not confirmed. Check its jobs before starting new work.`, unverified: true as const })));
       if (c) {
         const navigate = "navigate" in c ? c.navigate : undefined;
-        return { type: "done", ok: c.ok, said: c.said, kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), jobId: ("jobId" in c && c.jobId) || null, runId: "", targetDeviceId: ("deviceId" in c && c.deviceId) || "none", verified: null };
+        return { type: "done", ok: c.ok, said: c.said, ...("unverified" in c && c.unverified === true ? { outcome: "unverified" } : {}), kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), jobId: ("jobId" in c && c.jobId) || null, runId: "", targetDeviceId: ("deviceId" in c && c.deviceId) || "none", verified: null };
       }
     }
     // 1c. "switch back to the website we were using": what this person recently used on their own device (recent-targets.ts).
@@ -1229,11 +1241,11 @@ export function createCommandService(deps: CommandServiceDeps) {
       }
       if (decision.lane === "computer" && constraint.computer && deps.delegates?.computers) {
         stopGuard(); // final review B1: never start an agent or computer job for a stopped event
-        const c = await afterJob(await deps.delegates.computers(utterance, principal).catch((e: Error) => ({ ok: false, said: `The computers service didn't answer (${String(e?.message ?? e).slice(0, 100)}), so nothing ran.` })));
+        const c = await afterJob(await deps.delegates.computers(utterance, principal).catch((e: Error) => ({ ok: false, said: `The computers service didn't answer (${String(e?.message ?? e).slice(0, 100)}), so its outcome is not confirmed. Check its jobs before starting new work.`, unverified: true as const })));
         if (c) {
           const navigate = "navigate" in c ? c.navigate : undefined;
           const d = jd({ op: `computer.${constraint.computer}`, confidence: decision.confidence, policy: "delegate", source: "jev", why: `${jevWhy}; the computer he named` });
-          return { type: "done", ok: c.ok, said: c.said, kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), decision: d, numbers: { jev: { state: "decided", lane: "computer", computer: constraint.computer, options, cached } }, jobId: ("jobId" in c && c.jobId) || null, runId: "", targetDeviceId: ("deviceId" in c && c.deviceId) || "none", verified: null, timing: { decisionMs: decision.ms, dispatchMs: decision.ms, completeMs: Date.now() - receivedAt, jevMs: decision.ms } };
+          return { type: "done", ok: c.ok, said: c.said, ...("unverified" in c && c.unverified === true ? { outcome: "unverified" } : {}), kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), decision: d, numbers: { jev: { state: "decided", lane: "computer", computer: constraint.computer, options, cached } }, jobId: ("jobId" in c && c.jobId) || null, runId: "", targetDeviceId: ("deviceId" in c && c.deviceId) || "none", verified: null, timing: { decisionMs: decision.ms, dispatchMs: decision.ms, completeMs: Date.now() - receivedAt, jevMs: decision.ms } };
         }
       }
       if (decision.lane === "bot" && decision.bot && deps.bots) {
@@ -1246,10 +1258,10 @@ export function createCommandService(deps: CommandServiceDeps) {
           return { type: "done", ok: false, said: goalRefusal?.said ?? codingMoneyRefusal(raw) ?? "That is a money action, and no agent does those from here. Nothing ran.", kind: "refused", refused: true, decision: d, jobId: null, runId: "", targetDeviceId: "none" };
         const record: JevDecisionRef = { op: d.op, confidence: d.confidence, policy: d.policy, decidedBy: "jev", ...(d.ms !== undefined ? { ms: d.ms } : {}), ...(d.requestId ? { requestId: d.requestId } : {}), ...(d.model ? { model: d.model } : {}), ...(d.options ? { options: d.options } : {}), ...(d.cached !== undefined ? { cached: d.cached } : {}) };
         stopGuard(); // final review B1: never start an agent or computer job for a stopped event
-        const b = await afterJob(await deps.bots.run({ principal, bot: decision.bot, utterance: raw, source, spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null, ...(body.subjects?.length ? { subjects: body.subjects } : {}), pageContext, ...(decision.botLane ? { lane: decision.botLane } : {}), decision: record }).catch((e: Error) => ({ ok: false, said: `The agent didn't answer (${String(e?.message ?? e).slice(0, 100)}), so nothing ran.` })));
+        const b = await afterJob(await deps.bots.run({ principal, bot: decision.bot, utterance: raw, source, spokenYes: typeof body.spokenYes === "string" ? body.spokenYes : null, ...(body.subjects?.length ? { subjects: body.subjects } : {}), pageContext, ...(decision.botLane ? { lane: decision.botLane } : {}), decision: record }).catch((e: Error) => ({ ok: false, said: `The agent didn't answer (${String(e?.message ?? e).slice(0, 100)}), so its outcome is not confirmed. Check its jobs before starting new work.`, unverified: true as const })));
         if (b) {
           const navigate = "navigate" in b ? b.navigate : undefined;
-          return { type: "done", ok: b.ok, said: b.said, kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), ...("ask" in b && b.ask ? { ask: true } : {}), decision: d, numbers: { ...("numbers" in b && b.numbers ? b.numbers : {}), jev: { state: "decided", lane: "bot", bot: decision.bot, options, cached } }, jobId: ("jobId" in b && b.jobId) || null, runId: "", targetDeviceId: ("deviceId" in b && b.deviceId) || "none", verified: null, timing: { decisionMs: decision.ms, dispatchMs: decision.ms, completeMs: Date.now() - receivedAt, jevMs: decision.ms } };
+          return { type: "done", ok: b.ok, said: b.said, ...("unverified" in b && b.unverified === true ? { outcome: "unverified" } : {}), kind: navigate ? "navigate" : "remote", ...(navigate ? { navigate: { path: navigate } } : {}), ...("ask" in b && b.ask ? { ask: true } : {}), decision: d, numbers: { ...("numbers" in b && b.numbers ? b.numbers : {}), jev: { state: "decided", lane: "bot", bot: decision.bot, options, cached } }, jobId: ("jobId" in b && b.jobId) || null, runId: "", targetDeviceId: ("deviceId" in b && b.deviceId) || "none", verified: null, timing: { decisionMs: decision.ms, dispatchMs: decision.ms, completeMs: Date.now() - receivedAt, jevMs: decision.ms } };
         }
       }
       // The lane Jev chose can't take it after all (the coding harness, the agent or the computer didn't accept it): said, nothing sent elsewhere.
@@ -1683,17 +1695,26 @@ export function createCommandService(deps: CommandServiceDeps) {
    * cancelled through the job service (confirmed or not, as above); otherwise the event is recorded so the job never starts ("prevented").
    */
   async function cancelEvent(eventId: string, principal: Principal): Promise<{ ok: boolean; state: string | null; outcome: StopOutcome | "prevented"; jobId?: string }> {
-    const key = `cmd:${principal.personId}:${eventId}`;
-    const job = key.length <= 80 ? (deps.jobs().byRequest?.(key) ?? null) : null;
+    const key = commandRequestId(principal.personId, eventId);
+    const recorded = deps.jobs().requestCommandStop(principal.personId, eventId);
+    // The effective delegated task is distinct from a command wrapper that may have already finished.
+    const bound = recorded.record;
+    const targetId = bound.taskId ?? bound.jobId;
+    const targetKind = bound.taskKind ?? bound.jobKind;
+    if (targetKind === "coding" && targetId) {
+      const reply = await deps.delegates?.coding?.(`stop the coding job ${targetId}`, {
+        personId: principal.personId, actor: principal.actor === "human" ? "human" : "process",
+        via: principal.via === "loopback-owner" ? "local" : principal.via === "telegram-owner" ? "telegram" : "tailnet", spokenYes: null,
+      }).catch(() => null);
+      // The command-entry adapter supplies observed state. Text alone is never confirmation.
+      const state = reply?.jobId === targetId ? reply.jobState : undefined;
+      const outcome = state === "cancelled" ? "stopped" : state === "completed" || state === "failed" ? "already-ended" : "unconfirmed";
+      return { ok: outcome === "stopped", state: state ?? null, outcome, jobId: targetId };
+    }
+    const job = targetKind === "job" && targetId ? deps.jobs().get(targetId) : deps.jobs().byRequest(key);
     if (job && job.principal.personId === principal.personId) return { ...(await cancel(job.id, principal)), jobId: job.id };
-    stoppedEvents.set(`${principal.personId}|${eventId}`, Date.now());
-    if (stoppedEvents.size > 512) for (const [k, at] of stoppedEvents) if (Date.now() - at > STOPPED_EVENT_MS) stoppedEvents.delete(k);
-    // Started in the moment between the lookup and the record: stop that job too.
-    const late = key.length <= 80 ? (deps.jobs().byRequest?.(key) ?? null) : null;
-    if (late && late.principal.personId === principal.personId) return { ...(await cancel(late.id, principal)), jobId: late.id };
-    // Its run is still going (final review B1): some lanes start work before a job exists here (a coding start, an agent, a shared computer).
-    // The stop is recorded and every lane checks it before it starts anything, and stops what it did start; but "prevented" can't be promised.
-    if (inProgress.has(`${principal.personId}|${eventId}`)) return { ok: false, state: null, outcome: "unconfirmed" };
+    // No process-local evidence can turn an admitted, possibly dispatched request into "prevented" after restart.
+    if (recorded.outcome !== "prevented" || inProgress.has(`${principal.personId}|${eventId}`)) return { ok: false, state: null, outcome: "unconfirmed" };
     return { ok: true, state: null, outcome: "prevented" };
   }
 
