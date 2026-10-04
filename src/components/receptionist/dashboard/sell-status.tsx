@@ -437,14 +437,15 @@ export function NextStepBar({ sell, onOpen, onRetry, className }: { sell: SellSo
   if (!data) {
     if (sell.isLoading) return null;
     return (
-      <NextStep className={className} action={onRetry && <Button variant="accent" className="h-11 rounded-full px-6 text-base" onClick={onRetry}>Retry</Button>}>
+      <NextStep className={className} action={onRetry && <Button variant="outline" onClick={onRetry}>Retry</Button>}>
         Sell status couldn't be read. Don't sell until it can be.
       </NextStep>
     );
   }
   const target = nextTarget(data);
   return (
-    <NextStep className={className} action={<Button variant="accent" className="h-11 rounded-full px-6 text-base" onClick={() => onOpen(target.tab, target.anchor)}>{target.label}</Button>}>
+    // R12 rollout: quiet (the header owns the one accent; the launch is on hold, so this only opens a section).
+    <NextStep className={className} action={<Button variant="outline" onClick={() => onOpen(target.tab, target.anchor)}>{target.label}</Button>}>
       {data.verdict.next || "Nothing to do right now"}
     </NextStep>
   );

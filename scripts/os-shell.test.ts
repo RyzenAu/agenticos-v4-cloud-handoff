@@ -30,8 +30,10 @@ function routePaths(): { file: string; path: string }[] {
 }
 
 describe("destinations", () => {
-  test("eight destinations in the owner's order", () => {
-    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Home", "Jarvis", "Receptionist", "Work", "Memory", "Finance", "Studio", "System"]);
+  test("nine destinations in the owner's order (R12: Departments after Jarvis); Memory, Studio and System fold under More", () => {
+    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Home", "Jarvis", "Departments", "Receptionist", "Work", "Memory", "Finance", "Studio", "System"]);
+    expect(DESTINATIONS.filter((d) => d.more).map((d) => d.label)).toEqual(["Memory", "Studio", "System"]);
+    expect(locate("/departments/research")?.destination.id).toBe("departments");
   });
 
   test("every routable page has exactly one home", () => {

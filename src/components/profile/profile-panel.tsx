@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { GatewayAccessCard } from "./gateway-access";
 import { consoleCodeCommand, createProfileApi, HUB_CONSOLE_DIR, type DeviceView, type DevicesView, type Me, type PairResult, type PersonId, type ProfileApi, type SessionView } from "./profile-api";
 
 /**
@@ -164,6 +165,8 @@ export function ProfilePanel({ api: given }: { api?: ProfileApi }) {
             onApproveSession={(session, code) => act(() => api.approveSession(session.id, code), `Approved "${session.label}". It is confirmed now.`)}
             onRevokeSession={(session) => setConfirm({ kind: "session", session })}
             onRevokeDevice={(device) => setConfirm({ kind: "device", device })} />
+          {/* The gateway collaborator (Dot): its sign-ins, listed and revocable here. Absent on a hub with no gateway. Only when this panel talks to the live API. */}
+          {given ? null : <GatewayAccessCard onNotice={(m) => { setNotice(m); setError(""); }} onError={(m) => { setNotice(""); setError(m); }} />}
         </>
       )}
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>

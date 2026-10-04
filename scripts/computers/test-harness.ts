@@ -185,7 +185,7 @@ export class InProcessHost implements ProvisioningAdapter {
 
 export type Who = "usman" | "mehroz";
 
-export async function startComputersHub(opts: { /** Reuse an earlier hub's data folder and port: a hub restart. */ restart?: { root: string; port: number }; goalAsk?: ControlAsk | null; research?: ComputersOptions["research"]; /** Keep saved workflow results (builder, audit, business preparation, and research reports) in the hub's data folder; `workflows` sets their model and the audit's allowed hosts. */ artifacts?: boolean; workflows?: ComputersOptions["workflows"]; routeDelegate?: ComputersOptions["routeDelegate"]; idleSuspendMs?: number; host?: InProcessHost; clock?: { now: () => number }; leaseOptions?: { agentLeaseTtlMs?: number; personLeaseTtlMs?: number; viewerCloseGraceMs?: number }; autoRecover?: boolean; /** How long a finished workflow waits for the conversation before the job settles anyway. */ deliverTimeoutMs?: number; deliverRetryMs?: number; /** How long a connected viewer waits for a first frame before the screen reads "no picture". */ viewerNoFrameMs?: number; hubUrlFor?: ComputersOptions["hubUrlFor"]; maxAutoRecoveries?: number; recoveryHealthyMs?: number } = {}) {
+export async function startComputersHub(opts: { /** Reuse an earlier hub's data folder and port: a hub restart. */ restart?: { root: string; port: number }; goalAsk?: ControlAsk | null; research?: ComputersOptions["research"]; /** Keep saved workflow results (builder, audit, business preparation, and research reports) in the hub's data folder; `workflows` sets their model and the audit's allowed hosts. */ artifacts?: boolean; workflows?: ComputersOptions["workflows"]; routeDelegate?: ComputersOptions["routeDelegate"]; idleSuspendMs?: number; host?: InProcessHost; clock?: { now: () => number }; leaseOptions?: { agentLeaseTtlMs?: number; personLeaseTtlMs?: number; viewerCloseGraceMs?: number }; autoRecover?: boolean; /** How long a finished workflow waits for the conversation before the job settles anyway. */ deliverTimeoutMs?: number; deliverRetryMs?: number; /** How long a connected viewer waits for a first frame before the screen reads "no picture". */ viewerNoFrameMs?: number; hubUrlFor?: ComputersOptions["hubUrlFor"]; maxAutoRecoveries?: number; recoveryHealthyMs?: number; /** The Dot gateway's hub-side trust, handed to the viewer (scripts/gateway tests). */ gateway?: import("../gateway/hub").GatewayTrust } = {}) {
   const root = opts.restart?.root ?? mkdtempSync(join(tmpdir(), "computers-hub-"));
   if (!opts.restart) mkdirSync(join(root, ".operator-data"));
   if (!opts.restart) writeFileSync(join(root, ".operator-data", "people.json"), JSON.stringify({ people: [{ name: "Usman", role: "owner", tailscale: [LOGINS.usman] }, { name: "Mehroz", role: "co-founder", tailscale: [LOGINS.mehroz] }] }));
@@ -212,7 +212,7 @@ export async function startComputersHub(opts: { /** Reuse an earlier hub's data 
     if (path.startsWith("/__computers")) return void routes.handle(req, res);
     void devices.handle(req, res);
   });
-  const detach = attachViewer(server, { devices, computers, noFrameMs: opts.viewerNoFrameMs });
+  const detach = attachViewer(server, { devices, computers, noFrameMs: opts.viewerNoFrameMs, ...(opts.gateway ? { gateway: opts.gateway } : {}) });
   await new Promise<void>((r) => server.listen(opts.restart?.port ?? 0, "127.0.0.1", () => r()));
   const port = (server.address() as { port: number }).port;
   base = `http://127.0.0.1:${port}`;

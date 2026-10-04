@@ -33,7 +33,11 @@ param(
   # A commit in the target that commits some of the owner's local overlay files (owner-approved). Only those paths are adopted: each must be
   # byte-identical to that commit (git blob hash) or the release stops; they are copied aside, cleared, and the fast-forward brings them back as
   # committed files. Every other local file is left exactly as it is.
-  [string]$AdoptCommit = ''
+  [string]$AdoptCommit = '',
+  # r11 (Dot gateway release workflow, scripts/gateway/release.ts): a LOCAL ref holding the candidate. The hub checks Dot's bundle in a throwaway
+  # repository while the approval is pending, and fetches it into refs/gateway-release/<id>/candidate only after the owner's approval was
+  # consumed, just before starting this script. Given, the origin fetch is skipped; every other check is the same.
+  [string]$CandidateRef = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($FailAfterStart -and ($TaskPath -eq '\MU\' -or $Port -eq 8081)) { throw 'FailAfterStart is for the staging rehearsal only.' }
@@ -69,8 +73,13 @@ Step "head before: $before ; overlay entries: $(@(git status --porcelain).Count)
 $phase = 'pre-update'; $newCodeStarted = $false; $backupPath = $null
 try {
   if ((git rev-parse --abbrev-ref HEAD).Trim() -ne $Branch) { throw 'unexpected branch' }
-  git fetch -q origin "+refs/heads/ws/integration-20261002:refs/remotes/origin/ws/integration-20261002"
-  $cand = (git rev-parse origin/ws/integration-20261002).Trim()
+  if ($CandidateRef) {
+    if ($CandidateRef -notmatch '^refs/gateway-release/[A-Za-z0-9._-]+/candidate$') { throw "CandidateRef $CandidateRef is not a gateway release ref" }
+    $cand = (git rev-parse "$CandidateRef^{commit}").Trim()
+  } else {
+    git fetch -q origin "+refs/heads/ws/integration-20261002:refs/remotes/origin/ws/integration-20261002"
+    $cand = (git rev-parse origin/ws/integration-20261002).Trim()
+  }
   if ($cand -notlike "$Target*") { throw "bundle head $cand is not the target $Target" }
   git merge-base --is-ancestor $before $cand; if ($LASTEXITCODE -ne 0) { throw 'not a fast-forward' }
   if ($AdoptCommit) {

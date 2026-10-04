@@ -14,7 +14,7 @@ export function SetupWelcome() {
       tone="info"
       className="mb-6"
       title="Your profile isn't finished"
-      action={<Link to="/setup" className="text-sm font-medium underline underline-offset-4">{profile.onboardingStep ? "Continue setup" : "Set it up"}</Link>}
+      action={<Link to="/setup" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">{profile.onboardingStep ? "Continue setup" : "Set it up"}</Link>}
     >
       A few details help Jarvis and the pages say the right things.
     </Notice>

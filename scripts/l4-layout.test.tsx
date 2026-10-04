@@ -100,7 +100,8 @@ describe("Settings page", () => {
     expect(src).toContain('to="/setup"');
     expect(src).toContain('Review setup');
     expect(src).toContain('Unsaved changes');
-    expect(src.indexOf('title="Settings"')).toBeLessThan(src.indexOf('aria-label="Settings sections"'));
+    // R12 rollout: the sections are the shared Tabs (label=…), still right under the title.
+    expect(src.indexOf('title="Settings"')).toBeLessThan(src.indexOf('label="Settings sections"'));
     const css = read("src/components/operator/workspace-settings.css");
     expect(css).toContain("max-width: 1680px");
     expect(css).not.toContain("max-width: 950px");

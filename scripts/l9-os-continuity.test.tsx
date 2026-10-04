@@ -247,7 +247,8 @@ describe("P2-1: one name per page", () => {
     expect(read("src/routes/-pages/dashboard.tsx")).toContain('title={pageName("/dashboard")}');
     expect(read("src/components/memory/memory-vault.tsx")).toContain('title={pageName("/memory/vault")}');
     expect(read("src/components/business/mu-operations.tsx")).not.toContain("M&U operations");
-    expect(read("src/routes/business.tsx")).toContain(">Packages & economics</a>");
+    // R12: Packages & economics is reached from its Receptionist drilldown (Home's header keeps one primary action).
+    expect(DESTINATIONS.find((d) => d.id === "receptionist")?.drilldowns.map((d) => d.label)).toContain("Packages & economics");
   });
   test("Mission Control names one thing: the Hermes mission panel and the Claude Code page no longer borrow it", () => {
     const mission = read("src/components/hermes-mission-control.tsx");

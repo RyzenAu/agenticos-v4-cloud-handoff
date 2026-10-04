@@ -16,6 +16,24 @@ import { sendDecision, sendJarvisRequest, type PendingSend } from "@/lib/jarvis-
 import { readSent, rememberSent, unshownSent, type SentRequest } from "@/lib/jarvis-sent";
 import { openJobs } from "@/lib/handoff-status";
 import { stopJobFromThread } from "@/lib/thread-stop";
+import { useJourneys } from "@/components/departments/use-departments";
+import { JobCard, JourneyItem, groupThread, type JobFacts } from "./jarvis-work";
+
+/** R12: what the jobs API knows about each job (its bot, CRM records, real step count), for the work cards. Null when unreadable. */
+async function readJobFacts(): Promise<Map<string, JobFacts>> {
+  const r = await fetch("/__jobs?limit=100", { cache: "no-store", headers: { Accept: "application/json" } });
+  const body = (await r.json().catch(() => null)) as { jobs?: Record<string, unknown>[] } | null;
+  const out = new Map<string, JobFacts>();
+  for (const j of body?.jobs ?? []) {
+    if (typeof j.id !== "string") continue;
+    out.set(j.id, { id: j.id, title: String(j.title ?? ""), state: String(j.state ?? ""), bot: typeof j.bot === "string" ? j.bot : null, subjects: Array.isArray(j.subjects) ? j.subjects.filter((x): x is string => typeof x === "string") : [], stepCount: typeof j.stepCount === "number" ? j.stepCount : 0, createdAt: Date.parse(String(j.createdAt)) || 0, updatedAt: Date.parse(String(j.updatedAt)) || 0 });
+  }
+  return out;
+}
+async function readThreadId(): Promise<string | null> {
+  const head = await operatorRequest<{ conversationId: string }>("/screen/command/thread?after=999999999").catch(() => null);
+  return head?.conversationId ?? null;
+}
 
 export type ThreadMessage = { role: string; text: string; via?: string };
 type Conversation = { id: string; title?: string; updatedAt?: string; messages?: ThreadMessage[] };
@@ -110,6 +128,12 @@ export function JarvisThread() {
   const messages = useMemo(() => q.data ?? [], [q.data]);
   const shownSent = unshownSent(sent, messages);
   const running = useMemo(() => openJobs(messages), [messages]);
+  const factsQ = useQuery({ queryKey: ["jarvis-job-facts"], queryFn: readJobFacts, staleTime: 5_000, refetchInterval: running.size ? 8_000 : 30_000, refetchIntervalInBackground: false, retry: false });
+  const threadIdQ = useQuery({ queryKey: ["jarvis-thread-id"], queryFn: readThreadId, staleTime: 60_000, retry: false });
+  const journeysQ = useJourneys(threadIdQ.data ? { conversationId: threadIdQ.data } : {});
+  const journeys = useMemo(() => (journeysQ.data?.status === "ok" ? journeysQ.data.journeys.filter((j) => !threadIdQ.data || !j.conversationId || j.conversationId === threadIdQ.data) : []), [journeysQ.data, threadIdQ.data]);
+  const items = useMemo(() => groupThread(messages, journeys), [messages, journeys]);
+  const facts = factsQ.data ?? new Map<string, JobFacts>();
   const listRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = listRef.current;
@@ -164,7 +188,15 @@ export function JarvisThread() {
           <p className="mx-auto w-full max-w-4xl py-6 text-sm text-muted-foreground">Nothing yet. Ask Jarvis below, or press Use voice.</p>
         ) : (
           <ol className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-2">
-            {messages.map((m, i) => <Entry key={`${i}:${m.via ?? ""}`} m={m} running={!!jobIdOf(m.via) && running.has(jobIdOf(m.via)!)} onStopped={() => window.setTimeout(refresh, 1500)} />)}
+            {items.map((it) =>
+              it.type === "message" ? (
+                <Entry key={`${it.index}:${it.m.via ?? ""}`} m={it.m} />
+              ) : it.type === "job" ? (
+                <JobCard key={it.jobId} jobId={it.jobId} entries={it.entries} facts={facts.get(it.jobId) ?? null} all={facts} running={running.has(it.jobId)} onChanged={() => window.setTimeout(refresh, 1500)} />
+              ) : (
+                <JourneyItem key={it.journey.id} journey={it.journey} />
+              ),
+            )}
             {shownSent.map((r) => (
               <li key={r.requestId} className="flex flex-col items-end gap-1" data-sent={r.requestId}>
                 <p className="max-w-[min(42rem,85%)] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand-soft px-4 py-2.5 text-[15px] text-foreground">{r.text}</p>

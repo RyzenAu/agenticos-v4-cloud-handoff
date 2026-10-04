@@ -302,37 +302,36 @@ export function BusinessNextActions({
   const next = nextBusinessActions(snapshot, owner);
   return (
     <section className="mb-8" aria-label="Move the business forward">
-      <h2 className="mb-3 text-lg font-semibold">Move the business forward</h2>
+      <h2 className="mb-3 text-base font-semibold">
+        Move the business forward {next.length > 0 && <span className="font-normal text-muted-foreground">{Math.min(next.length, 8)}</span>}
+      </h2>
       {next.length ? (
         <DataList label="Next steps">
-          {next.slice(0, 8).map((item) => (
-            <DataRow
-              key={item.company.id}
-              title={item.detail}
-              meta={item.title}
-              trailing={<Button
-                variant="outline"
-                size="sm"
-                disabled={actions.busy}
-                onClick={() =>
-                  item.kind === "proposal" && item.deal
-                    ? void actions.run("crm.proposal.draft", {
-                        dealId: item.deal.id,
-                        expectedVersion: item.deal.version,
-                      })
-                    : item.edit
-                      ? actions.edit(item.edit)
-                      : actions.open({ kind: "company", id: item.company.id })
+          {next.slice(0, 8).map((item) => {
+            // R12 rollout: the row itself opens the missing step (its editor, or the company); only drafting a proposal, which
+            // creates a record, keeps its own quiet button beside the row.
+            const openStep = () => (item.edit ? actions.edit(item.edit) : actions.open({ kind: "company", id: item.company.id }));
+            return (
+              <DataRow
+                key={item.company.id}
+                title={item.detail}
+                meta={item.title}
+                onClick={item.kind === "proposal" ? () => actions.open({ kind: "company", id: item.company.id }) : openStep}
+                trailing={
+                  item.kind === "proposal" && item.deal ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={actions.busy}
+                      onClick={() => void actions.run("crm.proposal.draft", { dealId: item.deal!.id, expectedVersion: item.deal!.version })}
+                    >
+                      Draft proposal
+                    </Button>
+                  ) : undefined
                 }
-              >
-                {item.kind === "proposal"
-                  ? "Draft proposal"
-                  : item.kind === "result"
-                    ? "Link result"
-                    : "Take next step"}
-              </Button>}
-            />
-          ))}
+              />
+            );
+          })}
         </DataList>
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">

@@ -25,7 +25,8 @@ const TAB_IDS: RxTab[] = ["overview", "calls", "golive", "clients", "economics",
  * then tabs. Every section the page had is in a tab (nothing dropped); explanations and sources sit
  * behind (i), states (stale, failed, unknown) stay in view.
  */
-export function ReceptionistDashboardPage() {
+/** `onHold`: the launch is paused, so the "next step" bar (test calls, go-live work) is not offered; the Go-live tab still shows the gates. */
+export function ReceptionistDashboardPage({ description, onHold = false }: { description?: string; onHold?: boolean } = {}) {
   const { data, error, isLoading } = useReceptionistDashboard();
   // The sell verdict, flagged calls and gates come from /__receptionist, independently of the feed.
   const receptionist = useReceptionist();
@@ -95,11 +96,13 @@ export function ReceptionistDashboardPage() {
     <div className="min-w-0 break-words [&_button]:min-h-10 [&_a]:min-h-10" data-rx-page>
       <PageHeader
         title="Receptionist"
-        // R11: the title and the tabs say what this is.
-        actions={
-          <Button variant="outline" size="sm" className="h-10 rounded-full px-4" onClick={refresh} disabled={refreshing || isLoading}>
+        // R11: the title and the tabs say what this is. R12 rollout: the one description line is the launch hold.
+        description={description}
+        // ONE primary action: re-read the calls, flags and gates (the launch is on hold, so nothing here starts a launch).
+        primaryAction={
+          <Button variant="accent" onClick={refresh} disabled={refreshing || isLoading}>
             <RefreshCw aria-hidden="true" className={cn(refreshing && "animate-spin motion-reduce:animate-none")} />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh calls"}
           </Button>
         }
       />
@@ -121,7 +124,7 @@ export function ReceptionistDashboardPage() {
       <FeedReadNotice dashboard={data} sell={sell} />
 
       {/* The next step comes first, in the page order too (keyboard and screen readers read what is seen). */}
-      <NextStepBar sell={sell} onOpen={open} onRetry={retrySell} className="mb-4 lg:mb-6" />
+      {!onHold && <NextStepBar sell={sell} onOpen={open} onRetry={retrySell} className="mb-4 lg:mb-6" />}
       <SummaryTiles sell={sell} onOpen={open} controls={(t) => `${TABS_ID}-panel-${t}`} />
 
       <div id={`${TABS_ID}-tabs`} className="mt-10 scroll-mt-6">

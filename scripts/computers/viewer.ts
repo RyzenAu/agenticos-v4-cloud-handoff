@@ -8,6 +8,8 @@ import { RfbGate } from "./rfb";
 import { isAtThisPc, markLoopbackUnproven } from "../identity/principal";
 import type { LocalOwnerProof } from "../identity/local-owner-token";
 import type { ComputersService } from "./service";
+import type { GatewayTrust } from "../gateway/hub";
+import { ASSERTION_HEADER } from "../gateway/config";
 
 /**
  * The live viewer: an authenticated WebSocket on the HUB (`/__computers/<name>/vnc`) that carries the RFB stream of a computer's
@@ -37,6 +39,12 @@ export type ViewerOptions = {
    * a loopback upgrade is the owner only WITH the local-owner proof; otherwise it is marked nobody before identity is resolved.
    */
   localOwnerProof?: LocalOwnerProof;
+  /**
+   * The Dot gateway's hub-side trust (scripts/gateway/hub.ts). An upgrade carrying a gateway assertion is checked here first
+   * and refused when it does not verify. A verified one is the gateway principal, which has no viewer access yet
+   * (bots.operate is out of scope on the hub: DOT-GATEWAY-DESIGN.md), so it is refused too. Without trust: refused.
+   */
+  gateway?: GatewayTrust;
 };
 
 export function attachViewer(server: Server, options: ViewerOptions) {
@@ -62,6 +70,12 @@ function refuse(socket: Duplex, status: number, message: string) {
 export async function upgradeViewer(options: ViewerOptions, wss: WebSocketServer, name: string, req: IncomingMessage, socket: Duplex, head: Buffer) {
   const { devices, computers } = options;
   try {
+    // The Dot gateway: decided before anything else, never falls through to another identity.
+    if (req.headers[ASSERTION_HEADER] !== undefined) {
+      const verdict = options.gateway?.screenUpgrade(req) ?? null;
+      if (!verdict || !verdict.ok) return refuse(socket, verdict?.status ?? 401, "Unauthorized");
+      return refuse(socket, 403, "Forbidden");
+    }
     // Mark BEFORE anything resolves an identity (the gate does the same for ordinary requests). The proof headers never travel on.
     if (options.localOwnerProof) {
       const atPc = isAtThisPc(req);

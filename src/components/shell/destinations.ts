@@ -1,4 +1,4 @@
-// The OS's main navigation: eight destinations built from the existing routes. Every routable
+// The OS's main navigation: nine destinations (R12: Departments added; Memory, Studio and System fold under "More") built from the existing routes. Every routable
 // page has exactly one home here; detail pages are drilldowns of a destination, never a ninth
 // top-level item. Old URLs keep working (they are the drilldowns); only `/` and `/workspace`
 // redirect, to Today. Map and rationale: docs/design-20260927/BRIEF.md.
@@ -10,6 +10,7 @@ import {
   Bot,
   BrainCircuit,
   Briefcase,
+  Building2,
   CalendarDays,
   Clapperboard,
   Cpu,
@@ -43,7 +44,7 @@ import {
   Workflow,
 } from "lucide-react";
 
-export type DestinationId = "today" | "jarvis" | "receptionist" | "work" | "memory" | "finance" | "studio" | "system";
+export type DestinationId = "today" | "jarvis" | "departments" | "receptionist" | "work" | "memory" | "finance" | "studio" | "system";
 
 export type Drilldown = {
   to: string;
@@ -59,6 +60,8 @@ export type Drilldown = {
 
 export type Destination = {
   id: DestinationId;
+  /** R12: listed under the sidebar's "More" until you are inside it (rarely used; keeps the main list short). */
+  more?: boolean;
   label: string;
   icon: LucideIcon;
   /** The landing route. */
@@ -105,6 +108,15 @@ export const DESTINATIONS: readonly Destination[] = [
     alsoMatches: ["/hud"],
   },
   {
+    // R12 (4 Oct 2026): the AI departments under Jarvis, each with its agents, work queue, hand-offs and saved results.
+    id: "departments",
+    label: "Departments",
+    icon: Building2,
+    to: "/departments",
+    purpose: "Each department's agents, work, hand-offs and results.",
+    drilldowns: [],
+  },
+  {
     id: "receptionist",
     label: "Receptionist",
     icon: PhoneCall,
@@ -131,6 +143,7 @@ export const DESTINATIONS: readonly Destination[] = [
   },
   {
     id: "memory",
+    more: true,
     label: "Memory",
     icon: BrainCircuit,
     to: "/memory",
@@ -154,6 +167,7 @@ export const DESTINATIONS: readonly Destination[] = [
   },
   {
     id: "studio",
+    more: true,
     label: "Studio",
     icon: Clapperboard,
     to: "/studio",
@@ -168,6 +182,7 @@ export const DESTINATIONS: readonly Destination[] = [
   },
   {
     id: "system",
+    more: true,
     label: "System",
     icon: Cpu,
     to: "/system",

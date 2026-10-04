@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Download, Plus, Search, Upload, Users } from "lucide-react";
-import { Button, Disclosure, EmptyState, Notice, Surface } from "@/components/ds";
+import { Building2, Download, Plus, Upload, Users } from "lucide-react";
+import { Button, DataTable, Disclosure, EmptyState, Notice, StatusLabel, Surface, Toolbar, type Column } from "@/components/ds";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Company, CrmSnapshot } from "../../../scripts/crm/types";
+import type { Company, Contact, CrmSnapshot } from "../../../scripts/crm/types";
 import type { CsvPreview, CsvResolution } from "../../../scripts/crm/csv";
 import { crmErrorMessage, crmOperation, downloadCsv, type CrmReceipt } from "@/lib/crm-client";
 import { Field, Modal, NativeSelect, ownerName } from "./controls";
@@ -101,115 +101,174 @@ export function DirectoryView({
       setExporting(false);
     }
   }
+  const active = [filters.owner, filters.status, filters.restriction].filter(Boolean).length;
+  const filtered = Object.values(filters).some(Boolean);
+  const savedOptions = saved.data?.filter((v) => v.kind === kind) ?? [];
+  const companyName = (id: string) => snapshot.companies.find((c) => c.id === id)?.name || "Company unavailable";
+  // R12 rollout: ONE toolbar (search, the filters folded behind "Advanced filters", the count, quiet actions), then ONE compact
+  // table. The name opens the record; Edit opens the record's editor drawer.
+  const companyColumns: Column<Company>[] = [
+    {
+      key: "name",
+      header: "Company",
+      cell: (company) => (
+        <>
+          <button className="ds-interactive rounded text-left font-medium text-foreground hover:underline" onClick={() => actions.open({ kind: "company", id: company.id })}>
+            {companyLabel(company, { short: true })}
+          </button>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {[company.industry, company.locality].filter(Boolean).join(" · ") || "Industry and locality not recorded"}
+          </span>
+        </>
+      ),
+    },
+    {
+      key: "contact",
+      header: "Primary contact",
+      hideBelow: "md",
+      cell: (company) => {
+        const primary = snapshot.contacts.find((c) => c.companyId === company.id && c.primary);
+        return (
+          <>
+            <span className="block">{primary?.name || <span className="text-muted-foreground">No primary contact</span>}</span>
+            <span className="block break-all text-xs text-muted-foreground">{primary?.email || company.emails[0] || company.phone || "Contact details not recorded"}</span>
+          </>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Relationship",
+      width: "11rem",
+      cell: (company) =>
+        company.doNotContact || company.excluded ? (
+          <StatusLabel state="blocked" size="sm" bare label={company.doNotContact ? "Do not contact" : "Excluded"} />
+        ) : (
+          <span className="capitalize">{company.status}</span>
+        ),
+    },
+    { key: "owner", header: "Owner", width: "8rem", hideBelow: "lg", cell: (company) => ownerName(company.owner) },
+    {
+      key: "deals",
+      header: "Deals",
+      width: "5rem",
+      align: "right",
+      hideBelow: "lg",
+      cell: (company) => snapshot.deals.filter((d) => d.companyId === company.id).length,
+    },
+    {
+      key: "edit",
+      header: <span className="sr-only">Edit</span>,
+      width: "5rem",
+      align: "right",
+      cell: (company) => (
+        <Button variant="ghost" size="sm" aria-label={`Edit ${companyLabel(company, { short: true })}`} onClick={() => actions.edit({ kind: "company", record: company })}>
+          Edit
+        </Button>
+      ),
+    },
+  ];
+  const contactColumns: Column<Contact>[] = [
+    {
+      key: "name",
+      header: "Contact",
+      cell: (contact) => (
+        <>
+          <button className="ds-interactive rounded text-left font-medium text-foreground hover:underline" onClick={() => actions.open({ kind: "contact", id: contact.id })}>
+            {contact.name}
+          </button>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {contact.role || "Role not recorded"}
+            {contact.primary ? " · Primary contact" : ""}
+          </span>
+        </>
+      ),
+    },
+    {
+      key: "company",
+      header: "Company",
+      hideBelow: "md",
+      cell: (contact) => (
+        <button className="ds-interactive rounded text-left hover:underline" onClick={() => actions.open({ kind: "company", id: contact.companyId })}>
+          {companyName(contact.companyId)}
+        </button>
+      ),
+    },
+    {
+      key: "reach",
+      header: "Email / phone",
+      cell: (contact) => (
+        <>
+          <span className="block break-all">{contact.email || <span className="text-muted-foreground">No email recorded</span>}</span>
+          <span className="block text-xs text-muted-foreground">{contact.phone || "No phone recorded"}</span>
+          {(contact.doNotContact || contact.restrictions.length > 0) && (
+            <span className="mt-1 block">
+              <StatusLabel state="blocked" size="sm" bare label={contact.doNotContact ? "Do not contact" : contact.restrictions.join(" · ")} />
+            </span>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "edit",
+      header: <span className="sr-only">Edit</span>,
+      width: "5rem",
+      align: "right",
+      cell: (contact) => (
+        <Button variant="ghost" size="sm" aria-label={`Edit ${contact.name}`} onClick={() => actions.edit({ kind: "contact", record: contact })}>
+          Edit
+        </Button>
+      ),
+    },
+  ];
+  const pager = count > pageSize && (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+      <span className="ds-num text-xs text-muted-foreground">
+        Showing {offset + 1}–{Math.min(offset + pageSize, count)} of {count}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="ghost" size="sm" disabled={offset === 0} onClick={() => setPage(Math.max(0, page - 1))}>
+          Previous
+        </Button>
+        <Button variant="ghost" size="sm" disabled={offset + pageSize >= count} onClick={() => setPage(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </div>
+  );
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => setDialog("import")}>
-            <Upload className="size-4" />
-            Import CSV
-          </Button>
-          <Button variant="outline" onClick={() => void exportRecords()} disabled={exporting}>
-            <Download className="size-4" />
-            {exporting ? "Preparing…" : "Export all"}
-          </Button>
-          {kind === "companies" && (
-            <Button variant="ghost" onClick={() => setDialog("duplicates")}>
-              Review duplicates
-            </Button>
-          )}
-        </div>
-        {/* The page header already offers Add company; only the contacts list adds its own primary action. */}
-        {kind === "contacts" && (
-          <Button variant="accent" onClick={() => actions.edit({ kind: "contact" })}>
-            <Plus className="size-4" />
-            Add contact
-          </Button>
-        )}
-      </div>
-      {error && (
-        <Notice tone="danger" className="mb-5">
-          {error}
-        </Notice>
-      )}
-      <Surface padding="sm" className="mb-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,2fr)_1fr_1fr_1fr]">
-          <label className="relative">
-            <span className="sr-only">Search {kind}</span>
-            <Search
-              className="absolute left-3 top-3 size-5 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              className="min-h-11 pl-10"
-              value={filters.search}
-              onChange={(e) => set({ search: e.target.value })}
-              placeholder={
-                kind === "companies"
-                  ? "Name, phone, email or company ID"
-                  : "Name, role, phone or email"
-              }
-            />
-          </label>
-          <NativeSelect
-            aria-label="Filter by owner"
-            value={filters.owner}
-            onChange={(e) => set({ owner: e.target.value })}
-          >
-            <option value="">Both founders</option>
-            <option value="usman">Usman</option>
-            <option value="mehroz">Mehroz</option>
-          </NativeSelect>
-          {kind === "companies" ? (
-            <NativeSelect
-              aria-label="Filter company relationship"
-              value={filters.status}
-              onChange={(e) => set({ status: e.target.value })}
-            >
-              <option value="">All relationships</option>
-              <option value="prospect">Prospects</option>
-              <option value="client">Clients</option>
-              <option value="inactive">Inactive</option>
+      <Toolbar
+        label={`${kind === "companies" ? "Company" : "Contact"} filters`}
+        search={{
+          value: filters.search,
+          onChange: (v) => set({ search: v }),
+          placeholder: kind === "companies" ? "Name, phone, email or company ID" : "Name, role, phone or email",
+          label: `Search ${kind}`,
+        }}
+        advanced={
+          <>
+            <NativeSelect className="w-auto" aria-label="Filter by owner" value={filters.owner} onChange={(e) => set({ owner: e.target.value })}>
+              <option value="">Both founders</option>
+              <option value="usman">Usman</option>
+              <option value="mehroz">Mehroz</option>
             </NativeSelect>
-          ) : (
-            <NativeSelect
-              aria-label="Saved contacts view"
-              value=""
-              onChange={(e) => {
-                const view = saved.data?.find((v) => v.id === e.target.value);
-                if (view) setFilters({ ...EMPTY_FILTERS, ...view.filters });
-              }}
-            >
-              <option value="">Saved views</option>
-              {saved.data
-                ?.filter((v) => v.kind === kind)
-                .map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
+            {kind === "companies" && (
+              <NativeSelect className="w-auto" aria-label="Filter company relationship" value={filters.status} onChange={(e) => set({ status: e.target.value })}>
+                <option value="">All relationships</option>
+                <option value="prospect">Prospects</option>
+                <option value="client">Clients</option>
+                <option value="inactive">Inactive</option>
+              </NativeSelect>
+            )}
+            <NativeSelect className="w-auto" aria-label="Filter contact restrictions" value={filters.restriction} onChange={(e) => set({ restriction: e.target.value })}>
+              <option value="">All contact permissions</option>
+              <option value="restricted">Restricted / excluded</option>
+              <option value="contactable">No recorded restrictions</option>
             </NativeSelect>
-          )}
-          <NativeSelect
-            aria-label="Filter contact restrictions"
-            value={filters.restriction}
-            onChange={(e) => set({ restriction: e.target.value })}
-          >
-            <option value="">All contact permissions</option>
-            <option value="restricted">Restricted / excluded</option>
-            <option value="contactable">No recorded restrictions</option>
-          </NativeSelect>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="ds-num text-[13px] text-muted-foreground">
-            {count} {kind}
-            {filters.search ? " match" : ""}
-          </span>
-          {kind === "companies" && (
             <NativeSelect
               className="w-auto max-w-full"
-              aria-label="Saved companies view"
+              aria-label={kind === "companies" ? "Saved companies view" : "Saved contacts view"}
               value=""
               onChange={(e) => {
                 const view = saved.data?.find((v) => v.id === e.target.value);
@@ -220,176 +279,96 @@ export function DirectoryView({
               }}
             >
               <option value="">Saved views</option>
-              {saved.data
-                ?.filter((v) => v.kind === kind)
-                .map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
+              {savedOptions.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
             </NativeSelect>
-          )}
-          <Button variant="ghost" size="sm" onClick={() => setDialog("save")}>
-            Save this view
-          </Button>
-          {Object.values(filters).some(Boolean) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setFilters({ ...EMPTY_FILTERS });
-                setPage(0);
-              }}
-            >
-              Clear filters
+            <Button variant="ghost" size="sm" onClick={() => setDialog("save")}>
+              Save this view
             </Button>
-          )}
-        </div>
-        {saved.isError && isNeedsConfirm(saved.error) && <NeedsConfirmNote className="mt-3" unlessBanner />}
-        {saved.isError && !isNeedsConfirm(saved.error) && (
-          <p className="mt-3 text-sm text-warn">
-            Saved views could not load.{" "}
-            <button className="underline" onClick={() => void saved.refetch()}>
-              Try again
-            </button>
-          </p>
-        )}
-      </Surface>
+          </>
+        }
+        advancedActive={active}
+        onClearAdvanced={() => set({ owner: "", status: "", restriction: "" })}
+        summary={
+          <span className="ds-num">
+            {count} {kind}
+            {filters.search ? " match" : ""}
+          </span>
+        }
+        actions={
+          <>
+            {filtered && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFilters({ ...EMPTY_FILTERS });
+                  setPage(0);
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setDialog("import")}>
+              <Upload className="size-4" />
+              Import CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => void exportRecords()} disabled={exporting}>
+              <Download className="size-4" />
+              {exporting ? "Preparing…" : "Export all"}
+            </Button>
+            {kind === "companies" && (
+              <Button variant="ghost" size="sm" onClick={() => setDialog("duplicates")}>
+                Review duplicates
+              </Button>
+            )}
+            {/* The page header owns Add company; on Contacts the header has no primary action and this is it. */}
+            {kind === "contacts" && (
+              <Button variant="accent" size="sm" onClick={() => actions.edit({ kind: "contact" })}>
+                <Plus className="size-4" />
+                Add contact
+              </Button>
+            )}
+          </>
+        }
+      />
+      {saved.isError && isNeedsConfirm(saved.error) && <NeedsConfirmNote className="mb-3" unlessBanner />}
+      {saved.isError && !isNeedsConfirm(saved.error) && (
+        <p className="mb-3 text-sm text-warn">
+          Saved views could not load.{" "}
+          <button className="underline" onClick={() => void saved.refetch()}>
+            Try again
+          </button>
+        </p>
+      )}
+      {error && (
+        <Notice tone="danger" className="mb-5">
+          {error}
+        </Notice>
+      )}
       {!count ? (
         <EmptyState
           icon={kind === "companies" ? Building2 : Users}
-          title={Object.values(filters).some(Boolean) ? "No matching records" : `No ${kind} yet`}
+          title={filtered ? "No matching records" : `No ${kind} yet`}
           body={
-            Object.values(filters).some(Boolean)
+            filtered
               ? "Try a shorter search or clear a filter. Existing records have not changed."
               : `Add your first ${kind === "companies" ? "company" : "contact"} manually, or preview a founder-supplied CSV.`
           }
         />
+      ) : kind === "companies" ? (
+        <>
+          <DataTable caption="Companies" columns={companyColumns} rows={companies.slice(offset, offset + pageSize)} rowKey={(c) => c.id} data-testid="crm-directory" />
+          {pager}
+        </>
       ) : (
-        <Surface padding="none" className="overflow-hidden">
-          <ul className="divide-y divide-border">
-            {kind === "companies"
-              ? companies.slice(offset, offset + pageSize).map((company) => {
-                  const primary = snapshot.contacts.find(
-                      (c) => c.companyId === company.id && c.primary,
-                    ),
-                    openDeals = snapshot.deals.filter((d) => d.companyId === company.id).length;
-                  return (
-                    <li
-                      key={company.id}
-                      className="grid min-w-0 gap-3 p-5 hover:bg-surface-raised sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_auto]"
-                    >
-                      <div className="min-w-0">
-                        <button
-                          className="ds-interactive rounded text-left text-base font-medium hover:underline"
-                          onClick={() => actions.open({ kind: "company", id: company.id })}
-                        >
-                          {companyLabel(company, { short: true })}
-                        </button>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {[company.industry, company.locality].filter(Boolean).join(" · ") ||
-                            "Industry and locality not recorded"}
-                        </p>
-                        <p className="mt-2 text-[13px] text-muted-foreground">
-                          {ownerName(company.owner)} · {company.status} · {openDeals}{" "}
-                          {openDeals === 1 ? "deal" : "deals"}
-                        </p>
-                      </div>
-                      <div className="min-w-0 text-sm">
-                        <p>{primary?.name || "No primary contact"}</p>
-                        <p className="mt-1 break-all text-muted-foreground">
-                          {primary?.email ||
-                            company.emails[0] ||
-                            company.phone ||
-                            "Contact details not recorded"}
-                        </p>
-                        {(company.doNotContact || company.excluded) && (
-                          <p className="mt-2 text-[13px] text-warn">
-                            {company.doNotContact ? "Do not contact" : "Excluded from prospecting"}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => actions.edit({ kind: "company", record: company })}
-                      >
-                        Edit
-                      </Button>
-                    </li>
-                  );
-                })
-              : contacts.slice(offset, offset + pageSize).map((contact) => (
-                  <li
-                    key={contact.id}
-                    className="grid min-w-0 gap-3 p-5 hover:bg-surface-raised sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto]"
-                  >
-                    <div>
-                      <button
-                        className="ds-interactive rounded text-left text-base font-medium hover:underline"
-                        onClick={() => actions.open({ kind: "contact", id: contact.id })}
-                      >
-                        {contact.name}
-                      </button>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {contact.role || "Role not recorded"}
-                        {contact.primary ? " · Primary contact" : ""}
-                      </p>
-                      <button
-                        className="ds-interactive mt-2 rounded text-left text-[13px] text-muted-foreground hover:underline"
-                        onClick={() => actions.open({ kind: "company", id: contact.companyId })}
-                      >
-                        {snapshot.companies.find((c) => c.id === contact.companyId)?.name ||
-                          "Company unavailable"}
-                      </button>
-                    </div>
-                    <div className="min-w-0 text-sm">
-                      <p className="break-all">{contact.email || "No email recorded"}</p>
-                      <p className="mt-1 text-muted-foreground">
-                        {contact.phone || "No phone recorded"}
-                      </p>
-                      {(contact.doNotContact || contact.restrictions.length > 0) && (
-                        <p className="mt-2 text-[13px] text-warn">
-                          {contact.doNotContact
-                            ? "Do not contact"
-                            : contact.restrictions.join(" · ")}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => actions.edit({ kind: "contact", record: contact })}
-                    >
-                      Edit
-                    </Button>
-                  </li>
-                ))}
-          </ul>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3">
-            <span className="ds-num text-[13px] text-muted-foreground">
-              Showing {offset + 1}–{Math.min(offset + pageSize, count)} of {count}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={offset === 0}
-                onClick={() => setPage(Math.max(0, page - 1))}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={offset + pageSize >= count}
-                onClick={() => setPage(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </Surface>
+        <>
+          <DataTable caption="Contacts" columns={contactColumns} rows={contacts.slice(offset, offset + pageSize)} rowKey={(c) => c.id} data-testid="crm-directory" />
+          {pager}
+        </>
       )}
       {dialog === "import" && (
         <CsvImport

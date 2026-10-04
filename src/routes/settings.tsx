@@ -13,7 +13,7 @@ import { PersonalProfileFields, ToolDiscovery } from "@/components/operator/work
 import { AccountConnectionsContent } from "@/components/operator/accounts-hub";
 import { OperatorPreferences } from "@/components/operator/preferences";
 import { setCurrency } from "@/lib/currency";
-import { PageFoot, PageHeader, Section, Button } from "@/components/ds";
+import { PageFoot, PageHeader, Section, Button, Tabs } from "@/components/ds";
 import "@/components/operator/workspace-settings.css";
 import "@/components/operator/settings-readable.css";
 // W-E: the System pages share the calm reading scale (src/components/shell/calm.css).
@@ -88,37 +88,23 @@ function SettingsPage() {
           Your profile has unsaved changes. Return to Personal profile to save them.
         </p>
       )}
-      <div
-        role="tablist"
-        aria-label="Settings sections"
-        className="ws-settings-tabs"
-      >
-        {tabs.map((t, i) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`settings-tab-${t.id}`}
-            aria-selected={section === t.id}
-            aria-controls={`settings-panel-${t.id}`}
-            tabIndex={section === t.id ? 0 : -1}
-            onKeyDown={(e) => {
-              const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-              if (!step) return;
-              e.preventDefault();
-              const next = tabs[(i + step + tabs.length) % tabs.length];
-              selectTab(next.id, true);
-              requestAnimationFrame(() =>
-                document.getElementById(`settings-tab-${next.id}`)?.focus(),
-              );
-            }}
-            onClick={() => selectTab(t.id)}
-          >
-            <t.Icon size={14} />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* R12 rollout: the shared Tabs (arrow keys, a select on a phone), not a hand-made tablist. */}
+      <Tabs
+        idBase="settings"
+        label="Settings sections"
+        className="mb-6"
+        value={section}
+        onChange={(id) => selectTab(id)}
+        tabs={tabs.map((t) => ({
+          id: t.id,
+          label: (
+            <span className="inline-flex items-center gap-2">
+              <t.Icon size={14} aria-hidden="true" />
+              {t.label}
+            </span>
+          ),
+        }))}
+      />
       <div
         id={`settings-panel-${section}`}
         role="tabpanel"

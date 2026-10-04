@@ -68,6 +68,10 @@ export const ROUTES: Record<string, RouteRule> = {
   // hub owner's: at the gate that is the owner at this PC or, in the server role, a founder with a CONFIRMED HUMAN session; the route checks the same
   // proof again plus the caller's own page token. A bare tailnet login, a routine principal and a gateway principal never write.
   "/__crm": READ_SHARED("the CRM: records, deals, follow-ups, tasks and typed operations; writes need the owner at the hub or a confirmed human session"),
+  // The Dot gateway's hub routes (scripts/gateway/hub-plugin.ts): who-am-I and the clearly-marked crm.activity.add test store. Shared at the
+  // gate so a founder can read (and tidy) what Dot added; the gateway principal reaches it only through its capability table, and the route
+  // itself lets only that principal add, with crm.write.
+  "/__gateway": SHARED("the Dot gateway's hub routes: who-am-I and the crm.activity.add test store (adds: the gateway principal with crm.write only)"),
   "/__jobs": { ...SHARED("the shared job and step history; B2 decides cancel/release per principal"), expectedFrom: "f/stage-b2-approvals-jobs (scripts/jobs/plugin.ts)" },
   "/__approvals": { ...SHARED("the shared approvals; B2 decides card/decide/cancel per principal"), expectedFrom: "f/stage-b2-approvals-jobs (scripts/jobs/plugin.ts)" },
   // Track 1 (scripts/commands/plugin.ts): the command palette's device-target preview, and app/file NAMES on the

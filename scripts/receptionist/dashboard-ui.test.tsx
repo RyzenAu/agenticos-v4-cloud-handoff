@@ -209,7 +209,8 @@ test("D1 tiles + next step: four big answers, short words, one gold action", asy
   const next = render(<NextStepBar sell={sell} onOpen={() => {}} />);
   expect(next).toContain("Follow up 2 flagged calls");
   expect(next).toContain(">Open flagged calls<");
-  expect(next.match(/bg-brand text-brand-foreground/g)).toHaveLength(1);
+  // R12 rollout: the page's one gold action is the header's Refresh calls (launch on hold); the next step's button is quiet.
+  expect(next).not.toContain("bg-brand text-brand-foreground");
   // Unread status: unknown tiles, a retry, never green.
   const unread = { data: undefined, error: new Error("HTTP 500"), isLoading: false };
   const unknownTiles = render(<SummaryTiles sell={unread} onOpen={() => {}} />);

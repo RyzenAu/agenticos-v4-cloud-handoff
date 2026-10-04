@@ -36,6 +36,7 @@ import type { MemoryVoiceTurn } from "./memory/voice-turn";
 import type { Principal as MemoryPrincipal } from "./memory/types";
 import { createDevicesService } from "./devices/service";
 import { mountComputers } from "./computers/plugin";
+import { provideGatewayServices } from "./gateway/hub-services";
 import { mountActivityStream } from "./events/plugin";
 import { connectCrmToHub } from "./crm/hub-integration";
 import { crmRuntime } from "./crm/runtime";
@@ -1284,6 +1285,18 @@ export function operatorPlugin({
         jarvisChromeInFront,
         coding: async () => createCodingCommandEntry({ voice: await codingVoiceFor(root), store: (await codingRuntime(root)).store }),
         codingVoice: () => existingCodingVoice(root),
+      });
+      // The Dot gateway's collaborator (scripts/gateway/hub-ops.ts): its OWN command service over the same job store and the same Jev
+      // controller, built with only the lanes the gateway may use. No hub screen (entry is null), no bot conversations, no receptionist,
+      // leads, memory-by-voice, skills or coding-by-words: those have their own capability-checked gateway routes or are not Dot's at all.
+      // "dot" owns no device, so a device lane resolves to nothing (scripts/devices/route.ts).
+      provideGatewayServices(root, {
+        computers,
+        // The hub's ONE mail archive (read only by the gateway, for founder-authorised mailboxes: scripts/gateway/mail.ts).
+        mail: archive,
+        // threads: Dot's requests, replies and job results land in Dot's OWN default Jarvis thread (jarvisThreadId("dot")), never a founder's;
+        // /jarvis in Dot's browser reads it back through /__gateway/ui/jarvis/thread.
+        commands: createLiveCommandService({ screen: screenHands, entry: () => null, devices, jobs: () => jobsRuntime(root).jobs, crm: () => crmRuntime(root).operations, threads: jarvisThreads }),
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());

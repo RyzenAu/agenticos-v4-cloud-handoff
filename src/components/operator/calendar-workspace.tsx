@@ -2,7 +2,7 @@ import { AccountConnections, useAccounts } from "./account-connections";
 import "./calendar-fixes.css";
 import "./calendar-readable.css";
 import { useEffect, useRef, useState } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import { CalendarDemo, CALENDAR_DEMO_KEY } from "./calendar-demo";
 import {
   BookmarkPlus,
@@ -29,8 +29,8 @@ import {
   useOperator,
   askOperator,
 } from "@/lib/operator";
-import { Busy, Modal } from "./ui";
-import { Disclosure, PageFoot, PageSkeleton } from "@/components/ds";
+import { Busy } from "./ui";
+import { DetailDrawer, Disclosure, PageFoot, PageSkeleton } from "@/components/ds";
 import { ChatPageComposer } from "./chat-page-composer";
 import { NativeCalendarConnection, useNativeCalendar } from "./native-calendar-connection";
 import {
@@ -87,6 +87,10 @@ function LiveCalendarWorkspace() {
   const { state, refresh, error } = useOperator();
   const { data: accounts, refetch: refreshAccounts, error: accountError } = useAccounts();
   const nativeCalendar = useNativeCalendar();
+  const navigate = useNavigate();
+  const eventParam = (useSearch({ strict: false }) as { event?: unknown }).event;
+  const selected = typeof eventParam === "string" && eventParam.length < 300 ? eventParam : null;
+  const setSelected = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, event: id ?? undefined }) } as never);
   const [view, setView] = useState("calendar");
   // R11: the agenda (a list of what is on, in order) is the default; the month grid is one click away.
   const [layout, setLayout] = useState("agenda");
@@ -96,7 +100,6 @@ function LiveCalendarWorkspace() {
     [day, setDay] = useState(""),
     [today, setToday] = useState(""),
     [add, setAdd] = useState(false),
-    [selected, setSelected] = useState<string | null>(null),
     [title, setTitle] = useState(""),
     [start, setStart] = useState(""),
     [end, setEnd] = useState(""),
@@ -115,8 +118,19 @@ function LiveCalendarWorkspace() {
     setDay(localDay(now));
     setToday(localDay(now));
   }, []);
+  // R12 rollout: the open event is in the URL (?event=<id>): Back closes its drawer and a link can open it.
   const event = state.events.find((e) => e.id === selected),
     dayEvents = state.events.filter((e) => eventOnDay(e, day)).sort(eventOrder);
+  // A deep link (or Back/Forward) opens an event without openEvent(): load its saved notes and actions once per event.
+  const eventId = event?.id;
+  useEffect(() => {
+    if (!event) return;
+    setNotes(event.notes);
+    setActions(event.actions);
+    setActionText("");
+    setFailure("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
   const calendarAccounts =
     accounts?.accounts.filter((a) => a.connected && ["google", "outlook", "cal"].includes(a.id)) ||
     [];
@@ -283,11 +297,13 @@ function LiveCalendarWorkspace() {
                 connected.length || nativeCalendar.data?.enabled ? "Calendars" : "Connect calendar"
               }
             />
-            <Button variant="accent" size="sm" onClick={newEvent}>
-              <Plus size={14} />
-              New event
-            </Button>
           </>
+        }
+        primaryAction={
+          <Button variant="accent" onClick={newEvent}>
+            <Plus size={14} />
+            New event
+          </Button>
         }
       />
       <div className="ar-calendar-toolbar">
@@ -578,7 +594,7 @@ function LiveCalendarWorkspace() {
                         {e.location || e.calendarName || providerName[e.source]}
                       </p>
                     </div>
-                    <ArrowUpRight size={14} />
+                    <ChevronRight size={14} aria-hidden="true" />
                   </button>
                 ))}
                 {!agendaEvents.length && (
@@ -739,11 +755,11 @@ function LiveCalendarWorkspace() {
           : "Connected calendars refresh every 15 minutes."}{" "}
         Imported files are saved snapshots.
       </PageFoot>
-      <Modal
+      <DetailDrawer
         open={add}
-        onClose={() => setAdd(false)}
-        title="Make time for it."
-        description="Add an event to your local calendar. No invitations are sent."
+        onOpenChange={(o) => !o && setAdd(false)}
+        title="New event"
+        description="Added to your local calendar. No invitations are sent."
       >
         <form
           className="op-form"
@@ -825,10 +841,10 @@ function LiveCalendarWorkspace() {
             {busy ? <Busy /> : <Plus size={14} />} Add event
           </Button>
         </form>
-      </Modal>
-      <Modal
+      </DetailDrawer>
+      <DetailDrawer
         open={!!event}
-        onClose={() => setSelected(null)}
+        onOpenChange={(o) => !o && setSelected(null)}
         title={event?.title || "Meeting"}
         description={
           event
@@ -955,7 +971,8 @@ function LiveCalendarWorkspace() {
                 </Button>
                 <Button
                   type="button"
-                  variant="destructive"
+                  // R11/R12: red only for a real failure; removing an event from this workspace is a quiet action.
+                  variant="ghost"
                   onClick={async () => {
                     try {
                       await operatorRequest("/calendar", { id: event.id, action: "delete" });
@@ -980,7 +997,7 @@ function LiveCalendarWorkspace() {
             </form>
           </>
         )}
-      </Modal>
+      </DetailDrawer>
     </div>
   );
 }

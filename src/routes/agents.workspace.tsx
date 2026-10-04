@@ -6,7 +6,11 @@ import { WORKSPACE_TABS, parseTab, type WorkspaceTab } from "@/components/agents
 // /agents/workspace and /agents/workspace/<bot>?tab=chat|computer|tasks|setup — Jarvis > Agents. This route renders the whole workspace
 // (it reads the bot from the URL itself), so the child route in agents.workspace.$botId.tsx only exists to give the bot a path.
 export const Route = createFileRoute("/agents/workspace")({
-  validateSearch: (s: Record<string, unknown>): { tab?: WorkspaceTab } => (typeof s.tab === "string" && (WORKSPACE_TABS as readonly string[]).includes(s.tab) ? { tab: s.tab as WorkspaceTab } : {}),
+  // R12 rollout: `task=<id>` opens that task's drawer on the Tasks & Files tab (Back closes it; a link can open it).
+  validateSearch: (s: Record<string, unknown>): { tab?: WorkspaceTab; task?: string } => ({
+    ...(typeof s.tab === "string" && (WORKSPACE_TABS as readonly string[]).includes(s.tab) ? { tab: s.tab as WorkspaceTab } : {}),
+    ...(typeof s.task === "string" && /^[\w:.-]{1,120}$/.test(s.task) ? { task: s.task } : {}),
+  }),
   head: () => ({ meta: [{ title: docTitle("/agents/workspace") }] }),
   component: AgentsWorkspaceRoute,
 });

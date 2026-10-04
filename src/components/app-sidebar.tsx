@@ -2,7 +2,7 @@ import { useWorkspaceProfile } from "@/lib/workspace-profile";
 import "./operator/workspace-settings.css";
 const defaultAvatar = "/operator-avatar.svg";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, AudioLines, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ArrowUpRight, AudioLines, ChevronDown, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useOperator } from "@/lib/operator";
@@ -22,8 +22,9 @@ import { DESTINATIONS, NAV_ACTIVE_OPTIONS, drilldownHref, locate, visibleDrilldo
 import { guardDoubleClick } from "./shell/double-click";
 import { useSignedIn } from "./shell/signed-in";
 
-// Eight destinations (docs/design-20260927/BRIEF.md). The destination you're in opens to show its
-// drilldowns; the others stay one line each, so the whole nav fits a laptop screen without folds.
+// Nine destinations (docs/design-20260927/BRIEF.md; R12 added Departments). The destination you're in opens to show its
+// drilldowns; the others stay one line each. R12: the rarely used ones (Memory, Studio, System) sit under one "More" toggle so the
+// main list stays short; the one you are inside is always shown in place.
 // On desktop the sidebar can collapse to an icon rail (remembered per browser).
 
 const RAIL_KEY = "agentic-os.sidebar-rail.v1";
@@ -104,6 +105,7 @@ function SidebarBody({ onNavigate, rail = false, onToggleRail }: { onNavigate?: 
   }, []);
   // The Business page reads its tab from ?view= (audit F1-21), so a drilldown link is enough.
   const here = locate(path, view);
+  const [moreOpen, setMoreOpen] = useState(false);
   const destinationLink = (d: Destination) => {
     const inside = here?.destination.id === d.id;
     const onLanding = inside && !here?.drilldown;
@@ -186,7 +188,19 @@ function SidebarBody({ onNavigate, rail = false, onToggleRail }: { onNavigate?: 
         )}
       </div>
       <nav className="op-sidebar-nav sh-nav" aria-label="Main" ref={navRef} onClickCapture={(e) => guardDoubleClick(e, lastNavClick)}>
-        <ul>{DESTINATIONS.map(destinationLink)}</ul>
+        <ul>{DESTINATIONS.filter((d) => !d.more || rail || here?.destination.id === d.id).map(destinationLink)}</ul>
+        {!rail && (
+          <>
+            <button type="button" className="op-nav-link sh-dest-link sh-more-toggle" aria-expanded={moreOpen} aria-controls="sh-nav-more" onClick={() => setMoreOpen((v) => !v)}>
+              <MoreHorizontal size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span>More</span>
+              <ChevronDown size={16} aria-hidden="true" className={`ml-auto transition-transform motion-reduce:transition-none ${moreOpen ? "rotate-180" : ""}`} />
+            </button>
+            <ul id="sh-nav-more" hidden={!moreOpen} aria-label="More pages">
+              {DESTINATIONS.filter((d) => d.more && here?.destination.id !== d.id).map(destinationLink)}
+            </ul>
+          </>
+        )}
       </nav>
       <div className="op-sidebar-bottom">
         {/* R11: the pairing banner at the top of every page already says "Confirm this browser" with the link; no second copy here. */}

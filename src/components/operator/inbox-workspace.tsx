@@ -33,11 +33,11 @@ import { useOperator, operatorRequest, askOperator, type InboxItem } from "@/lib
 import { brainEnabled } from "@/lib/brain-sources";
 import { INBOX_OPEN_KEY, inboxOpenRequest } from "@/lib/voice-email-review";
 import { Busy, Modal } from "./ui";
-import { Notice, PageFoot, PageHeader, PageSkeleton, Widget, WidgetGrid, WidgetList } from "@/components/ds";
+import { Button, Notice, PageFoot, PageHeader, PageSkeleton, Widget, WidgetGrid, WidgetList } from "@/components/ds";
 import { cn } from "@/lib/utils";
-import { AccountConnections, ProviderLogo, useAccounts, useNativeConnections } from "./account-connections";
+import { AccountConnections, ProviderLogo, openAccountHub, useAccounts, useNativeConnections } from "./account-connections";
 import { InboxDailyBrief } from "./inbox-daily-brief";
-import { MailArchivePanel } from "./mail-archive-panel";
+import { MailArchivePanel, OPEN_MAIL_LIBRARY } from "./mail-archive-panel";
 import { fmtDateTime, fmtDay, fmtTime } from "@/lib/format";
 import { isBulkMail } from "@/lib/inbox-bulk";
 
@@ -779,18 +779,27 @@ function LiveInboxWorkspace() {
         gmailLabels.find((l) => l.id === id && (!l.account || l.account === item?.account)),
       )
       .filter((l): l is GmailLabel => !!l && l.type !== "system") || [];
+  const anyAccountConnected = !!accounts.data?.accounts.some((a) => a.connected) || nativeReady.length > 0;
   return (
     <div className="op-page ar-mail-page ar-white-inbox" data-inbox-theme={effectiveTheme}>
       <PageHeader
         title="Inbox"
         // L1 (29 Sep 2026): one headline sentence (the owner's own words for this page).
+        // R12 rollout: ONE primary action. With no account connected it is connecting one; otherwise searching all mail.
         actions={
           <>
             {isDevMode() && (
-              <button className="op-button" onClick={() => window.location.assign("/inbox?demo=1")}>Hide emails for demo</button>
+              <Button variant="ghost" onClick={() => window.location.assign("/inbox?demo=1")}>Hide emails for demo</Button>
             )}
-            <AccountConnections compact messages />
+            {anyAccountConnected && <AccountConnections compact messages />}
           </>
+        }
+        primaryAction={
+          anyAccountConnected ? (
+            <Button variant="accent" onClick={() => window.dispatchEvent(new Event(OPEN_MAIL_LIBRARY))}>Search all mail</Button>
+          ) : (
+            <Button variant="accent" onClick={() => openAccountHub("work")}>Connect accounts</Button>
+          )
         }
       />
       {(failure || error) && <Notice tone="danger">{failure || error?.message}</Notice>}

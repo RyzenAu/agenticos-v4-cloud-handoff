@@ -17,7 +17,7 @@ Check 'ASCII only (Windows PowerShell 5.1 reads a BOM-less file as ANSI)' (-not 
 Check 'no stray carriage return inside a line' (-not ($text -match "`r[^`n]"))
 
 $params = @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })
-foreach ($p in 'Target', 'TagName', 'MigrateCrm', 'AdoptCommit', 'FailAfterStart') { Check "has parameter -$p" ($params -contains $p) ($params -join ',') }
+foreach ($p in 'Target', 'TagName', 'MigrateCrm', 'AdoptCommit', 'FailAfterStart', 'CandidateRef') { Check "has parameter -$p" ($params -contains $p) ($params -join ',') }
 $target = $ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'Target' }
 Check '-Target is mandatory' ([bool]($target.Attributes | Where-Object { $_.Extent.Text -match 'Mandatory' }))
 Check 'FailAfterStart is refused against production (\MU\ or 8081)' ($text -match "if \(\`$FailAfterStart -and \(\`$TaskPath -eq '\\MU\\' -or \`$Port -eq 8081\)\) \{ throw")

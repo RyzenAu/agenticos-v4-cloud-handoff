@@ -46,7 +46,8 @@ import {
 } from "lucide-react";
 import "./business.css";
 import { PageHeader } from "@/components/ds";
-import { TodayFocus, TodaySources, useToday } from "@/components/shell/pages/today-page";
+import { TodaySources, useToday } from "@/components/shell/pages/today-page";
+import { HomeAskJarvis, HomeOverview, HomeSignals } from "@/components/shell/pages/home-overview";
 import { HostAlertsHealthNotice } from "@/components/shell/pages/host-health-notice";
 import { CommandSceneButton } from "@/components/shell/command-scene/host";
 import { BusinessConnections, BusinessLogo } from "@/components/business/connections-panel";
@@ -666,11 +667,11 @@ function BusinessCluster() {
         // One headline sentence: the five-second answer. R11: the counts already sit on the sidebar badge and the cards, so the
         // sentence only shows when it says something they don't ("You're clear for now", a source that couldn't be read).
         description={view === "overview" ? todayModel.focus.headline && withoutCounts(todayModel.focus.headline) : undefined}
+        // R12: Home's one primary action is asking Jarvis; the command scene stays as a quiet side door (Packages & economics lives under Receptionist).
+        primaryAction={view === "overview" ? <HomeAskJarvis /> : undefined}
         actions={
           <div className="biz-context">
-            {/* Home only: Finances, Goals and Audience each have their own job; these two are Home's side doors. */}
             {view === "overview" && <CommandSceneButton className="max-sm:!hidden" />}
-            {view === "overview" && <a className="biz-demo-toggle max-sm:hidden" href="/operations">Packages & economics</a>}
             {!demo.liveData && isDevMode() && (
               <button className="biz-demo-toggle" type="button" aria-pressed={demo.enabled} onClick={() => demo.setEnabled(!demo.enabled)}>
                 {demo.enabled ? "Sample numbers on" : "Sample numbers"}
@@ -726,7 +727,9 @@ function BusinessCluster() {
       >
         {/* R9 ops: the hub computer's alerts (gave up, down, backups, disk) for any signed-in founder; nothing when all is well. */}
         {view === "overview" && <HostAlertsHealthNotice />}
-        {view === "overview" && <TodayFocus m={todayModel} />}
+        {/* R12 Home: what needs you, active work and useful results above the fold; the signals and the brief below it. */}
+        {view === "overview" && <HomeOverview m={todayModel} />}
+        {view === "overview" && <HomeSignals m={todayModel} />}
         {/* Setup invitation: after what needs you, never before it. It renders nothing once the profile is complete. */}
         {view === "overview" && <SetupWelcome />}
         {view === "overview" && <MuBrief />}

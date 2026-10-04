@@ -84,8 +84,8 @@ describe("routes, tabs and the drilldown", () => {
     expect(tree).toContain("'/agents/workspace/$botId'");
   });
 
-  test("still eight destinations; ONE new drilldown, Agents, under Jarvis; every workspace URL belongs to it", () => {
-    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Home", "Jarvis", "Receptionist", "Work", "Memory", "Finance", "Studio", "System"]);
+  test("nine destinations (R12 added Departments); ONE drilldown, Agents, under Jarvis; every workspace URL belongs to it", () => {
+    expect(DESTINATIONS.map((d) => d.label)).toEqual(["Home", "Jarvis", "Departments", "Receptionist", "Work", "Memory", "Finance", "Studio", "System"]);
     const jarvis = DESTINATIONS.find((d) => d.id === "jarvis")!;
     const agents = jarvis.drilldowns.filter((d) => d.label === "Agents");
     expect(agents).toHaveLength(1);

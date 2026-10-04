@@ -22,6 +22,9 @@ export function DetailDrawer({
   children,
   size = "md",
   className,
+  onEscapeKeyDown,
+  onInteractOutside,
+  onInput,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +35,10 @@ export function DetailDrawer({
   children: ReactNode;
   size?: "md" | "lg";
   className?: string;
+  /** R12 rollout (additive): an editor drawer can keep typed text on Escape or an outside click. */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void;
+  onInteractOutside?: (event: Event) => void;
+  onInput?: () => void;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -39,8 +46,11 @@ export function DetailDrawer({
         side="right"
         className={cn("flex w-full flex-col gap-0 p-0 sm:max-w-none", size === "lg" ? "sm:w-[min(52rem,92vw)]" : "sm:w-[min(34rem,92vw)]", className)}
         {...(description ? {} : { "aria-describedby": undefined })}
+        onEscapeKeyDown={onEscapeKeyDown}
+        onInteractOutside={onInteractOutside}
+        onInput={onInput}
       >
-        <div className="border-b border-border px-5 pb-4 pt-5 pr-16 sm:px-6">
+        <div className="border-b border-border pb-4 pl-5 pr-16 pt-5 sm:pl-6">
           <SheetTitle className="text-lg font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">{title}</SheetTitle>
           {(status || description) && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">

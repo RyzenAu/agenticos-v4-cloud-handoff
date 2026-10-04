@@ -12,7 +12,7 @@
 //   - Cleanup: the listener, the heartbeat timer and the slot are released on close, error, finish, a failed
 //     write or a slow consumer; there is nothing left after the last connection goes.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { parseWireId, reaches, wireId, type ActivityBus, type PersonId } from "./bus";
+import { parseWireId, reaches, wireId, type ActivityBus, type Entry, type PersonId } from "./bus";
 
 export const HEARTBEAT_MS = 15_000;
 /** A live stream re-checks that its session is still valid this often (a revoked session or device ends the stream). */
@@ -23,7 +23,8 @@ export const MAX_STREAMS_PER_PERSON = 8;
 export const MAX_STREAMS_TOTAL = 24;
 export const MAX_BUFFERED_BYTES = 512 * 1024;
 
-export type StreamPrincipal = { personId: PersonId } | null;
+/** `allow` and `snapshot` narrow a connection further than scope does (the Dot gateway's principal: scripts/gateway/events.ts). */
+export type StreamPrincipal = { personId: PersonId; allow?: (e: Entry) => boolean; snapshot?: () => unknown } | null;
 export type StreamOptions = {
   bus: ActivityBus;
   resolvePrincipal: (req: IncomingMessage) => StreamPrincipal;
@@ -61,7 +62,7 @@ export function createStream(options: StreamOptions) {
   function snapshotRoute(req: IncomingMessage, res: ServerResponse) {
     const principal = guard(req, res);
     if (!principal) return;
-    json(res, 200, { epoch: bus.epoch, head: bus.head(), ...(options.snapshot(principal.personId) as object) });
+    json(res, 200, { epoch: bus.epoch, head: bus.head(), ...((principal.snapshot ? principal.snapshot() : options.snapshot(principal.personId)) as object) });
   }
 
   function guard(req: IncomingMessage, res: ServerResponse) {
@@ -81,6 +82,7 @@ export function createStream(options: StreamOptions) {
     const principal = guard(req, res);
     if (!principal) return;
     const person = principal.personId;
+    const allowed = (e: Entry) => reaches(e.scope, person) && (principal.allow ? principal.allow(e) : true);
     const mine = [...open.values()].filter((p) => p === person).length;
     if (open.size >= maxTotal || mine >= maxPerPerson) {
       res.setHeader("Retry-After", "10");
@@ -128,12 +130,12 @@ export function createStream(options: StreamOptions) {
     // Everything below is synchronous: the replay or snapshot and the subscription are one tick, so no
     // event can fall in the gap between them.
     const last = parseWireId(req.headers["last-event-id"] ?? url.searchParams.get("last"));
-    const replay = last && last.epoch === bus.epoch ? bus.since(last.n, (e) => reaches(e.scope, person)) : null;
+    const replay = last && last.epoch === bus.epoch ? bus.since(last.n, allowed) : null;
     write(`retry: 3000\n${frame("hello", { epoch: bus.epoch, head: bus.head(), mode: replay ? "replay" : "snapshot", heartbeatMs })}`);
     if (replay) {
       for (const e of replay) write(e.frame);
     } else {
-      write(frame("snapshot", { epoch: bus.epoch, head: bus.head(), ...(options.snapshot(person) as object) }, wireId(bus.epoch, bus.head())));
+      write(frame("snapshot", { epoch: bus.epoch, head: bus.head(), ...((principal.snapshot ? principal.snapshot() : options.snapshot(person)) as object) }, wireId(bus.epoch, bus.head())));
     }
     if (closed) return; // dropped while writing the opening frames (a consumer that cannot keep up)
     // Authorised at connect AND kept authorised: a revoked session, a revoked device or a changed identity ends the stream.
@@ -158,7 +160,7 @@ export function createStream(options: StreamOptions) {
       return false;
     };
     off = bus.subscribe((e) => {
-      if (!reaches(e.scope, person)) return;
+      if (!allowed(e)) return;
       if (Date.now() - checkedAt >= deliveryRecheckMs && !stillSignedIn()) return;
       write(e.frame);
     });

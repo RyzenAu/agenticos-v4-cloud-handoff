@@ -18,10 +18,12 @@ test("rendered behaviour: decision form focus, Escape and failed save; Settings 
 import { readFileSync } from "node:fs";
 const read = (p: string) => readFileSync(join(import.meta.dir, "..", p), "utf8");
 
-test("Home's side doors (Command scene, Packages & economics) appear on the Home tab only", () => {
+test("Home's side door (Command scene) and its one primary action (Ask Jarvis) appear on the Home tab only", () => {
   const src = read("src/routes/business.tsx");
   expect(src).toContain('{view === "overview" && <CommandSceneButton');
-  expect(src).toContain('{view === "overview" && <a className="biz-demo-toggle max-sm:hidden" href="/operations">Packages & economics</a>');
+  expect(src).toContain('primaryAction={view === "overview" ? <HomeAskJarvis /> : undefined}');
+  // R12: Packages & economics moved off Home's header; it stays one click away under Receptionist.
+  expect(src).not.toContain('href="/operations">Packages & economics</a>');
 });
 test("one statement per fact: Finance tiles, System tiles and the empty NAB tab do not repeat the step or the card below", () => {
   expect(read("src/components/shell/pages/finance-page.tsx")).toContain('bankNeedsImport && csv.state === "unknown" ? undefined');

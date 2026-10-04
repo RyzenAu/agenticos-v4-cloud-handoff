@@ -4,7 +4,6 @@
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import type { Job, JobState, JobSummary } from "../../../scripts/jobs/types";
-import { JOB_STATE_LABEL } from "@/lib/job-events";
 import { maskLine } from "@/lib/agent-feed";
 import { useState } from "react";
 import { Button, DetailDrawer, Details, EmptyState, Notice, PageSkeleton, Segmented, StatusLabel, Toolbar, type StatusState, type Tone } from "@/components/ds";
@@ -53,6 +52,21 @@ export function statusStateFor(state: JobState): StatusState {
   return "unknown";
 }
 
+/**
+ * R12 rollout: the shared work words (R12-UI-SYSTEM "Status language"): Running, Queued, Needs your yes, Completed, Failed, Stopped,
+ * Interrupted, Outcome unknown. The chip keeps its own live phrasing (JOB_STATE_LABEL in job-events); this page states the outcome.
+ */
+export const WORK_WORD: Record<JobState, string> = {
+  queued: "Queued",
+  running: "Running",
+  "awaiting-approval": "Needs your yes",
+  succeeded: "Completed",
+  failed: "Failed",
+  cancelled: "Stopped",
+  interrupted: "Interrupted, not re-run",
+  unknown: "Outcome unknown",
+};
+
 const FINISHED: readonly JobState[] = ["succeeded", "failed", "cancelled", "interrupted", "unknown"];
 
 export function formatDuration(ms: number): string {
@@ -82,7 +96,7 @@ export function activityRows(jobs: readonly JobSummary[]): ActivityRow[] {
         title: maskLine(j.title, 140) || "Untitled job",
         kind: KIND_LABEL[j.kind] ?? j.kind,
         state: j.state,
-        stateLabel: JOB_STATE_LABEL[j.state] ?? j.state,
+        stateLabel: WORK_WORD[j.state] ?? j.state,
         tone: toneFor(j.state),
         started: formatStarted(j.createdAt),
         startedIso: j.createdAt,
@@ -140,7 +154,7 @@ function SelectedJob({ selected, workspace, onClose }: { selected: SelectedRead;
         open
         onOpenChange={(o) => !o && onClose()}
         title={maskLine(j.title, 140) || "Untitled job"}
-        status={<StatusLabel state={statusStateFor(j.state)} label={JOB_STATE_LABEL[j.state] ?? j.state} size="sm" />}
+        status={<StatusLabel state={statusStateFor(j.state)} label={WORK_WORD[j.state] ?? j.state} size="sm" />}
         description={`Job ${j.id.slice(0, 8)} · ${formatStarted(j.createdAt)}${finished && Number.isFinite(created) && Number.isFinite(updated) ? ` · took ${formatDuration(updated - created)}` : " · still going"}`}
         actions={
           <>
@@ -178,7 +192,7 @@ function SelectedJob({ selected, workspace, onClose }: { selected: SelectedRead;
     <section className={box} data-testid="selected-job" aria-label={`Job ${j.id.slice(0, 8)}`}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-medium">{maskLine(j.title, 140) || "Untitled job"}</h2>
-        <StatusLabel state={statusStateFor(j.state)} label={JOB_STATE_LABEL[j.state] ?? j.state} size="sm" />
+        <StatusLabel state={statusStateFor(j.state)} label={WORK_WORD[j.state] ?? j.state} size="sm" />
         <span className="text-xs text-muted-foreground">
           job {j.id.slice(0, 8)} · {formatStarted(j.createdAt)}
           {finished && Number.isFinite(created) && Number.isFinite(updated) ? ` · took ${formatDuration(updated - created)}` : " · still going"}
@@ -280,7 +294,7 @@ export function ActivityView({ read, onRetry, selected, workspace, onCloseSelect
               { value: "all", label: "All" },
               { value: "attention", label: "Needs attention" },
               { value: "running", label: "Running" },
-              { value: "done", label: "Done" },
+              { value: "done", label: "Completed" },
               { value: "stopped", label: "Stopped" },
             ]}
           />
@@ -311,7 +325,7 @@ export function ActivityView({ read, onRetry, selected, workspace, onCloseSelect
               <tr key={r.id} id={`job-${r.id}`} data-selected={selected?.id === r.id ? "true" : undefined} className={selected?.id === r.id ? "bg-surface-raised" : "hover:bg-surface-raised"}>
                 <td className="px-4 py-3">
                   <a className="text-sm font-medium hover:underline" href={`#job-${r.id}`} aria-current={selected?.id === r.id ? "true" : undefined}>{r.title}</a>
-                  {r.note && <div className="mt-0.5 text-[13px] text-muted-foreground">{r.note}</div>}
+                  {r.note && <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{r.note}</div>}
                   {/* Phone: the status and time sit under the title instead of squeezing it into a narrow column. */}
                   <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">
                     <StatusLabel state={statusStateFor(r.state)} label={r.stateLabel} size="sm" />

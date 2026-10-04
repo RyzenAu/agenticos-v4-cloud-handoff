@@ -98,16 +98,20 @@ export function BotPanels({ panel, onPanel, bots, onChange, client = agentBots, 
 }
 
 /** The two list-level actions, shared by both shapes. */
-function ListActions({ panel, onPanel, archived, className }: { panel: BotPanel; onPanel: (p: BotPanel) => void; archived: number; className?: string }) {
+function ListActions({ panel, onPanel, archived, className, compact }: { panel: BotPanel; onPanel: (p: BotPanel) => void; archived: number; className?: string; compact?: boolean }) {
+  // compact (tablet and phone header): icons only below lg, so the actions stay on the bot row instead of stacking rows above the
+  // bot's name (R11 backlog). The words stay the buttons' names for screen readers, and a tooltip says them on hover.
+  const label = compact ? "sr-only lg:not-sr-only" : undefined;
+  const archivedWords = panel === "archived" ? "Hide archived" : `Show archived${archived ? ` (${archived})` : ""}`;
   return (
     <div className={cn("flex flex-wrap items-center gap-1", className)}>
-      <Button type="button" variant="ghost" size="sm" aria-expanded={panel === "new"} aria-controls="new-bot" onClick={() => onPanel(panel === "new" ? null : "new")}>
+      <Button type="button" variant="ghost" size="sm" className={compact ? "size-10 px-0 lg:size-auto lg:px-3" : undefined} title={compact ? "New bot" : undefined} aria-expanded={panel === "new"} aria-controls="new-bot" onClick={() => onPanel(panel === "new" ? null : "new")}>
         <Plus className="h-4 w-4" aria-hidden="true" />
-        New bot
+        <span className={label}>New bot</span>
       </Button>
-      <Button type="button" variant="ghost" size="sm" aria-expanded={panel === "archived"} aria-controls="archived-bots" onClick={() => onPanel(panel === "archived" ? null : "archived")}>
+      <Button type="button" variant="ghost" size="sm" className={compact ? "size-10 px-0 lg:size-auto lg:px-3" : undefined} title={compact ? archivedWords : undefined} aria-expanded={panel === "archived"} aria-controls="archived-bots" onClick={() => onPanel(panel === "archived" ? null : "archived")}>
         <Archive className="h-4 w-4" aria-hidden="true" />
-        {panel === "archived" ? "Hide archived" : `Show archived${archived ? ` (${archived})` : ""}`}
+        <span className={label}>{archivedWords}</span>
       </Button>
     </div>
   );
@@ -213,7 +217,7 @@ export function BotSelector({ bots, value, kinds, onChange, client = agentBots, 
             );
           })}
         </div>
-        <ListActions panel={panel} onPanel={setPanel} archived={archived.length} />
+        <ListActions panel={panel} onPanel={setPanel} archived={archived.length} compact />
       </div>
       {recent && recent.length > 0 && (
         <details className="group" data-testid="recent-work-fold">

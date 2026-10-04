@@ -6,7 +6,11 @@ import { Modal, Notice } from "./ui";
 import { ProviderLogo, AccountConnections } from "./account-connections";
 import "./mail-archive-panel.css";
 import { fmtDateTime, fmtDay } from "@/lib/format";
-import { DataList, DataRow, fmtRelative } from "@/components/ds";
+import { Button, DataList, DataRow, DetailDrawer, Details, fmtRelative } from "@/components/ds";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+
+/** The page's primary action ("Search all mail") opens the library through this event. */
+export const OPEN_MAIL_LIBRARY = "inbox:open-mail-library";
 
 type Status = {
   total: number;
@@ -68,6 +72,22 @@ export function MailArchivePanel() {
     queryFn: () => operatorRequest(`/mail-archive/search?${new URLSearchParams({ q: "", provider: "", offset: "0", limit: "8" })}`),
     enabled: (status.data?.total ?? 0) > 0,
   });
+  // R12 rollout: a recent message opens in the shared detail drawer; the open message is in the URL (?mail=<id>), so Back closes it.
+  const navigate = useNavigate();
+  const mailId = (useSearch({ strict: false }) as { mail?: unknown }).mail;
+  const openId = typeof mailId === "string" && mailId.length < 300 ? mailId : null;
+  const openMail = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, mail: id ?? undefined }) } as never);
+  const drawerMessage = useQuery<{ item: InboxItem }>({
+    queryKey: ["archived-message", openId],
+    queryFn: () => operatorRequest(`/mail-archive/message?id=${encodeURIComponent(openId!)}`),
+    enabled: !!openId,
+    retry: false,
+  });
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(OPEN_MAIL_LIBRARY, onOpen);
+    return () => window.removeEventListener(OPEN_MAIL_LIBRARY, onOpen);
+  }, []);
   const message = useQuery<{ item: InboxItem }>({
     queryKey: ["archived-message", selected],
     queryFn: () => operatorRequest(`/mail-archive/message?id=${encodeURIComponent(selected)}`),
@@ -88,20 +108,53 @@ export function MailArchivePanel() {
     <>
       {recent.data?.items.length ? (
         <section aria-label="Recent mail" className="mb-4">
-          <h2 className="mb-3 text-lg font-semibold">Recent mail</h2>
+          <h2 className="mb-3 text-base font-semibold">Recent mail</h2>
           <DataList label="Recent mail">
             {recent.data.items.map((email) => (
               <DataRow
                 key={email.id}
                 title={email.subject}
                 meta={`${email.from.replace(/<.*>/, "").trim() || email.from} · ${fmtRelative(email.receivedAt)}`}
-                status={email.read === false ? <span className="text-[13px] font-medium text-foreground">Unread</span> : undefined}
-                onClick={() => { setSelected(email.id); setOpen(true); }}
+                status={email.read === false ? <span className="text-xs font-medium text-foreground">Unread</span> : undefined}
+                selected={openId === email.id}
+                onClick={() => openMail(email.id)}
               />
             ))}
           </DataList>
         </section>
       ) : null}
+      <DetailDrawer
+        open={!!openId}
+        onOpenChange={(o) => !o && openMail(null)}
+        title={drawerMessage.data?.item.subject ?? (drawerMessage.isLoading ? "Opening email…" : "Email")}
+        description={drawerMessage.data ? `${drawerMessage.data.item.from} · ${fmtDateTime(new Date(drawerMessage.data.item.receivedAt), { year: true })}` : undefined}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => { if (openId) setSelected(openId); setOpen(true); openMail(null); }}>Open in library</Button>
+            {drawerMessage.data?.item.url && /^https:\/\//.test(drawerMessage.data.item.url) && (
+              <Button variant="accent" asChild>
+                <a href={drawerMessage.data.item.url} target="_blank" rel="noreferrer">Open original <ArrowUpRight size={14} /></a>
+              </Button>
+            )}
+          </>
+        }
+      >
+        {drawerMessage.isLoading ? (
+          <p role="status" className="text-sm text-muted-foreground">Opening email…</p>
+        ) : drawerMessage.error ? (
+          <Notice error>{(drawerMessage.error as Error).message}</Notice>
+        ) : drawerMessage.data ? (
+          <div data-mail-drawer={openId ?? undefined}>
+            <div className="whitespace-pre-line text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]">{drawerMessage.data.item.body}</div>
+            <div className="mt-5">
+              <Details items={[
+                { label: "Source", value: drawerMessage.data.item.source },
+                { label: "Body", value: drawerMessage.data.item.bodyStatus === "cached" ? "Fetched on demand; this cached copy expires after seven days" : drawerMessage.data.item.bodyStatus === "metadata" ? "Snippet only" : "Preserved from your local archive" },
+              ]} />
+            </div>
+          </div>
+        ) : null}
+      </DetailDrawer>
       <button className="ma-archive-launch" onClick={() => setOpen(true)}>
         <span className="ma-archive-logos">
           <ProviderLogo provider="google" />

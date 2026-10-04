@@ -5,11 +5,12 @@
 // limit, server restarts); the model providers and the tools that need a look as two list widgets;
 // one widget per plan limit; devices and people behind one click. "N not verified" is said in one
 // plain line. Version and freshness are one line at the foot.
+import { DotRestartPanel } from "@/components/shell/dot-restart-panel";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useOpenOnHash } from "../use-open-on-hash";
 import { Cpu, Gauge, MonitorSmartphone, RefreshCw, Wrench } from "lucide-react";
-import { Badge, Disclosure, EmptyState, Notice, PageFoot, PageHeader, Skeleton, StatusDot, Widget, WidgetEmpty, WidgetGrid, WidgetList } from "@/components/ds";
+import { Button, Disclosure, EmptyState, Notice, PageFoot, PageHeader, Skeleton, StatusDot, StatusLabel, Widget, WidgetEmpty, WidgetGrid, WidgetList, type StatusState } from "@/components/ds";
 import { useNow } from "@/components/workspace/panel-shell";
 import { honestFromQuery, payloadTime } from "@/lib/honest-state";
 import { operatorRequest } from "@/lib/operator";
@@ -57,6 +58,10 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 const PROVIDER: Record<string, string> = { lmstudio: "LM Studio", ollama: "Ollama", codex: "Codex", claude: "Claude Code", hermes: "Hermes", openrouter: "OpenRouter", deepseek: "DeepSeek Harness" };
+
+/** R12 rollout: one status per provider and per tool, in the shared vocabulary (it was a dot plus a coloured badge). Only a broken tool is red. */
+const PROVIDER_STATUS: Record<string, StatusState> = { verified: "verified", installed: "idle", configured: "idle", failed: "blocked", setup: "idle", unknown: "unknown" };
+const TOOL_STATUS: Record<string, StatusState> = { working: "verified", available: "idle", "setup-required": "needs-you", broken: "failed" };
 
 export function SystemPage() {
   const hostHealth = useHostHealth();
@@ -158,7 +163,18 @@ export function SystemPage() {
 
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="System" description={headline} actions={<WidgetLink to="/system" hash="system-devices">Pair or confirm a browser</WidgetLink>} />
+      <PageHeader
+        title="System"
+        description={headline}
+        actions={<WidgetLink to="/system" hash="system-devices">Pair or confirm a browser</WidgetLink>}
+        // ONE primary action: ask the model providers again (it starts the Codex and Claude CLIs, so it is always a click).
+        primaryAction={
+          <Button variant="accent" onClick={checkModels} disabled={check.phase === "checking" || check.rechecking}>
+            {check.phase === "checking" || check.rechecking ? "Checking models…" : "Check models"}
+          </Button>
+        }
+      />
+      <DotRestartPanel />
       <SessionStoreHealthNotice />
       <HostAlertsNotice health={hostHealth.data} />
       {hostHealth.data?.checkedAt ? (
@@ -255,7 +271,7 @@ export function SystemPage() {
             <WidgetEmpty title="Checking model providers…" body="Asking Codex, Claude Code, Hermes and the local model servers. Nothing is shown as ready meanwhile." />
           </Widget>
         ) : check.phase === "unchecked" ? (
-          <Widget icon={Cpu} title="Models" span={2} data-models-state="unchecked" action={<WidgetButton onClick={checkModels} accent>Check now</WidgetButton>}>
+          <Widget icon={Cpu} title="Models" span={2} data-models-state="unchecked" action={<WidgetButton onClick={checkModels}>Check now</WidgetButton>}>
             <WidgetEmpty title="Model providers not checked yet" body="Checking asks Codex, Claude Code, Hermes and the local model servers, so it only runs when you ask or on the server's own schedule." />
           </Widget>
         ) : check.phase === "failed" ? (
@@ -269,15 +285,11 @@ export function SystemPage() {
             span={2}
             badge={check.rechecking ? "Re-checking…" : undefined}
             data-models-state="ready"
-            action={
-              check.rechecking ? undefined : (
-                <WidgetButton onClick={checkModels}>Check again</WidgetButton>
-              )
-            }
+            // "Check again" is the header's primary action (Check models), not a second button here.
           >
             {checkError && (
               <li className="py-3 first:pt-0">
-                <Notice tone="danger" title="The model check didn't run">{checkError} Press Check again to retry.</Notice>
+                <Notice tone="danger" title="The model check didn't run">{checkError} Press Check models to retry.</Notice>
               </li>
             )}
             {(models.data?.statuses ?? []).map((s) => {
@@ -285,18 +297,14 @@ export function SystemPage() {
               const count = perProvider[s.id];
               return (
                 <li key={s.id} className="flex min-w-0 items-center gap-3 py-3 first:pt-0 last:pb-0">
-                  {/* The badge beside the name carries the state in words. */}
-                  <span className="shrink-0">
-                    <StatusDot tone={view.tone} label={null} />
-                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground">
                         {PROVIDER[s.id] ?? s.id}
                       </span>
-                      <Badge tone={view.tone}>{view.label}</Badge>
+                      <StatusLabel state={PROVIDER_STATUS[view.state] ?? "unknown"} label={view.label} size="sm" />
                     </span>
-                    <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
                       {s.detail}
                     </span>
                   </span>
@@ -442,12 +450,12 @@ function ToolRow({ c }: { c: ReturnType<typeof toolCounts>["attention"][number] 
     <li className="flex min-w-0 py-3 first:pt-0 last:pb-0">
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="text-base font-medium text-foreground">{c.name}</span>
-          <Badge tone={view.tone}>{view.label}</Badge>
+          <span className="text-sm font-medium text-foreground">{c.name}</span>
+          <StatusLabel state={TOOL_STATUS[c.status] ?? "unknown"} label={view.label} size="sm" />
         </span>
         {/* R7 audit 2 item 11: a human sentence; the registry's own wording (variable names, config paths, doc files) stays inside Technical detail. */}
         {text.plain.map((line) => (
-          <span key={line} className="mt-0.5 block text-sm leading-snug text-muted-foreground" data-tool-evidence>
+          <span key={line} className="mt-0.5 block text-xs leading-snug text-muted-foreground" data-tool-evidence>
             {line}
           </span>
         ))}

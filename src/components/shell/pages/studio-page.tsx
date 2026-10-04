@@ -7,9 +7,9 @@
 // the ledger counts as widgets. Sources and freshness sit in the one PageFoot line.
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowUpRight, Bot, TriangleAlert } from "lucide-react";
-import { ActionBar, Button, DataList, DataRow, EmptyState, Notice, PageFoot, PageHeader, StatusLabel, Widget, WidgetGrid } from "@/components/ds";
+import { ActionBar, Button, DataList, DataRow, DetailDrawer, Details, EmptyState, Notice, PageFoot, PageHeader, StatusLabel, Widget, WidgetGrid } from "@/components/ds";
 import { useNow } from "@/components/workspace/panel-shell";
 import { HONEST_LABEL, honestFromQuery, type HonestState } from "@/lib/honest-state";
 import { fmtAgo, fmtDateTime } from "@/lib/format";
@@ -42,7 +42,7 @@ export type LedgerSummary = {
   /** Whether agent media capture is installed; null when the ledger didn't say. */
   armed: boolean | null;
   /** The newest assets that still exist, for the list on the page. */
-  recent: { name: string; agent: string; ts: number; kind: string }[];
+  recent: { id: string | null; name: string; agent: string; ts: number; kind: string; w: number | null; h: number | null; bytes: number | null; model: string | null }[];
 };
 
 /** Counts from the ledger's items (each re-stat'd by the server), not its raw `total`, which includes deleted files. */
@@ -52,11 +52,16 @@ export function summariseLedger(body: { items?: unknown; armed?: unknown }): Led
   const byAgent: Record<string, number> = {};
   for (const i of alive) if (typeof i.agent === "string") byAgent[i.agent] = (byAgent[i.agent] ?? 0) + 1;
   const newest = alive.reduce<number | null>((max, i) => (typeof i.ts === "number" && (max === null || i.ts > max) ? i.ts : max), null);
-  const recent = (alive as { path?: unknown; ts?: unknown; agent?: unknown; kind?: unknown; name?: unknown }[])
+  const recent = (alive as { id?: unknown; path?: unknown; ts?: unknown; agent?: unknown; kind?: unknown; name?: unknown; w?: unknown; h?: unknown; bytes?: unknown; model?: unknown }[])
     .filter((i) => typeof i.ts === "number")
     .sort((a, b) => (b.ts as number) - (a.ts as number))
     .slice(0, 8)
     .map((i) => ({
+      id: typeof i.id === "string" ? i.id : null,
+      w: typeof i.w === "number" ? i.w : null,
+      h: typeof i.h === "number" ? i.h : null,
+      bytes: typeof i.bytes === "number" ? i.bytes : null,
+      model: typeof i.model === "string" ? i.model : null,
       name: typeof i.name === "string" ? i.name : typeof i.path === "string" ? i.path.split(/[\/]/).pop() ?? "asset" : "asset",
       agent: typeof i.agent === "string" ? i.agent : "",
       ts: i.ts as number,
@@ -89,6 +94,11 @@ export function StudioPage() {
   const ledgerEmpty = !!ledger.data && ledger.data.total === 0 && ledger.data.newest === null;
   const ledgerState = ledgerEmpty ? ("unknown" as const) : honestFromQuery(ledger, now, { staleAfterMs: Infinity });
   const jobsState = honestFromQuery(jobs, now);
+  // R12 rollout: an asset opens in the shared drawer (a preview and its facts); the open asset is in the URL (?asset=<id>).
+  const navigate = useNavigate();
+  const assetParam = (useSearch({ strict: false }) as { asset?: unknown }).asset;
+  const openAsset = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, asset: id ?? undefined }) } as never);
+  const asset = typeof assetParam === "string" ? ledger.data?.recent.find((a) => a.id === assetParam) : undefined;
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
       <PageHeader
@@ -129,12 +139,18 @@ export function StudioPage() {
         ) : ledger.data && ledger.data.recent.length > 0 ? (
           <>
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-lg font-semibold">Recent assets</h2>
+              <h2 className="text-base font-semibold">Recent assets</h2>
               <span className="text-sm text-muted-foreground">{ledger.data.total} in the ledger · newest <LedgerHint summary={ledger.data} now={now} /></span>
             </div>
             <DataList label="Recent assets">
               {ledger.data.recent.map((a) => (
-                <DataRow key={`${a.name}-${a.ts}`} title={a.name} meta={`${a.kind === "video" ? "Video" : "Image"} · ${a.agent ? `made by ${AGENT_LABEL[a.agent] ?? a.agent}` : "maker not recorded"} · ${fmtAgo(a.ts, now)}`} href="/design" />
+                <DataRow
+                  key={`${a.name}-${a.ts}`}
+                  title={a.name}
+                  meta={`${a.kind === "video" ? "Video" : "Image"} · ${a.agent ? `made by ${AGENT_LABEL[a.agent] ?? a.agent}` : "maker not recorded"} · ${fmtAgo(a.ts, now)}`}
+                  selected={!!a.id && a.id === assetParam}
+                  {...(a.id ? { onClick: () => openAsset(a.id) } : { href: "/design" })}
+                />
               ))}
             </DataList>
             <p className="mt-3 text-sm"><Link to={"/design" as never} className="underline underline-offset-4">Open the full ledger in Design</Link></p>
@@ -159,6 +175,37 @@ export function StudioPage() {
           </WidgetGrid>
         </details>
       )}
+      <DetailDrawer
+        open={!!asset}
+        onOpenChange={(o) => !o && openAsset(null)}
+        title={asset?.name ?? ""}
+        description={asset ? `${asset.kind === "video" ? "Video" : "Image"} · ${asset.agent ? `made by ${AGENT_LABEL[asset.agent] ?? asset.agent}` : "maker not recorded"} · ${fmtAgo(asset.ts, now)}` : undefined}
+        actions={
+          <Button asChild variant="accent">
+            <Link to={"/design" as never}>Open in Design</Link>
+          </Button>
+        }
+      >
+        {asset?.id && (
+          <div data-asset-drawer={asset.id}>
+            {asset.kind === "video" ? (
+              <video src={`/__design_file?id=${encodeURIComponent(asset.id)}`} controls className="w-full rounded-xl border border-border bg-inset" />
+            ) : (
+              <img src={`/__design_file?id=${encodeURIComponent(asset.id)}`} alt={asset.name} className="w-full rounded-xl border border-border bg-inset object-contain" />
+            )}
+            <div className="mt-4">
+              <Details
+                items={[
+                  ...(asset.w && asset.h ? [{ label: "Size", value: `${asset.w} × ${asset.h}` }] : []),
+                  ...(asset.bytes ? [{ label: "File", value: `${Math.max(1, Math.round(asset.bytes / 1024))} KB` }] : []),
+                  ...(asset.model ? [{ label: "Model", value: asset.model, mono: true }] : []),
+                  { label: "Made", value: fmtDateTime(asset.ts) },
+                ]}
+              />
+            </div>
+          </div>
+        )}
+      </DetailDrawer>
       <div className="mt-10">
         <DrilldownList id="studio" />
       </div>

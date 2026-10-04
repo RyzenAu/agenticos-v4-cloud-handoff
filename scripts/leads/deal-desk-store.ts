@@ -26,7 +26,7 @@ export class DealDeskError extends Error {
 }
 
 export type DealRecord = {
-  schemaVersion: 1; id: string; rev: number; updatedAt: string; updatedBy: "usman" | "mehroz" | "local";
+  schemaVersion: 1; id: string; rev: number; updatedAt: string; updatedBy: "usman" | "mehroz" | "dot" | "local";
   deal: Deal | null; draft: Deal | null; problem: string | null; leadId: number | null; archived: boolean;
   /** A reference to the CRM deal this workbook prices, e.g. "crm:deal:abc". Stored only; the CRM is never called. */
   crmDealRef: string | null;
@@ -73,7 +73,7 @@ function parseRecord(id: string, text: string): { record: DealRecord } | { error
   if (r.schemaVersion !== 1) return { error: "Unsupported schemaVersion." };
   if (r.id !== id) return { error: "The record id does not match the file name." };
   if (!Number.isSafeInteger(r.rev) || r.rev < 1) return { error: "Bad revision number." };
-  if (typeof r.updatedAt !== "string" || !["usman", "mehroz", "local"].includes(r.updatedBy)) return { error: "Bad updatedAt or updatedBy." };
+  if (typeof r.updatedAt !== "string" || !["usman", "mehroz", "dot", "local"].includes(r.updatedBy)) return { error: "Bad updatedAt or updatedBy." };
   if (!(r.crmDealRef === null || (typeof r.crmDealRef === "string" && CRM_REF_RE.test(r.crmDealRef)))) return { error: "Bad crmDealRef." };
   if (typeof r.archived !== "boolean" || !(r.leadId === null || Number.isSafeInteger(r.leadId))) return { error: "Bad archived or leadId." };
   if (!(r.problem === null || typeof r.problem === "string")) return { error: "Bad problem." };
@@ -125,7 +125,8 @@ export function getDeal(root: string, id: unknown): DealRecord | DamagedRecord {
 
 const conflict = (message: string, current: unknown) => new DealDeskError(409, message, { error: message, current });
 /** The signer of a remote request (set by the operator plugin) or "local" at this PC; never a self-declared name. */
-const who = (by: unknown): DealRecord["updatedBy"] => (typeof by === "string" && ["usman", "mehroz"].includes(by.toLowerCase()) ? (by.toLowerCase() as "usman" | "mehroz") : "local");
+// "dot": the gateway collaborator drafting a quote through the CRM (scripts/crm/ops.ts crm.quote.package); never a founder.
+const who = (by: unknown): DealRecord["updatedBy"] => (typeof by === "string" && ["usman", "mehroz", "dot"].includes(by.toLowerCase()) ? (by.toLowerCase() as "usman" | "mehroz" | "dot") : "local");
 
 function baseRevOf(value: unknown): number {
   if (!Number.isSafeInteger(value) || (value as number) < 0) throw new DealDeskError(400, "baseRev must be a whole number, 0 for a new deal.");

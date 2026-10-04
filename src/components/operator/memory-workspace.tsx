@@ -14,7 +14,7 @@ import { MacMemorySearch } from "./mac-memory-search";
 import { MemoryUniverse } from "./memory-universe";
 import { MemoryImports, useMemoryConnectors } from "./memory-imports";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
@@ -51,6 +51,7 @@ import {
   Notice,
   PageFoot,
   PageHeader,
+  DetailDrawer,
   Segmented,
   Skeleton,
   Surface,
@@ -406,15 +407,15 @@ export function MemoryWorkspace() {
     [query, setQuery] = useState(""),
     [kind, setKind] = useState("all"),
     [trash, setTrash] = useState(false),
-    [selected, setSelected] = useState<string | null>(null),
     [notice, setNotice] = useState(""),
     [failure, setFailure] = useState(""),
     [edit, setEdit] = useState(false),
     [editTitle, setEditTitle] = useState(""),
     [editText, setEditText] = useState("");
-  useEffect(() => {
-    if (sourceParam && state.sources.some((s) => s.id === sourceParam)) setSelected(sourceParam);
-  }, [sourceParam, state.sources]);
+  // R12 rollout: the open memory is the URL's ?source=<id> (it already deep-linked here): opening a memory writes it, Back closes it.
+  const navigate = useNavigate();
+  const selected = sourceParam && state.sources.some((s) => s.id === sourceParam) ? sourceParam : null;
+  const setSelected = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, source: id ?? undefined }) } as never);
   const summary = state.sources.find((s) => s.id === selected);
   const [fullSource, setFullSource] = useState<MemorySource | null>(null);
   const [sourceError, setSourceError] = useState("");
@@ -594,6 +595,19 @@ export function MemoryWorkspace() {
         actions={
           <Button asChild variant="outline">
             <Link to="/memory/vault">Open shared vault</Link>
+          </Button>
+        }
+        // ONE primary action: take the owner to the capture box (below the find and ask widgets) and put the cursor in it.
+        primaryAction={
+          <Button
+            variant="accent"
+            onClick={() => {
+              const box = document.getElementById("memory-capture-text") as HTMLTextAreaElement | null;
+              document.getElementById("memory-entry")?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+              box?.focus({ preventScroll: true });
+            }}
+          >
+            Add a memory
           </Button>
         }
       />
@@ -896,9 +910,9 @@ export function MemoryWorkspace() {
         />
       </Modal>
 
-      <Modal
+      <DetailDrawer
         open={!!source}
-        onClose={() => setSelected(null)}
+        onOpenChange={(o) => !o && setSelected(null)}
         title={source?.title || "Memory source"}
         description="Review the original context, refine it, or ask a question."
       >
@@ -1028,13 +1042,13 @@ export function MemoryWorkspace() {
                       Retry link
                     </Button>
                   )}
-                  <Button variant="destructive" onClick={() => update(source.id, { action: "trash" })}>
+                  {/* Moves it to the trash (restorable), so it is a quiet action: red is only for a real failure. */}
+                  <Button variant="ghost" onClick={() => update(source.id, { action: "trash" })}>
                     <Trash2 size={13} /> Remove
                   </Button>
                   <select
                     aria-label="Move to collection"
-                    className="op-select"
-                    style={{ width: 135, fontSize: 10 }}
+                    className="op-select w-40 text-sm"
                     value={source.collection}
                     onChange={(e) => update(source.id, { collection: e.target.value })}
                   >
@@ -1049,7 +1063,7 @@ export function MemoryWorkspace() {
             </div>
           </>
         )}
-      </Modal>
+      </DetailDrawer>
     </div>
   );
 }

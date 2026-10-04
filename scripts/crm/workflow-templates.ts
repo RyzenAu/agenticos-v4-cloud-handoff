@@ -47,7 +47,8 @@ const copy = z
     "Unknown workflow placeholder",
   );
 const recordRef = z.object({ kind: z.enum(WORKFLOW_RECORD_KINDS), id }).strict();
-const bySchema = z.object({ personId: z.enum(["usman", "mehroz"]) }).strict();
+// A founder, or an agent with its job (the Dot gateway's collaborator: { agent: "dot", jobId: "gw:<session>" }).
+const bySchema = z.union([z.object({ personId: z.enum(["usman", "mehroz"]) }).strict(), z.object({ agent: z.string().trim().min(1).max(40), jobId: z.string().trim().min(1).max(80) }).strict()]);
 const authorSchema = z.union([bySchema, z.object({ catalogue: z.literal(true) }).strict()]);
 const date = z
   .union([z.string().datetime({ offset: true }), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])

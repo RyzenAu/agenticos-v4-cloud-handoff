@@ -8,6 +8,8 @@
 //   - It is only "sent" when the companion says it took it (`operator:voice-text-accepted` for that id). Until then the composer keeps
 //     the words and, after a while, says it is still connecting; it never claims "nothing was sent" while a replay is still possible.
 //   - Editing or clearing the words cancels that request: the shell drops it from its replay queue (`late:cancel-queued`).
+import { isDotGatewayUi } from "./dot-gateway";
+
 export const VOICE_TEXT = "operator:voice-text";
 export const VOICE_TEXT_ACCEPTED = "operator:voice-text-accepted";
 /** The shell's replay queue drops a captured event whose detail.requestId matches. */
@@ -33,6 +35,7 @@ export type PendingSend = {
  * Waits until accepted or cancelled; there is no give-up that could make the person send it again under a new identity.
  */
 export function sendJarvisRequest(text: string, opts: { requestId?: string; target?: EventTarget; slowMs?: number; onSlow?: () => void } = {}): PendingSend {
+  if (isDotGatewayUi()) return sendDotTask(text, opts);
   const target = opts.target ?? window;
   const requestId = opts.requestId ?? newRequestId();
   const words = text.trim();
@@ -60,6 +63,39 @@ export function sendJarvisRequest(text: string, opts: { requestId?: string; targ
       if (finished) return;
       target.dispatchEvent(new CustomEvent(CANCEL_QUEUED, { detail: { type: VOICE_TEXT, requestId } }));
       finish("cancelled");
+    },
+  };
+}
+
+/**
+ * Dot's browser (the gateway's UI bundle only): the request goes straight to Dot's own task route, POST /__gateway/tasks (tasks.run,
+ * the Jev-led command path as Dot, no device lanes). The request id is its eventId, so a retry is the same task and the hub saves the
+ * request (and a plain reply) into Dot's OWN Jarvis thread once. "accepted" when the hub answered for it; the words stay otherwise.
+ */
+export function sendDotTask(text: string, opts: { requestId?: string; slowMs?: number; onSlow?: () => void; fetcher?: typeof fetch } = {}): PendingSend {
+  const requestId = opts.requestId ?? newRequestId();
+  const words = text.trim();
+  const f = opts.fetcher ?? fetch;
+  let cancelled = false;
+  const slow = setTimeout(() => !cancelled && opts.onSlow?.(), opts.slowMs ?? SLOW_MS);
+  const done = (async (): Promise<"accepted" | "cancelled"> => {
+    try {
+      const token = String(((await (await f("/__token")).json()) as { token?: unknown }).token ?? "");
+      const r = await f("/__gateway/tasks", { method: "POST", headers: { "Content-Type": "application/json", "X-Claude-OS-Token": token }, body: JSON.stringify({ text: words, eventId: requestId }) });
+      return r.ok && !cancelled ? "accepted" : "cancelled";
+    } catch {
+      return "cancelled";
+    } finally {
+      clearTimeout(slow);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("operator:conversations-changed"));
+    }
+  })();
+  return {
+    requestId,
+    text: words,
+    done,
+    cancel() {
+      cancelled = true;
     },
   };
 }

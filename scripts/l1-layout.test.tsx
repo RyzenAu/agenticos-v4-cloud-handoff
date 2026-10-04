@@ -113,8 +113,9 @@ describe("Today, Work, Receptionist, Inbox: one headline, a full-width grid, one
     const home = read("src/routes/business.tsx");
     expect(home).toContain("title={BUSINESS_VIEW_TITLE[view]}"); // Overview is Home; the other tabs name themselves (L1b)
     expect(home).toContain("todayModel.focus.headline");
-    expect(home.indexOf("<TodayFocus")).toBeGreaterThan(0);
-    expect(home.indexOf("<TodayFocus")).toBeLessThan(home.indexOf("<MuBrief"));
+    // R12: Home's above-the-fold is HomeOverview (attention, active work, results); Today's model still feeds it.
+    expect(home.indexOf("<HomeOverview")).toBeGreaterThan(0);
+    expect(home.indexOf("<HomeOverview")).toBeLessThan(home.indexOf("<MuBrief"));
     expect(home.indexOf("<MuBrief")).toBeLessThan(home.indexOf("<TodaySources"));
   });
   test("Work: decisions first, compact counts and detailed panels remain reachable", () => {

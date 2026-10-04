@@ -91,7 +91,7 @@ describe("Activity (F3-04)", () => {
     expect(rows[0].duration).toBe("Still going");
     expect(rows[0].title).not.toContain("jane@example.test");
     expect(rows[1].duration).toBe("2 min 5 s");
-    expect(rows[1].stateLabel).toBe("Done");
+    expect(rows[1].stateLabel).toBe("Completed"); // R12 rollout: the shared work words (was "Done")
     expect(formatDuration(42_000)).toBe("42 s");
   });
 

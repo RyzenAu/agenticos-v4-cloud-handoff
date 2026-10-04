@@ -89,7 +89,9 @@ export function startActivitySources(deps: SourceDeps) {
         jobs.subscribe((e) => {
           const scope = e.type === "job" ? jobScope(e.jobId, e.job.kind, e.job.targetDeviceId, e.job.principal?.personId) : jobScope(e.jobId);
           const final = e.type === "job" && TERMINAL_STATES.includes(e.job.state);
-          bus.publish({ topic: "job", type: e.type, scope, final, data: { jobSeq: e.seq, event: publicView(e) } });
+          // The job's kind rides along as the entry's tag (never on the wire): the Dot gateway's stream is cut to coding jobs by it.
+          const kind = e.type === "job" ? e.job.kind : deps.jobs?.()?.get(e.jobId)?.kind;
+          bus.publish({ topic: "job", type: e.type, scope, final, ...(kind ? { tag: kind } : {}), data: { jobSeq: e.seq, event: publicView(e) } });
         }),
       );
   } catch {

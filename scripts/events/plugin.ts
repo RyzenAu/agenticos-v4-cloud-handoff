@@ -8,6 +8,7 @@ import { jobsRuntime } from "../jobs/runtime";
 import { ActivityBus } from "./bus";
 import { startActivitySources, type ActivitySources, type ComputersLike } from "./sources";
 import { createStream } from "./stream";
+import { gatewayStreamPrincipal } from "../gateway/events";
 
 /** The sources plus control of the open streams (shutdown, and tests that drop the network on purpose). */
 export type ActivityHandle = ActivitySources & { closeStreams(): void; openStreams(): number };
@@ -30,7 +31,11 @@ export function mountActivityStream(server: ViteDevServer, options: { root: stri
   const stream = createStream({
     bus,
     resolvePrincipal: (req: IncomingMessage) => {
-      const p = requestPrincipal(req as never, { root: options.root }) as { personId?: string } | null;
+      const p = requestPrincipal(req as never, { root: options.root }) as { personId?: string; via?: string } | null;
+      // The Dot gateway's principal follows the stream too, but "dot" is nobody's person scope: it only ever receives
+      // shared-scope events (bus.ts reaches), never a founder's own devices or conversations.
+      // And of those, only the topics its allowed pages need (scripts/gateway/events.ts): coding job events, nothing else.
+      if (p && p.via === "gateway") return gatewayStreamPrincipal(p.personId as never, () => sources.snapshot(p.personId as never));
       return p && (p.personId === "usman" || p.personId === "mehroz") ? { personId: p.personId } : null;
     },
     snapshot: (person) => sources.snapshot(person),

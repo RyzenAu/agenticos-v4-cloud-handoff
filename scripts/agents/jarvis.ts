@@ -58,7 +58,7 @@ export type BotRunInput = {
   /** Round 10: who decided to send this to the bot (the controller's step record), kept on the task so its row can say "Decided by". */
   decision?: JevDecisionRef | null;
 };
-export type BotRunResult = { ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string; ask?: boolean; numbers?: Record<string, unknown> };
+export type BotRunResult = { started?: boolean; ok: boolean; said: string; jobId?: string; deviceId?: string; navigate?: string; ask?: boolean; numbers?: Record<string, unknown> };
 
 export type CodingBridge = {
   /** The coding command entry (the same shaper and per-person voice state typed and spoken coding words already use). */
@@ -396,7 +396,7 @@ export function createBotCommands(deps: BotCommandsDeps) {
     // Who sent this task to the bot (round 10): the decision's own record on the job, read back as the task row's "Decided by". Nothing is invented when absent.
     if (input.decision) deps.jobs().step(r.jobId, { intent: `decided: ${input.decision.op}`.slice(0, 200), executor: "context", ms: 0, outcome: "note", jev: input.decision });
     const v = deps.computers.view(bot.computer);
-    return { ok: true, said: `${bot.name} started: ${goal.slice(0, 120)}. It runs on its own computer whether or not your PC is on; ask me how it's going, or say stop.`, jobId: r.jobId, ...(v.id ? { deviceId: v.id } : {}) };
+    return { ok: true, started: true, said: `${bot.name} started: ${goal.slice(0, 120)}. It runs on its own computer whether or not your PC is on; ask me how it's going, or say stop.`, jobId: r.jobId, ...(v.id ? { deviceId: v.id } : {}) };
   }
 
   /** A routine linked to this bot starts a task as the bot, on its computer. Coding jobs aren't started this way (they wait for a person's "start it"). */

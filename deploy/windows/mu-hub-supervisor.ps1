@@ -107,6 +107,9 @@ if ($EnvFile) {
 $env:MU_HUB_ROLE = $HubRole
 $env:MU_DATA_DIR = $DataDir
 $env:BROWSER = 'none'
+# r12: the hub reads its own logs from here (Dot's ops.logs), and knows a supervisor will start it again (Dot's ops.restart).
+$env:MU_LOG_DIR = $LogDir
+$env:MU_HUB_SUPERVISED = '1'
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 
 $stdout = Join-Path $LogDir 'hub-stdout.log'

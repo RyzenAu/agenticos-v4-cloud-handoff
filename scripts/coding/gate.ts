@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { extname, isAbsolute, join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { childEnv, terminateChild } from "../assistant-runtime";
 import type {
   ArtefactId,
@@ -24,6 +24,7 @@ import type {
 import { bareTestName, namesBaselineTest } from "./pause-reason";
 import { redactText, scanPatch } from "./redact";
 import { commandById, ownsPath } from "./registry";
+import { resolveRegistryLaunch } from "./registry-launch";
 import { asSha, assertSafeGitConfig, git, worktreeState } from "./worktree";
 
 /**
@@ -209,18 +210,6 @@ export function testOutcome(output: string, name: string): "passed" | "failed" |
   return passed ? "passed" : "absent";
 }
 
-/** A bare command name found on the given PATH (Windows tries .exe/.cmd/.bat), or null; a path or absolute name is left as given. */
-function onPath(name: string, path: string): string | null {
-  if (!name || /[\\/]/.test(name) || isAbsolute(name)) return null;
-  const sep = process.platform === "win32" ? ";" : ":";
-  const exts = process.platform === "win32" && !extname(name) ? [".exe", ".cmd", ".bat"] : [""];
-  for (const dir of path.split(sep).filter(Boolean)) for (const ext of exts) {
-    const full = join(dir, name + ext);
-    if (existsSync(full)) return full;
-  }
-  return null;
-}
-
 export type CommandRun ={ result: Omit<TestResult, "output" | "baseline">; output: string };
 
 /**
@@ -242,10 +231,8 @@ export async function runRegistryCommand(input: { entry: RepoRegistryEntry; comm
     let output = "", timedOut = false, settled = false;
     let hardSettle: ReturnType<typeof setTimeout> | undefined;
     const env = childEnv({ extra: { CI: "1", NO_COLOR: "1" } });
-    // Resolved on the child's own PATH (Bun's fake-node shim already removed), never the hub's.
-    const pathKey = Object.keys(env).find((k) => k.toLowerCase() === "path");
-    const file = (pathKey ? onPath(command.argv[0], env[pathKey]) : null) ?? command.argv[0];
-    const child = spawn(file, command.argv.slice(1), { cwd, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    const launch = resolveRegistryLaunch(command.argv, env);
+    const child = spawn(launch.file, launch.args, { cwd, env, shell: false, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     const take = (chunk: Buffer) => { output = (output + chunk.toString("utf8")).slice(-limit); };
     child.stdout.on("data", take);
     child.stderr.on("data", take);

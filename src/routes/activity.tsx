@@ -1,9 +1,9 @@
 import { docTitle } from "@/components/shell/destinations";
 import { jobsReadMessage } from "@/components/activity/read-error";
-import { createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { PageHeader } from "@/components/ds";
+import { Button, PageHeader } from "@/components/ds";
 import { ActivityView, jobIdFromHash, type ActivityRead, type SelectedRead } from "@/components/activity/activity-view";
 import { fetchJob } from "@/lib/job-events";
 import type { JobSummary } from "../../scripts/jobs/types";
@@ -68,8 +68,18 @@ function ActivityPage() {
   const computers = useQuery({ queryKey: ["computers"], queryFn: readComputers, enabled: selected?.status === "ok", staleTime: 5_000, retry: false });
   const owner = selected?.status === "ok" && bots.data?.status === "ok" ? botForJob(bots.data.bots, computers.data?.status === "ok" ? computers.data.computers : [], selected.job) : null;
   return (
-    <div className="max-w-[1400px]">
-      <PageHeader title="Activity" spacing="tight" />
+    <div className="min-w-0 [overflow-wrap:anywhere]">
+      {/* R12 rollout: one primary action, as on Home and Departments: ask Jarvis for the next piece of work. */}
+      <PageHeader
+        title="Activity"
+        description="Jobs the OS ran through Jarvis, newest first."
+        spacing="tight"
+        primaryAction={
+          <Button variant="accent" asChild>
+            <Link to="/jarvis">Ask Jarvis</Link>
+          </Button>
+        }
+      />
       <ActivityView read={read} onRetry={() => void q.refetch()} selected={selected} workspace={owner ? { botId: owner.id, name: owner.name } : null} onCloseSelected={() => void navigate({ to: "/activity", hash: "", replace: true })} />
     </div>
   );

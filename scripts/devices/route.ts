@@ -1,4 +1,5 @@
 import { activeRegistry, type DeviceRegistry } from "./registry";
+import { GATEWAY_PERSON } from "../gateway/actor";
 import { isSharedComputer, normalisePersonId, PERSON_IDS, SHARED_OWNER, type PersonId, type ResolveContext, type ResolveResult, type TargetDevice } from "./types";
 
 /**
@@ -19,6 +20,15 @@ import { isSharedComputer, normalisePersonId, PERSON_IDS, SHARED_OWNER, type Per
  * The Jev track calls this before any desktop or browser action.
  */
 export function resolveTarget(ctx: ResolveContext, registry: DeviceRegistry = activeRegistry()): ResolveResult {
+  // The Dot gateway's collaborator owns no device, so nothing of its ever resolves to a founder's PC, a companion or the hub:
+  // the ONLY target is a shared cloud computer named exactly ("computer:<device id>", what the computers service sends while
+  // the caller holds that computer's control lease; the dispatcher's lease guard still refuses without one).
+  if (String(ctx?.personId ?? "") === GATEWAY_PERSON) {
+    const named = /^computer:([\w.-]{1,80})$/.exec(String(ctx.spokenTarget ?? "").trim());
+    const computer = named ? registry.targets().find((d) => d.id === named[1] && isSharedComputer(d)) : undefined;
+    if (!computer) return { ok: false, reason: "the gateway has no devices of its own; it reaches a shared cloud computer only, by name" };
+    return registry.isOnline(computer) ? { ok: true, deviceId: computer.id, owner: computer.owner, online: true } : { ok: false, reason: "device offline", deviceId: computer.id };
+  }
   const person = normalisePersonId(ctx?.personId);
   if (!person) return { ok: false, reason: "unknown person" };
   const targets = registry.targets();

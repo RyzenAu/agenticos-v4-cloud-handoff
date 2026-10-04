@@ -1,3 +1,4 @@
+import { isDotGatewayUi } from "@/lib/dot-gateway";
 import { IDLE_LEVEL_VAR, idleLevelStep } from "./oracle-idle-level";
 import { AdvisorAnswer } from "@/components/operator/advisor-answer";
 import { readChatStream } from "@/lib/chat-stream";
@@ -570,6 +571,7 @@ type SavedConversation = {
   pinned?: boolean;
   persona?: "advisor" | "assistant" | "private-advisor";
 };
+const DOT_CHAT_NOTE = "Chat uses the founders' model accounts, so it isn't available to Dot. Use Jarvis tasks or the Departments pages.";
 const CONVERSATION_BACKUP_KEY = "argentic.conversations.pending.v1";
 const CONVERSATION_ACTIVE_KEY = "argentic.conversations.active.v1";
 const CONVERSATION_MIGRATION_KEY = "argentic.conversations.migrated.v1";
@@ -3012,7 +3014,7 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
                 ) && <p>No conversations match “{historySearch}”.</p>}
               {!conversations.length && !drafts.length && (
                 <p>
-                  {chatReady ? "Your first conversation starts here." : "Loading your history…"}
+                  {isDotGatewayUi() ? DOT_CHAT_NOTE : !chatReady ? "Loading your history…" : saveError ? null : "Your first conversation starts here."}
                 </p>
               )}
             </nav>
@@ -3021,7 +3023,7 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
         <div
           className={`ar-saved-chat-main${!turns.length && !caption && !voiceSetup ? " is-new-chat" : ""}`}
         >
-          {saveError && (
+          {saveError && !isDotGatewayUi() && (
             <div className="ar-chat-save-error" role="alert">
               <span>{saveError}</span>
               {saveConflict ? (
@@ -3323,7 +3325,7 @@ export function FloatingOracle({ enabled }: { enabled: boolean; onDisable?: () =
             />
           )}
           <div className="ar-chat-composer">
-            {persona !== "private-advisor" && modelsReady &&
+            {isDotGatewayUi() ? (<div className="ar-model-setup" role="status"><p>{DOT_CHAT_NOTE}</p></div>) : persona !== "private-advisor" && modelsReady &&
               (!models.some((model) => model.available !== false) ||
                 modelDiscoveryFailed ||
                 selectedModel?.available === false) && (

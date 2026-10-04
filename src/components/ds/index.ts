@@ -38,5 +38,8 @@ export { Toolbar } from "./toolbar";
 export { DataTable, DataList, DataRow, type Column } from "./data-table";
 export { DetailDrawer } from "./detail-drawer";
 export { ActionBar } from "./action-bar"; // v1.1
+// R12 (docs/programme-20261001/R12-UI-SYSTEM.md)
+export { HandoffStep } from "./handoff-step";
+export { WorkRow, WorkList } from "./work-row";
 export { Skeleton } from "@/components/ui/skeleton";
 export { Button, buttonVariants } from "@/components/ui/button";

@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Landmark, ListChecks, Percent, Receipt, Wallet } from "lucide-react";
-import { Badge, EmptyState, PageFoot, PageHeader, Surface, WidgetGrid, WidgetList, WidgetRow } from "@/components/ds";
+import { Badge, Button, EmptyState, PageFoot, PageHeader, StatusLabel, Surface, WidgetGrid, WidgetList, WidgetRow, WorkList } from "@/components/ds";
 import { stripeAud, useStripeFinance } from "@/components/business/stripe-finance-panel";
 import { FINANCE_MANUAL_CHANGED, NAB_IMPORT_ANCHOR, type ManualFinanceStatus } from "@/components/finance/manual-finance";
 import { aiSpendTiles, csvDataTile, financeHeadline, financeNextSteps, liveFeedTile, type FinanceStep, type FinanceTile } from "@/components/finance/signals";
@@ -255,7 +255,8 @@ export function FinancePage() {
   const steps: FinanceStep[] = financeNextSteps({ csv, unpriced, aiSpend, stripe: stripe.link, stripeNote: stripe.keyMessage });
   const stepAction = (step: FinanceStep) =>
     !step.action ? undefined : step.action.kind === "import" ? (
-      <WidgetLink to={FINANCES.to} search={FINANCES.search} hash={FINANCES.hash} accent>
+      // Quiet beside the row: the page's one accent is the header's primary action.
+      <WidgetLink to={FINANCES.to} search={FINANCES.search} hash={FINANCES.hash}>
         {step.action.label}
       </WidgetLink>
     ) : step.action.kind === "stripe" ? (
@@ -283,30 +284,43 @@ export function FinancePage() {
 
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="Finance" description={headline} />
+      <PageHeader
+        title="Finance"
+        description={headline}
+        primaryAction={
+          // ONE primary action: the bank import while there is none (or it is out of date), otherwise the Finances ledger.
+          bankNeedsImport ? (
+            <Button variant="accent" onClick={goToImport}>Import a NAB CSV</Button>
+          ) : (
+            <Button variant="accent" asChild><Link to={FINANCES.to} search={FINANCES.search}>Open Finances</Link></Button>
+          )
+        }
+      />
 
-      {/* What needs you comes first (also on a phone, and in the page order for the keyboard); the tiles are the detail. */}
-      <WidgetGrid className="mb-6" aria-label="What needs you">
-        <WidgetList icon={ListChecks} title="What needs you" span={4} id="finance-next-steps" empty={ai.isLoading || manual.isLoading ? "Checking AI spend and the bank import…" : "Nothing needs you on Finance right now."} data-next-steps={steps.length ? String(steps.length) : "none"}>
-          {steps.map((step) => (
-            <li key={step.id} className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-3 first:pt-0 last:pb-0" data-step={step.id} data-tone={step.tone}>
-              {/* A 16rem basis: on a phone the action drops under the text instead of squeezing it into a sliver. */}
-              <span className="min-w-0 flex-[1_1_16rem]">
-                <span className="flex items-center gap-2 text-base font-medium text-foreground">
-                  {step.tone === "attention" && (
-                    <span className="size-2 shrink-0 rounded-full bg-warn" aria-hidden="true" />
-                  )}
-                  {step.title}
+      {/* What needs you comes first (also on a phone, and in the page order for the keyboard); the tiles are the detail.
+          R12 rollout: a section heading and ONE list (no card around it); each step's action sits beside its explanation. */}
+      <section className="mb-8" aria-label="What needs you" id="finance-next-steps" data-next-steps={steps.length ? String(steps.length) : "none"}>
+        <h2 className="mb-3 text-base font-semibold text-foreground">
+          What needs you {steps.length > 0 && <span className="font-normal text-muted-foreground">{steps.length}</span>}
+        </h2>
+        {steps.length === 0 ? (
+          <EmptyState variant="row" icon={ListChecks} title={ai.isLoading || manual.isLoading ? "Checking AI spend and the bank import…" : "Nothing needs you on Finance right now."} />
+        ) : (
+          <WorkList label="Finance steps">
+            {steps.map((step) => (
+              <li key={step.id} className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-step={step.id} data-tone={step.tone}>
+                {/* A 16rem basis: on a phone the action drops under the text instead of squeezing it into a sliver. */}
+                <span className="min-w-0 flex-[1_1_16rem]">
+                  <span className="block text-sm font-medium text-foreground">{step.title}</span>
+                  <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{step.body}</span>
                 </span>
-                <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
-                  {step.body}
-                </span>
-              </span>
-              {stepAction(step)}
-            </li>
-          ))}
-        </WidgetList>
-      </WidgetGrid>
+                {step.tone === "attention" && <StatusLabel state="needs-you" size="sm" />}
+                {stepAction(step)}
+              </li>
+            ))}
+          </WorkList>
+        )}
+      </section>
 
       <WidgetGrid
         className="mb-6"

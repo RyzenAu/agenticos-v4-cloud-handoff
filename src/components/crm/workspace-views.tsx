@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CalendarDays, Check, Circle, ClipboardList, Columns3, List, Plus } from "lucide-react";
-import { Button, DataTable, EmptyState, Section, Segmented, Surface } from "@/components/ds";
+import { Button, DataTable, EmptyState, Section, Segmented, Surface, Toolbar } from "@/components/ds";
 import type { CrmOperationInputMap, CrmOperationName } from "@/lib/crm-client";
 import { Input } from "@/components/ui/input";
 import type { CrmRef, CrmSnapshot, Deal, Pipeline, Task } from "../../../scripts/crm/types";
@@ -166,33 +166,32 @@ export function TodayView({
     .sort((a, b) => (a.nextActionDue || "9999").localeCompare(b.nextActionDue || "9999"));
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
-        <label className="flex items-center gap-3 text-sm" title="Due dates are shown in each company’s time zone">
-          Owner
-          <NativeSelect className="w-40" value={owner} onChange={(e) => setOwner(e.target.value)}>
-            <option value="">Both founders</option>
-            <option value="usman">Usman</option>
-            <option value="mehroz">Mehroz</option>
-          </NativeSelect>
-        </label>
-      </div>
+      <Toolbar
+        label="Today filters"
+        filters={
+          <Segmented
+            ariaLabel="Owner"
+            value={owner || "both"}
+            onChange={(v) => setOwner(v === "both" ? "" : v)}
+            options={[
+              { value: "both", label: "Both founders" },
+              { value: "usman", label: "Usman" },
+              { value: "mehroz", label: "Mehroz" },
+            ]}
+          />
+        }
+        summary={due.length ? `${due.length} due today` : "Nothing due today"}
+        actions={
+          <Button variant="outline" size="sm" onClick={() => actions.edit({ kind: "task" })}>
+            <Plus className="size-4" />
+            Add task
+          </Button>
+        }
+      />
       <BusinessNextActions snapshot={snapshot} actions={actions} owner={owner} />
       <div className={cn("grid min-w-0 gap-8", (meetings.length > 0 || delivery.length > 0 || unscheduled.length > 0) && "xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]")}>
         <div className="min-w-0">
-          <Section
-            title="Your next moves"
-            description={
-              due.length
-                ? `${due.length} ${due.length === 1 ? "task needs" : "tasks need"} attention today`
-                : "Follow-ups, promises and meetings due today"
-            }
-            actions={
-              <Button variant="outline" onClick={() => actions.edit({ kind: "task" })}>
-                <Plus className="size-4" />
-                Add task
-              </Button>
-            }
-          >
+          <Section title="Your next moves">
             {due.length ? (
               <Surface>
                 <TaskRows tasks={due} snapshot={snapshot} actions={actions} />

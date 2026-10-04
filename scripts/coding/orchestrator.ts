@@ -1092,7 +1092,7 @@ ${built.prompt}` }),
     let memoryObjective: "copied" | "withheld" | null = null;
     if (deps.memory?.writes()) {
       try {
-        const who = { id: principal.personId, name: principal.personId === "usman" ? "Usman" : "Mehroz", via: (principal.via === "local" ? "local" : principal.via === "telegram" ? "telegram" : "tailnet") as "local" | "tailnet" | "telegram", actor: "process" as const };
+        const who = { id: principal.personId, name: principal.personId === "usman" ? "Usman" : (principal.personId as string) === "dot" ? "Dot" : "Mehroz", via: (principal.via === "local" ? "local" : principal.via === "telegram" ? "telegram" : "tailnet") as "local" | "tailnet" | "telegram", actor: "process" as const };
         // The full fact first. If the screen refuses it as credential-shaped content (the request wording can describe or contain a
         // secret), save the same facts without the request's words instead of losing the handoff. The screen itself is untouched.
         const attempts: { title: string; text: string; objective: "copied" | "withheld" }[] = [

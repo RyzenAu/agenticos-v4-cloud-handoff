@@ -39,25 +39,22 @@ export function LeadRows({
               type="button"
               onClick={() => onOpen(lead.id)}
               aria-label={`Open ${lead.name || "lead"}`}
-              className="transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 px-4 py-4 text-left hover:bg-surface-raised sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] sm:px-5"
+              className="transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand focus-visible:-outline-offset-2 grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1.5 px-4 py-3 text-left hover:bg-surface-raised sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] sm:px-5"
             >
               <span className="min-w-0 sm:col-start-1 sm:row-start-1">
-                <span className="block text-base font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
+                <span className="block text-sm font-medium leading-snug text-foreground [overflow-wrap:anywhere]">
                   {lead.name ||
                     (lead.source === "google"
                       ? "Google place · details not loaded"
                       : "Name not on file")}
                 </span>
-                <span className="mt-1 block text-[13px] text-muted-foreground">
-                  {[suburbOf(lead.area), VERTICAL_LABEL[lead.vertical as Vertical] ?? lead.vertical]
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {[suburbOf(lead.area), VERTICAL_LABEL[lead.vertical as Vertical] ?? lead.vertical, websiteVerification(lead)]
                     .filter(Boolean)
                     .join(" · ")}
                 </span>
-                <span className="mt-2 block text-[13px] text-muted-foreground">
-                  {websiteVerification(lead)}
-                </span>
                 {lead.source === "google" && (lead.placesLive?.attribution || lead.attribution) && (
-                  <span className="mt-1 block text-[13px] text-muted-foreground">
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
                     {lead.placesLive?.attribution || lead.attribution}
                   </span>
                 )}
@@ -66,20 +63,20 @@ export function LeadRows({
                 <span className="block text-sm leading-relaxed text-foreground [overflow-wrap:anywhere]">
                   {lead.deal.nextAction}
                 </span>
-                <span className="mt-1 block text-[13px] text-muted-foreground">
+                <span className="mt-0.5 block text-xs text-muted-foreground">
                   {statusLabel(lead.status)} · {lead.owner || "Unassigned"}
                   {preview ? ` · Preview ${statusLabel(preview.status).toLowerCase()}` : ""}
                 </span>
                 {lead.nextAt && (
                   <span
-                    className={`mt-2 block text-[13px] ${overdue ? "text-warn" : "text-muted-foreground"}`}
+                    className={`mt-0.5 block text-xs ${overdue ? "text-warn" : "text-muted-foreground"}`}
                   >
                     {overdue ? "Overdue · " : "Due · "}
                     {leadDate(lead.nextAt)} Sydney
                   </span>
                 )}
                 {lead.deal.stuck && (
-                  <span className="mt-2 block text-[13px] text-warn">
+                  <span className="mt-0.5 block text-xs text-warn">
                     Needs attention · {lead.deal.stuck.days} days in stage
                   </span>
                 )}

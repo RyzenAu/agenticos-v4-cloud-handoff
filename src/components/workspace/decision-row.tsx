@@ -30,7 +30,8 @@ export function PendingBrowserNote() {
   return <p className="text-sm text-muted-foreground" data-testid="decisions-pending-note">Confirm this browser first: it can't record decisions until you do.</p>;
 }
 
-export function DecisionRow({ item, record }: { item: Approval; record?: DecisionRecord }) {
+/** `bare`: inside the decision drawer, whose header already shows the title. */
+export function DecisionRow({ item, record, bare = false }: { item: Approval; record?: DecisionRecord; bare?: boolean }) {
   const client = useQueryClient();
   // An unconfirmed browser cannot approve anything (the banner says so, and the server refuses): the button says why instead of failing.
   const pending = useBrowserPending();
@@ -66,7 +67,7 @@ export function DecisionRow({ item, record }: { item: Approval; record?: Decisio
   const names = { title: plainSettingNames(fmtProse(item.title)), detail: plainSettingNames(fmtProse(item.detail)) };
   const rawNames = [...new Set([...names.title.raw, ...names.detail.raw])];
   return <li className="min-w-0 space-y-3 px-4 py-4" data-decision={item.id} data-approval-open={editing || undefined}>
-    <div className="space-y-1"><h3 className="text-base font-medium leading-snug">{names.title.plain}</h3><p className="text-sm text-muted-foreground"><RouteText>{names.detail.plain}</RouteText></p>{item.progress && <p className="text-sm text-warn"><RouteText>{fmtProse(item.progress)}</RouteText></p>}</div>
+    <div className="space-y-1">{!bare && <h3 className="text-base font-medium leading-snug">{names.title.plain}</h3>}<p className="text-sm text-muted-foreground"><RouteText>{names.detail.plain}</RouteText></p>{item.progress && <p className="text-sm text-warn"><RouteText>{fmtProse(item.progress)}</RouteText></p>}</div>
     {record && <p className="text-sm text-muted-foreground">{record.answer === "completed" ? "Completed" : record.answer === "approved" ? "Approved" : "Declined"}{record.note ? ` · ${record.note}` : ""}</p>}
     {editing ? <form className="space-y-3" aria-label={`Decision: ${item.title}`} onSubmit={e => { e.preventDefault(); void save(); }} onKeyDown={e => { if (e.key === "Escape" && untouched && !busy) { e.stopPropagation(); setEditing(false); } }}>
       <div className="space-y-2"><label htmlFor={`${id}-answer`} className="block text-sm">Your decision</label><select ref={answerRef} id={`${id}-answer`} value={answer} onChange={e => setAnswer(e.target.value as DecisionAnswer)} disabled={busy} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="approved">Approve</option><option value="declined">Decline</option><option value="completed">Mark completed</option></select></div>

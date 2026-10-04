@@ -85,10 +85,13 @@ export function CodingWorkspace({ view, events, actions, onOpenTab, children }: 
         </Button>
       </div>
       <dl className="divide-y divide-border" aria-label="Workspace facts">
-        <Fact label="Computer">
-          {slot ? <DeviceStatusSlot device={slot} className="text-[15px]" /> : "Not reported"}
-          {shared ? <span className="text-muted-foreground"> · shared computer {shared.label || shared.name}, {shared.state}</span> : null}
-        </Fact>
+        {/* R11 backlog: no row at all when no computer was reported (it said "Not reported" on every finished job). */}
+        {slot || shared ? (
+          <Fact label="Computer">
+            {slot ? <DeviceStatusSlot device={slot} className="text-[15px]" /> : null}
+            {shared ? <span className={slot ? "text-muted-foreground" : undefined}>{slot ? " · " : ""}shared computer {shared.label || shared.name}, {shared.state}</span> : null}
+          </Fact>
+        ) : null}
         {/* R11: the account and model per role are said once, in "Who is doing it" above (with a mismatch in amber). */}
         <Fact label="Latest message">
           <span className="block text-muted-foreground" data-testid="latest-line">

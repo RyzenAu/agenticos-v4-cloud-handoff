@@ -41,7 +41,8 @@ const LEGACY_VIA = { "loopback-owner": "loopback", "paired-session": "session", 
  * never enters this module's responses.
  */
 export function devicesPrincipal(p: VerifiedPrincipal | null, session: SessionRow | null = null): Principal | null {
-  if (!p || p.via === "telegram-owner" || p.via === "routine") return null;
+  // The Dot gateway's principal is not a founder's device identity: it has none here (pairing, sessions and computers refuse it).
+  if (!p || p.via === "telegram-owner" || p.via === "routine" || p.via === "gateway") return null;
   return { personId: p.personId, via: LEGACY_VIA[p.via], ...(session ? { sessionId: session.id } : {}), ...(p.deviceId ? { deviceId: p.deviceId } : {}) };
 }
 

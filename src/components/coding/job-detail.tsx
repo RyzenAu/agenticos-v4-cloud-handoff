@@ -27,6 +27,8 @@ import { glanceOf, nextLabel, reassignChoices } from "@/lib/coding-glance";
 import { FailedTests } from "./failed-tests";
 import { pipelineFor } from "@/lib/coding-pipeline";
 import { PipelineLane } from "./pipeline-lane";
+import { useMe } from "@/lib/use-devices";
+import { isDotGatewayUi } from "@/lib/dot-gateway";
 import { JobGlance } from "./job-glance";
 import { accountWords, isPaidBinding, roleLabel } from "../../../scripts/coding/pause-reason";
 import { JobSummary } from "./job-summary";
@@ -46,6 +48,11 @@ const TABS: readonly { value: CodingTab; label: string }[] = [
   { value: "usage", label: "Usage" },
   { value: "handoff", label: "Handoff" },
 ];
+
+/** The request author as the page shows it: "you" only when the author is the person viewing (never in Dot's gateway view). */
+export function askedByLabel(personId: string, viewerId: string | undefined, dotView: boolean): string {
+  return !dotView && viewerId && viewerId === personId ? "you" : personId;
+}
 
 export function CodingJobDetail({ jobId, tab }: { jobId: string; tab?: string }) {
   return <CodingJobSession key={jobId} jobId={jobId} tab={tab} />;
@@ -70,6 +77,7 @@ function CodingJobSession({ jobId, tab }: { jobId: string; tab?: string }) {
   const [detailsOpen, setDetailsOpen] = useState(!!tab);
   const current = (TABS.some((t) => t.value === tab) ? tab : "progress") as CodingTab;
   const navigate = useNavigate();
+  const me = useMe();
 
   const reload = useCallback(async () => {
     try {
@@ -217,7 +225,7 @@ function CodingJobSession({ jobId, tab }: { jobId: string; tab?: string }) {
         <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           <GitBranch className="h-4 w-4" aria-hidden="true" />
           {job.spec.repo.repoId} · branch {job.spec.repo.jobBranch}
-          <span>· asked by {job.spec.requestedBy.personId === "usman" ? "you" : job.spec.requestedBy.personId}{job.spec.source.channel === "voice" ? " by voice" : ""}</span>
+          <span>· asked by {askedByLabel(job.spec.requestedBy.personId, me.data?.id, isDotGatewayUi())}{job.spec.source.channel === "voice" ? " by voice" : ""}</span>
         </p>
         <ul className="flex flex-wrap gap-2 text-xs text-muted-foreground" aria-label="Results so far">
           <li><button type="button" className="ds-interactive rounded-full bg-inset px-3 py-1 hover:bg-surface-raised" onClick={() => setTab("changes")}>Changes: {job.diff ? `${job.diff.files.length} file${job.diff.files.length === 1 ? "" : "s"}` : "none yet"}</button></li>

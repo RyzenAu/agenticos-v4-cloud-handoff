@@ -4,8 +4,7 @@
 // panels two-up, then the drilldowns. Same panel reads as before (no extra requests); nothing true
 // is removed: the W-B answer card's facts are the four widgets, its footer is the page foot.
 // Leads, Websites, the business brief, goals, projects and coding are drilldowns.
-import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Button, PageFoot, PageHeader, Skeleton, WidgetGrid } from "@/components/ds";
 import { useWorkspacePanel } from "@/components/workspace/api";
@@ -16,7 +15,7 @@ import { workSummary, type WorkSummary } from "@/lib/work-summary";
 import { plural } from "@/lib/plural";
 import { DrilldownList } from "../page-parts";
 
-function useWorkSummary(): WorkSummary & { calls: number | null; open: number | null; sites: { down: number; total: number } | null; errors: number } {
+function useWorkSummary(): WorkSummary & { calls: number | null; open: number | null; sites: { down: number; total: number } | null; errors: number; firstDecision: string | null } {
   const today = useWorkspacePanel("today");
   const calls = useWorkspacePanel("callQueue");
   const pipeline = useWorkspacePanel("pipeline");
@@ -28,6 +27,7 @@ function useWorkSummary(): WorkSummary & { calls: number | null; open: number | 
     calls: calls.data?.ok ? calls.data.data.total : null,
     open: pipeline.data?.ok ? (pipeline.data.data.open ?? null) : null,
     sites: s ? { down: s.filter((x) => x.tone === "bad").length, total: s.length } : null,
+    firstDecision: today.data?.ok ? (today.data.data.approvals[0]?.id ?? null) : null,
     errors: today.data?.ok
       ? ((today.data.data as { approvalsErrors?: string[] }).approvalsErrors?.length ?? 0)
       : 0,
@@ -41,24 +41,15 @@ export function openLeadsDetail(fact: string | undefined, open: number | null): 
   return rest || undefined;
 }
 
-const go = (label: ReactNode, to: string, accent = false) => (
-  <Button variant={accent ? "accent" : "outline"} className="h-auto min-h-10 max-w-full whitespace-normal rounded-full px-5 py-2 text-center" asChild>
-    <Link to={to as never}>
-      {label}
-      {accent && <ArrowRight aria-hidden="true" />}
-    </Link>
-  </Button>
-);
-
-/** The five-second answer as four widgets: decisions (first), calls, pipeline, sites. */
+/** The five-second answer as four compact counts: decisions (first), calls, pipeline, sites. Each opens what it counts. */
 export function WorkAnswer({ v }: { v: ReturnType<typeof useWorkSummary> }) {
   return (
     <section
-      className="mb-6 border-b border-border pb-6"
+      className="mb-6"
       aria-label="What waits on you"
       data-work-answer={v.tone}
     >
-      <dl className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 rounded-2xl border border-border px-4 py-3 md:grid-cols-4">
         {[
           {
             label: "Decisions",
@@ -85,14 +76,11 @@ export function WorkAnswer({ v }: { v: ReturnType<typeof useWorkSummary> }) {
                 <Link to={item.to as never} search={item.search as never} className="underline-offset-4 hover:text-foreground hover:underline">{item.label}</Link>
               )}
             </dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">{item.value ?? "—"}</dd>
-            {item.detail && <p className="mt-1 text-[13px] text-muted-foreground">{item.detail}</p>}
+            <dd className="text-base font-semibold tabular-nums">{item.value ?? "—"}</dd>
+            {item.detail && <p className="line-clamp-2 text-xs text-muted-foreground">{item.detail}</p>}
           </div>
         ))}
       </dl>
-      {(v.next === "calls" || v.next === "pipeline") && (
-        <div className="mt-5 flex flex-wrap gap-3">{go("Calls & leads", "/leads", true)}</div>
-      )}
     </section>
   );
 }
@@ -105,17 +93,22 @@ const Cell = ({ children }: { children: ReactNode }) => (
 export function WorkPage() {
   const now = useNow(30_000);
   const v = useWorkSummary();
+  const { decision } = useSearch({ strict: false }) as { decision?: string };
+  const navigate = useNavigate();
+  const openDecision = (id: string | null) => void navigate({ to: "/work", search: (prev: Record<string, unknown>) => ({ ...prev, decision: id ?? undefined }) } as never);
+  // ONE primary action: the next decision when one waits, otherwise the call sheet.
+  const primary = v.firstDecision ? (
+    <Button variant="accent" className="h-auto min-h-10 max-w-full whitespace-normal" onClick={() => openDecision(v.firstDecision)}>Review next decision</Button>
+  ) : (
+    <Button variant="accent" className="h-auto min-h-10 max-w-full whitespace-normal" asChild><Link to="/leads">Calls & leads</Link></Button>
+  );
   return (
     <div className="min-w-0 [overflow-wrap:anywhere]">
-      <PageHeader title="Work" description={v.approvals === null ? "What waits on you, the calls to make, the pipeline and the sites." : `${v.title}.`} />
+      <PageHeader title="Work" description={v.approvals === null ? "What waits on you, the calls to make, the pipeline and the sites." : `${v.title}.`} primaryAction={primary} />
       {now > 0 ? (
         <div className="mb-12 sh-arrive">
           <WorkAnswer v={v} />
-          <WidgetGrid>
-            <div className="col-span-full min-w-0">
-              <TodayPanel now={now} />
-            </div>
-          </WidgetGrid>
+          <TodayPanel now={now} openId={decision ?? null} onOpen={openDecision} />
           <details className="mt-6 border-t border-border py-2">
             <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
               Calls, pipeline & site status

@@ -16,3 +16,11 @@
 - (reliability, final review) appendMessage drops typed messages past 500 in a thread, and save() re-inserts typed messages the person deleted.
 - (reliability, final review) A spoken "stop" handled by the server rules (not the jarvis_command tool) doesn't empty the companion's typed queue.
 - (reliability, final review) With no recorded owner after a restart, the earliest linker of a job gets its report.
+- (gateway r11) `/__health` reports `degraded` (searxng) while `/__gateway/diagnostics` calls `collectHealth` without the dependency monitor and reports `ok`; pass the monitor's snapshot through the gateway ops seam so both agree.
+- (gateway r11) Coding job payloads (`/__operator/coding/jobs/<id>`) carry each run's `nativeSessionId` (a CLI resume id, not a credential); consider dropping it from views read by the gateway principal.
+- (gateway r11) Dot's own command and bot jobs are person-scoped to "dot" in the activity stream, so Dot's `/__events` (coding only) never shows them; Dot polls `/__gateway/jobs/<id>`. A "dot" scope in `scripts/events/sources.ts` would let it follow them live.
+- (gateway r11) The acceptance hub (`scripts/acceptance/r7/hub.ts`) puts `MU_DESIGN_PROJECTS_DIR` inside the data folder, which the gateway's file roots refuse; `staging-local.ts` uses a sibling folder instead.
+- (gateway r11b) The founders' Gmail action is one code path for draft AND send (`scripts/gmail-mailbox.ts`); a draft-only path would let a CRM reply draft become a Gmail draft without exposing Send.
+- (gateway r11b) The manual finance ledger has no notes field, no single-record add and no store for invoice-to-payment matches (only the locked legacy NAB `finance.sqlite`); Dot gets match suggestions only.
+- (gateway r11b) The mail archive has no account or thread column filter (`threadId` lives in `item_json`), so the gateway filters at most 500 newest messages per mailbox in JS; an indexed account/thread query would scale.
+- (gateway r11b) `deploy/windows/release-ryzen.ps1` hard-codes the candidate fetch from `origin ws/integration-20261002`; the new `-CandidateRef` bypasses it for gateway releases, but the default branch name is stale for console releases.

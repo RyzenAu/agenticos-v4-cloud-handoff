@@ -20,42 +20,6 @@
   max-width: 1680px;
   margin: 0 auto 60px;
 }
-.ws-settings-tabs {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 2px;
-  gap: 2px;
-  background: var(--inset);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  margin-bottom: 24px;
-  max-width: 100%;
-  overflow-x: auto;
-}
-.ws-settings-tabs > button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  border-radius: 999px;
-  white-space: nowrap;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-.ws-settings-tabs > button:hover {
-  color: var(--foreground);
-}
-.ws-settings-tabs > button[aria-selected="true"] {
-  background: var(--surface-raised);
-  color: var(--foreground);
-  box-shadow: 0 0 0 1px var(--border);
-}
 .ws-settings-panel {
   border: 1px solid var(--border);
   background: var(--card);
@@ -134,37 +98,8 @@
   .ws-settings-panel .ws-tools {
     grid-template-columns: 1fr 1fr;
   }
-  .ws-settings-tabs > button {
-    padding: 0 13px;
-    font-size: 13px;
-  }
 }
 @media (max-width: 480px) {
-  .ws-settings-tabs {
-    max-width: 100%;
-    /* The strip runs past the viewport at this width and cut off the last
-       tab with no hint it could scroll (audit P1-9) — snap + a soft edge
-       fade signals there's more, the way the inbox source tabs now do. */
-    scroll-snap-type: x proximity;
-    -webkit-mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      black 16px,
-      black calc(100% - 16px),
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      black 16px,
-      black calc(100% - 16px),
-      transparent 100%
-    );
-  }
-  .ws-settings-tabs > button {
-    flex-shrink: 0;
-    scroll-snap-align: start;
-  }
   .ws-settings-panel {
     padding: 18px 14px;
   }

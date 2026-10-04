@@ -37,6 +37,10 @@ import { useKeyboardStart } from "@/components/shell/keyboard-start";
 import { OfflineNotice, loadFailureCopy } from "@/components/shell/offline-notice";
 import { PairingNotice } from "@/components/shell/pairing-notice";
 import { CommandSceneHost } from "@/components/shell/command-scene/host";
+// The Dot gateway's UI bundle only (no effect in the founders' app): founders-only requests answered as "not available to Dot".
+import { DotGatewayNotice } from "@/components/shell/dot-gateway-notice";
+import { installDotGatewayGuard } from "@/lib/dot-gateway";
+installDotGatewayGuard();
 
 function NotFoundComponent() {
   return (
@@ -254,6 +258,7 @@ function RootComponent() {
                   key={pathname}
                   className={websiteWorkspace ? "op-website-main flex-1 min-h-0" : "mo-enter flex-1 overflow-x-hidden p-4 md:p-6"}
                 >
+                  <DotGatewayNotice />
                   <Outlet />
                 </main>
                 <LateFloatingOracle enabled />

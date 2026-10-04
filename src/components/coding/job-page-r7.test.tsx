@@ -4,7 +4,7 @@
 // @ts-ignore: the browser tsconfig has no bun types (bun test supplies this module).
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Agents, JobStatusLine, describeEvent } from "./job-detail";
+import { Agents, JobStatusLine, askedByLabel, describeEvent } from "./job-detail";
 import { JobSummary } from "./job-summary";
 import { codingTask, serviceTask } from "../agents/tasks/tasks";
 import { roleLabel } from "../../../scripts/coding/pause-reason";
@@ -62,5 +62,14 @@ describe("F-11: no internal name on the job page or in Tasks", () => {
       const text2 = [s.stateWord, s.ran.text, s.review, s.tests, s.outcomeNote, s.blocker?.text, ...s.links.map((l) => l.label)].filter(Boolean).join(" | ");
       expect(text2.match(FORBIDDEN)?.[0] ?? null).toBeNull();
     }
+  });
+});
+
+describe("request author label", () => {
+  test("says you only when the author is the viewer, never in Dot's view", () => {
+    expect(askedByLabel("usman", "usman", false)).toBe("you");
+    expect(askedByLabel("usman", "mehroz", false)).toBe("usman");
+    expect(askedByLabel("usman", "usman", true)).toBe("usman");
+    expect(askedByLabel("usman", undefined, true)).toBe("usman");
   });
 });

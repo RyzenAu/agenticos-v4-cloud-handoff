@@ -14,6 +14,7 @@ import { chatSseEvent, validateChatPrompt } from "./scripts/chat-request";
 import { providerKey } from "./scripts/provider-config";
 import { previewGuard } from "./scripts/preview-guard";
 import { founderMayRead as founderMayReadFor, identityGatePlugin, pageTokenMatches, requestAtHub, requestPrincipal } from "./scripts/identity/gate";
+import { dotGatewayHubPlugin } from "./scripts/gateway/hub-plugin";
 import { commandsPlugin } from "./scripts/commands/plugin";
 import { devRestartPolicy } from "./scripts/dev-restart-policy";
 import { appSourceMapsOff, lucideSubset, routeReferenceMaps } from "./scripts/dev-page-weight";
@@ -1232,11 +1233,20 @@ async function listRecentSessions(
 // loudly instead of drifting to 8082.
 const hubMonitor = hubDependencyMonitor(__dirname);
 
+// MU_GATEWAY_SPA_BUILD=1 (scripts/gateway/build-ui.ts): the Dot gateway's static UI bundle. TanStack Start's SPA mode (one
+// prerendered HTML shell) without the Cloudflare worker, so the gateway serves the UI itself from dist/client by an exact
+// file manifest and never forwards a request to the dev server's file serving. Unset (every other build and dev): unchanged.
+const gatewaySpaBuild = process.env.MU_GATEWAY_SPA_BUILD === "1";
+
 export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
+    ...(gatewaySpaBuild ? { spa: { enabled: true } } : {}),
   },
+  ...(gatewaySpaBuild ? { cloudflare: false } : {}),
   vite: {
+    // The Dot gateway's UI bundle only (src/lib/dot-gateway.ts): false in every other build and in dev.
+    define: { __MU_GATEWAY_UI__: JSON.stringify(gatewaySpaBuild) },
     // A copy's own optimiser cache: worktrees share node_modules through a junction, so two dev servers
     // must not share node_modules/.vite. AGENTIC_OS_VITE_CACHE_DIR (T6), ARGENTIC_VITE_CACHE_DIR (T5) and
     // AGENTIC_VITE_CACHE_DIR (T8) are the same setting under three names; any gives a copy its own cache
@@ -1262,6 +1272,10 @@ export default defineConfig({
       // Stage B1: the ONE identity contract (scripts/identity). Every /__* route answers 401 without a
       // verified principal; remote callers get person-bound page tokens, never REFRESH_TOKEN.
       identityGatePlugin({ root: __dirname, internalToken: () => REFRESH_TOKEN }),
+      // The Dot gateway's hub routes (/__gateway): who-am-I, Dot's operating routes (scripts/gateway/hub-ops.ts: CRM, files, tasks, memory,
+      // coding, shared bots, diagnostics, each behind its own capability) and the founders' identity listing. Inert for founders' own work; the
+      // gateway principal exists only when MU_GATEWAY_TRUST=1 and a signed assertion verifies (scripts/gateway/hub.ts).
+      dotGatewayHubPlugin({ root: __dirname, internalToken: () => REFRESH_TOKEN, operate: { memory: () => sharedMemory.api() as never } }),
       // A public/ directory with an index.html is served at /dir/ and /dir (the router answered /dir/ with a 307 to a 404).
       publicDirIndexPlugin(resolve(__dirname, "public"), resolve(__dirname, "src", "routes")),
       // Cloud mode (MU_HUB_ROLE=cloud): PC-only routes answer "runs on your PC, needs the companion" (a pass-through on the PC).

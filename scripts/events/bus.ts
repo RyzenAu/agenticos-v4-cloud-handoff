@@ -23,9 +23,11 @@ export type PublishInput = {
   scope: Scope;
   /** A job or agent reached its end: the finished result a late client must not miss. */
   final?: boolean;
+  /** A coarse label a per-connection filter may use (job events: the job's kind). Never sent on the wire. */
+  tag?: string;
   data: unknown;
 };
-export type Entry = { id: number; at: number; topic: Topic; type: string; scope: Scope; final: boolean; frame: string; bytes: number };
+export type Entry = { id: number; at: number; topic: Topic; type: string; scope: Scope; final: boolean; frame: string; bytes: number; tag?: string };
 
 export const RING_CAPACITY = 500;
 export const MAX_PAYLOAD_BYTES = 16 * 1024;
@@ -73,6 +75,7 @@ export class ActivityBus {
       final: input.final === true,
       frame: `id: ${wireId(this.epoch, id)}\ndata: ${json}\n\n`,
       bytes: Buffer.byteLength(json),
+      ...(input.tag ? { tag: input.tag } : {}),
     };
     this.ring.push(entry);
     if (this.ring.length > this.capacity) this.ring.splice(0, this.ring.length - this.capacity);

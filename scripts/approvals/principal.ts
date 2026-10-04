@@ -4,10 +4,13 @@
 // B2's stored and test principals stay small; a missing actor means process (fail closed). Nothing here
 // reads a person from a body or a display name: a Principal only ever comes from B1's resolver.
 import type { IncomingHttpHeaders } from "node:http";
+import { isGatewayActor } from "../gateway/actor";
 import { isBrowserPrincipal, isHumanSession, type Principal as IdentityPrincipal } from "../identity/principal";
 
 export type PersonId = "usman" | "mehroz";
-export type PrincipalVia = "loopback-owner" | "paired-session" | "tailnet-person" | "telegram-owner" | "companion" | "routine";
+// "gateway" (the Dot gateway's collaborator principal, scripts/gateway) is in the TYPE so B1's Principal still flows through these
+// signatures; it is deliberately NOT in VIAS or PEOPLE below, so isPrincipal refuses it and B2 never stores, approves or decides for it.
+export type PrincipalVia = "loopback-owner" | "paired-session" | "tailnet-person" | "telegram-owner" | "companion" | "routine" | "gateway";
 /**
  * B1's actor (scripts/identity/principal.ts): `human` is a person interacting now (a browser holding a
  * live session cookie, or a Telegram DM they typed); `process` is a program acting for them (Hermes, cron,
@@ -43,6 +46,16 @@ export function isPrincipal(value: unknown): value is Principal {
   for (const k of ["sessionId", "deviceId", "displayName"] as const)
     if (p[k] !== undefined && (typeof p[k] !== "string" || (p[k] as string).length > 200)) return false;
   return true;
+}
+
+/**
+ * Who may OWN a job in the job store: a founder's principal (isPrincipal), or the Dot gateway's collaborator exactly
+ * (person "dot", via "gateway", a process actor: scripts/gateway/actor.ts). This is the job store's check ONLY. Requesting,
+ * deciding or cancelling an approval, and everything else B2 does for a person, stays on isPrincipal, which refuses the
+ * gateway: Dot's work is recorded as Dot's, and Dot never approves, decides or releases anything.
+ */
+export function isJobPrincipal(value: unknown): value is Principal {
+  return isPrincipal(value) || isGatewayActor(value);
 }
 
 /**

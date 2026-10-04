@@ -14,6 +14,7 @@ import { DEFAULT_AUDIT_SITES } from "./workflows";
 import { routedDelegate, searxngSearch, threadDeliver } from "./research-wiring";
 import type { ThreadStore } from "../jarvis-command/threads";
 import { createComputersService, type ComputersOptions, type ComputersService } from "./service";
+import { createGatewayTrust } from "../gateway/hub";
 import { attachViewer } from "./viewer";
 import { hubRole } from "../cloud/hub-role";
 import { createLocalOwnerProof } from "../identity/local-owner-token";
@@ -148,7 +149,13 @@ export function mountComputers(server: ViteDevServer, options: MountComputersOpt
   else server.httpServer?.once("listening", configure);
 
   if (server.httpServer) {
-    const detach = attachViewer(server.httpServer as unknown as Server, { devices: options.devices, computers, ...(hubRole() === "server" ? { localOwnerProof: createLocalOwnerProof(options.root) } : {}) });
+    const detach = attachViewer(server.httpServer as unknown as Server, {
+      devices: options.devices,
+      computers,
+      ...(hubRole() === "server" ? { localOwnerProof: createLocalOwnerProof(options.root) } : {}),
+      // The Dot gateway's upgrade check (scripts/gateway/hub.ts); inert unless MU_GATEWAY_TRUST=1. No page token is needed for an upgrade.
+      gateway: createGatewayTrust({ root: options.root, internalToken: () => "" }),
+    });
     server.httpServer.once("close", () => {
       detach();
       void computers.close();

@@ -9,14 +9,7 @@ import {
   type SelectHTMLAttributes,
 } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ds";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, DetailDrawer } from "@/components/ds";
 import { cn } from "@/lib/utils";
 
 /** The label names its control by `for`/`id`, so a filled-in textarea does not become part of its own accessible name; a hint is its description. */
@@ -102,37 +95,32 @@ export function Modal({
   // Typed text is never thrown away by a stray Escape: once anything has been typed or chosen, Escape does nothing but say so, and Cancel is the deliberate way out.
   const typed = useRef(false);
   const [kept, setKept] = useState(false);
+  // R12 rollout: CRM records are edited in the shared detail drawer (right side; full width on a phone), not a centred dialog.
   return (
-    <Dialog
+    <DetailDrawer
       open
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
+      title={title}
+      description={description}
+      onInput={() => {
+        typed.current = true;
+      }}
+      onEscapeKeyDown={(event) => {
+        const action = escapeAction({ busy, typed: typed.current });
+        if (action !== "close") event.preventDefault();
+        if (action === "keep") setKept(true);
+      }}
+      onInteractOutside={(event) => event.preventDefault()}
     >
-      <DialogContent
-        className="max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-2xl overflow-y-auto rounded-2xl motion-reduce:animate-none"
-        onInput={() => {
-          typed.current = true;
-        }}
-        onEscapeKeyDown={(event) => {
-          const action = escapeAction({ busy, typed: typed.current });
-          if (action !== "close") event.preventDefault();
-          if (action === "keep") setKept(true);
-        }}
-        onInteractOutside={(event) => event.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {kept && (
-          <p role="status" className="text-sm text-muted-foreground">
-            Your changes are still here. Use Cancel to discard them.
-          </p>
-        )}
-        {children}
-      </DialogContent>
-    </Dialog>
+      {kept && (
+        <p role="status" className="mb-4 text-sm text-muted-foreground">
+          Your changes are still here. Use Cancel to discard them.
+        </p>
+      )}
+      {children}
+    </DetailDrawer>
   );
 }
 export function ExternalLink({ href, children }: { href?: string | null; children: ReactNode }) {

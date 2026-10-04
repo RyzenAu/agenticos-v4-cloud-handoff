@@ -3,20 +3,19 @@
 // server with its heading: through the lazy mount the heading waited for hydration plus a chunk
 // waterfall (~1.3-1.6 s first load vs ~0.35 s for the other destinations). The old receptionist
 // page is no longer bundled here; it stays reachable as the fallback in git history.
-import ReceptionistDashboardMount from "@/components/receptionist/destination";
-import { useInspector, useInspectorFacts } from "../inspector";
+import { ReceptionistDashboardPage } from "@/components/receptionist/dashboard";
+import { useInspectorFacts } from "../inspector";
 import { MOUNT_FILES, MountBoundary } from "../mounts";
 import { DrilldownList } from "../page-parts";
 
 export function ReceptionistDestination() {
-  const { publish } = useInspector();
   useInspectorFacts("Mount points", { Receptionist: `mounted from ${MOUNT_FILES.receptionist.file} (server-rendered)` });
   return (
     <>
-      {/* One calm line: the launch is paused, so nothing on this page asks for calls or go-live work. */}
-      <p role="status" className="mb-4 rounded-lg border border-border bg-card px-4 py-2 text-sm text-muted-foreground">Receptionist launch is on hold.</p>
+      {/* R12 rollout: the hold is the header's one-line description (it was a boxed line above the title). The launch is paused,
+          so nothing on this page asks for calls or go-live work, and no launch action is offered. */}
       <MountBoundary area="receptionist">
-        <ReceptionistDashboardMount inspect={publish} />
+        <ReceptionistDashboardPage description="Receptionist launch is on hold." onHold />
       </MountBoundary>
       <div className="mt-12">
         <DrilldownList id="receptionist" />

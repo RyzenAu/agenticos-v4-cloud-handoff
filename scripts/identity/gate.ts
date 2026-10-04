@@ -25,6 +25,7 @@ import { tailnetSnapshotWait, type TailnetSource } from "../remote-access";
 import { hubRole, type HubRole } from "../cloud/hub-role";
 import { createLocalOwnerProof, markLocalOwnerProven, type LocalOwnerProof } from "./local-owner-token";
 import { grantServerFounder, isServerFounderGrant, serverRoleDecision } from "./server-role";
+import { createGatewayTrust, type GatewayTrust } from "../gateway/hub";
 
 /**
  * The identity gate: the first thing every request meets after the dev-restart coalescer.
@@ -135,6 +136,11 @@ export type GateOptions = {
    * at startup). A loopback request without it is nobody (scripts/identity/local-owner-token.ts). Tests inject one.
    */
   localOwnerProof?: LocalOwnerProof;
+  /**
+   * The Dot gateway's hub-side trust (scripts/gateway/hub.ts). Default: on only when MU_GATEWAY_TRUST=1. A request with no
+   * gateway assertion is untouched by it; one with an assertion is the gateway principal or is refused, never anything else.
+   */
+  gateway?: GatewayTrust;
 };
 
 /** A short tag for a navigation's source program: its file name and a hash of its full path. */
@@ -176,6 +182,7 @@ export function createPrincipalGate(options: GateOptions) {
   const role: HubRole = options.role ?? hubRole();
   // Created at startup in the server role only; pc and cloud never touch the file.
   const proof: LocalOwnerProof | null = role === "server" ? (options.localOwnerProof ?? createLocalOwnerProof(options.root)) : null;
+  const gateway: GatewayTrust = options.gateway ?? createGatewayTrust({ root: options.root, internalToken: options.internalToken });
 
   function serveToken(req: IncomingMessage, res: ServerResponse, id: RequestIdentity) {
     if ((req.method || "GET") !== "GET") return sendJson(res, 405, { error: "GET only" });
@@ -232,6 +239,10 @@ export function createPrincipalGate(options: GateOptions) {
   }
 
   return function principalGate(req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) {
+    // The Dot gateway (scripts/gateway): a request carrying its assertion is verified and held to the capability table here,
+    // before anything else resolves an identity. Refused outright when it does not verify; null (no assertion) changes nothing.
+    const viaGateway = gateway.screen(req);
+    if (viaGateway && !viaGateway.ok) return sendJson(res, viaGateway.status, { error: viaGateway.error });
     // Server role: on a headless hub any local process (and every WSL user, over mirrored networking) reaches
     // loopback. A loopback request is the owner only with the local-owner proof; otherwise it is marked, before
     // anything resolves an identity, and every later resolution of it (here or in a handler) is anonymous.

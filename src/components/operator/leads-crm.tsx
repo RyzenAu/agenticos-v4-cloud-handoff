@@ -31,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { operatorRequest } from "@/lib/operator";
+import { isDotGatewayUi } from "@/lib/dot-gateway";
 import {
   leadSitesStatus,
   leadsApi,
@@ -224,6 +225,9 @@ export function LeadsCrm() {
         }
         actions={
           <>
+            {isDotGatewayUi() ? (
+              <span className="text-sm text-muted-foreground">Recorded as Dot (agent)</span>
+            ) : (
             <Segmented
               ariaLabel="Logging as"
               value={by}
@@ -233,6 +237,7 @@ export function LeadsCrm() {
                 { value: "mehroz", label: "Mehroz" },
               ]}
             />
+            )}
             <Button
               variant="ghost"
               size="icon-sm"
@@ -314,37 +319,17 @@ export function LeadsCrm() {
               setFilters={setFilters}
               leads={leads}
               shortcuts={
-                <div
-                  className="flex flex-wrap gap-2"
-                  role="group"
-                  aria-label="Website opportunity shortcuts"
-                >
-                  <Button
-                    variant={!filters.website ? "accent" : "outline"}
-                    size="sm"
-                    aria-pressed={!filters.website}
-                    onClick={() => focusWebsite("")}
-                  >
-                    All leads
-                  </Button>
-                  <Button
-                    variant={filters.website === "verified_none" ? "accent" : "outline"}
-                    size="sm"
-                    aria-pressed={filters.website === "verified_none"}
-                    onClick={() => focusWebsite("verified_none")}
-                  >
-                    No website, verified <span className="ds-num opacity-70">{noWebsiteCount}</span>
-                  </Button>
-                  <Button
-                    variant={filters.website === "unknown" ? "accent" : "outline"}
-                    size="sm"
-                    aria-pressed={filters.website === "unknown"}
-                    onClick={() => focusWebsite("unknown")}
-                  >
-                    Needs website check{" "}
-                    <span className="ds-num opacity-70">{unknownWebsiteCount}</span>
-                  </Button>
-                </div>
+                // R12 rollout: one segmented filter (the gold is the page's one primary action, not a selected chip).
+                <Segmented
+                  ariaLabel="Website opportunity shortcuts"
+                  value={filters.website || "all"}
+                  onChange={(v) => focusWebsite(v === "all" ? "" : (v as LeadFilters["website"]))}
+                  options={[
+                    { value: "all", label: "All leads" },
+                    { value: "verified_none", label: `No website, verified · ${noWebsiteCount}` },
+                    { value: "unknown", label: `Needs website check · ${unknownWebsiteCount}` },
+                  ]}
+                />
               }
             />
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">

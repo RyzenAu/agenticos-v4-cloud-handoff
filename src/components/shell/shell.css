@@ -132,6 +132,20 @@
 .sh-dest-link b {
   margin-left: auto;
 }
+/* R12: the "More" toggle reads as a nav row (button reset; op-nav-link gives the layout). */
+.sh-more-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+#sh-nav-more {
+  margin-top: 4px;
+}
 /* The needs-you count couldn't be read: a muted outlined "?", distinct from a count and from zero (no badge). */
 .sh-dest-link b[data-unknown] {
   background: transparent;

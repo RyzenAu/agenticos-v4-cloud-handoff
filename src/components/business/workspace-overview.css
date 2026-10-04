@@ -2809,3 +2809,15 @@
   font-weight: 400;
   color: var(--muted-foreground);
 }
+
+/* R11 backlog: 44 px touch targets for the Home chips (28 px tall) without changing how they look. */
+.biz-overview-connect-chip,
+.biz-overview-audience-pill {
+  position: relative;
+}
+.biz-overview-connect-chip::after,
+.biz-overview-audience-pill::after {
+  content: "";
+  position: absolute;
+  inset: -8px -2px;
+}

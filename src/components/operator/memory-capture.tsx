@@ -211,6 +211,7 @@ export function MemoryCapture({
       <form className="mc5-composer" onSubmit={submit}>
         <div className="mc5-input">
           <textarea
+            id="memory-capture-text"
             value={text}
             onChange={(e) => {
               setText(e.target.value);

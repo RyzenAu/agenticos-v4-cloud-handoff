@@ -14,7 +14,8 @@ export type PackageQuoteInput = {
   company: { name: string; phone: string; address: string; emails: string[] };
   contact: { name: string; email: string; phone: string } | null;
   packageId: PackageId;
-  by: "usman" | "mehroz";
+  /** Who drafted it: a founder, or "dot" (the gateway collaborator, scripts/gateway). */
+  by: "usman" | "mehroz" | "dot";
   today: string;
 };
 export type PackageQuoteResult = {

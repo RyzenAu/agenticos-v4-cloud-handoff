@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { Principal } from "../identity/principal";
 import { isPrincipal } from "../approvals/principal";
+import { gatewayProvenance, isGatewayActor } from "../gateway/actor";
 import type { JobService } from "../jobs/service";
 import type { CrmStore } from "./store";
 import { CrmError, type Attribution } from "./types";
@@ -184,7 +185,9 @@ export class CrmAutomations {
   }
   /** Caller authenticates the source event and principal; this adapter performs internal CRM work only. */
   accept(input: CrmAutomationEvent, principal: Principal): AutomationReceipt {
-    if (!isPrincipal(principal))
+    // A founder, or the Dot gateway's collaborator (its CRM guard already required crm.write): every rule is internal CRM work.
+    const gateway = isGatewayActor(principal);
+    if (!isPrincipal(principal) && !gateway)
       throw new AutomationError("A verified founder principal is required.");
     const event = automationEventSchema.parse(input),
       fingerprint = hash(event),
@@ -312,7 +315,7 @@ export class CrmAutomations {
     let receipt: AutomationReceipt;
     try {
       receipt = store.transaction(() => {
-        const outcome = this.apply(event, { personId: principal.personId });
+        const outcome = this.apply(event, gateway ? gatewayProvenance(principal) : { personId: principal.personId as "usman" | "mehroz" });
         const value: AutomationReceipt = { ...base, ...outcome, ok: true, duplicate: false };
         store.db
           .query("UPDATE crm_automation_runs SET state=?,receipt=?,error=NULL WHERE event_id=?")

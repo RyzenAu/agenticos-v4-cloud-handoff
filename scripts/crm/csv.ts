@@ -483,7 +483,8 @@ export class CrmCsv {
           source: {
             kind: "csv" as const,
             reference: preview.id,
-            attribution: "Founder-reviewed CSV import",
+            // Who reviewed the rows: a founder, or the agent that committed them (the Dot gateway's collaborator is "dot").
+            attribution: "personId" in by ? "Founder-reviewed CSV import" : `CSV import reviewed by ${by.agent} (agent)`,
           },
           fieldSources: Object.fromEntries(
             Object.keys(values)

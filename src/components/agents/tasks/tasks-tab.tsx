@@ -3,8 +3,9 @@
 import { decidedByView, type DecidedByInput } from "@/lib/commands/decided-by";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
-import { Badge, Button, EmptyState, Notice, fmtRelative } from "@/components/ds";
+import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Badge, Button, DetailDrawer, EmptyState, Notice, StatusLabel, WorkList, WorkRow, fmtRelative } from "@/components/ds";
+import { workStatus } from "@/lib/departments";
 import { cancelComputerJob } from "@/lib/agent-workspace";
 import { codingClient, elapsed } from "@/lib/coding-client";
 import type { Bot } from "../workspace/bots";
@@ -59,7 +60,14 @@ export function timeLine(t: Pick<BotTask, "startedAt" | "endedAt"> & { notStarte
   return t.endedAt ? `${started} · took ${elapsed(t.startedAt, t.endedAt)}` : `${started} · still going`;
 }
 
-export function TaskRow({ task, onTab, onChanged }: { task: BotTask; onTab: (t: WorkspaceTab) => void; onChanged: () => void }) {
+/** One status per task, in the shared work vocabulary (R12): the precise word ("Needs your yes") when the task needs the owner. */
+export function TaskStatus({ task, size = "sm" }: { task: Pick<BotTask, "state" | "stateWord">; size?: "sm" | "md" }) {
+  const s = workStatus(task.state);
+  return <StatusLabel state={s.state} label={task.state === "needs-you" ? task.stateWord : s.label} size={size} />;
+}
+
+/** `bare`: inside the task drawer, whose header already shows the title and the status. */
+export function TaskRow({ task, onTab, onChanged, bare = false }: { task: BotTask; onTab: (t: WorkspaceTab) => void; onChanged: () => void; bare?: boolean }) {
   const [confirmStop, setConfirmStop] = useState(false);
   const [busy, setBusy] = useState(false);
   const [answer, setAnswer] = useState<{ ok: boolean; message: string } | null>(null);
@@ -88,11 +96,13 @@ export function TaskRow({ task, onTab, onChanged }: { task: BotTask; onTab: (t: 
     else if (a.kind === "tab") onTab(a.tab);
   };
   return (
-    <li className="flex flex-col gap-2 py-4" data-task={task.id} data-task-state={task.state} data-task-kind={task.kind}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h4 className="min-w-0 flex-1 basis-full text-base font-medium leading-snug sm:basis-0">{task.title}</h4>
-        <Badge tone={task.tone}>{task.stateWord}</Badge>
-      </div>
+    <li className={bare ? "flex list-none flex-col gap-3" : "flex flex-col gap-2 py-4"} data-task={task.id} data-task-state={task.state} data-task-kind={task.kind}>
+      {!bare && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h4 className="min-w-0 flex-1 basis-full text-base font-medium leading-snug sm:basis-0">{task.title}</h4>
+          <Badge tone={task.tone}>{task.stateWord}</Badge>
+        </div>
+      )}
       <p className="text-sm text-muted-foreground">{timeLine(task)}</p>
       {task.blocker && (
         <Notice tone={task.state === "failed" ? "danger" : "warn"} className="!px-4 !py-3" action={task.blocker.action && task.blocker.action.kind !== "link" ? <Button variant="accent" size="sm" disabled={busy} onClick={() => act(task.blocker!.action!)} {...(task.blocker.action.kind === "resume" && task.blocker.action.detail ? { title: `Accepts: ${task.blocker.action.detail}`, "aria-label": `${task.blocker.action.label}. Accepts: ${task.blocker.action.detail}` } : {})}>{task.blocker.action.label}</Button> : task.blocker.action ? <Button asChild variant="outline" size="sm"><AppLink href={task.blocker.action.href} className="no-underline">{task.blocker.action.label}</AppLink></Button> : undefined}>
@@ -181,6 +191,10 @@ export function TasksTab({ bot, computer, onTab }: { bot: Bot; computer: Compute
   const client = useQueryClient();
   const work = useBotTasks(bot, computer);
   const [allPast, setAllPast] = useState(false);
+  const navigate = useNavigate();
+  const taskParam = (useSearch({ strict: false }) as { task?: unknown }).task;
+  const openId = typeof taskParam === "string" ? taskParam : null;
+  const openTask = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, task: id ?? undefined }) } as never);
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["agent-tasks"] });
     void client.invalidateQueries({ queryKey: ["agent-jobs"] });
@@ -194,39 +208,59 @@ export function TasksTab({ bot, computer, onTab }: { bot: Bot; computer: Compute
   const current = work.tasks.filter(taskIsOpen);
   const past = work.tasks.filter((t) => !taskIsOpen(t));
   const shownPast = allPast ? past : past.slice(0, PAST_SHOWN);
+  const open = openId ? work.tasks.find((t) => t.id === openId) : undefined;
+  // R12 rollout: each task is ONE row (title, when, its one status); the row opens the task in the shared drawer, where its blocker,
+  // what ran it, progress, review, tests and Stop/Resume/Open result live.
+  const row = (t: BotTask) => (
+    <WorkRow key={t.id} data-task-row={t.id} title={t.title} meta={t.blocker ? `${timeLine(t)} · ${t.blocker.text}` : timeLine(t)} status={<TaskStatus task={t} />} selected={openId === t.id} onClick={() => openTask(t.id)} />
+  );
   return (
     <div className="flex flex-col gap-8" data-tasks-tab={bot.id} data-source={work.source}>
       {work.notice && <Notice tone="warn" title="Part of the list is missing">{work.notice}</Notice>}
-      <section aria-labelledby="tasks-current" className="flex flex-col">
-        <h3 id="tasks-current" className="text-lg font-medium">Current</h3>
+      <section aria-labelledby="tasks-current" className="flex flex-col gap-3">
+        <h3 id="tasks-current" className="text-base font-semibold">
+          Current {current.length > 0 && <span className="font-normal text-muted-foreground">{current.length}</span>}
+        </h3>
         {current.length ? (
-          <ul className="divide-y divide-border" data-list="current">{current.map((t) => <TaskRow key={t.id} task={t} onTab={onTab} onChanged={refresh} />)}</ul>
+          <WorkList label="Current tasks" className="ds-tasks-current">
+            {current.map(row)}
+          </WorkList>
         ) : (
-          <EmptyState variant="row" title="Nothing is running" body={`Ask ${bot.name} for something in Chat and it shows up here with its progress.`} className="mt-3" />
+          <EmptyState variant="row" title="Nothing is running" body={`Ask ${bot.name} for something in Chat and it shows up here with its progress.`} />
         )}
       </section>
-      <section aria-labelledby="tasks-past" className="flex flex-col">
-        <h3 id="tasks-past" className="text-lg font-medium">Past work</h3>
+      <section aria-labelledby="tasks-past" className="flex flex-col gap-3">
+        <h3 id="tasks-past" className="text-base font-semibold">
+          Past work {past.length > 0 && <span className="font-normal text-muted-foreground">{past.length}</span>}
+        </h3>
         {past.length ? (
           <>
-            <ul className="divide-y divide-border" data-list="past">{shownPast.map((t) => <TaskRow key={t.id} task={t} onTab={onTab} onChanged={refresh} />)}</ul>
+            <WorkList label="Past work">{shownPast.map(row)}</WorkList>
             {past.length > PAST_SHOWN && (
-              <div className="pt-2"><Button variant="ghost" size="sm" onClick={() => setAllPast((v) => !v)}>{allPast ? "Show fewer" : `Show all ${past.length}`}</Button></div>
+              <div><Button variant="ghost" size="sm" onClick={() => setAllPast((v) => !v)}>{allPast ? "Show fewer" : `Show all ${past.length}`}</Button></div>
             )}
           </>
         ) : (
-          <p className="pt-2 text-[15px] text-muted-foreground">{work.files.length ? "No finished tasks are listed here; the saved results below are what they produced." : "Nothing has finished since this hub started recording."}</p>
+          <p className="text-sm text-muted-foreground">{work.files.length ? "No finished tasks are listed here; the saved results below are what they produced." : "Nothing has finished since this hub started recording."}</p>
         )}
       </section>
-      <section aria-labelledby="tasks-files" className="flex flex-col">
-        <h3 id="tasks-files" className="text-lg font-medium">Saved results</h3>
-        <p className="text-sm text-muted-foreground">The hub keeps its own copy, so these open even when the computer is off.</p>
+      <section aria-labelledby="tasks-files" className="flex flex-col gap-3">
+        <h3 id="tasks-files" className="text-base font-semibold" title="The hub keeps its own copy, so these open even when the computer is off.">
+          Saved results {work.files.length > 0 && <span className="font-normal text-muted-foreground">{work.files.length}</span>}
+        </h3>
         {work.files.length ? (
-          <ul className="divide-y divide-border" data-list="files">{work.files.map((f) => <FileRow key={f.id} f={f} />)}</ul>
+          <ul className="divide-y divide-border rounded-2xl border border-border bg-card px-4" data-list="files">{work.files.map((f) => <FileRow key={f.id} f={f} />)}</ul>
         ) : (
-          <p className="pt-2 text-[15px] text-muted-foreground">No saved results yet. A finished piece of work that produces a report or files appears here.</p>
+          <p className="text-sm text-muted-foreground">No saved results yet. A finished piece of work that produces a report or files appears here.</p>
         )}
       </section>
+      <DetailDrawer open={!!open} onOpenChange={(o) => !o && openTask(null)} title={open?.title ?? ""} status={open ? <TaskStatus task={open} size="md" /> : undefined}>
+        {open && (
+          <ul data-task-drawer={open.id}>
+            <TaskRow task={open} onTab={(t) => { openTask(null); onTab(t); }} onChanged={refresh} bare />
+          </ul>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

@@ -8,6 +8,10 @@ no keys and no evidence screenshots.
 Read in this order: this file, `ARCHITECTURE.md`, `CONTRACTS.md`, `CONFIG.md`, `VERIFY.md`, `OPERATIONS.md`,
 `BACKEND-BACKLOG.md`, then `briefs/`.
 
+> **Updated 5 Oct 2026, 06:10 AEDT:** this branch now matches production **`f79db4e2`** (gateway, Dot's own Jarvis,
+> durable command admission, R12 redesign, debug ops), with the same sanitisation as below. Base new PRs on THIS head.
+> The "Baseline" table below describes the first snapshot (`8aeb6311`); the mapping rules are unchanged.
+
 ## Baseline
 
 | Item | Value |

@@ -46,9 +46,11 @@ import { Route as AutomationsRouteImport } from './routes/automations'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspacesIndexRouteImport } from './routes/workspaces.index'
+import { Route as DepartmentsIndexRouteImport } from './routes/departments.index'
 import { Route as CodingIndexRouteImport } from './routes/coding.index'
 import { Route as WorkspacesIdRouteImport } from './routes/workspaces.$id'
 import { Route as MemoryVaultRouteImport } from './routes/memory_.vault'
+import { Route as DepartmentsDeptRouteImport } from './routes/departments.$dept'
 import { Route as CodingJobIdRouteImport } from './routes/coding.$jobId'
 import { Route as AgentsWorkspaceRouteImport } from './routes/agents.workspace'
 import { Route as AgentsOpenclawRouteImport } from './routes/agents.openclaw'
@@ -241,6 +243,11 @@ const WorkspacesIndexRoute = WorkspacesIndexRouteImport.update({
   path: '/workspaces/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DepartmentsIndexRoute = DepartmentsIndexRouteImport.update({
+  id: '/departments/',
+  path: '/departments/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CodingIndexRoute = CodingIndexRouteImport.update({
   id: '/coding/',
   path: '/coding/',
@@ -254,6 +261,11 @@ const WorkspacesIdRoute = WorkspacesIdRouteImport.update({
 const MemoryVaultRoute = MemoryVaultRouteImport.update({
   id: '/memory_/vault',
   path: '/memory/vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DepartmentsDeptRoute = DepartmentsDeptRouteImport.update({
+  id: '/departments/$dept',
+  path: '/departments/$dept',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodingJobIdRoute = CodingJobIdRouteImport.update({
@@ -329,9 +341,11 @@ export interface FileRoutesByFullPath {
   '/agents/openclaw': typeof AgentsOpenclawRoute
   '/agents/workspace': typeof AgentsWorkspaceRouteWithChildren
   '/coding/$jobId': typeof CodingJobIdRoute
+  '/departments/$dept': typeof DepartmentsDeptRoute
   '/memory/vault': typeof MemoryVaultRoute
   '/workspaces/$id': typeof WorkspacesIdRoute
   '/coding/': typeof CodingIndexRoute
+  '/departments/': typeof DepartmentsIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
   '/agents/workspace/$botId': typeof AgentsWorkspaceBotIdRoute
 }
@@ -377,9 +391,11 @@ export interface FileRoutesByTo {
   '/agents/openclaw': typeof AgentsOpenclawRoute
   '/agents/workspace': typeof AgentsWorkspaceRouteWithChildren
   '/coding/$jobId': typeof CodingJobIdRoute
+  '/departments/$dept': typeof DepartmentsDeptRoute
   '/memory/vault': typeof MemoryVaultRoute
   '/workspaces/$id': typeof WorkspacesIdRoute
   '/coding': typeof CodingIndexRoute
+  '/departments': typeof DepartmentsIndexRoute
   '/workspaces': typeof WorkspacesIndexRoute
   '/agents/workspace/$botId': typeof AgentsWorkspaceBotIdRoute
 }
@@ -426,9 +442,11 @@ export interface FileRoutesById {
   '/agents/openclaw': typeof AgentsOpenclawRoute
   '/agents/workspace': typeof AgentsWorkspaceRouteWithChildren
   '/coding/$jobId': typeof CodingJobIdRoute
+  '/departments/$dept': typeof DepartmentsDeptRoute
   '/memory_/vault': typeof MemoryVaultRoute
   '/workspaces/$id': typeof WorkspacesIdRoute
   '/coding/': typeof CodingIndexRoute
+  '/departments/': typeof DepartmentsIndexRoute
   '/workspaces/': typeof WorkspacesIndexRoute
   '/agents/workspace/$botId': typeof AgentsWorkspaceBotIdRoute
 }
@@ -476,9 +494,11 @@ export interface FileRouteTypes {
     | '/agents/openclaw'
     | '/agents/workspace'
     | '/coding/$jobId'
+    | '/departments/$dept'
     | '/memory/vault'
     | '/workspaces/$id'
     | '/coding/'
+    | '/departments/'
     | '/workspaces/'
     | '/agents/workspace/$botId'
   fileRoutesByTo: FileRoutesByTo
@@ -524,9 +544,11 @@ export interface FileRouteTypes {
     | '/agents/openclaw'
     | '/agents/workspace'
     | '/coding/$jobId'
+    | '/departments/$dept'
     | '/memory/vault'
     | '/workspaces/$id'
     | '/coding'
+    | '/departments'
     | '/workspaces'
     | '/agents/workspace/$botId'
   id:
@@ -572,9 +594,11 @@ export interface FileRouteTypes {
     | '/agents/openclaw'
     | '/agents/workspace'
     | '/coding/$jobId'
+    | '/departments/$dept'
     | '/memory_/vault'
     | '/workspaces/$id'
     | '/coding/'
+    | '/departments/'
     | '/workspaces/'
     | '/agents/workspace/$botId'
   fileRoutesById: FileRoutesById
@@ -621,9 +645,11 @@ export interface RootRouteChildren {
   AgentsOpenclawRoute: typeof AgentsOpenclawRoute
   AgentsWorkspaceRoute: typeof AgentsWorkspaceRouteWithChildren
   CodingJobIdRoute: typeof CodingJobIdRoute
+  DepartmentsDeptRoute: typeof DepartmentsDeptRoute
   MemoryVaultRoute: typeof MemoryVaultRoute
   WorkspacesIdRoute: typeof WorkspacesIdRoute
   CodingIndexRoute: typeof CodingIndexRoute
+  DepartmentsIndexRoute: typeof DepartmentsIndexRoute
   WorkspacesIndexRoute: typeof WorkspacesIndexRoute
 }
 
@@ -888,6 +914,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/departments/': {
+      id: '/departments/'
+      path: '/departments'
+      fullPath: '/departments/'
+      preLoaderRoute: typeof DepartmentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/coding/': {
       id: '/coding/'
       path: '/coding'
@@ -907,6 +940,13 @@ declare module '@tanstack/react-router' {
       path: '/memory/vault'
       fullPath: '/memory/vault'
       preLoaderRoute: typeof MemoryVaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/departments/$dept': {
+      id: '/departments/$dept'
+      path: '/departments/$dept'
+      fullPath: '/departments/$dept'
+      preLoaderRoute: typeof DepartmentsDeptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coding/$jobId': {
@@ -1008,9 +1048,11 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsOpenclawRoute: AgentsOpenclawRoute,
   AgentsWorkspaceRoute: AgentsWorkspaceRouteWithChildren,
   CodingJobIdRoute: CodingJobIdRoute,
+  DepartmentsDeptRoute: DepartmentsDeptRoute,
   MemoryVaultRoute: MemoryVaultRoute,
   WorkspacesIdRoute: WorkspacesIdRoute,
   CodingIndexRoute: CodingIndexRoute,
+  DepartmentsIndexRoute: DepartmentsIndexRoute,
   WorkspacesIndexRoute: WorkspacesIndexRoute,
 }
 export const routeTree = rootRouteImport

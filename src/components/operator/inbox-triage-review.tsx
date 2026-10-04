@@ -1,9 +1,13 @@
 // /inbox-triage — today's inbox triage log and the Jev shadow review. Read-only: this page only
 // shows what scripts/inbox-triage logged (masked metadata and one-line summaries). Switching live
 // alerts on stays a deliberate command at the PC (bun scripts/inbox-triage/cli.ts alerts on).
+// R12 rollout: page anatomy — compact header with one primary action (Open inbox), one toolbar (search, the Needs you / Everything
+// else filter, the counts), one table, and a detail drawer per email held in the URL (?mail=<id>). Jev's shadow review stays folded.
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Inbox, ShieldCheck, Users } from "lucide-react";
-import { Badge, Details, EmptyState, Notice, PageHeader, Section, Skeleton, StatTile, Surface, type Tone } from "@/components/ds";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { Inbox } from "lucide-react";
+import { Button, DataTable, DetailDrawer, Details, EmptyState, Notice, PageHeader, Segmented, Skeleton, StatusLabel, Toolbar, type Column, type StatusState } from "@/components/ds";
 import { operatorRequest } from "@/lib/operator";
 import { fmtDateTime } from "@/lib/format";
 
@@ -38,37 +42,16 @@ type Overview = {
   rows: Row[];
 };
 
-const TONE: Record<Importance, Tone> = { urgent: "danger", today: "warn", fyi: "info", ignore: "neutral" };
+/** Importance in the shared status language. Urgent is amber ("needs you"), never red: red is only for a real failure. */
+const IMPORTANCE: Record<Importance, { state: StatusState; label: string }> = {
+  urgent: { state: "needs-you", label: "Urgent" },
+  today: { state: "pending", label: "Today" },
+  fyi: { state: "idle", label: "FYI" },
+  ignore: { state: "idle", label: "Ignore" },
+};
 const time = (iso: string) => fmtDateTime(new Date(iso), { weekday: true });
 const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : "—");
-
-function RowLine({ row }: { row: Row }) {
-  const differs = row.jevImportance && (row.jevImportance !== row.rulesImportance || row.jevCategory !== row.rulesCategory);
-  return (
-    <li className="flex flex-col gap-1 border-b border-border/60 py-3 last:border-0 sm:flex-row sm:items-start sm:gap-4">
-      <div className="flex w-40 shrink-0 items-center gap-2 text-xs text-muted-foreground tabular-nums">
-        {time(row.receivedAt)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={TONE[row.importance]}>{row.importance}</Badge>
-          <Badge tone={row.category === "client" ? "accent" : "neutral"}>{row.category}</Badge>
-          {row.wouldAlert && <Badge tone={row.alertStatus.includes("sent") ? "success" : "warn"} title={row.alertStatus}>{row.alertStatus.startsWith("telegram") ? "alerted" : row.alertStatus || "would alert"}</Badge>}
-          <span className="truncate text-sm font-medium">{row.senderName}</span>
-          <span className="truncate text-xs text-muted-foreground">{row.senderDomain}</span>
-        </div>
-        <p className="mt-1 truncate text-sm">{row.subject}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{row.reason}</p>
-        {differs && (
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Jev: {row.jevCategory}/{row.jevImportance}
-            {row.jev ? ` (${Math.round(row.jev.importanceConfidence * 100)}% sure, manipulation ${Math.round(row.jev.manipulation * 100)}%)` : ""}
-          </p>
-        )}
-      </div>
-    </li>
-  );
-}
+type Filter = "important" | "rest" | "all";
 
 export function InboxTriageReview() {
   const { data, error, isLoading } = useQuery<Overview>({
@@ -76,58 +59,148 @@ export function InboxTriageReview() {
     queryFn: () => operatorRequest<Overview>("/inbox/triage"),
     refetchInterval: 60_000,
   });
-  const important = data?.rows.filter((r) => r.importance === "urgent" || r.importance === "today" || r.category === "client") ?? [];
-  const rest = data?.rows.filter((r) => !important.includes(r)) ?? [];
+  const navigate = useNavigate();
+  const mail = (useSearch({ strict: false }) as { mail?: unknown }).mail;
+  const openId = typeof mail === "string" ? mail : null;
+  const open = (id: string | null) => void navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, mail: id ?? undefined }) } as never);
+  const [filter, setFilter] = useState<Filter>("important");
+  const [q, setQ] = useState("");
+  const important = useMemo(() => data?.rows.filter((r) => r.importance === "urgent" || r.importance === "today" || r.category === "client") ?? [], [data]);
+  const rest = useMemo(() => data?.rows.filter((r) => !important.includes(r)) ?? [], [data, important]);
+  const base = filter === "important" ? important : filter === "rest" ? rest : (data?.rows ?? []);
+  const needle = q.trim().toLowerCase();
+  const rows = needle ? base.filter((r) => `${r.senderName} ${r.senderDomain} ${r.subject} ${r.summary}`.toLowerCase().includes(needle)) : base;
+  const all = [...(data?.rows ?? []), ...(data?.shadow.disagreements ?? [])];
+  const sel = openId ? all.find((r) => r.messageId === openId) : undefined;
+
+  const columns: Column<Row>[] = [
+    {
+      key: "email",
+      header: "Email",
+      cell: (r) => (
+        <span className="block" data-triage-row={r.messageId}>
+          <span className="block font-medium text-foreground">{r.subject}</span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {r.senderName} · {r.senderDomain}
+          </span>
+        </span>
+      ),
+    },
+    { key: "importance", header: "Importance", width: "9rem", cell: (r) => <StatusLabel {...IMPORTANCE[r.importance]} size="sm" bare /> },
+    { key: "category", header: "Category", width: "8rem", hideBelow: "md", cell: (r) => <span className="capitalize">{r.category}</span> },
+    { key: "received", header: "Received", width: "11rem", hideBelow: "lg", align: "right", cell: (r) => <span className="text-muted-foreground">{time(r.receivedAt)}</span> },
+  ];
+
   return (
-    <div className="max-w-[1200px]">
+    <div className="min-w-0 [overflow-wrap:anywhere]">
       <PageHeader
         title="Inbox triage"
-        description="Every new email, logged and labelled. Nothing here replies to, sends, archives or deletes mail."
+        description="Every new email, logged and labelled. Nothing here replies, sends, archives or deletes."
         meta={data?.counts.lastLoggedAt ? `Last email logged ${time(data.counts.lastLoggedAt)}` : undefined}
+        spacing="tight"
+        primaryAction={
+          <Button variant="accent" asChild>
+            <Link to="/inbox">Open inbox</Link>
+          </Button>
+        }
       />
       {error && <Notice tone="danger" title="Couldn't read the triage log">{(error as Error).message}</Notice>}
       {isLoading && <Skeleton className="h-40 w-full" />}
       {data && (
-        <div className="flex flex-col gap-8">
+        <>
           {!data.alerts.enabled && (
-            <Notice tone="info" title="Alerts are armed but off">
-              Urgent mail is logged but not sent anywhere yet. Ask Jarvis to switch Telegram and spoken alerts on when you want them.
+            <Notice tone="info" className="mb-4" title="Alerts are armed but off">
+              Urgent mail is logged, not sent anywhere. Ask Jarvis to switch Telegram and spoken alerts on.
             </Notice>
           )}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <StatTile label="Last 24 h" value={data.digest.total} hint="emails logged" icon={Inbox} />
-            <StatTile label="Urgent" value={data.digest.urgent} tone={data.digest.urgent ? "danger" : "default"} hint={`${data.digest.today} more for today`} icon={AlertTriangle} />
-            <StatTile label="Clients" value={data.digest.clients} hint="from known clients" icon={Users} />
-          </div>
           {/* R11: with nothing logged at all, one empty state (not three headed boxes saying nothing). */}
-          {!important.length && !rest.length ? (
+          {!data.rows.length ? (
             <EmptyState icon={Inbox} title="No email logged in the last day" body="Client emails, security alerts and payment problems show up here once mail arrives." />
           ) : (
             <>
-              <Section title="Needs you" description="Urgent, for today, or from a client.">
-                <Surface padding="md">
-                  {important.length ? <ul>{important.map((r) => <RowLine key={r.messageId} row={r} />)}</ul> : <EmptyState icon={Inbox} title="Nothing important in the last day" variant="row" />}
-                </Surface>
-              </Section>
-              <Section title="Everything else" description="FYI and noise from the last day.">
-                <Surface padding="md">
-                  {rest.length ? <ul>{rest.map((r) => <RowLine key={r.messageId} row={r} />)}</ul> : <EmptyState icon={Inbox} title="Nothing else logged" variant="row" />}
-                </Surface>
-              </Section>
+              <Toolbar
+                label="Triage filters"
+                search={{ value: q, onChange: setQ, placeholder: "Search sender or subject" }}
+                filters={
+                  <Segmented
+                    ariaLabel="Show"
+                    value={filter}
+                    onChange={setFilter}
+                    options={[
+                      { value: "important", label: `Needs you · ${important.length}` },
+                      { value: "rest", label: `Everything else · ${rest.length}` },
+                      { value: "all", label: "All" },
+                    ]}
+                  />
+                }
+                summary={`${data.digest.total} in the last 24 h · ${data.digest.urgent} urgent · ${data.digest.clients} from clients`}
+              />
+              <DataTable
+                caption="Triaged email"
+                data-testid="triage-table"
+                columns={columns}
+                rows={rows}
+                rowKey={(r) => r.messageId}
+                onRowClick={(r) => open(r.messageId)}
+                rowLabel={(r) => `Open ${r.subject}`}
+                selectedKey={openId}
+                empty={<EmptyState variant="row" icon={Inbox} title={filter === "important" ? "Nothing important in the last day" : "Nothing matches"} />}
+              />
             </>
           )}
-          <Details summary="Jev's second opinion (shadow mode)" meta={`${data.jev.shadowDone}/${data.jev.shadowTarget} checked`}>
-            <p>
-              Agrees with the rules on importance {pct(data.shadow.agreeImportance, data.shadow.withJev)} and category {pct(data.shadow.agreeCategory, data.shadow.withJev)}. Where it differs ({data.shadow.jevHigher} higher, {data.shadow.jevLower} lower) the rules win while in {data.jev.mode} mode.
-            </p>
-            {data.shadow.disagreements.length > 0 ? (
-              <ul className="mt-2">{data.shadow.disagreements.slice(0, 25).map((r) => <RowLine key={r.messageId} row={r} />)}</ul>
-            ) : (
-              <p className="mt-2">No disagreements yet.</p>
-            )}
-          </Details>
-        </div>
+          <div className="mt-8">
+            <Details summary="Jev's second opinion (shadow mode)" meta={`${data.jev.shadowDone}/${data.jev.shadowTarget} checked`}>
+              <p>
+                Agrees with the rules on importance {pct(data.shadow.agreeImportance, data.shadow.withJev)} and category {pct(data.shadow.agreeCategory, data.shadow.withJev)}. Where it differs ({data.shadow.jevHigher} higher, {data.shadow.jevLower} lower) the rules win while in {data.jev.mode} mode.
+              </p>
+              {data.shadow.disagreements.length > 0 ? (
+                <ul className="mt-2 divide-y divide-border">
+                  {data.shadow.disagreements.slice(0, 25).map((r) => (
+                    <li key={r.messageId} className="py-2">
+                      <button type="button" className="ds-interactive rounded text-left text-sm hover:underline" onClick={() => open(r.messageId)}>
+                        {r.subject}
+                      </button>
+                      <span className="block text-xs text-muted-foreground">
+                        Rules {r.rulesCategory}/{r.rulesImportance} · Jev {r.jevCategory}/{r.jevImportance}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2">No disagreements yet.</p>
+              )}
+            </Details>
+          </div>
+        </>
       )}
+      <DetailDrawer
+        open={!!sel}
+        onOpenChange={(o) => !o && open(null)}
+        title={sel?.subject ?? ""}
+        status={sel ? <StatusLabel {...IMPORTANCE[sel.importance]} /> : undefined}
+        description={sel ? `${sel.senderName} · ${sel.senderDomain} · ${time(sel.receivedAt)}` : undefined}
+        actions={
+          <Button variant="accent" asChild>
+            <Link to="/inbox">Open inbox to reply</Link>
+          </Button>
+        }
+      >
+        {sel && (
+          <div className="space-y-4 text-sm" data-triage-drawer={sel.messageId}>
+            {sel.summary && <p className="leading-relaxed text-foreground">{sel.summary}</p>}
+            <p className="text-muted-foreground">{sel.reason}</p>
+            {sel.wouldAlert && <p className="text-muted-foreground">Alert: {sel.alertStatus || "would alert"} ({sel.alertBasis})</p>}
+            <Details
+              items={[
+                { label: "Category", value: sel.category },
+                { label: "Rules", value: `${sel.rulesCategory} / ${sel.rulesImportance}` },
+                { label: "Jev", value: sel.jevImportance ? `${sel.jevCategory} / ${sel.jevImportance}${sel.jev ? ` (${Math.round(sel.jev.importanceConfidence * 100)}% sure, manipulation ${Math.round(sel.jev.manipulation * 100)}%)` : ""}` : (sel.jevError ?? "Not checked") },
+                { label: "Message", value: sel.messageId, mono: true },
+              ]}
+            />
+          </div>
+        )}
+      </DetailDrawer>
     </div>
   );
 }

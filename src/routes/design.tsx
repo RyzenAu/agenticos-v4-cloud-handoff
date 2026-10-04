@@ -54,6 +54,7 @@ import {
   Pencil,
   Square,
 } from "lucide-react";
+import { Button, Notice, PageHeader, TabPanel, Tabs } from "@/components/ds";
 import { cn } from "@/lib/utils";
 import { chatHttpError } from "@/lib/chat-prompt";
 import claudeLogo from "@/assets/claude-logo.png";
@@ -989,74 +990,35 @@ function DesignStudio() {
   return (
     <div className="op-design relative -m-4 min-h-[calc(100vh-3.5rem)] overflow-hidden bg-background text-foreground md:-m-6">
       <div className="relative z-10 mx-auto max-w-[1800px] px-3 pb-10 pt-3 md:px-5 md:pt-4">
-        <div className="mb-6 flex flex-wrap items-end gap-6 border-b border-border pt-2">
-          <div className="min-w-0 flex-1 pb-4">
-            <div className="flex items-center gap-2.5">
-              <h1 className="ds-page-title text-2xl leading-tight text-foreground text-balance">
-                Design
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex items-end gap-3">
-            <div className="flex items-end gap-7" role="tablist" aria-label="Design workspace">
-              {[
-                { id: "create" as const, label: "Create" },
-                { id: "library" as const, label: "Library" },
-                { id: "insights" as const, label: "Insights" },
-                { id: "studio" as const, label: "Workspaces" },
-              ].map((t) => {
-                const is = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    role="tab"
-                    aria-pressed={is}
-                    aria-selected={is}
-                    className={cn(
-                      "ds-interactive group relative flex items-baseline gap-2 pb-6 text-left transition-colors",
-                      is ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    <span className="text-[13px] font-medium tracking-[-0.01em]">{t.label}</span>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "absolute inset-x-0 bottom-[-1px] h-[2px] origin-left bg-brand transition-transform duration-300",
-                        is ? "scale-x-100" : "scale-x-0 group-hover:scale-x-50",
-                      )}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mb-[18px] flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={openConnections}
-                aria-label="Open connections"
-                title="Connections"
-                className="ds-interactive grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-border-strong hover:bg-surface-raised hover:text-foreground"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={toggleFull}
-                aria-label={isFull ? "Exit fullscreen" : "Fullscreen this room"}
-                title={isFull ? "Exit fullscreen (Esc)" : "Fullscreen"}
-                className="ds-interactive grid h-8 w-8 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-border-strong hover:bg-surface-raised hover:text-foreground"
-              >
-                {isFull ? (
-                  <Minimize2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Maximize2 className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* R12 rollout: the shared page header and the shared tabs (they were a hand-made header with underline tabs). The Create tab's
+            own Generate button is the page's primary action, as Send is on Jarvis; Connections and Fullscreen are quiet icons. */}
+        <PageHeader
+          title="Design"
+          spacing="tight"
+          actions={
+            <>
+              <Button variant="ghost" size="icon" onClick={openConnections} aria-label="Open connections" title="Connections">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={toggleFull} aria-label={isFull ? "Exit fullscreen" : "Fullscreen this room"} title={isFull ? "Exit fullscreen (Esc)" : "Fullscreen"}>
+                {isFull ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </>
+          }
+        />
+        <Tabs
+          idBase="design"
+          label="Design workspace"
+          className="mb-6"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: "create" as const, label: "Create" },
+            { id: "library" as const, label: "Library" },
+            { id: "insights" as const, label: "Insights" },
+            { id: "studio" as const, label: "Workspaces" },
+          ]}
+        />
 
         {/* every room lives inside this zone, so fullscreen works for all of them */}
         <div
@@ -1074,18 +1036,18 @@ function DesignStudio() {
             </button>
           ) : null}
 
-          <div className={tab === "create" ? "block" : "hidden"}>
+          <TabPanel idBase="design" id="create" active={tab === "create"}>
             <CreateTab refs={refs} setRefs={setRefs} connectionsRequest={connectionsRequest} />
-          </div>
-          <div className={tab === "library" ? "block" : "hidden"}>
+          </TabPanel>
+          <TabPanel idBase="design" id="library" active={tab === "library"}>
             <LibraryTab onUseAsReference={useLibraryReference} />
-          </div>
-          <div className={tab === "insights" ? "block" : "hidden"}>
+          </TabPanel>
+          <TabPanel idBase="design" id="insights" active={tab === "insights"}>
             <InsightsTab onOpenConnections={openConnections} />
-          </div>
-          <div className={tab === "studio" ? "block" : "hidden"}>
+          </TabPanel>
+          <TabPanel idBase="design" id="studio" active={tab === "studio"}>
             <StudioTab active={tab === "studio"} />
-          </div>
+          </TabPanel>
         </div>
       </div>
     </div>
@@ -1412,18 +1374,18 @@ function CreateTab({
       )}
 
       {err && (
-        <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-100 mb-6">
+        <Notice tone="danger" className="mb-6">
           {err}
-        </div>
+        </Notice>
       )}
 
       {/* Only speaks up when it has something to say: armed is the normal
           state and doesn't need a badge sitting there forever. */}
       {data && !data.armed && (
-        <div className="mb-5 rounded-xl border border-warn/40 bg-warn-soft px-4 py-3 text-[13px] text-warn">
+        <Notice tone="warn" className="mb-5">
           Agent media capture is not set up yet, so media Claude Code and Hermes make isn't recorded here.
           Ask Jarvis to set this up.
-        </div>
+        </Notice>
       )}
 
       <HiggsfieldRequestNotice />

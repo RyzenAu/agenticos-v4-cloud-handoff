@@ -2,6 +2,8 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { isPrincipal } from "../approvals/principal";
+import { gatewayProvenance, isGatewayActor } from "../gateway/actor";
+import { gatewayCrmGuard } from "../gateway/crm-policy";
 import type { Principal } from "../identity/principal";
 import type { CrmStore } from "./store";
 import type { Attribution, Company, CrmSnapshot, Deal, DocumentPricing } from "./types";
@@ -320,7 +322,7 @@ export type CrmOperationsOptions = {
     company: { name: string; phone: string; address: string; emails: string[] };
     contact: { name: string; email: string; phone: string } | null;
     packageId: "receptionist-essential" | "receptionist-professional" | "receptionist-premium";
-    by: "usman" | "mehroz";
+    by: "usman" | "mehroz" | "dot";
     today: string;
   }) => {
     workbookId: string;
@@ -366,6 +368,9 @@ class OperationError extends Error {
   }
 }
 function attribution(principal: Principal): Attribution {
+  // The Dot gateway's collaborator (scripts/gateway): recorded as the agent "dot" with its gateway session, never as a founder.
+  // Every operation it runs passed gatewayCrmGuard first (register().run below): the capability, the allow-list and the input rules.
+  if (isGatewayActor(principal)) return gatewayProvenance(principal);
   if (!isPrincipal(principal))
     throw new OperationError("unauthorised", "A verified founder session is required.");
   return { personId: principal.personId };
@@ -409,7 +414,12 @@ export function createCrmOperations(options: CrmOperationsOptions) {
       input,
       run(raw, principal) {
         try {
-          attribution(principal);
+          if (isGatewayActor(principal)) {
+            const verdict = gatewayCrmGuard(name, raw, principal, {
+              wonStageIds: () => new Set(store.snapshot().pipelines.flatMap((p) => p.stages.filter((s) => s.category === "won").map((s) => s.id))),
+            });
+            if (!verdict.ok) throw new OperationError(verdict.code, verdict.text);
+          } else attribution(principal);
           const value = input.parse(raw);
           const result = execute(value, principal);
           if (result.ok) recordTimeline(name, value, result.data, principal);
@@ -514,7 +524,7 @@ export function createCrmOperations(options: CrmOperationsOptions) {
       ok: true,
       href: "/crm?view=templates",
       text: "Template version saved. Existing tasks and documents were preserved.",
-      data: workflows.updateTemplate(v, { personId: p.personId }),
+      data: workflows.updateTemplate(v, attribution(p)),
     }),
   );
   register(
@@ -522,7 +532,7 @@ export function createCrmOperations(options: CrmOperationsOptions) {
     "Create linked open tasks and draft documents from a reviewed template",
     workflowApplySchema,
     (v, p) => {
-      const result = workflows.applyTemplate(v, { personId: p.personId });
+      const result = workflows.applyTemplate(v, attribution(p));
       return receipt(
         result,
         v.ref,
@@ -1088,14 +1098,16 @@ export function createCrmOperations(options: CrmOperationsOptions) {
         contacts.find((c) => c.primary) ??
         null;
       const by = attribution(p);
-      if (!("personId" in by)) throw new OperationError("unauthorised", "A verified founder session is required.");
+      // A founder, or the Dot gateway's collaborator (its guard already required crm.write): the deal desk records which.
+      const deskBy = "personId" in by ? by.personId : isGatewayActor(p) ? ("dot" as const) : null;
+      if (!deskBy) throw new OperationError("unauthorised", "A verified founder session is required.");
       const result = options.deskQuote({
         dealId: deal.id,
         dealTitle: deal.title,
         company: { name: company.name, phone: company.phone, address: company.address, emails: company.emails },
         contact: contact ? { name: contact.name, email: contact.email, phone: contact.phone } : null,
         packageId: v.packageId,
-        by: by.personId,
+        by: deskBy,
         today: now().slice(0, 10),
       });
       store.addActivity(

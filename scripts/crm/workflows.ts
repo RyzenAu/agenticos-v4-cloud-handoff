@@ -352,7 +352,7 @@ export class CrmWorkflows {
             description: task.description,
             kind: task.kind,
             status: "open",
-            owner: request.owner ?? (context.owner || author.personId),
+            owner: request.owner ?? (context.owner || ("personId" in author ? author.personId : "")),
             dueAt: request.dueAt ?? null,
           },
           author,

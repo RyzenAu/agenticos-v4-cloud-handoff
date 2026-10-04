@@ -157,26 +157,26 @@ export function CrmWorkspace() {
         </Button>
       )}
       <PageHeader
+        spacing="tight"
         title={company ? companyLabel(company) : "CRM"}
         meta={
-          <>
-            <span>
-              {company
-                ? `${company.timezone} · Shared with both founders`
-                : fmtDateTime(snapshot.generatedAt, { timeZone: "Australia/Sydney" })}
-            </span>
-            {query.isFetching && <span>Refreshing…</span>}
-          </>
+          company || query.isFetching ? (
+            <>
+              {company && <span>{company.timezone}</span>}
+              {query.isFetching && <span role="status">Refreshing…</span>}
+            </>
+          ) : undefined
         }
         actions={
           <Button
             variant="ghost"
+            size="icon"
             onClick={() => void query.refetch()}
             disabled={query.isFetching}
             aria-label="Refresh CRM"
+            title={`Refresh (last loaded ${fmtDateTime(snapshot.generatedAt, { timeZone: "Australia/Sydney" })})`}
           >
             <RefreshCw className="size-4" />
-            Refresh
           </Button>
         }
         primaryAction={
@@ -185,7 +185,7 @@ export function CrmWorkspace() {
               <Plus className="size-4" />
               Add task
             </Button>
-          ) : (
+          ) : view === "contacts" && !selectedRef ? undefined : (
             <Button variant="accent" onClick={() => setEditor({ kind: "company" })}>
               <Plus className="size-4" />
               Add company
@@ -246,7 +246,7 @@ export function CrmWorkspace() {
           idBase="crm-view"
           label="CRM workspace"
           value={view}
-          className="mb-8"
+          className="mb-5"
           onChange={(next) => route({ view: next, ref: undefined, tab: undefined, q: undefined })}
           tabs={[
             { id: "today", label: "Today" },

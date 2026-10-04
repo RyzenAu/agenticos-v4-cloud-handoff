@@ -155,7 +155,7 @@ type AccountConnectionsProps = {
   calendarOnly?: boolean;
 };
 let openedConnectionQuery = "";
-function openAccountHub(group: "work" | "business") {
+export function openAccountHub(group: "work" | "business") {
   window.dispatchEvent(new CustomEvent("agentic:accounts", { detail: { group } }));
 }
 /** All entry points open the one account hub mounted by the application shell. */

@@ -15,7 +15,8 @@ import { JarvisPanelSlot } from "../jarvis-slot";
 import { activeDevice, deviceSlotInput, useDevices } from "@/lib/use-devices";
 import { ProgressPanel } from "../progress-panel";
 import { JarvisThread, readJarvisThread } from "./jarvis-thread";
-import { handoffStatus } from "@/lib/handoff-status";
+import { handoffJob, handoffStatus } from "@/lib/handoff-status";
+import type { JobFacts } from "./jarvis-work";
 import { useQuery } from "@tanstack/react-query";
 import { ChatComputerLayout } from "@/components/agents/workspace/layout/chat-computer-layout";
 import { ComputerTab } from "@/components/agents/computer/computer-tab";
@@ -34,12 +35,18 @@ function HandoffRow({ t }: { t: FeedTask }) {
   // A hand-off that started a job follows THAT job through the conversation: "Done" only when it finished; a stopped job says Stopped.
   const thread = useQuery({ queryKey: ["jarvis-thread"], queryFn: readJarvisThread, staleTime: 5_000 });
   const { phase, word } = handoffStatus(status, FEED_STATUS_LABEL[status], t.result, thread.data ?? []);
+  // R12 fix (production 4 Oct, job 92a914fa): the row said "0 steps" for a research job that ran 31: it counted this browser's own
+  // hand-off feed lines. The count now comes from the job the hand-off started (the jobs API), and is left out when that isn't known.
+  const facts = useQuery<Map<string, JobFacts>>({ queryKey: ["jarvis-job-facts"], enabled: false });
+  const prefix = handoffJob(t.result);
+  const job = prefix ? [...(facts.data?.values() ?? [])].find((j) => j.id.startsWith(prefix)) : undefined;
   return (
     <WidgetRow
       title={t.title}
       meta={
         <>
-          {t.agent} · {t.steps.length} step{t.steps.length === 1 ? "" : "s"}
+          {t.agent}
+          {job ? ` · ${job.stepCount} step${job.stepCount === 1 ? "" : "s"}` : ""}
           <TaskBar phase={phase} label={`${t.title}: ${word}`} className="mt-2" />
         </>
       }

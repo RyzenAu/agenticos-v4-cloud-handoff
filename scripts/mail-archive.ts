@@ -298,7 +298,8 @@ export function mailArchive(root: string, options: { cacheBudgetBytes?: number; 
       return stats();
     },
     stats,
-    search(query = "", limit = 50, offset = 0, provider = "") {
+    /** `account`: only this mailbox's messages (case-insensitive), filtered in SQL before the limit. Empty: every mailbox. */
+    search(query = "", limit = 50, offset = 0, provider = "", account = "") {
       const words = [...new Set(
         query.slice(0, 600).toLowerCase()
           .match(/[\p{L}\p{N}@._-]+/gu)
@@ -316,6 +317,10 @@ export function mailArchive(root: string, options: { cacheBudgetBytes?: number; 
       if (provider && ["gmail", "outlook"].includes(provider)) {
         filters.push("provider=?");
         args.push(provider);
+      }
+      if (account) {
+        filters.push("lower(account)=?");
+        args.push(account.toLowerCase());
       }
       const where = filters.length ? " WHERE " + filters.join(" AND ") : "";
       const from = " FROM messages" + (term ? " JOIN mail_search ON mail_search.rowid=messages.rowid" : "");

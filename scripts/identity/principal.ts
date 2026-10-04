@@ -44,7 +44,12 @@ import { dataDirFor } from "../cloud/data-dir";
  * "routine": the hub's own scheduler running a linked routine (scripts/triggers, scripts/agents). A server-side program for a person's work: never a
  * browser, never the owner at the PC, so it has no owner, desktop or page-token rights (loopback must not imply owner). No request resolves to it.
  */
-export type PrincipalVia = "loopback-owner" | "paired-session" | "tailnet-person" | "telegram-owner" | "companion" | "routine";
+/**
+ * "gateway": the external collaborator (Dot) arriving through the Dot gateway (scripts/gateway). Resolved ONLY from a signed
+ * per-request assertion the gate verified on a loopback socket (scripts/gateway/hub.ts); never a founder, never the loopback
+ * owner, never at the hub, always a process actor. What it may reach is the gateway's capability table, checked at the gate.
+ */
+export type PrincipalVia = "loopback-owner" | "paired-session" | "tailnet-person" | "telegram-owner" | "companion" | "routine" | "gateway";
 
 /**
  * human:   a person interacting now: a browser holding a live session cookie (HttpOnly,
@@ -73,6 +78,12 @@ export type Principal = {
   deviceId?: string;
   /** Personalisation only: the people.json name of the verified person. */
   displayName: string;
+  /** via "gateway" only: the capabilities the verified assertion carried (scripts/gateway/policy.ts). */
+  capabilities?: readonly string[];
+  /** via "gateway" only: the founder who granted the capability this request uses. */
+  delegatedBy?: string;
+  /** via "gateway" only: Dot's identity (public id) behind this request, from the verified assertion. */
+  gatewayIdentityId?: string;
 };
 
 export const SESSION_COOKIE = "mu_session";
@@ -241,6 +252,12 @@ export function displayNameFor(root: string, personId: PersonId): string {
   return cached.byId.get(personId) ?? personId.charAt(0).toUpperCase() + personId.slice(1);
 }
 
+/** Requests the gate verified as the Dot gateway's (a signed assertion on loopback). Set only by scripts/gateway/hub.ts. */
+const gatewayPrincipals = new WeakMap<object, Principal>();
+export function markGatewayPrincipal(req: object, principal: Principal) {
+  if (principal.via === "gateway") gatewayPrincipals.set(req, principal);
+}
+
 const unprovenLoopback = new WeakSet<object>();
 /** Server role only (the gate calls it): this loopback request carries no local-owner proof, so it is not the owner. */
 export function markLoopbackUnproven(req: object) {
@@ -272,6 +289,9 @@ export function identifyRequest(req: ReqLike, ctx?: Partial<IdentityContext>): R
   const local = isAtThisPc(req);
   const none: RequestIdentity = { loopbackSocket, local, tailnet: null, secure: false, session: null, sessionCookie: "none", principal: null };
   if (!loopbackSocket) return none;
+  // The Dot gateway's request: that principal and nothing else (never local, never a tailnet person, no hub session).
+  const viaGateway = gatewayPrincipals.get(req);
+  if (viaGateway) return { ...none, local: false, principal: viaGateway };
 
   const companion = companionPrincipal(req, c, local);
   if (companion === "refused") return none;
@@ -372,7 +392,8 @@ export function resolvePrincipal(req: ReqLike, ctx?: Partial<IdentityContext>): 
 
 /** A person using the OS UI or its APIs (not a companion program or a Telegram relay). */
 export function isBrowserPrincipal(p: Principal | null): p is Principal {
-  return !!p && (p.via === "loopback-owner" || p.via === "paired-session" || p.via === "tailnet-person");
+  // "gateway" uses the OS UI through the Dot gateway; the gate has already held it to its capability table.
+  return !!p && (p.via === "loopback-owner" || p.via === "paired-session" || p.via === "tailnet-person" || p.via === "gateway");
 }
 
 /**

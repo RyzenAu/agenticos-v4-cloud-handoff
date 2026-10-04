@@ -109,14 +109,14 @@ describe("Home page: the brief keeps its structure, Today's parts lead, the page
     expect(page).toContain("title={BUSINESS_VIEW_TITLE[view]}"); // Overview is Home; the other tabs name themselves (L1b)
     expect(page).toContain('view === "overview" ? todayModel.focus.headline');
   });
-  test("Overview order: Today's parts, then the brief, quick actions, the workspace overview, then sources", () => {
-    const order = ["<TodayFocus", "<MuBrief", "<QuickActions", "<WorkspaceOverview", "<TodaySources"].map((s) => page.indexOf(s));
+  test("Overview order (R12): attention/active/results, the signals, then the brief, quick actions, the workspace overview, then sources", () => {
+    const order = ["<HomeOverview", "<HomeSignals", "<MuBrief", "<QuickActions", "<WorkspaceOverview", "<TodaySources"].map((s) => page.indexOf(s));
     expect(order.every((i) => i > 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // the brief's other tabs are untouched
     for (const tab of ['view === "finance"', 'view === "progress"', 'view === "audience"']) expect(page).toContain(tab);
     // Today's parts show on Overview only
-    expect(page).toContain('{view === "overview" && <TodayFocus m={todayModel} />}');
+    expect(page).toContain('{view === "overview" && <HomeOverview m={todayModel} />}');
   });
   test("full width: the old 1260px column is gone", () => {
     const css = read("src/routes/business.css");
