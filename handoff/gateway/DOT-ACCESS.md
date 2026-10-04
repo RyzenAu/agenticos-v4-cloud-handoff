@@ -115,6 +115,23 @@ Revocation is checked on **every request** at the gateway (it re-reads the found
 Open live streams close within about a second. Jobs Dot already started keep running; stop them from Activity. Proven:
 `identity.test.ts`, `access.e2e.test.ts` ("revocation: immediate, everywhere"), and steps 51-54 of the staging proof.
 
+### 5a. The renewal cycle (Dot is an ongoing worker)
+
+Dot's access is built to run for a month at a time without going read-only:
+
+1. At enrolment the owner grants the working set for as long as the identity: `bun scripts/gateway/cli.ts grant operate --by
+   usman --until-identity` (an identity lasts 30 days by default; grants are capped at 30 days, the existing grant maximum).
+2. `/gw/me` and `/__gateway/capabilities` carry `expiry`: the identity's end, each grant's end, and `renewSoon: true` once either
+   ends within 7 days. Dot checks it at the start of each task and, when `renewSoon` is true, asks the owner to renew.
+3. The owner renews in one step, the identity and every grant in force together, for 30 more days:
+   `bun scripts/gateway/cli.ts renew --by usman` (or `--days N`), or the **Renew 30 days** button on the "Gateway access (Dot)"
+   card in System › Devices and people (a confirmed browser only: not a bare Tailscale sign-in, never the gateway).
+4. A revoked identity is never renewed: Dot is enrolled again with a new code.
+
+Why grants stay capped at 30 days while an identity may last up to 90: grants are global (they apply to whichever of Dot's
+identities is signed in, including one enrolled later), so a grant must not outlive the monthly renewal that re-confirms it.
+`renew` re-grants exactly what is in force, so one monthly step keeps everything aligned.
+
 ## 6. What the gateway enforces on every request
 
 - **Deny by default.** A route that is not in `scripts/gateway/policy.ts` does not exist for Dot. Each rule names one
@@ -141,27 +158,34 @@ Open live streams close within about a second. Jobs Dot already started keep run
 |---|---|---|
 | `view` | every session: read-only pages, coding job reads, `/__health`, `/__version`, `/__events` (coding job events), the capability matrix | always |
 | `crm.read` | CRM read operations (snapshot, record, queries, search, follow-ups, drafts list) | yes |
-| `crm.write` | CRM write operations: companies, contacts, deals, tasks, activities, projects, documents (as drafts) | yes |
+| `crm.write` | CRM write operations: companies, contacts, deals, tasks, activities, projects, documents; proposal, invoice and quote DRAFTS | yes |
+| `finance.read` | business finance: the ledger's business rows and summary, receivables, invoice-match suggestions, the Stripe snapshot | yes |
+| `finance.write` | categorise a business ledger row (category, kind) and link a refund to its business charge | yes |
+| `mail.read` | list and read threads in mailboxes a founder authorised for the gateway | yes |
+| `mail.draft` | save a reply draft (the CRM's `draft-reply` record) for a message in an authorised mailbox | yes |
 | `files.read` / `files.write` | the approved file roots (section 8.2) | yes |
 | `tasks.run` | Jarvis tasks through the Jev-led command path; Dot's own jobs (read, Stop) | yes |
 | `memory.read` / `memory.write` | recall; remember (as Dot) | yes |
 | `coding.start` | draft a coding job, start Dot's own draft, resume, rerun tests, stop Dot's own job | yes |
 | `bots.operate` | shared bot computers: list, start a job, screenshots, take/renew/return the control lease, input | yes |
-| `bots.terminal` | a terminal on a shared bot computer while holding its lease | **no: granted on its own** (R9-OPS: bots on one host are not isolated from each other) |
-| `ops.read` | diagnostics: the whole job log (`/__jobs`), release receipts, the hub's action log | yes |
+| `bots.terminal` | a terminal on a shared bot computer while holding its lease | **no: granted on its own** (section 8.6) |
+| `ops.read` | diagnostics: the redacted job log, release receipts, the hub's action log | yes |
+| `release.request` | ask for a production release (section 9); the owner approves every one | yes |
 
 Grants always expire (8 h by default, 30 days at most):
 
 ```
 bun scripts/gateway/cli.ts grant operate --by usman --hours 8
 bun scripts/gateway/cli.ts grant bots.terminal --by usman --hours 2
+bun scripts/gateway/cli.ts authorise-mailbox <address> --by usman      (mail.read / mail.draft use only these; none by default)
+bun scripts/gateway/cli.ts revoke-mailbox <address>  |  mailboxes
 bun scripts/gateway/cli.ts capabilities            what each one opens
 bun scripts/gateway/cli.ts status                  what is in force now
 ```
 
 ## 8. The operating API (all under `/__gateway`, JSON)
 
-### 8.1 Business records (`crm.read`, `crm.write`)
+### 8.1 Business records and drafting (`crm.read`, `crm.write`)
 
 `POST /__gateway/crm/read { "name": "crm.record.get", "input": { "ref": { "kind": "company", "id": "..." } } }` and
 `POST /__gateway/crm/ops { "name": "crm.company.update", "input": { "id", "expectedVersion", "patch": {...} } }`.
@@ -170,10 +194,36 @@ conflicts, idempotent activities) and the CRM's own receipt. Answers: 200 ok, 42
 conflict, 403 refused, 404 unknown. The CRM itself refuses a gateway principal that lacks the capability or asks for a
 founder-only operation, on every path (`gatewayCrmGuard`, called inside `operations.run`), not only on this route.
 
-Never through the gateway (the owner's, always): proposal, invoice and quote drafts, CSV import and export, a document set to
-`issued` or `accepted`, an activity that says a message was `queued`, `sent` or `received`, provider evidence, another
-person's or agent's attribution, `emailAllowed` / `doNotContact` / `excluded`, moving a deal to a won stage (it starts
-onboarding), pipelines, workflows, automations, saved views, duplicate merges. Outreach stays unsent.
+**Drafting is Dot's** under `crm.write`, and each operation only ever makes a draft (checked in `scripts/crm/ops.ts`):
+`crm.proposal.draft` saves a proposal document in status `draft` from the deal's agreed price ("No invoice or payment request
+was created"); `crm.invoice.draft` saves an invoice-draft document marked NOT A VALID TAX INVOICE ("It was not issued or sent,
+and no payment was requested"); `crm.quote.package` saves a receptionist quote workbook in the deal desk ("It was not sent"),
+recorded as drafted by `dot`. The receptionist launch hold still refuses an invoice draft for a receptionist deal, and a pending
+price still refuses one. Nothing is issued, sent or charged by any of them.
+
+**Business workflows are Dot's** (owner instruction, 4 Oct), each read in the code and none of them sends, charges or issues:
+pipelines (`crm.pipeline.create`, `.update`); workflow templates (`crm.workflow.update`, `.apply`: apply creates internal tasks
+and documents marked "DRAFT — FOR FOUNDER REVIEW"); automations (`crm.automations.list`, `.configure`: every rule does internal
+CRM work only, records, tasks and a project, and the reply rule says "Nothing is sent from here"); saved views; duplicates
+(`crm.duplicates.list`, `.merge`: "source records and history retained"); CSV (`crm.csv.preview`, `.commit`, `.export`: an
+import can only TIGHTEN an existing opt-out, never clear it). **Winning a deal** is Dot's too: the `deal.won` automation opens the
+delivery project and one onboarding task, once, recorded as Dot's ("Won business is not a payment receipt ... Payment remains
+unconfirmed"); nothing is invoiced, charged or sent. **Contact permissions**: Dot may TIGHTEN them (`doNotContact: true`,
+`emailAllowed: false`, `excluded: true` with a reason).
+
+What remains refused, each for ONE reason tied to a send, a payment or an approval bypass (the refusal quotes it):
+
+| Refused | The reason |
+|---|---|
+| a document set to `issued` or `accepted` | Issuing a document to the client is a send, and sends need the founder's approval. |
+| an activity saying `queued`, `sent` or `received` | It records outbound contact without the provider's evidence or the founder's approval of the send. |
+| provider evidence on an activity | It is what proves a real send; it comes from the mail or message provider, never from a caller. |
+| another person's or agent's attribution | Dot's record would pass as theirs, including a founder's approval trail. |
+| LOOSENING contact (email on, do-not-contact off, not excluded) | It authorises future outbound messages, which consent and the Spam Act 2003 require a founder to decide. |
+
+Why loosening stays with a founder even though every send still needs approval: the approval is given per message, by a person
+looking at that message; the consent flag is what tells everyone (and every future automation) that the recipient agreed to
+be contacted at all. Turning it on is a legal statement about consent, not a business workflow, so it stays a founder's.
 
 ### 8.2 Files (`files.read`, `files.write`)
 
@@ -207,8 +257,10 @@ leads, memory-by-voice and skills are not lanes for Dot; use the dedicated route
 
 `POST /memory/recall { query, limit? }` returns business, research and general facts only (personal, deen and finance facts
 are withheld and counted). `POST /memory/remember { text, title? }` saves through the memory API with Dot as the actor
-(`channel: agent`, a note naming the gateway). It honours `MU_MEMORY_WRITES`: while memory writes are off the answer is
-`409 writes-disabled` and nothing is saved. No vault, forget or bucket control.
+(`channel: agent`, a note naming the gateway). It honours `MU_MEMORY_WRITES`, which is **on in production** (checked through
+the app on 4 Oct), so on production both work once granted; on a hub where memory is off the answer is `409 writes-disabled`
+and nothing is saved. Staging proves it with `dot-gateway-staging.ps1 -Action start -Operate -Memory` (local memory on,
+confined to the synthetic folder, Hindsight off). No vault, forget or bucket control.
 
 ### 8.5 Coding jobs (`coding.start`)
 
@@ -222,18 +274,69 @@ approved by the owner (the coding page), unchanged. A repository is usable by Do
 
 ### 8.6 Shared bot computers (`bots.operate`, `bots.terminal`)
 
-`GET /bots`, `GET /bots/<name>`, `GET /bots/<name>/screenshot` (watch: a still image; the live VNC viewer is not available
-through the gateway), `POST /bots/<name>/jobs { steps, title? }` (the computers service validates steps; send, pay, delete and
-publish are refused), `POST /bots/<name>/takeover`, `/lease/renew`, `/return`, `POST /bots/<name>/input { executor, args }`
-(the founders' input list: `input.click|type|key`, `browser.navigate`, `observe.page`, `file.write|read`, `computer.info`).
-Terminal (`bots.terminal`, while holding the lease): `POST /bots/<name>/terminal`, `GET .../terminal/<id>/events?after=&wait=`,
-`POST .../terminal/<id>/input { data }`, `POST .../terminal/<id>/close`; it closes when the lease goes.
+`GET /bots`, `GET /bots/<name>`, `GET /bots/<name>/screenshot` (watch: a still image), `POST /bots/<name>/jobs { steps,
+title? }` (the computers service validates steps; send, pay, delete and publish are refused), `POST /bots/<name>/takeover`,
+`/lease/renew`, `/return`, `POST /bots/<name>/input { executor, args }` (the founders' input list: `input.click|type|key`,
+`browser.navigate`, `observe.page`, `file.write|read`, `computer.info`). Terminal (`bots.terminal`, while holding the
+lease): `POST /bots/<name>/terminal`, `GET .../terminal/<id>/events?after=&wait=`, `POST .../terminal/<id>/input { data }`,
+`POST .../terminal/<id>/close`; it closes when the lease goes.
+
+**Why `bots.terminal` is outside `grant operate`.** R9-OPS (`docs/programme-20261001/R9-OPS.md`) set the condition: "shared
+WSL services are not isolated between bot computers on one host, so this setup must not be extended to unrelated users or to
+Dot until each bot runs with its own loopback isolation or VM." **It is not met today**: the bot computers share one WSL host,
+so a shell on one can reach services the others expose on that host's loopback. What would satisfy it: each bot computer in
+its own VM (e.g. a Hyper-V or cloud VM per bot), or its own network namespace with its own loopback (WSL instances that do
+not share networking, or containers with an isolated network), so a shell on one bot reaches nothing of another's. Until
+then, granting `bots.terminal` is the owner's knowing exception.
 
 Only shared cloud computers exist here. A founder's personal desktop or companion and the hub's own desktop are refused by
 the permission table (`mayControl("dot", …)`), by the device resolver (Dot owns no device; only an exact shared computer
 resolves) and by the dispatcher's lease guard.
 
-### 8.7 Diagnostics and operations (`view`, `ops.read`)
+### 8.7 Business finance (`finance.read`, `finance.write`)
+
+`GET /finance/summary?period=` (business income and spend by category; periods as the Finance page: `this-month`,
+`last-month`, `last-30-days`, `last-90-days`, `all`, `YYYY-MM`, `YYYY-MM-DD..YYYY-MM-DD`), `GET /finance/transactions?period=&limit=`,
+`GET /finance/receivables` (the client receivables, open invoices and amount-and-reference match SUGGESTIONS against business
+credits), `GET /finance/stripe` (the hub's last synced Stripe snapshot: revenue, paid and outstanding invoices, overdue list,
+next payout, MRR; the gateway never calls Stripe). `POST /finance/categorise { txId, category?, kind?, refundOf? }` corrects
+ONE business row, recorded in the ledger's correction history as `dot` (`null` undoes it); `refundOf` links a refund to the
+business charge it refunds.
+
+"Business" is the ledger's own scope field (`scripts/finance/manual-store.ts`: `business | personal | unreviewed`). The one
+ledger also holds rows a founder marked **personal** and rows not yet reviewed: those are **excluded** from every answer and
+cannot be changed, and a row's scope is never Dot's to set. No account alias, salted key or raw bank text is returned.
+
+Not available, each for a reason: **notes** on a row (the ledger has no notes field); **adding a manual business record** (the
+ledger has no single-record add: rows come only from bank CSV statements, which also hold personal rows, so imports stay the
+founders'); **recording an invoice-to-payment match** (the only store for it is the legacy NAB sync, locked out on this hub; Dot
+gets the suggestions); **vendor rules** (they re-categorise every row of a vendor, personal ones included); clearing or
+migrating the ledger. Never: moving money, refunds, charges, issuing an invoice, Stripe writes (the hub has none) and bank or
+account connections.
+
+### 8.8 Founder-authorised mailboxes (`mail.read`, `mail.draft`)
+
+Nothing is authorised by default. A founder authorises one mailbox at a time at the hub's console:
+`bun scripts/gateway/cli.ts authorise-mailbox <address> --by usman` (`revoke-mailbox <address>` takes it back from the next
+request; `mailboxes` lists them). The hub keeps ONE mail archive for every connected mailbox with no per-founder split, so this
+allow-list is the boundary, checked on every message returned.
+
+`GET /mail/mailboxes`, `GET /mail/threads?mailbox=&q=&limit=` (threads, newest first), `GET /mail/thread?mailbox=&threadId=`
+(every message of the thread: people, time, body). Read from the hub's LOCAL archive only: no provider call is made on Dot's
+behalf, so a body the hub has not cached yet comes back as metadata. Never returned: Bcc, provider links, message-ids, raw
+provider data, connection files, tokens. Credentials never leave the hub.
+
+`POST /mail/drafts { mailbox, messageId, ref: { kind: "company" | "deal" | "contact" | "project", id }, body, title? }` saves
+the reply the way the OS already keeps reply drafts: a CRM activity of kind `draft-reply`, `communicationState: "drafted"`,
+attributed to Dot, listed by `crm.drafts.list` for the founders. `mail.draft` is enough for that one record (no `crm.write`).
+Nothing is sent.
+
+**The one unsupported piece: a Gmail-side draft.** The hub does have Gmail draft creation (Gmail API `drafts.create`), but only
+inside the founders' Gmail action (`POST /__operator/connections/gmail/action`), which is one code path for draft AND send
+and works only on the single connected Google account. It is not reachable through the gateway because that same code path SENDS, and sends need the founder's approval; a founder turns
+Dot's CRM draft into a Gmail draft or sends it. Sending stays a founder action with its existing approval.
+
+### 8.9 Diagnostics and operations (`view`, `ops.read`)
 
 `GET /__health` and `/__version` (`view`); `GET /__gateway/diagnostics` (sanitised health, version, gateway state),
 `/diagnostics/releases` (release receipts: time, old and new commit, rollback tag; never the backup or config paths; needs
@@ -241,62 +344,100 @@ resolves) and by the dispatcher's lease guard.
 (the job log: Dot's own jobs in full; founders' jobs as id, kind, state, timing and step count only, never their words or
 Jarvis's replies) (`ops.read`). The raw `/__jobs` log and its stream are never forwarded. `GET /__gateway/capabilities` (`view`) is the live matrix for THIS hub.
 
-## 9. The release workflow (Dot prepares; the release owner releases)
+## 9. The release workflow (`release.request`): Dot asks, the owner approves, the hub releases
 
-Production releases stay a **single, coordinated step by the release owner at the hub's console**. The gateway has no
-release, deploy, restart or shell-on-the-hub route, by design; none will be added.
+Dot can be the release owner from its cloud environment, without a console and without any code running on the hub on its
+say-so. The owner approves every release; the hub's existing release script does the work.
 
-1. In Dot's own cloud environment: clone the repository, branch from the release baseline (`r11/next-...` or the tag the lead
-   names), make the change, run the focused tests and both typechecks (`bun run typecheck`, `bun run typecheck:scripts`) and
-   `bun run build`.
-2. Push the branch and open a pull request (the PR, not a merge). Include what changed, the tests run and their results.
-3. Optionally build a reviewed source bundle: `bun scripts/cloud/release-package.ts build --sha <commit>` (three files:
-   tarball, manifest with hashes and a secret scan, SHA256SUMS), and attach the manifest to the PR.
-4. Read production through the gateway to support the release: `/__version`, `/__health`, `/__gateway/diagnostics`,
-   `/__gateway/diagnostics/releases`, `/__jobs` (with `ops.read`).
-5. Hand over to the release owner. They review, merge, and run `deploy/windows/release-ryzen.ps1` on the hub's console
-   (backup, fast-forward, health check, automatic rollback, receipt). Dot confirms the new receipt and version afterwards.
+1. **Prepare** in Dot's own environment: branch from the live baseline, make the change, run the focused tests, both
+   typechecks and `bun run build`; open a pull request. Dot may read the handoff branch and open PRs through its **GitHub
+   connector** (repository `RyzenAu/agenticos-v4-cloud-handoff`), so native git transport to the hub is not required.
+2. **Bundle** only the new commits against the live head (read it from `/__version`):
+   `git bundle create release.bundle <live head>..<branch>` (at most 700 KB; the gateway's request limit is 1 MiB).
+3. **Ask**: `POST /__gateway/release { "sha": "<40-char commit>", "bundle": "<base64 of release.bundle>" }` (or just the
+   `sha` of a commit the hub already has). At most 4 requests per identity per hour (refused ones count), which also bounds
+   the codes sent to the owner. **Before any approval nothing is written to the live checkout**: the bundle goes into a
+   throwaway bare repository in a temp folder outside the checkout and the hub's data folder, which borrows the live objects
+   read-only, and is checked there: it verifies and holds the commit; the commit **fast-forwards** from the live head; it
+   touches none of the owner's local files (`git status --porcelain=v1 -z`, renames and quoted paths included); no other
+   release is in flight. Every git call is asynchronous with a short timeout, so the hub keeps answering. The temp folder is
+   deleted on any refusal. Then the hub files an approval (action `deploy`) with the existing approvals service and sends the
+   owner a one-time code in his Telegram DM, with the commit count, the commit subjects and a diffstat. Answer: `202 { release:
+   { id, state: "awaiting-approval" } }`.
+4. **The owner approves** by replying `approve XXXX-XXXX` in his own DM (or `deny ...`), or with a spoken yes. A click in the
+   UI cannot approve it: the request comes from a program, so the approvals service accepts only evidence a program cannot mint.
+5. **The hub releases**: only after the approval, and only if it still holds for the LIVE head (a moved head voids it), the
+   hub consumes the approval, THEN fetches the approved bundle into `refs/gateway-release/<id>/candidate` in the live checkout,
+   re-checks it there, deletes the temp folder and launches `deploy/windows/release-ryzen.ps1 -Target <sha> -TagName rollback/pre-dot-<stamp>
+   -CandidateRef refs/gateway-release/<id>/candidate -Branch <live branch>` DETACHED, through WMI, so it outlives the hub restart
+   the release itself performs. The script keeps its verified backup, overlay hash check, health check, 75 s settle and
+   automatic rollback, and writes its receipt.
+6. **Read the outcome**: `GET /__gateway/release` and `GET /__gateway/release/<id>` (state, receipt when it succeeded, the run
+   log with paths removed), `/__gateway/diagnostics/releases`. States: `awaiting-approval`, `running`, `succeeded`, `failed`
+   (ended without a receipt: the script refused or rolled back; or `failed (stale)`: the approval was used but no runner started
+   within 5 minutes, or no receipt arrived within 3 hours, and it no longer blocks a new request), `refused` (stale approval,
+   head moved, another release ran), `rejected`, `expired`, `cancelled`. `POST /__gateway/release/<id>/cancel` withdraws a request still waiting.
+
+Refused cases (proven with a fake runner, `release.test.ts`; no real release was run): no approval, an approval turned down,
+a stale approval (the live head moved), a non-fast-forward, a change to an owner-local file, a second release in flight, a
+bundle that does not hold the commit, a bad commit id, junk or oversized bundles, the workflow switched off. Off unless the
+owner sets `MU_GATEWAY_RELEASES=1` and `MU_RELEASE_RECEIPTS_DIR` on the hub (section 13, step 2). The script that runs is the
+copy in the live checkout's `deploy/windows/release-ryzen.ps1` (copied into the run folder at launch); its new
+`-CandidateRef` option skips the origin fetch and keeps every other check.
 
 ## 10. Capability matrix (feature × state)
 
-States: **working** (built, tested, and works once granted) · **missing authorisation** (works, needs the owner's grant) ·
-**unsupported** (not available through the gateway, or not on this hub) · **owner action** (needs the owner to set something
-up or to do it themselves). "Staging" is the synthetic hub of the proof; "production" is what the switch-over gives.
+States: **working** (built, tested, and works once granted) · **missing authorisation** (works, needs the owner's grant or a
+one-line setting) · **owner action** (the owner does it, or decides it) · **unsupported** (genuinely absent from the hub, or
+deliberately the founders'; the reason is given). "Staging" is the synthetic hub of the proof.
 
 | Feature / integration | State | Detail |
 |---|---|---|
-| Sign in, reconnect, renew, logout | working | browser cookie or bearer; proven on staging (steps 4-9, 49-50) |
-| Identity listed and revocable (console, Devices and people) | working | immediate at gateway and hub (steps 51-54) |
+| Sign in, reconnect, renew, logout | working | browser cookie or bearer; staging steps 4-9, 49-50 |
+| Identity listed and revocable (console, Devices and people) | working | immediate at gateway and hub; staging steps 51-54 |
 | OS pages (read-only UI) | working | the built bundle; pages whose data is outside `view` show empty or error states |
-| CRM read | missing authorisation | `crm.read`; staging: read back a synthetic record (step 15) |
-| CRM write (companies, contacts, deals, tasks, activities, projects, documents) | missing authorisation | `crm.write`; staging: create, update, revert (steps 14-18) |
-| Sending email/messages, quotes and invoices to clients, outreach | owner action | the owner's approval, unchanged; refused through the gateway (steps 19-20) |
-| Contact permissions, won deals, pipelines, automations, CSV | owner action | founder-only operations |
-| Files: drafts root | missing authorisation | `files.read` / `files.write`; staging: write, change, guarded by hash (steps 21-25) |
-| Files: designs root | missing authorisation | needs `MU_DESIGN_PROJECTS_DIR` on the hub (set on Ryzen; set on staging) |
+| CRM read | missing authorisation | `crm.read`; staging step 15 |
+| CRM write (companies, contacts, deals, tasks, activities, projects, documents) | missing authorisation | `crm.write`; staging steps 14-18 |
+| Proposal, invoice and quote drafts | missing authorisation | `crm.write`; drafts only (`operate-business.test.ts`) |
+| Pipelines, workflows, automations, saved views, duplicate merges, CSV import and export | missing authorisation | `crm.write` (lists under `crm.read`); internal records only, none sends (section 8.1) |
+| Winning a deal | missing authorisation | `crm.write`; opens the delivery project and onboarding task; nothing invoiced, charged or sent |
+| Tightening contact permissions | missing authorisation | `crm.write` (do not contact, email off, excluded) |
+| Loosening contact permissions | owner action | it authorises future outbound messages (consent, Spam Act 2003) |
+| Issuing a document, quote or invoice to a client; recording a message as sent | owner action | issuing and sending are sends, and sends need the founder's approval |
+| Business finance: summary, rows, receivables, match suggestions, Stripe snapshot | missing authorisation | `finance.read`; business rows only |
+| Business finance: categorise a row, link a refund | missing authorisation | `finance.write`; business rows only, never scope |
+| Finance: notes on a row; adding a manual record; recording a match | unsupported | absent from the ledger (no notes field, no single-record add, matches only in the locked legacy NAB store) |
+| Finance: statement imports, vendor rules, clearing | unsupported | founders' (statements and vendor rules reach personal rows) |
+| Personal finance rows, money moves, refunds, charges, Stripe writes, bank connections | unsupported | never (personal is the founders'; the hub has no money-moving code for the gateway) |
+| Mail: list and read threads | owner action | `mail.read` plus a founder authorising the mailbox (`authorise-mailbox`); none by default |
+| Mail: reply drafts | owner action | `mail.draft` plus an authorised mailbox; saved as CRM `draft-reply` records |
+| Mail: Gmail-side draft | unsupported | exists only in the founders' Gmail action, which shares its code path with Send |
+| Mail: sending | owner action | a founder sends, with the existing approval |
+| Files: drafts root | missing authorisation | `files.read` / `files.write`; staging steps 21-25 |
+| Files: designs root | missing authorisation | needs `MU_DESIGN_PROJECTS_DIR` (set on Ryzen) |
 | Files: project roots | owner action | the owner lists them in `MU_GATEWAY_FILE_ROOTS` |
-| Jarvis tasks through Jev | missing authorisation | `tasks.run`; staging: a page task as a job owned by `dot`, result read back (steps 26-27) |
-| Tasks on a founder's PC, companion or the hub desktop | unsupported | by design; refused (step 28) |
+| Jarvis tasks through Jev | missing authorisation | `tasks.run`; staging steps 26-27 |
 | Read and Stop own jobs | missing authorisation | `tasks.run` |
-| Whole job log, receipts | missing authorisation | `ops.read` (step 39) |
-| Memory recall | missing authorisation | `memory.read`; business, research, general only; staging: memory off, says so (step 32) |
-| Memory remember | owner action | `memory.write` plus the owner's `MU_MEMORY_WRITES=on`; refused while off (step 33) |
-| Raw vault, forget, buckets | unsupported | by design |
-| Coding: draft, start own draft, resume, rerun tests, stop own | owner action | `coding.start` plus the owner listing `dot` in a repository's `allowedPeople`; proven with fake CLIs (`operate-coding.test.ts`); staging has no repositories (step 34) |
+| Tasks on a founder's PC, companion or the hub desktop | unsupported | deliberately the founders' (Dot owns no device); staging step 28 |
+| Memory recall and save (production) | missing authorisation | `memory.read` / `memory.write`; memory writes are on in production; business, research, general recall only |
+| Memory on staging | missing authorisation | `-Memory` on the staging start (synthetic, Hindsight off) |
+| Raw vault, forget, buckets | unsupported | deliberately the founders' (personal and deen facts live there) |
+| Coding: draft, start own draft, resume, rerun tests, stop own | owner action | `coding.start` plus the owner listing `dot` in a repository's `allowedPeople`; proven with fake CLIs |
 | Coding: read jobs, diffs, tests, reviews | working | `view` |
-| Coding: merge or push to a protected branch | owner action | no gateway route; the owner asks and approves |
-| Coding accounts (sign-in check, plans, usage) | unsupported | never open; tokens stay on the hub |
-| Shared bots: list, job, screenshot, lease, input | missing authorisation | `bots.operate`; proven on the in-process bot host (`operate.test.ts`); staging has no bots (step 30) |
-| Shared bots: live VNC viewer | unsupported | no WebSocket through the gateway (screenshots instead) |
-| Shared bots: terminal | owner action | `bots.terminal`, granted separately; R9-OPS isolation condition is the owner's call |
-| Provisioning, starting, stopping or setting up a bot | owner action | founders' routes only |
-| Founder's personal desktop or companion, hub desktop | unsupported | never |
-| Health, version | working | `view` (steps 35-36) |
-| Diagnostics, release receipts, action log | missing authorisation | `ops.read`; receipts need `MU_RELEASE_RECEIPTS_DIR` (steps 37-40) |
-| Releasing to production | owner action | the release owner at the console (section 9) |
-| Approvals, decisions, job release | unsupported | never Dot's |
-| Mail, calendars, transcripts, vault notes, finance, receptionist data | unsupported | not in any capability (owner decision, unchanged) |
-| Receptionist launch, money moves, trades | unsupported | holds and money rules unchanged |
+| Coding: merge or push to a protected branch | owner action | the owner asks and approves (coding page) |
+| Coding accounts (sign-in check, plans, usage) | unsupported | deliberately never open: credentials stay on the hub |
+| Shared bots: list, job, screenshot, lease, input | missing authorisation | `bots.operate`; proven on the in-process bot host; staging has no bots (step 30) |
+| Shared bots: live VNC viewer | unsupported | no WebSocket through the gateway (per-message caps were never built); screenshots instead |
+| Shared bots: terminal | owner action | `bots.terminal`, outside `grant operate`; the R9-OPS isolation condition is not met (section 8.6) |
+| Provisioning, starting, stopping or setting up a bot | owner action | founders' routes |
+| Founder's personal desktop or companion, hub desktop | unsupported | a founder's own machine carries his signed-in mail, banking and accounts; Dot owns no device, so they stay separate (owner instruction) |
+| Health, version | working | `view` |
+| Diagnostics, redacted job log, release receipts, action log | missing authorisation | `ops.read`; receipts need `MU_RELEASE_RECEIPTS_DIR` |
+| Release workflow: ask, follow, read the receipt | owner action | `release.request` plus `MU_GATEWAY_RELEASES=1` on the hub; every release approved by the owner |
+| GitHub: read the handoff branch, open PRs | working | Dot's own GitHub connector (outside the gateway) |
+| Approvals, decisions, job release | unsupported | approval is the check on sends, payments and releases; the one who asks can never be the one who approves |
+| Calendars, transcripts, vault notes, receptionist call data | unsupported | not in any capability (owner decision, unchanged) |
+| Receptionist launch | unsupported | on hold (an invoice draft for a receptionist deal is refused too) |
 
 ## 11. Proof steps Dot runs from its own cloud environment
 
@@ -320,8 +461,8 @@ local synthetic hub; its output is the staging proof).
    `{ "steps": [{ "executor": "computer.info" }] }` (or another executor the bot lists in `capabilities`) on it and read the job; take the lease, send one `observe.page` input,
    take a screenshot, return the lease. If none exists, record the honest empty answer.
 6. **The supported operations workflow.** `GET /__version`, `/__health`, `/__gateway/diagnostics`,
-   `/__gateway/diagnostics/releases` (with `ops.read`); then the release procedure of section 9 for the branch from step 1
-   (open the PR; do not merge or release).
+   `/__gateway/diagnostics/releases` (with `ops.read`); then section 9 up to step 3 on STAGING only, and withdraw the request
+   (`POST /__gateway/release/<id>/cancel`) unless the owner has said to release.
 7. **Limits hold.** `POST /__approvals/x/decide`, `POST /__operator/screen/command`, `GET /__gateway/admin/access` and
    `GET /__operator/coding/accounts` are 403; ask the owner to revoke your identity and confirm the next request is
    `401 "revoked"` and renewal is refused.
@@ -330,10 +471,10 @@ local synthetic hub; its output is the staging proof).
 
 `bun scripts/gateway/staging-local.ts seed|start|proof|stop` ran a synthetic hub (127.0.0.1:8194, server role,
 `MU_GATEWAY_TRUST=1`, `MU_SYNTHETIC_HUB=1`) and the gateway (127.0.0.1:8195) on the lead's PC, not the Ryzen staging pair and
-not production. 59 steps passed as expected; the evidence (summaries only) is
+not production. The latest run (74 steps, `--memory on`) covers drafting, the remaining refusals, business finance, an authorised mailbox, memory save and recall, `grant --until-identity`, `renew` and revocation; every step behaved as expected; the evidence (summaries only) is
 `docs/programme-20261001/evidence-notes/R11-GATEWAY-STAGING-PROOF.md`. The Ryzen staging pair (8086/8096) needs
-`dot-gateway-staging.ps1 -Action start -Operate` to prove writes there: without `-Operate` it is a read-only copy and every
-gateway write answers 409.
+`dot-gateway-staging.ps1 -Action start -Operate` to prove writes there (without `-Operate` it is a read-only copy and every
+gateway write answers 409), and `-Memory` as well to prove memory recall and saving on synthetic data.
 
 ## 13. Switch-over checklist: Funnel from the staging hub to production (lead and owner; NOT done)
 
@@ -342,7 +483,8 @@ lifetimes; who mints codes; audit retention; whether to grant `bots.terminal` at
 
 1.  [ ] Release the reviewed commit to production with the normal release (`deploy/windows/release-ryzen.ps1`); confirm
        `/__version` shows it.
-2.  [ ] Add to `C:\mu-hub\config\hub.env` (owner): `MU_GATEWAY_TRUST=1`; `MU_RELEASE_RECEIPTS_DIR=C:\mu-hub\logs`; confirm
+2.  [ ] Add to `C:\mu-hub\config\hub.env` (owner): `MU_GATEWAY_TRUST=1`; `MU_RELEASE_RECEIPTS_DIR=C:\mu-hub\logs`; and, for
+       the release workflow, `MU_GATEWAY_RELEASES=1` (leave it out to keep releases at the console only); confirm
        `MU_DESIGN_PROJECTS_DIR=C:\mu-hub\designs` is present; optionally `MU_GATEWAY_FILE_ROOTS` (project roots for Dot).
        Restart the hub through its supervisor task; confirm `/__health`.
 3.  [ ] Build the production UI bundle from a CLEAN export of the released commit (`dot-gateway-staging.ps1 -Action export
@@ -356,7 +498,7 @@ lifetimes; who mints codes; audit retention; whether to grant `bots.terminal` at
 6.  [ ] Prove the new keys and data folders are separate: production has its own `C:\mu-hub\data\production\gateway\
        hub-assertion.key`; staging's key is never copied.
 7.  [ ] Turn the staging Funnel off: `dot-gateway-funnel.ps1 -Action off`; `tailscale funnel status` shows nothing on 443.
-8.  [ ] Point the Funnel at production: `dot-gateway-funnel.ps1` refuses 8092 by design, so by hand, after the checks in step
+8.  [ ] Point the Funnel at production: `dot-gateway-funnel.ps1` refuses 8092 (it only ever targets the staging gateway, so a mistake cannot expose production), so by hand, after the checks in step
        5: `tailscale funnel --bg --https=443 http://127.0.0.1:8092` (verify syntax with `tailscale funnel --help`), then
        `tailscale funnel status` shows 443 → 127.0.0.1:8092 only.
 9.  [ ] From a phone off the tailnet: `https://ryzen-pc.tail572fa0.ts.net/gw/health` answers `{"ok":true}`;
@@ -371,25 +513,25 @@ lifetimes; who mints codes; audit retention; whether to grant `bots.terminal` at
         today: 8092 and `C:\mu-hub\data\production`). Rollback at any point: Funnel off, stop the gateway, remove
         `MU_GATEWAY_TRUST` from `hub.env` and restart the hub.
 
-## 14. Known limits
-
-From the one review (4 Oct; the blocker, founders' words in the raw job log, is fixed). Owner decisions, not defects:
+## 14. Known limits and owner decisions
 
 - Base `view` (not revocable short of revoking the identity) reads `/__operator/leads/**`, `/__workspace/pipeline` and
-  `/__agents/**`: CRM leads and pipeline, and the shared Agents workspace (bot tasks and files). Business data Dot is meant to
-  work on; say if `view` should be narrower.
+  `/__agents/**`: CRM leads and pipeline, and the shared Agents workspace. Say if `view` should be narrower.
 - Grants are global, not per identity: revoke every stale identity (staging's included) before granting on production.
-- `coding.start` means code runs on the hub through the coding CLIs under the coding policy; it only takes effect for
-  repositories whose `allowedPeople` lists `dot`.
+  They are capped at 30 days; `renew` (or the Devices and people button) extends the identity and the grants together.
+- Mailbox authorisations are global too (any of Dot's identities); revoke a mailbox with `revoke-mailbox`.
+- `bots.terminal`: the R9-OPS isolation condition is not met (section 8.6); granting it is the owner's knowing exception.
+- Releases: every one needs the owner's Telegram code or spoken yes; the code goes to his DM only. A release Dot asks for while
+  another person releases by hand is refused as stale. The release script copy that runs is the live checkout's own.
+- Finance: notes, single manual records and recorded invoice matches do not exist in the ledger; Dot gets suggestions only.
+- Mail: bodies the hub has not cached yet come back as metadata; no Gmail-side draft through the gateway (section 8.8).
+- `coding.start` takes effect only for repositories whose `allowedPeople` lists `dot`.
 - A founder cannot take a shared bot back from Dot until Dot's control lease lapses (60 to 90 s).
-- Dot's memory saves are recorded with `via: "system"`; keep `MU_MEMORY_WRITES` off until the owner wants Dot writing memory.
+- Dot's memory saves are recorded with `via: "system"` and a note naming the gateway.
 - The hub checks an identity's revocation on every request but leaves expiry to the gateway.
 - An owner-listed file root that is a junction is checked by its literal path, not its target: list real folders only.
 - The production gateway port is **8092**: 8090 (the Hermes gateway) and 8091 are taken on Ryzen.
-
-- Funnel's `X-Forwarded-For` is unverified, so behind Funnel the per-address limits act gateway-wide (unchanged).
-- The UI bundle has no real `script-src` CSP yet (a production item from the design review, unchanged).
+- Funnel's `X-Forwarded-For` is unverified, so behind Funnel the per-address limits act gateway-wide.
+- The UI bundle has no real `script-src` CSP yet (a production item from the design review).
 - Dot's live stream (`/__events`) carries coding job events only; Dot follows its own tasks by polling `/__gateway/jobs/<id>`.
 - Jobs Dot started keep running after a revocation (stop them from Activity).
-- The gateway principal's view of `/__operator/coding/jobs` includes the founders' coding jobs (shared business work, as
-  reviewed); each carries account SLOTS and the CLI's resume id, never a token.

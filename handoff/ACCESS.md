@@ -4,15 +4,15 @@ Dot reaches AgenticOS only through the reviewed gateway, with its own revocable 
 to the tailnet, and native account credentials (models, mail, payments, coding accounts) stay on the hub. Full reference:
 `gateway/DOT-ACCESS.md` (enrolment, renewal, revocation, the operating API, the capability matrix, proof steps, switch-over).
 
-## Where things stand (4 Oct 2026, 17:50 AEDT)
+## Where things stand (4 Oct 2026, 19:35 AEDT)
 
 | Item | State |
 |---|---|
-| Access URL | `https://ryzen-pc.tail572fa0.ts.net/` (Tailscale Funnel, port 443). Today it reaches the **staging** pair: a synthetic hub (fake records only) and the gateway in front of it, both revision `09410ed7` of the gateway branch |
+| Access URL | `https://ryzen-pc.tail572fa0.ts.net/` (Tailscale Funnel, port 443). Today it reaches the **staging** pair: a synthetic hub (fake records only) and the gateway in front of it, both revision `971ee78a` of the gateway branch (staging export `C:\mu-hub\dot-gateway-stagingpp-971ee78a1341`, started with `-Operate -Memory`) |
 | Production | Not reachable through the gateway yet. The switch-over (`gateway/DOT-ACCESS.md` §13) runs after Dot's staging proof passes; the production gateway will listen on 127.0.0.1:8092 |
 | Gateway source | Branch `r11/gateway-20261004` in the lead's working repository (on top of production `82d6962d`). It is not in this baseline because it is not in production yet; it is published here with the production release |
-| Review | One security review: one blocker (the raw job log exposed founders' words to `ops.read`), fixed in `09410ed7`; 137 gateway tests pass; non-blocking notes are in `gateway/DOT-ACCESS.md` §14 |
-| Staging identities | None. Every earlier staging identity, grant and code was revoked before this was published |
+| Review | Two security reviews. Blockers fixed: the raw job log exposed founders' words (`09410ed7`); a release request wrote Dot's bundle into the live repository before approval (`971ee78a`). 161 gateway tests pass. Notes in `gateway/DOT-ACCESS.md` §14 |
+| Staging identity | Dot enrolled by Usman at 18:34 (identity `2e41160d…`, expires 3 Nov); signed in from its own browser |
 
 ## Enrolment (secure route)
 
@@ -34,23 +34,22 @@ the owner. `401 "expired"` or `"idle"`: renew. Identity expired: the owner enrol
 
 ## Capabilities
 
-`grant operate` gives: `crm.read`, `crm.write`, `files.read`, `files.write`, `tasks.run`, `memory.read`, `memory.write`,
-`coding.start`, `bots.operate`, `ops.read`. Not included: `bots.terminal` (granted separately, the owner's call).
+`grant operate --by usman --until-identity` gives, for as long as the identity lasts (30 days max; renew with `cli renew --by
+usman` or the **Renew 30 days** button in System › Devices and people; `/gw/me` shows `renewSoon` 7 days ahead):
+`crm.read`, `crm.write`, `finance.read`, `finance.write`, `mail.read`, `mail.draft`, `files.read`, `files.write`, `tasks.run`,
+`memory.read`, `memory.write`, `coding.start`, `bots.operate`, `ops.read`, `release.request`. Not included: `bots.terminal`
+(the R9-OPS isolation condition, a VM or own loopback per bot, is not met today). The full matrix with one reason per
+restriction is `gateway/DOT-ACCESS.md` §10.
 
-| Feature | State on staging today |
-|---|---|
-| Sign in, reconnect, renew, logout; identity listed and revocable | working |
-| Health, version, OS pages (read-only UI), coding job reads | working (`view`) |
-| CRM read and reversible write (drafts only; sending, quotes, invoices, won deals refused) | missing authorisation until granted |
-| Files in approved roots (drafts, designs); no delete | missing authorisation until granted |
-| Jarvis tasks through Jev, own jobs, Stop own jobs | missing authorisation until granted |
-| Diagnostics, release receipts, action log, job log (founders' jobs as shape only) | missing authorisation until granted |
-| Memory recall | missing authorisation; memory is off on staging |
-| Memory saving | owner action (`MU_MEMORY_WRITES=on`) |
-| Coding jobs of its own | owner action (add `dot` to a repository's `allowedPeople`); staging has no repositories |
-| Shared bot computers | missing authorisation; staging has no bots, so the honest answer is an empty list |
-| Bot terminal | owner action |
-| Sending, quotes and invoices, merges, releases, approvals, founders' desktops, mail, finance, receptionist data, accounts | unsupported or owner action, by design |
+Still founders' only, each for one stated reason: issuing a document to a client (a send); recording a message as sent
+(only the provider can attest it); loosening contact permissions (it authorises future outbound contact: consent and the Spam
+Act); statement imports and vendor rules (they reach personal finance rows); approvals; founders' devices; coding accounts.
+Genuinely absent from the hub: creating a draft inside Gmail itself (drafts are saved in the OS), finance notes and single
+manual records, recording an invoice match (suggestions only).
+
+Releases: Dot sends a bundle and commit to `POST /__gateway/release`; nothing touches the live checkout until Usman approves
+by Telegram code or spoken yes; then the backed-up release runs with automatic rollback (`gateway/DOT-ACCESS.md` §9). Needs
+`MU_GATEWAY_RELEASES=1` on the production hub; off on staging.
 
 ## What Dot proves, in order
 
