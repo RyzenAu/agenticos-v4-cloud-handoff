@@ -6,6 +6,7 @@
  */
 import type { ExecutorName, SpecialistId } from "./contracts";
 import { crmIntentIn } from "./crm";
+import { businessQuestionsIn } from "./compound-questions";
 import { appNameIn, builtinRegistry } from "./registry";
 import { fileNameIn } from "../jev-files";
 import { receptionistQuestion } from "./receptionist";
@@ -267,6 +268,9 @@ const pick = (r: Extract<RulePlan, { lane: "executor" }>) => ({ executor: r.exec
 /** The deterministic plan for his words, or null (Jev and the rest of the entry decide). Pure. */
 export function planRules(utterance: string, opts: { linked?: boolean } = {}): RulePlan | null {
   const t = utterance.trim();
+  const questions = businessQuestionsIn(t);
+  if (questions?.kind === "questions") return { lane: "delegate", to: "crm", op: "crm.questions", why: "bounded read-only business questions, in the requested order, through the existing CRM and Leads services" };
+  if (questions?.kind === "unsupported") return { lane: "unsupported", op: "crm.questions", why: "not every clause is a supported read-only business question", said: "I can combine up to four supported read-only business questions. This request includes something else, so I haven't run any of it. Ask those parts separately." };
   if (rememberToReminder(t)) return { lane: "delegate", to: "reminder", op: "reminder.set", why: "\"remember to …\" is a reminder: the reminder skill sets a real one" };
   if (leadActionIn(t)) return { lane: "delegate", to: "leads", op: "leads.action", why: "a CRM action on a named lead: the leads service, read back after the write" };
   if (crmIntentIn(t)) return { lane: "delegate", to: "crm", op: "crm.operation", why: "a CRM request: the CRM's own typed operations, with the verified person and the open record, never a guess" };

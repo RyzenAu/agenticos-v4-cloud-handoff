@@ -42,6 +42,15 @@ export async function runLeadAction(
   options: { eventId?: string; jobId?: string } = {},
 ): Promise<{ ok: boolean; said: string; verified: boolean | null }> {
   const q = (o: Record<string, string>) => new URLSearchParams(o);
+  if (action.action === "count") {
+    // Same uncapped, exclusion/merge-aware total the Leads pipeline shows. Never sum stage
+    // counts or substitute total records for open leads when an older API omits this field.
+    const r = (await api.handle("/leads/pipeline", "GET", {}, q({ summary: "1" }), false)) as { open?: unknown; ok?: boolean; error?: unknown } | null;
+    const open = r?.open;
+    return r?.ok !== false && !r?.error && typeof open === "number" && Number.isSafeInteger(open) && open >= 0
+      ? { ok: true, said: `We have ${open} open lead${open === 1 ? "" : "s"}.`, verified: true }
+      : { ok: false, said: "The Leads pipeline didn't return a verified open-lead count, so I won't guess.", verified: null };
+  }
   if (action.action === "next") {
     const r = (await api.handle("/leads/cards", "GET", {}, q({ n: "1" }), false)) as {
       cards?: Array<{

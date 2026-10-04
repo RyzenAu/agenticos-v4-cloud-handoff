@@ -97,6 +97,16 @@ export type SavedMessage = {
   via?: string;
   apps?: string[];
 };
+/** Server-owned receipts for a typed request. Kept with its messages across ordinary client saves. */
+export type TypedRequest = {
+  requestId: string;
+  parts: Partial<Record<"user" | "reply" | "note", string>>;
+  turns: Array<{ index: number; fingerprint: string; result?: Record<string, unknown> }>;
+};
+export type TypedBinding = { personId: string; conversationId?: string; requestId: string };
+export class TypedPersistenceError extends Error {
+  constructor(message: string, readonly status = 409, readonly code = "typed_request_conflict") { super(message); this.name = "TypedPersistenceError"; }
+}
 export type SavedConversation = {
   id: string;
   revision: number;
@@ -115,6 +125,7 @@ export type SavedConversation = {
   bot?: string;
   jobs?: ThreadJobLink[];
   entries?: ThreadEntry[];
+  typedRequests?: TypedRequest[];
 };
 export class ConversationConflict extends Error {
   readonly status = 409;
@@ -212,7 +223,8 @@ export function conversationStore(root: string) {
       : undefined;
   /** The conversation as a reader sees it: server entries merged into the messages where they were appended. */
   const entryMessage = (e: ThreadEntry): SavedMessage => ({ role: "oracle", text: e.text, via: `${JOB_VIA}${e.key}` });
-  const view = (c: SavedConversation): SavedConversation => {
+  const view = (saved: SavedConversation): SavedConversation => {
+    const { typedRequests: _receipts, ...c } = saved; // Internal replay receipts never leave the store through conversation reads.
     if (!c.entries?.length) return c;
     const out: SavedMessage[] = [];
     const sorted = [...c.entries].sort((a, b) => a.seq - b.seq);
@@ -232,7 +244,100 @@ export function conversationStore(root: string) {
     write(items);
     return c;
   };
+  // Every mutation below is one read/modify/atomic-rename in this hub, including request binding and the visible messages.
+  const typedRecord = (binding: TypedBinding) => {
+    if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(binding.personId) || !/^[\w:.-]{6,80}$/.test(binding.requestId))
+      throw new TypedPersistenceError("A typed request needs a valid verified person and request id.", 400);
+    const id = binding.conversationId === undefined ? jarvisThreadId(binding.personId) : safeId(binding.conversationId);
+    if (["usman", "mehroz"].some((person) => person !== binding.personId && jarvisThreadId(person) === id)) throw new ConversationForbidden();
+    const items = load();
+    let c = items.find((x) => x.id === id);
+    if (c && (c.personId !== binding.personId || c.thread === "bot")) throw new ConversationForbidden();
+    if (items.some((x) => x.id !== id && x.personId === binding.personId && (
+      x.typedRequests?.some((r) => r.requestId === binding.requestId) ||
+      x.messages.some((m) => ["user", "reply", "note"].some((part) => m.via === `say:${binding.requestId}:${part}`))
+    ))) throw new TypedPersistenceError("That request id belongs to a different conversation. Nothing was changed.");
+    if (!c) {
+      const at = new Date().toISOString();
+      c = { id, revision: 0, title: "Jarvis", createdAt: at, updatedAt: at, messages: [], persona: "assistant", personId: binding.personId, thread: "jarvis", jobs: [], entries: [] };
+      items.unshift(c);
+    }
+    c.typedRequests ??= [];
+    let record = c.typedRequests.find((r) => r.requestId === binding.requestId);
+    if (!record) {
+      record = { requestId: binding.requestId, parts: {}, turns: [] };
+      // Adopt already-saved legacy fragments, never trust the caller's claim that they were saved.
+      for (const part of ["user", "reply", "note"] as const) {
+        const m = c.messages.find((m) => m.via === `say:${binding.requestId}:${part}`);
+        if (m) record.parts[part] = m.text;
+      }
+      c.typedRequests.push(record);
+    }
+    return { items, c, record };
+  };
+  const typedText = (text: string) => {
+    if (typeof text !== "string" || !text.trim() || text.length > 20_000)
+      throw new TypedPersistenceError("A saved typed message must contain text of at most 20000 characters. Nothing was truncated.", 400);
+    return text;
+  };
+  const typedPart = (c: SavedConversation, record: TypedRequest, part: "user" | "reply" | "note", text: string) => {
+    typedText(text);
+    const prior = record.parts[part];
+    if (prior !== undefined && prior !== text) throw new TypedPersistenceError("That request id already holds different words. Nothing was changed.");
+    const via = `say:${record.requestId}:${part}`;
+    const role = part === "user" ? "user" : "oracle";
+    const old = c.messages.find((m) => m.via === via);
+    if (old && (old.text !== text || old.role !== role)) throw new TypedPersistenceError("That saved request has conflicting content. Nothing was changed.");
+    if (!old) {
+      if (c.messages.length >= 500) throw new TypedPersistenceError("The conversation is full. This message was not saved; start a new conversation.", 409, "typed_conversation_full");
+      // Fire-and-forget legacy clients can deliver their reply first. The eventual user fragment still appears before it.
+      const reply = part === "user" ? c.messages.findIndex((m) => m.via === `say:${record.requestId}:reply` || m.via === `say:${record.requestId}:note`) : -1;
+      if (reply >= 0) c.messages.splice(reply, 0, { role, text, via });
+      else c.messages.push({ role, text, via });
+    }
+    record.parts[part] = text;
+    c.updatedAt = new Date().toISOString();
+  };
   return {
+    /** Existing keyed typed-message endpoint, now strict about ownership, origin, conflicts and capacity. */
+    saveTypedPart(binding: TypedBinding, part: "user" | "reply" | "note", role: "user" | "assistant", text: string): string {
+      if (role !== (part === "user" ? "user" : "assistant")) throw new TypedPersistenceError("The message role does not match its request part.", 400);
+      const { items, c, record } = typedRecord(binding);
+      typedPart(c, record, part, text);
+      write(items);
+      return c.id;
+    },
+    /** Reserve before a free turn runs. A recorded unfinished turn is never silently rerun after a restart. */
+    beginTypedTurn(binding: TypedBinding, input: { text: string; index: number; fingerprint: string }): { conversationId: string; state: "new" | "pending" | "complete"; result?: Record<string, unknown> } {
+      if (!Number.isInteger(input.index) || input.index < 0 || input.index > 4 || !/^[a-f0-9]{64}$/.test(input.fingerprint))
+        throw new TypedPersistenceError("Choose a valid typed turn index and fingerprint.", 400);
+      const { items, c, record } = typedRecord(binding);
+      typedPart(c, record, "user", input.text);
+      const prior = record.turns.find((t) => t.index === input.index);
+      if (prior) {
+        if (prior.fingerprint !== input.fingerprint) throw new TypedPersistenceError("That request turn already has different input. Nothing ran.");
+        return { conversationId: c.id, state: prior.result ? "complete" : "pending", ...(prior.result ? { result: prior.result } : {}) };
+      }
+      if (input.index !== record.turns.length || (input.index > 0 && !record.turns.at(-1)?.result))
+        throw new TypedPersistenceError("The earlier typed turn is not saved. Retry it before continuing.");
+      if (record.parts.reply !== undefined) throw new TypedPersistenceError("That request already has a saved reply. It was not run again.");
+      // Reserve room for a reply before invoking any model or rule with possible side effects.
+      if (c.messages.length >= 500) throw new TypedPersistenceError("The conversation is full. Nothing ran; start a new conversation.", 409, "typed_conversation_full");
+      record.turns.push({ index: input.index, fingerprint: input.fingerprint });
+      write(items);
+      return { conversationId: c.id, state: "new" };
+    },
+    finishTypedTurn(binding: TypedBinding, input: { text: string; index: number; fingerprint: string; result: Record<string, unknown>; reply?: string }): string {
+      const { items, c, record } = typedRecord(binding);
+      typedPart(c, record, "user", input.text);
+      const turn = record.turns.find((t) => t.index === input.index);
+      if (!turn || turn.fingerprint !== input.fingerprint) throw new TypedPersistenceError("The typed turn binding changed. Its answer was not saved.");
+      if (turn.result && JSON.stringify(turn.result) !== JSON.stringify(input.result)) throw new TypedPersistenceError("That typed turn already has a different result.");
+      if (input.reply !== undefined) typedPart(c, record, "reply", input.reply);
+      turn.result = input.result;
+      write(items);
+      return c.id;
+    },
     list: (who?: ConversationViewer) => load().filter((c) => visibleTo(c, who)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map(view),
     get: (id: unknown) => {
       const c = load().find((x) => x.id === safeId(id));
@@ -362,7 +467,13 @@ export function conversationStore(root: string) {
       // The tab was shown job entries merged into its messages. They are not stored as messages; where it showed each one is where it stays.
       const placed = new Map<string, number>();
       let kept = 0;
+      const seenSays = new Set<string>();
       const clientMessages = body.messages.filter((m: any) => {
+        if (typeof m?.via === "string" && m.via.startsWith("say:")) {
+          if (!old?.messages.some((saved) => saved.via === m.via)) throw new TypedPersistenceError("Server-saved request keys cannot be created by a conversation snapshot.", 400);
+          if (seenSays.has(m.via)) return false;
+          seenSays.add(m.via);
+        }
         const via = typeof m?.via === "string" && m.via.startsWith(JOB_VIA) ? m.via.slice(JOB_VIA.length) : null;
         if (via === null) return ++kept > 0;
         placed.set(via, kept);
@@ -392,7 +503,11 @@ export function conversationStore(root: string) {
       // Round 11: a typed request or reply the server wrote into this thread (via "say:<key>") that this save doesn't carry is kept where it was:
       // the companion saves its own transcript list, which never held them, and a save used to erase them.
       if (old) old.messages.forEach((m, idx) => {
-        if (typeof m.via === "string" && m.via.startsWith("say:") && !messages.some((x) => x.via === m.via)) messages.splice(Math.min(idx, messages.length), 0, m);
+        if (typeof m.via === "string" && m.via.startsWith("say:")) {
+          const at = messages.findIndex((x) => x.via === m.via);
+          if (at >= 0) messages[at] = m;
+          else messages.splice(Math.min(idx, messages.length), 0, m);
+        }
       });
       const now = new Date().toISOString();
       const conversation: SavedConversation = {
@@ -418,6 +533,7 @@ export function conversationStore(root: string) {
               thread: old?.thread,
               ...(old?.bot ? { bot: old.bot } : {}),
               jobs: old?.jobs,
+              typedRequests: old?.typedRequests,
               // An entry the tab showed keeps its place; one it hadn't seen yet (appended after it loaded) goes after what it just saved.
               entries: old?.personId ? (old.entries ?? []).map((e) => {
                 const at = placed.get(e.key);

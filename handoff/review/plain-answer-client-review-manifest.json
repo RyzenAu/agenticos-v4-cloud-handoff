@@ -1,0 +1,31 @@
+{
+  "purpose": "Claude review only; no integration frontend edits",
+  "base": "Exact original snapshots supplied for handoffa0da",
+  "files": [
+    {
+      "path": "src/components/operator/voice-companion.tsx",
+      "base_sha256": "ad64590af1d2154255b952098b46f5c0bd53b33c9b13d5120ff02a0344dfa7ec",
+      "review_sha256": "79682ade896ea3ffd0765078f2b04a8ed59bc63bbe9c6ed7ec02910f9a098774"
+    },
+    {
+      "path": "src/components/shell/pages/jarvis-thread.tsx",
+      "base_sha256": "52522a4d9c2a47db8ce8b856a7c5deb840d45dcfb2f1d3764d97ac3cc0d9d49b",
+      "review_sha256": "99e29bfb20609649b87da60c72a9bf2d14250560a111f2d2ac4e6831983e1a09"
+    },
+    {
+      "path": "src/lib/jarvis-send.ts",
+      "base_sha256": "714eb60f1121f538a76ea2e4f6d1cb6d3b05578a5284e694a4f532c23fb273b8",
+      "review_sha256": "0444596180ae2ad54309ac9499c8262ae7ac4cf6d0c37cb0f3c7047503ee1c9c"
+    },
+    {
+      "path": "src/lib/typed-persistence.ts",
+      "base_sha256": null,
+      "review_sha256": "b15f5ea9b73376fe0aff231209ab22ff656b463d03f020d1ba8641d908504382"
+    },
+    {
+      "path": "src/lib/typed-persistence.test.ts",
+      "base_sha256": null,
+      "review_sha256": "8916a33d298340686ce43e1194133555f27d835d7edaf25fcad2c317dacba6a3"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { TypedTurnError } from "./jarvis-command/typed-turn-persistence";
 import { setOwnServerPort } from "../src/lib/money-policy";
 import { loopbackJson } from "./workspace/sources";
 import { businessDemoSettings } from "./business-demo-settings";
@@ -1698,6 +1699,7 @@ export function operatorPlugin({
               res.end();
               return;
             }
+            let blockedFreeTurnReply: string | undefined;
             if (remote && path.startsWith("/voice/free/") && method === "POST") {
               // The hub's own voice settings are this PC's; change them at the PC.
               if (path === "/voice/free/configure" && deviceDenied({ executor: "hub", presence: true })) return;
@@ -1707,14 +1709,24 @@ export function operatorPlugin({
               const said = Array.isArray(body?.messages) ? body.messages.filter((m: { role?: unknown }) => m?.role === "user").pop()?.content : "";
               if (path === "/voice/free/turn" && typeof said === "string" && awayVoiceIntent(said)) {
                 const decision = authorise(principal, { kind: "device", executor: "hub", presence: true }, "control");
-                if (!decision.ok) return send({ content: `${decision.reason} Away mode is for the PC it runs on.`, model: "rules" });
+                if (!decision.ok) {
+                  const refusal = `${decision.reason} Away mode is for the PC it runs on.`;
+                  if (body.typed === true && body.requestId !== undefined) blockedFreeTurnReply = refusal;
+                  else return send({ content: refusal, model: "rules" });
+                }
               }
             }
             // Track 2: the voice turn learns from the VERIFIED principal whether the speaker is at this PC,
             // so a remote founder's device actions go to his own device (never a client-sent flag).
             if (path === "/voice/free/turn" && method === "POST" && body && typeof body === "object" && !Array.isArray(body)) body.remote = !!remote;
-            if (path.startsWith("/voice/free/") && method === "POST")
-              return send(await freeVoice.handle(path, body, path === "/voice/free/turn" ? (sharedMemory?.principalFor(req) ?? undefined) : undefined));
+            if (path.startsWith("/voice/free/") && method === "POST") {
+              try {
+                return send(await freeVoice.handle(path, body, path === "/voice/free/turn" ? (sharedMemory?.principalFor(req) ?? undefined) : undefined, principal, blockedFreeTurnReply));
+              } catch (error) {
+                if (error instanceof TypedTurnError) return send({ error: error.message, code: error.code, saved: false, ...(error.content !== undefined ? { content: error.content } : {}) }, error.status);
+                throw error;
+              }
+            }
             if (path === "/voice/openai/status" && method === "GET") return send(openaiVoice.status());
             if (path.startsWith("/voice/openai/") && method === "POST") return send(await openaiVoice.handle(path, body));
             if (path === "/voice/status" && method === "GET") return send(companionVoice.status());

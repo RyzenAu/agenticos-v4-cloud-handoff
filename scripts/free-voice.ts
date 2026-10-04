@@ -1,3 +1,6 @@
+import { conversationStore } from "./conversations";
+import { createTypedTurnPersistence } from "./jarvis-command/typed-turn-persistence";
+import type { Principal } from "./identity/principal";
 import { parseScreenResult } from "../src/lib/screen-result";
 import { replyStyleInstructions } from "../src/lib/voice-style";
 import { personalityInstructions } from "../src/lib/voice-personality";
@@ -1100,6 +1103,7 @@ function stripThinking(value: string | null | undefined) {
 }
 
 export function freeVoice(root: string, dependencies: Dependencies = {}) {
+  const persistTypedTurn = createTypedTurnPersistence(conversationStore(root));
   const request = dependencies.fetch ?? fetch;
   const key = dependencies.key ?? ((name: string) => providerKey(root, name));
   const receipts = dependencies.sink ?? new DeferredReceipts(() => defaultReceiptSink(root));
@@ -2218,7 +2222,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     status,
     speakStream,
     /** `caller`: the host's verified request identity (only the memory rule uses it). */
-    async handle(path: string, body: unknown, caller?: unknown) {
+    async handle(path: string, body: unknown, caller?: unknown, principal?: Principal, /** Host-only policy refusal, never copied from the request body. */ blockedReply?: string) {
       if (path === "/voice/free/reflex") return reflexPartial(body);
       // Latency instrumentation only (scripts/voice-latency.ts, scripts/voice-latency-report.ts):
       // one JSONL line per command, speech end → route decided → action started → action done.
@@ -2233,7 +2237,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       }
       if (path === "/voice/free/configure") return configure(body);
       if (path === "/voice/free/stt") return transcribe(body);
-      if (path === "/voice/free/turn") return turn(body, caller);
+      if (path === "/voice/free/turn") return persistTypedTurn(body, principal, () => blockedReply ? Promise.resolve({ content: blockedReply, model: "rules" }) : turn(body, caller));
       if (path === "/voice/free/tts") return speak(body);
       if (path === "/voice/free/eleven-voices") return elevenVoices();
       throw new Error("Unknown voice action.");
