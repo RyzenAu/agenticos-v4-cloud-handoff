@@ -8,7 +8,7 @@ to the tailnet, and native account credentials (models, mail, payments, coding a
 
 | Item | State |
 |---|---|
-| Access URL | `https://ryzen-pc.tail572fa0.ts.net/` (Tailscale Funnel, port 443). Today it reaches the **staging** pair: a synthetic hub (fake records only) and the gateway in front of it, both revision `971ee78a` of the gateway branch (staging export `C:\mu-hub\dot-gateway-stagingpp-971ee78a1341`, started with `-Operate -Memory`) |
+| Access URL | `https://ryzen-pc.tail572fa0.ts.net/` (Tailscale Funnel, port 443). Today it reaches the **staging** pair: a synthetic hub (fake records only) and the gateway in front of it, both revision `971ee78a` of the gateway branch (staging export `C:\mu-hub\dot-gateway-staging\app-971ee78a1341`, started with `-Operate -Memory`) |
 | Production | Not reachable through the gateway yet. The switch-over (`gateway/DOT-ACCESS.md` §13) runs after Dot's staging proof passes; the production gateway will listen on 127.0.0.1:8092 |
 | Gateway source | Branch `r11/gateway-20261004` in the lead's working repository (on top of production `82d6962d`). It is not in this baseline because it is not in production yet; it is published here with the production release |
 | Review | Two security reviews. Blockers fixed: the raw job log exposed founders' words (`09410ed7`); a release request wrote Dot's bundle into the live repository before approval (`971ee78a`). 161 gateway tests pass. Notes in `gateway/DOT-ACCESS.md` §14 |
