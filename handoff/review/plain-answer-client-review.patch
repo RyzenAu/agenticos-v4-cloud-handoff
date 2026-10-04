@@ -1,0 +1,1142 @@
+--- a/src/components/operator/voice-companion.tsx
++++ b/src/components/operator/voice-companion.tsx
+@@ -69,7 +69,7 @@
+   type VoiceEmailReview,
+ } from "@/lib/voice-email-review";
+ import { startOpenAIVoice, prepareVoiceImage } from "@/lib/openai-voice-client";
+-import { startFreeVoice, TOO_MANY_STEPS, type ChatMessage, type ToolCall as FreeToolCall } from "@/lib/free-voice-client";
++import { startFreeVoice } from "@/lib/free-voice-client";
+ import { pageReadEnvelope } from "@/lib/page-read";
+ // Track 1 (AUDIT-F4 F2/F3/F9): the typed box asks the ONE command registry first, then runs the SAME voice
+ // turn as speech (rules, Jev, tools), so typed and spoken land in the same place.
+@@ -89,12 +89,12 @@
+ import { useVoiceScope } from "@/lib/use-voice-scope";
+ import { useActivity } from "@/lib/use-activity";
+ import { parseThreadEvent } from "@/lib/thread-events";
+-import { acceptJarvisRequest } from "@/lib/jarvis-send";
++import { acceptJarvisRequest, rejectJarvisRequest, startJarvisRequest, onJarvisRequestCancelled } from "@/lib/jarvis-send";
+ import { createThreadFeed, createUnreadStore, entryInScope, entryKeyOfInterjection, settleClaim, type ThreadFeed, type UnreadStore } from "@/lib/voice-completions";
+ import { UnreadResults } from "./voice-unread";
+-import { commandEventId, createTypedQueue, PAUSED_LINE, QUEUED_LINE, pageChangedLine, TurnFailed, turnWithRetry, TYPED_STOP, typedRequestId, typedSendGate } from "@/lib/typed-send";
++import { commandEventId, createTypedQueue, PAUSED_LINE, QUEUED_LINE, pageChangedLine, TurnFailed, TYPED_STOP, typedRequestId, typedSendGate } from "@/lib/typed-send";
++import { captureTypedRequest, cancelTypedAdmission, hasTypedAdmissionCapacity, captureTypedExecutionContext, assertTypedExecutionContext, commandExecutionContext, resolvedTypedExecutionContext, type TypedExecutionContext, durableTypedScope, runTypedRequestForScope, runPersistedTypedTurn, runScopedBotTypedTurn, TypedPersistenceFailure, type TypedRequest } from "@/lib/typed-persistence";
+ import { clientDone, codingDraftHref, commandPageContext, commandResultText, isOsPath, localDone, runJarvisCommand, voiceRouteFor, type VoiceRoute } from "@/lib/jarvis-command";
+-import { readPageContext } from "@/lib/page-context";
+ import { commandLesson, currentLesson, lessonTurn, startCourse, startLesson } from "@/lib/screen-lesson";
+ import { pointAt, setTutor, tutorTurn } from "@/lib/screen-companion";
+ import type { LessonCommand } from "@/lib/lesson-words";
+@@ -598,7 +598,7 @@
+   }
+   function stop() {
+     generation.current++;
+-    typedQueue.current.clear(); // a stop drops what was waiting behind the stopped request
++    rejectQueuedTyped(() => "Stopped before this queued request ran.");
+     // Final review B2: the typed turn's requests (its first hop, its command, the command-path fallback) end too, so a Stop before the job event
+     // reaches the hub as a Stop by event id (runJarvisCommand), never only a local change.
+     typedTurnAbort.current?.abort();
+@@ -715,15 +715,9 @@
+       // throttling), so the send waited on the page being shown again (round 11). The send needs no render; it goes now.
+       if (typeof request === "string" && request.trim()) {
+         const words = request.trim().slice(0, 600);
+-        // Taken only when it will run or wait its turn (release re-check minor): paused or a full queue is not "accepted", so the composer keeps
+-        // its text; the conversation still says why it didn't run.
+-        const gate = typedSendGate({ busy: busyRef.current, paused: pausedRef.current, request: words });
+-        const taken = gate === "run" || gate === "stop" || (gate === "queue" && !typedQueue.current.full);
+-        // The composer's one id for this request goes on as the command eventId, so a resend from here is the same request at the hub (R11).
+         const requestId = typedRequestId((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId);
++        // The inactive typed lane acknowledges durable user+reply saves. A failed append leaves the composer text and id intact.
+         queueMicrotask(() => void executeRef.current(words, requestId));
+-        // R11: tell the sender (the /jarvis composer) it was taken, so its box only clears once a request is really queued here.
+-        if (taken) acceptJarvisRequest((event as CustomEvent).detail);
+       }
+       // Focus goes to the text box he is about to type in (review item 11).
+       else window.setTimeout(() => document.querySelector<HTMLInputElement>('input[aria-label="Voice companion command"]')?.focus(), 60);
+@@ -1401,92 +1395,113 @@
+     }
+     return r.said;
+   }
++  type CapturedTypedContext = TypedExecutionContext<ReturnType<typeof commandPageContext>, ReturnType<typeof readPageContextT1>>;
++  type ContextualTypedRequest = TypedRequest & { execution: CapturedTypedContext };
++  const readTypedExecutionContext = (): CapturedTypedContext => ({
++    pageContext: commandPageContext(), routeContext: readPageContextT1(), pathname: runtime.current.pathname,
++    personId: runtime.current.personId, scope: voiceScopeCommandOptions(), spokenYes: spokenYesFor(latestUserRequest.current),
++  });
+   /** Typed with no voice session: the same /voice/free/turn loop the voice client runs, tools included. */
+-  async function typedTurn(current: number, request: string, requestId?: string): Promise<string> {
+-    // ONE controller for the typed request, in a ref, so stop() (the panel's Stop, Escape, a typed stop) aborts it (final review B2).
+-    const controller = new AbortController();
++  async function typedTurn(current: number, state: ContextualTypedRequest, controller: AbortController): Promise<string> {
+     typedTurnAbort.current = controller;
+-    let commands = 0;
+-    const history: ChatMessage[] = [{ role: "user", content: request }];
+-    for (let step = 0; step < 5; step++) {
+-      // The same transient-retry rule as the command send (release re-check M6); the last failure is said as it is, never swapped for another answer.
+-      const response = await turnWithRetry(() => voicePost("/voice/free/turn", { messages: history, replyStyle: loadReplyStyle(), replyPersonality: loadPersonality(), typed: true, ...voiceScopeCommandOptions() }, controller.signal));
+-      const parsed = (await response.json().catch(() => ({}))) as { content?: string | null; tool_calls?: FreeToolCall[]; error?: string };
+-      if (!response.ok) throw new Error(parsed.error || `Jarvis answered HTTP ${response.status}, so nothing ran.`);
+-      const reply = parsed;
+-      if (current !== generation.current) return "";
+-      if (!reply.tool_calls?.length) return reply.content ?? "";
+-      history.push({ role: "assistant", content: reply.content ?? null, tool_calls: reply.tool_calls });
+-      for (const call of reply.tool_calls) {
+-        let args: Record<string, unknown> = {};
+-        try {
+-          args = JSON.parse(call.function.arguments || "{}");
+-        } catch {
+-          /* no arguments */
+-        }
+-        // Typed turn: the command it runs is recorded as typed (round 11: a typed coding request was labelled "by voice").
+-        // Its eventId is the typed request's own id (numbered after the first), so a resend is the same command at the hub, never a second run.
+-        const out = await dispatchTool(current, call.function.name, call.function.name === "jarvis_command" ? { ...args, typed: true, ...(requestId ? { eventId: commandEventId(requestId, commands++) } : {}) } : args, controller.signal);
+-        history.push({ role: "tool", tool_call_id: call.id, content: String(out ?? "").slice(0, 4000) });
+-      }
+-    }
+-    return TOO_MANY_STEPS;
+-  }
+-  /** The typed request in flight (its turn, its command, the command-path fallback): stop() aborts it. */
++    const run = durableTypedScope(state.options) ? runPersistedTypedTurn : runScopedBotTypedTurn;
++    return run(state, voicePost, controller.signal, async (call, commandIndex) => {
++      if (current !== generation.current || controller.signal.aborted) throw new DOMException("Stopped", "AbortError");
++      assertTypedExecutionContext(state.execution, readTypedExecutionContext());
++      let args: Record<string, unknown> = {};
++      try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* no arguments */ }
++      return String(await dispatchTool(current, call.function.name, call.function.name === "jarvis_command" ? { ...args, typed: true, eventId: commandEventId(state.requestId, commandIndex) } : args, controller.signal, undefined, resolvedTypedExecutionContext(state, state.execution)) ?? "");
++    });
++  }
++  /** The typed request in flight: stop() aborts its save, turn and command calls. */
+   const typedTurnAbort = useRef<AbortController | null>(null);
+   const executeRef = useRef<(request: string, requestId?: string) => Promise<void>>(async () => undefined);
+   executeRef.current = (request: string, requestId?: string) => execute(request, false, requestId);
+   // A typed request is never dropped silently (src/lib/typed-send.ts): it waits for the running one, or the conversation says why not.
+   const typedQueue = useRef(createTypedQueue<{ request: string; requestId: string }>());
+-  /**
+-   * Typed requests and their replies (plain answers too) are saved into the person's own default Jarvis thread, the one /jarvis reads, so the page
+-   * shows the whole conversation and it survives a reload. Keyed by the request id, so a repeat writes nothing twice. Best effort: the reply is
+-   * already shown here.
+-   */
+-  const sayToThread = (requestId: string, part: "user" | "reply" | "note", role: "user" | "assistant", text: string) => {
+-    if (!text.trim()) return;
+-    void voicePost("/screen/command/thread/say", { requestId, part, role, text: text.slice(0, 4000) }, AbortSignal.timeout(8000))
+-      .then((r) => { void r.body?.cancel().catch(() => undefined); if (r.ok) window.dispatchEvent(new CustomEvent("operator:conversations-changed")); })
+-      .catch(() => undefined);
++  const typedRequests = useRef(new Map<string, ContextualTypedRequest>());
++  const cancelledTypedRequests = useRef(new Set<string>());
++  useEffect(() => onJarvisRequestCancelled((requestId) => {
++    cancelTypedAdmission(requestId, typedRequests.current, cancelledTypedRequests.current, typedQueue.current);
++  }), []);
++  const companionRetry = useRef<{ requestId: string; text: string } | null>(null);
++  // Cancellation still drops queued work; also release its waiting composer with an explicit outcome.
++  const rejectQueuedTyped = (reason: (request: string) => string) => {
++    for (const waiting of typedQueue.current.drain()) {
++      const state = typedRequests.current.get(waiting.requestId);
++      if (state) { state.running = false; state.blocked = new Error(reason(waiting.request)); }
++      rejectJarvisRequest(waiting.requestId, reason(waiting.request));
++    }
+   };
+   const busyOwner = useRef<object | null>(null);
+   // A request waiting its turn belongs to the page it was typed on: when the page changes, each one is reported as not run (never run against
+   // another page's context, never dropped silently).
+   // Every Stop empties the queue (release re-check M3): the pill's Stop here; typed and spoken stops in execute/jarvisCommand; Escape via stop().
+-  useEffect(() => onDrivingStop(() => typedQueue.current.clear()), []);
++  useEffect(() => onDrivingStop(() => rejectQueuedTyped(() => "Stopped before this queued request ran.")), []);
+   const queuedFor = useRef(pathname);
+   useEffect(() => {
+     if (queuedFor.current === pathname) return;
+     queuedFor.current = pathname;
+     for (const waiting of typedQueue.current.drain()) {
+       append("assistant", pageChangedLine(waiting.request));
+-      sayToThread(waiting.requestId, "reply", "assistant", pageChangedLine(waiting.request));
++      const state = typedRequests.current.get(waiting.requestId);
++      if (state) { state.running = false; state.blocked = new Error(pageChangedLine(waiting.request)); }
++      rejectJarvisRequest(waiting.requestId, pageChangedLine(waiting.request));
+     }
+     // append is stable enough for this: it only adds turns
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [pathname]);
+   async function execute(request: string, queued = false, givenId?: string) {
+     if (!request.trim()) return;
+-    const requestId = typedRequestId(givenId);
++    const requestId = typedRequestId(givenId ?? (companionRetry.current?.text === request ? companionRetry.current.requestId : undefined));
++    if (cancelledTypedRequests.current.has(requestId)) return;
++    let persisted = typedRequests.current.get(requestId);
++    if (persisted && persisted.text !== request) {
++      rejectJarvisRequest(requestId, "This request ID belongs to different words. Nothing new was run.");
++      return;
++    }
++    if (!persisted) {
++      // Bound volatile stage/tool checkpoints. Never evict an uncertain request and silently rerun it.
++      if (!hasTypedAdmissionCapacity(typedRequests.current, cancelledTypedRequests.current)) {
++        rejectJarvisRequest(requestId, "This page has reached its typed request checkpoint limit. Check that every earlier request is saved before reloading.");
++        return;
++      }
++      try {
++        const execution = captureTypedExecutionContext({ ...readTypedExecutionContext(), spokenYes: null });
++        persisted = { ...captureTypedRequest(requestId, request, { replyStyle: loadReplyStyle(), replyPersonality: loadPersonality(), ...execution.scope }), execution };
++        typedRequests.current.set(requestId, persisted);
++      } catch (error) {
++        rejectJarvisRequest(requestId, (error as Error).message);
++        setError((error as Error).message);
++        return;
++      }
++    }
++    const durable = persisted;
++    if (durable.started) startJarvisRequest(requestId);
++    if (durable.saved) { acceptJarvisRequest({ requestId }); return; }
++    if (durable.running && !queued) return;
+     const gate = typedSendGate({ busy: busyRef.current, paused: pausedRef.current, request });
+     // A typed Stop while something runs: stop it now (stop() also empties the queue), then the Stop goes on as a command so the hub stops his jobs too.
+     if (gate === "stop") stop();
+     else if (gate !== "run") {
+-      if (!queued) { append("user", request); sayToThread(requestId, "user", "user", request); }
+       const waits = gate === "queue" && typedQueue.current.push({ request, requestId });
++      if (waits) durable.running = true;
+       const line = waits ? QUEUED_LINE : gate === "paused" ? PAUSED_LINE : "I'm still working through earlier requests, so I didn't take that one. Send it again in a moment.";
+       append("assistant", line);
+-      sayToThread(requestId, waits ? "note" : "reply", "assistant", line);
++      if (!waits) rejectJarvisRequest(requestId, line);
+       return;
+     }
+     const current = generation.current;
+     const owner = {};
+     const recentIntent = recentVoiceIntent(request);
++    // Preserve the existing active non-browser voice-session path; its transcript lifecycle is separate.
+     if (activeRef.current && engineRef.current !== "browser") {
+       try {
+         session.current?.sendUserMessage(request);
++        acceptJarvisRequest({ requestId });
+       } catch (e) {
+         setError((e as Error).message);
++        rejectJarvisRequest(requestId, (e as Error).message);
+       }
+       setText("");
+       return;
+@@ -1498,13 +1513,22 @@
+     setText("");
+     setInterim("");
+     recognition.current?.abort();
+-    if (!queued) { append("user", request); sayToThread(requestId, "user", "user", request); }
++    durable.running = true;
++    const controller = new AbortController();
++    durable.controller = controller;
++    typedTurnAbort.current = controller;
+     setPhase("thinking");
+     try {
++      const reply = await runTypedRequestForScope(durable, async () => {
++      if (durable.turn) return typedTurn(current, durable, controller);
++      assertTypedExecutionContext(durable.execution, readTypedExecutionContext());
++      controller.signal.throwIfAborted();
++      durable.started = true;
++      startJarvisRequest(requestId);
++      append("user", request);
+       const intent = voiceIntent(request);
+       let routed: JarvisRoute | null = null;
+       let reply: string;
+-      let provenance: VoiceTurnContext | undefined;
+       if (recentIntent) {
+         reply = summarizeRecent(await fetchRecent(recentIntent));
+       } else if (
+@@ -1532,10 +1556,11 @@
+         reply = "Your memory sources are here. Toggle what you want me to use.";
+       } else if (
+         (routed = await Promise.all([loadRouting(), loadRegistry()]).then(([routing, registry]) =>
+-          routing.routeJarvisText(request, { index: registry.buildCommandIndex(cachedApps() ? { apps: cachedApps()! } : {}), context: readPageContextT1(), personId: runtime.current.personId }),
++          routing.routeJarvisText(request, { index: registry.buildCommandIndex(cachedApps() ? { apps: cachedApps()! } : {}), context: durable.execution.routeContext, personId: durable.execution.personId }),
+         ))
+       ) {
+         // The ONE command registry first, exactly as the spoken turn does (scripts/commands/voice-route.ts).
++        assertTypedExecutionContext(durable.execution, readTypedExecutionContext());
+         reply = await runRoute(routed);
+       } else if (
+         /^(?:show|bring up|pull up)(?: me)? (?:my |the )?(?:memories|memory|brain|calendar|business|images)\s*[.!?]?$/i.test(
+@@ -1554,39 +1579,40 @@
+       // The older page shortcut never takes money or action words (REVIEW-T1 fix 2): those go whole to the turn.
+       else if (intent.kind === "navigate" && !(await import("@/lib/commands/action-guard")).actsOrPays(request)) reply = await navigate(intent.path);
+       else {
+-        // Memory questions included: the turn's shared-memory lane answers them as it does for speech
+-        // (the old legacy /__operator/search branch here disagreed with voice, AUDIT-F4 F12).
+-        // The same turn as speech (rules, Jev, tools). The chat model answers only if that turn fails.
+-        // A failed turn is said plainly (release re-check M6): it used to fall back silently to a tool-less chat answer.
+-        // When the turn itself can't run here (no voice model configured: it answers an error, not a transient failure), the typed request goes
+-        // straight to the ONE command path the /jarvis box uses, with the same request id: the same kind of answer, never a different one.
+-        reply = await typedTurn(current, request, requestId).catch(async (e: Error) => {
+-          if (e instanceof TurnFailed || (e as Error)?.name === "AbortError") return e instanceof TurnFailed ? e.message : "Stopped.";
+-          // Through the companion's own command tool (final review B2): the Stop pill, the Stop by event id and the hub's own stop wording, with a
+-          // signal stop() aborts.
+-          const fallback = new AbortController();
+-          typedTurnAbort.current = fallback;
+-          const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, fallback.signal);
+-          try {
+-            return String((JSON.parse(out) as { said?: unknown }).said ?? out);
+-          } catch {
+-            return out;
+-          }
++        // Persistence errors/unknown outcomes must never trigger a second command path.
++        reply = await typedTurn(current, durable, controller).catch(async (error: Error) => {
++          if (durableTypedScope(durable.options) || error instanceof TypedPersistenceFailure) throw error;
++          // Preserve the old scoped-bot fallback; it is not opted into founder-thread persistence.
++          if (error instanceof TurnFailed || error.name === "AbortError") return error instanceof TurnFailed ? error.message : "Stopped.";
++          const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, controller.signal, undefined, resolvedTypedExecutionContext(durable, durable.execution));
++          try { return String((JSON.parse(out) as { said?: unknown }).said ?? out); } catch { return out; }
+         });
+       }
++      return reply;
++      }, voicePost, controller.signal);
++      window.dispatchEvent(new CustomEvent("operator:conversations-changed"));
++      acceptJarvisRequest({ requestId });
++      if (companionRetry.current?.requestId === requestId) companionRetry.current = null;
+       if (current !== generation.current) return;
+-      append("assistant", reply, provenance);
+-      sayToThread(requestId, "reply", "assistant", reply);
++      append("assistant", reply);
+       busyRef.current = false;
+       setBusy(false);
+       if (activeRef.current) speak(reply, current);
+       else setPhase("idle");
+     } catch (e) {
++      const answer = (e instanceof TypedPersistenceFailure ? e.answer : undefined) ?? durable.answer ?? durable.pendingAnswer;
++      const reason = `${answer ? `${answer}\n\n` : ""}${(e as Error).message}`;
++      companionRetry.current = { requestId, text: request };
++      rejectJarvisRequest(requestId, reason);
+       if (current === generation.current) {
++        if (answer) append("assistant", answer);
++        setText(request);
+         if ((e as Error).name !== "AbortError") setError((e as Error).message);
+         setPhase(activeRef.current ? "listening" : "idle");
+       }
+     } finally {
++      durable.running = false;
++      durable.controller = undefined;
+       if (current === generation.current) {
+         busyRef.current = false;
+         setBusy(false);
+@@ -1975,11 +2001,12 @@
+    * through the job service; a dropped stream re-attaches inside the client. The result is the
+    * `command_result` JSON the server's follow-up rule speaks as-is.
+    */
+-  async function jarvisCommand(args: Record<string, unknown>, toolSignal: AbortSignal, say?: (line: string) => void): Promise<string> {
++  async function jarvisCommand(args: Record<string, unknown>, toolSignal: AbortSignal, say?: (line: string) => void, typedContext?: CapturedTypedContext): Promise<string> {
++    const execution = commandExecutionContext(typedContext, readTypedExecutionContext);
+     const utterance = typeof args.utterance === "string" ? args.utterance.trim().slice(0, 600) : "";
+     if (!utterance) return commandResultText(clientDone("What should I do, sir?", null, { kind: "ask", ask: true }));
+     // A spoken (or typed-turn) stop empties what was waiting behind the running request, as every Stop does (release re-check M3).
+-    if (TYPED_STOP.test(utterance)) typedQueue.current.clear();
++    if (TYPED_STOP.test(utterance)) rejectQueuedTyped(() => "Stopped before this queued request ran.");
+     let spokenTarget = typeof args.spokenTarget === "string" && args.spokenTarget.trim() ? args.spokenTarget.trim().slice(0, 80) : undefined;
+     // Track 1's ONE resolver first (the same one the palette uses): pages, sections and answers open
+     // here, a website takes the open_url path, ambiguity asks; device plans and anything unresolved
+@@ -1988,7 +2015,7 @@
+     // A request the voice rules marked as an agent bot's ("use the builder agent", "builder, open Chrome") goes straight to the server, which runs it
+     // on that bot's own computer: never a page the words happen to resemble.
+     if (args.bot !== true) try {
+-      route = voiceRouteFor(utterance, readPageContext());
++      route = voiceRouteFor(utterance, execution.routeContext);
+     } catch {
+       /* The resolver failing never blocks the server path. */
+     }
+@@ -2019,11 +2046,11 @@
+         utterance,
+         source: args.typed === true ? "typed" : "voice",
+         spokenTarget,
+-        pageContext: commandPageContext(),
+-        spokenYes: spokenYesFor(latestUserRequest.current),
++        pageContext: execution.pageContext,
++        spokenYes: execution.spokenYes,
+         ...(typeof args.eventId === "string" ? { eventId: args.eventId } : {}),
+         // A bot's chat scopes the open voice session to that bot: its conversation id and target ride on the request (none: default thread).
+-        ...voiceScopeCommandOptions(),
++        ...execution.scope,
+         signal: controller.signal,
+         post: voicePost,
+         onEvent: (event) => {
+@@ -2183,13 +2210,14 @@
+     args: Record<string, unknown>,
+     toolSignal: AbortSignal,
+     say?: (line: string) => void,
++    typedContext?: CapturedTypedContext,
+   ): Promise<string> {
+     if (current !== generation.current || toolSignal.aborted) return "This call has ended.";
+     if (pausedRef.current)
+       return "The conversation is paused. Wait for the user to resume.";
+     if (name === "control_pc") return controlPc(args, toolSignal);
+     if (name === "screen_act") return screenAct(args, toolSignal, say);
+-    if (name === "jarvis_command") return jarvisCommand(args, toolSignal, say);
++    if (name === "jarvis_command") return jarvisCommand(args, toolSignal, say, typedContext);
+     if (name === "screen_teach") return screenTeach(args);
+     if (name === "screen_point") return screenPoint(args, toolSignal);
+     if (name === "screen_tutor") return screenTutor(args);
+@@ -2251,7 +2279,7 @@
+       // Folders, media keys, volume and lock retain their direct executor.
+       try {
+         if (args.action === "open_app" && typeof args.target === "string") {
+-          const result = await jarvisCommand({utterance:`open ${args.target.slice(0,80)} app`},toolSignal,say);
++          const result = await jarvisCommand({utterance:`open ${args.target.slice(0,80)} app`},toolSignal,say,typedContext);
+           try { return JSON.parse(result).said || result; } catch { return result; }
+         }
+         const result = await operatorRequest<{ ok: boolean; said: string }>("/pc/act", {
+--- a/src/components/shell/pages/jarvis-thread.tsx
++++ b/src/components/shell/pages/jarvis-thread.tsx
+@@ -12,7 +12,7 @@
+ import { useDraft } from "@/lib/use-draft";
+ import { cn } from "@/lib/utils";
+ import { openJarvis } from "../jarvis-slot";
+-import { sendDecision, sendJarvisRequest, type PendingSend } from "@/lib/jarvis-send";
++import { sendDecision, sendJarvisRequest, retryRequestId, readInterruptedRequest, rememberInterruptedRequest, type InterruptedRequest, type PendingSend } from "@/lib/jarvis-send";
+ import { readSent, rememberSent, unshownSent, type SentRequest } from "@/lib/jarvis-sent";
+ import { openJobs } from "@/lib/handoff-status";
+ import { stopJobFromThread } from "@/lib/thread-stop";
+@@ -119,28 +119,58 @@
+   // M5: one identity per composed request. While it waits (the companion may still be loading; the shell replays it then), the words
+   // stay, Send on the same words is the same request, and editing them cancels it.
+   const pendingRef = useRef<PendingSend | null>(null);
++  const retryRef = useRef<PendingSend | null>(null);
++  const [sendError, setSendError] = useState("");
++  const interruptedRef = useRef<InterruptedRequest | null>(null);
++  useEffect(() => {
++    const interrupted = readInterruptedRequest();
++    interruptedRef.current = interrupted;
++    if (interrupted) setSendError(`Request ${interrupted.requestId} was interrupted by a reload. Its outcome is unknown. Check the saved conversation before starting a new request; browser tool steps cannot be safely replayed.`);
++  }, []);
+   const [waiting, setWaiting] = useState<"no" | "sending" | "slow">("no");
+   const send = (e?: FormEvent) => {
+     e?.preventDefault();
+     if (!hydrated || !request.trim()) return;
+     if (sendDecision(pendingRef.current, request) === "same") return;
+-    const p = sendJarvisRequest(request, { onSlow: () => pendingRef.current === p && setWaiting("slow") });
++    if (interruptedRef.current?.text === request.trim()) return;
++    const p = sendJarvisRequest(request, { requestId: retryRequestId(retryRef.current, request), onSlow: () => pendingRef.current === p && setWaiting("slow") });
+     pendingRef.current = p;
++    rememberInterruptedRequest({ requestId: p.requestId, text: p.text });
+     setWaiting("sending");
++    setSendError("");
+     void p.done.then((outcome) => {
+       if (pendingRef.current !== p) return;
+       pendingRef.current = null;
+       setWaiting("no");
++      if (outcome === "rejected") {
++        retryRef.current = p;
++        setSendError(p.failure || "Not confirmed saved. Retry this same request.");
++        return;
++      }
+       if (outcome !== "accepted") return;
++      retryRef.current = null;
++      rememberInterruptedRequest(null);
+       setSent(rememberSent({ requestId: p.requestId, text: p.text, at: Date.now() }));
+       setRequest("");
+       window.setTimeout(refresh, 2500);
+     });
+   };
+   const edit = (next: string) => {
+-    // Changed or cleared words are no longer the request that is waiting: cancel it (the shell drops its queued replay).
++    if (interruptedRef.current && next.trim() !== interruptedRef.current.text) {
++      interruptedRef.current = null;
++      rememberInterruptedRequest(null);
++      setSendError("");
++    }
++    if (retryRef.current && next.trim() !== retryRef.current.text) {
++      retryRef.current = null;
++      rememberInterruptedRequest(null);
++      setSendError("");
++    }
++    // Before effects begin, editing cancels queued admission. Afterward it only detaches this draft waiter; owned work continues.
+     if (pendingRef.current && next.trim() !== pendingRef.current.text) {
++      const hadStarted = pendingRef.current.started;
+       pendingRef.current.cancel();
++      if (!hadStarted) rememberInterruptedRequest(null);
+       pendingRef.current = null;
+       setWaiting("no");
+     }
+@@ -181,7 +211,7 @@
+           value={request}
+           onChange={(e) => edit(e.target.value)}
+           onKeyDown={onKey}
+-          aria-describedby={waiting === "slow" ? "jarvis-send-status" : undefined}
++          aria-describedby={waiting === "slow" || sendError ? "jarvis-send-status" : undefined}
+           readOnly={!hydrated}
+           maxLength={600}
+           rows={1}
+@@ -195,9 +225,10 @@
+           <Send className="h-4 w-4" aria-hidden="true" /> <span className="hidden @xl:inline">Send</span>
+         </Button>
+       </form>
++      {sendError && <p id="jarvis-send-status" role="alert" className="mx-auto mt-2 w-full max-w-4xl whitespace-pre-wrap text-sm text-muted-foreground">{sendError}</p>}
+       {waiting === "slow" && (
+         <p id="jarvis-send-status" role="status" className="mx-auto mt-2 w-full max-w-4xl text-sm text-muted-foreground">
+-          Still connecting to Jarvis… your request will be sent when it's ready. Change the words to cancel it.
++          Waiting for Jarvis to confirm your request and reply are saved. Keep these words to retry with the same request ID if saving fails.
+         </p>
+       )}
+     </section>
+--- a/src/lib/jarvis-send.ts
++++ b/src/lib/jarvis-send.ts
+@@ -5,14 +5,16 @@
+ //   - ONE identity per composed request: the composer makes the request id once and carries it through the handover (`requestId`,
+ //     shaped like a command eventId so the companion can use it as one). Pressing Send again on the same words while that request is
+ //     still waiting is the same request: nothing new is dispatched.
+-//   - It is only "sent" when the companion says it took it (`operator:voice-text-accepted` for that id). Until then the composer keeps
+-//     the words and, after a while, says it is still connecting; it never claims "nothing was sent" while a replay is still possible.
++//   - It is only "sent" when the companion says it took it (`operator:voice-text-accepted` for that id after durable completion in the typed lane). Until then the composer keeps
++//     the words and, after a while, says it is waiting for save confirmation; it never claims "nothing was sent" while a replay is still possible.
+ //   - Editing or clearing the words cancels that request: the shell drops it from its replay queue (`late:cancel-queued`).
+ export const VOICE_TEXT = "operator:voice-text";
+ export const VOICE_TEXT_ACCEPTED = "operator:voice-text-accepted";
++export const VOICE_TEXT_STARTED = "operator:voice-text-started";
++export const VOICE_TEXT_REJECTED = "operator:voice-text-rejected";
+ /** The shell's replay queue drops a captured event whose detail.requestId matches. */
+ export const CANCEL_QUEUED = "late:cancel-queued";
+-/** After this long without an acceptance, the composer says it is still connecting (it keeps waiting). */
++/** After this long without an acceptance, the composer says it is waiting for completion (it keeps waiting). */
+ export const SLOW_MS = 8_000;
+ 
+ let seq = 0;
+@@ -22,49 +24,70 @@
+ export type PendingSend = {
+   readonly requestId: string;
+   readonly text: string;
+-  /** Resolves "accepted" when the companion took it, "cancelled" when the person edited or cleared it first. */
+-  readonly done: Promise<"accepted" | "cancelled">;
+-  /** Edited or cleared before it was taken: stop waiting and drop it from the shell's replay queue. */
++  /** Resolves accepted after durable completion, rejected on an explicit failure, or cancelled on editing. */
++  readonly done: Promise<"accepted" | "cancelled" | "rejected">;
++  /** Durable admission/completion failed; keep this identity and the composed words for retry. */
++  readonly failure?: string;
++  /** Effects have begun; editing only detaches this waiter and cannot promise cancellation. */
++  readonly started: boolean;
++  /** Stop waiting. Before effects start, also cancel shell replay and companion queue admission. */
+   cancel(): void;
+ };
+ 
+ /**
+- * Hand one composed request to the companion. `onSlow` runs once if it hasn't been taken after `slowMs` (the request stays queued).
+- * Waits until accepted or cancelled; there is no give-up that could make the person send it again under a new identity.
++ * Hand one composed request to the companion. `onSlow` runs once if completion has not arrived after `slowMs`.
++ * Waits until accepted, rejected or cancelled; there is no give-up that could make the person send it again under a new identity.
+  */
+ export function sendJarvisRequest(text: string, opts: { requestId?: string; target?: EventTarget; slowMs?: number; onSlow?: () => void } = {}): PendingSend {
+   const target = opts.target ?? window;
+   const requestId = opts.requestId ?? newRequestId();
+   const words = text.trim();
+-  let settle: (r: "accepted" | "cancelled") => void = () => undefined;
+-  const done = new Promise<"accepted" | "cancelled">((resolve) => (settle = resolve));
++  let settle: (r: "accepted" | "cancelled" | "rejected") => void = () => undefined;
++  const done = new Promise<"accepted" | "cancelled" | "rejected">((resolve) => (settle = resolve));
+   let finished = false;
+-  const finish = (r: "accepted" | "cancelled") => {
++  let failure: string | undefined;
++  let started = false;
++  const finish = (r: "accepted" | "cancelled" | "rejected") => {
+     if (finished) return;
+     finished = true;
+     target.removeEventListener(VOICE_TEXT_ACCEPTED, onAccepted);
++    target.removeEventListener(VOICE_TEXT_REJECTED, onRejected);
++    target.removeEventListener(VOICE_TEXT_STARTED, onStarted);
+     clearTimeout(slow);
+     settle(r);
+   };
+   const onAccepted = (event: Event) => {
+     if ((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId === requestId) finish("accepted");
+   };
++  const onStarted = (event: Event) => {
++    if ((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId === requestId) started = true;
++  };
++  const onRejected = (event: Event) => {
++    const detail = (event as CustomEvent<{ requestId?: unknown; reason?: string }>).detail;
++    if (detail?.requestId !== requestId) return;
++    failure = detail.reason || "The request is not confirmed saved. Retry the same request.";
++    finish("rejected");
++  };
+   target.addEventListener(VOICE_TEXT_ACCEPTED, onAccepted);
++  target.addEventListener(VOICE_TEXT_REJECTED, onRejected);
++  target.addEventListener(VOICE_TEXT_STARTED, onStarted);
+   const slow = setTimeout(() => !finished && opts.onSlow?.(), opts.slowMs ?? SLOW_MS);
+   target.dispatchEvent(new CustomEvent(VOICE_TEXT, { detail: { request: words, requestId } }));
+   return {
+     requestId,
+     text: words,
+     done,
++    get failure() { return failure; },
++    get started() { return started; },
+     cancel() {
+       if (finished) return;
+-      target.dispatchEvent(new CustomEvent(CANCEL_QUEUED, { detail: { type: VOICE_TEXT, requestId } }));
++      if (!started) target.dispatchEvent(new CustomEvent(CANCEL_QUEUED, { detail: { type: VOICE_TEXT, requestId } }));
+       finish("cancelled");
+     },
+   };
+ }
+ 
+-/** The companion's side: say a typed request was taken (it is then queued to run). */
++/** The companion acknowledges only after the request and answer have durable save acknowledgements. */
+ export function acceptJarvisRequest(detail: unknown, target: EventTarget = window) {
+   const requestId = (detail as { requestId?: unknown } | null | undefined)?.requestId;
+   if (typeof requestId === "string") target.dispatchEvent(new CustomEvent(VOICE_TEXT_ACCEPTED, { detail: { requestId } }));
+@@ -74,3 +97,40 @@
+ export function sendDecision(pending: { text: string } | null, words: string): "new" | "same" {
+   return pending && pending.text === words.trim() ? "same" : "new";
+ }
++
++/** An explicit failure unlocks Send without losing its identity or words. */
++export function rejectJarvisRequest(requestId: string, reason: string, target: EventTarget = window) {
++  target.dispatchEvent(new CustomEvent(VOICE_TEXT_REJECTED, { detail: { requestId, reason } }));
++}
++
++/** The composer retains a failed identity until its words change; a retry never becomes a fresh request. */
++export function retryRequestId(previous: { requestId: string; text: string } | null, text: string): string | undefined {
++  return previous?.text === text.trim() ? previous.requestId : undefined;
++}
++
++const INTERRUPTED_KEY = "jarvis-pending-durable-request";
++export type InterruptedRequest = { requestId: string; text: string };
++/** Store only the current composer identity. A reload cannot reconstruct completed browser tool steps safely. */
++export function rememberInterruptedRequest(request: InterruptedRequest | null, storage?: Pick<Storage, "setItem" | "removeItem">): void {
++  try { const target = storage ?? sessionStorage; if (request) target.setItem(INTERRUPTED_KEY, JSON.stringify(request)); else target.removeItem(INTERRUPTED_KEY); } catch { /* session storage unavailable */ }
++}
++export function readInterruptedRequest(storage?: Pick<Storage, "getItem">): InterruptedRequest | null {
++  try {
++    const saved = JSON.parse((storage ?? sessionStorage).getItem(INTERRUPTED_KEY) || "null") as InterruptedRequest | null;
++    return saved && typeof saved.requestId === "string" && /^[\w:.-]{6,80}$/.test(saved.requestId) && typeof saved.text === "string" && saved.text.length <= 600 ? saved : null;
++  } catch { return null; }
++}
++
++
++/** Admission and completion are distinct: the draft still waits for saving after effects have begun. */
++export function startJarvisRequest(requestId: string, target: EventTarget = window): void {
++  target.dispatchEvent(new CustomEvent(VOICE_TEXT_STARTED, { detail: { requestId } }));
++}
++export function onJarvisRequestCancelled(cancel: (requestId: string) => void, target: EventTarget = window): () => void {
++  const listener = (event: Event) => {
++    const detail = (event as CustomEvent<{ type?: string; requestId?: unknown }>).detail;
++    if (detail?.type === VOICE_TEXT && typeof detail.requestId === "string" && /^[\w:.-]{6,80}$/.test(detail.requestId)) cancel(detail.requestId);
++  };
++  target.addEventListener(CANCEL_QUEUED, listener);
++  return () => target.removeEventListener(CANCEL_QUEUED, listener);
++}
+--- /dev/null
++++ b/src/lib/typed-persistence.ts
+@@ -0,0 +1,215 @@
++import { turnWithRetry } from "./typed-send";
++
++export type TypedReply = { content?: string | null; tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[] };
++export type TypedMessage = { role: string; content: string | null; tool_calls?: TypedReply["tool_calls"]; tool_call_id?: string };
++export type TypedPost = (path: string, body: unknown, signal: AbortSignal) => Promise<Response>;
++const UUID = /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i;
++
++/** A failed typed decision never authorizes switching to the command path. */
++export class TypedPersistenceFailure extends Error {
++  constructor(message: string, readonly answer?: string, readonly retryable = false) { super(message); }
++}
++
++export type TypedExecutionContext<Page = unknown, Route = unknown> = {
++  pageContext: Page;
++  routeContext: Route;
++  pathname: string;
++  personId?: string;
++  scope: { conversationId?: string; target?: { bot: string } };
++  spokenYes: string | null;
++};
++
++/** Client-owned context travels separately from model tool arguments. */
++export function captureTypedExecutionContext<Page, Route>(context: TypedExecutionContext<Page, Route>): TypedExecutionContext<Page, Route> {
++  // Typed words cannot reuse a prior spoken approval, even when the text is identical.
++  return { ...JSON.parse(JSON.stringify(context)), spokenYes: null };
++}
++/** Only reference identity can retarget an action; a job/progress/source refresh is not a new origin. */
++function pageReferenceIdentity(snapshot: unknown): unknown {
++  if (!snapshot || typeof snapshot !== "object") return snapshot;
++  const value = snapshot as Record<string, unknown>;
++  const item = (raw: unknown) => {
++    if (!raw || typeof raw !== "object") return raw ?? null;
++    const v = raw as Record<string, unknown>;
++    return { kind: v.kind, id: v.id, to: v.to, focus: v.focus, search: v.search && typeof v.search === "object" ? Object.fromEntries(Object.entries(v.search).sort(([a], [b]) => a.localeCompare(b))) : v.search };
++  };
++  const page = value.page && typeof value.page === "object" ? { path: (value.page as Record<string, unknown>).path, destination: (value.page as Record<string, unknown>).destination } : value.page;
++  return { page, selection: item(value.selection), focused: item(value.focused) };
++}
++export function assertTypedExecutionContext<Page, Route>(captured: TypedExecutionContext<Page, Route>, current: TypedExecutionContext<Page, Route>): void {
++  if (captured.pathname !== current.pathname || captured.personId !== current.personId || JSON.stringify(captured.scope) !== JSON.stringify(current.scope) || JSON.stringify(pageReferenceIdentity(captured.routeContext)) !== JSON.stringify(pageReferenceIdentity(current.routeContext))) {
++    throw new TypedPersistenceFailure("The page or conversation changed before this typed action. Execution is paused; check the saved conversation before starting another request.");
++  }
++}
++/** This is the command adapter boundary: a typed context suppresses every live context getter. */
++export function commandExecutionContext<Page, Route>(captured: TypedExecutionContext<Page, Route> | undefined, live: () => TypedExecutionContext<Page, Route>): TypedExecutionContext<Page, Route> {
++  return captured ?? live();
++}
++/** Keep the captured target and page; only the verified server may resolve the previously omitted conversation. */
++export function resolvedTypedExecutionContext<Page, Route>(state: TypedRequest, captured: TypedExecutionContext<Page, Route>): TypedExecutionContext<Page, Route> {
++  return { ...captured, scope: { ...captured.scope, ...(state.conversationId ? { conversationId: state.conversationId } : {}) } };
++}
++
++export type TypedRequest = {
++  requestId: string;
++  text: string;
++  options: Record<string, unknown>;
++  conversationId?: string;
++  userSaved: boolean;
++  answer?: string;
++  pendingAnswer?: string;
++  saved: boolean;
++  running: boolean;
++  started?: boolean;
++  controller?: AbortController;
++  blocked?: Error;
++  turn?: { messages: TypedMessage[]; step: number; commands: number; body?: Record<string, unknown> };
++};
++
++export function hasTypedAdmissionCapacity(records: { size: number }, cancelled: { size: number }): boolean {
++  return records.size < 64 && cancelled.size < 64;
++}
++
++/** Cancel only work that has not started effects, including the pre-microtask and companion-queue windows. */
++export function cancelTypedAdmission<T extends { requestId: string }>(requestId: string, records: Map<string, TypedRequest>, cancelled: Set<string>, queue: { drain(): T[]; push(item: T): boolean }): boolean {
++  const state = records.get(requestId);
++  if (state?.started) return false;
++  // Once tombstones fill, the companion refuses fresh admission until reload; existing queued records still cancel.
++  if (cancelled.size < 64) cancelled.add(requestId);
++  if (state) {
++    state.running = false;
++    state.blocked = new DOMException("Cancelled before this request started.", "AbortError");
++    state.controller?.abort();
++  }
++  for (const waiting of queue.drain()) if (waiting.requestId !== requestId) queue.push(waiting);
++  return true;
++}
++
++/** Capture scope/style once. A retry must not silently change the principal conversation or decision body. */
++export function captureTypedRequest(requestId: string, text: string, options: Record<string, unknown>): TypedRequest {
++  const copy = JSON.parse(JSON.stringify(options)) as Record<string, unknown>;
++  const conversationId = copy.conversationId;
++  if (conversationId !== undefined && (typeof conversationId !== "string" || !UUID.test(conversationId))) throw new TypedPersistenceFailure("The conversation is not valid. Nothing was sent.");
++  return { requestId, text, options: copy, ...(typeof conversationId === "string" ? { conversationId } : {}), userSaved: false, saved: false, running: false };
++}
++
++function failure(error: unknown, fallback: string): string { return error instanceof Error ? error.message : fallback; }
++
++/** The user append is a barrier: no routing, model call or tool may start before its durable acknowledgement. */
++export async function saveTypedPart(state: TypedRequest, part: "user" | "reply", text: string, post: TypedPost, signal: AbortSignal): Promise<void> {
++  let response: Response;
++  try {
++    response = await post("/screen/command/thread/say", { requestId: state.requestId, ...(state.conversationId ? { conversationId: state.conversationId } : {}), part, role: part === "user" ? "user" : "assistant", text }, signal);
++  } catch (error) {
++    throw new TypedPersistenceFailure(`${part === "user" ? "Your request" : "The reply"} is not confirmed saved: ${failure(error, "connection lost")}. Retry this same request.`, part === "reply" ? text : undefined, true);
++  }
++  const body = await response.json().catch(() => ({})) as { saved?: boolean; requestId?: string; conversationId?: string; error?: string };
++  if (!response.ok || body.saved !== true || body.requestId !== state.requestId || !body.conversationId || !UUID.test(body.conversationId) || (state.conversationId && body.conversationId !== state.conversationId)) {
++    throw new TypedPersistenceFailure(`${part === "user" ? "Your request" : "The reply"} is not confirmed saved. ${body.error || `HTTP ${response.status}; missing or mismatched save acknowledgement.`} Retry this same request.`, part === "reply" ? text : undefined, true);
++  }
++  // An omitted conversation is resolved by the verified server once, before any effect.
++  state.conversationId = body.conversationId;
++  if (part === "user") state.userSaved = true;
++  else state.saved = true;
++}
++
++/** The new server protocol is for the person's Jarvis thread; scoped bot turns retain their existing path. */
++export function durableTypedScope(options: Record<string, unknown>): boolean {
++  return !(options.target && typeof options.target === "object" && (options.target as { bot?: unknown }).bot);
++}
++
++/** Original scoped-bot turn shape, with no founder persistence or new opt-in fields. */
++export async function runScopedBotTypedTurn(state: TypedRequest, post: TypedPost, signal: AbortSignal, tool: (call: NonNullable<TypedReply["tool_calls"]>[number], commandIndex: number) => Promise<string>): Promise<string> {
++  const messages: TypedMessage[] = [{ role: "user", content: state.text }];
++  let commands = 0;
++  for (let step = 0; step < 5; step++) {
++    const body = JSON.parse(JSON.stringify({ ...state.options, messages, typed: true }));
++    const response = await turnWithRetry(() => post("/voice/free/turn", body, signal));
++    const reply = await response.json().catch(() => ({})) as TypedReply & { error?: string; code?: string };
++    if (!response.ok) {
++      if (reply.code?.startsWith("typed_")) throw new TypedPersistenceFailure(reply.error || reply.code);
++      throw new Error(reply.error || `Jarvis answered HTTP ${response.status}.`);
++    }
++    if (!reply.tool_calls?.length) return reply.content ?? "";
++    messages.push({ role: "assistant", content: reply.content ?? null, tool_calls: reply.tool_calls });
++    for (const call of reply.tool_calls) messages.push({ role: "tool", tool_call_id: call.id, content: String(await tool(call, call.function.name === "jarvis_command" ? commands++ : commands)).slice(0, 4000) });
++  }
++  return "That needed more steps than I can take in one go. Give it to me in smaller pieces.";
++}
++
++/** The scope switch never strips or replaces a bot's conversation/target. */
++export async function runTypedRequestForScope(state: TypedRequest, effect: () => Promise<string>, post: TypedPost, signal: AbortSignal): Promise<string> {
++  return durableTypedScope(state.options) ? runPersistedTypedRequest(state, effect, post, signal) : effect();
++}
++
++/** Run once; a reply-save retry can only retry the save. Unknown execution cannot become a new command. */
++export async function runPersistedTypedRequest(state: TypedRequest, effect: () => Promise<string>, post: TypedPost, signal: AbortSignal): Promise<string> {
++  if (state.blocked) throw state.blocked;
++  if (!state.userSaved) await saveTypedPart(state, "user", state.text, post, signal);
++  if (state.answer === undefined) {
++    try { signal.throwIfAborted(); state.answer = await effect(); }
++    catch (error) {
++      if (!(error instanceof TypedPersistenceFailure && error.retryable && state.turn)) state.blocked = error instanceof Error ? error : new Error(String(error));
++      throw error;
++    }
++  }
++  if (!state.saved) await saveTypedPart(state, "reply", state.answer, post, signal);
++  return state.answer;
++}
++
++/** Retry only the identical stage, retaining the last HTTP error body (including an unsaved answer). */
++async function postTypedStage(send: () => Promise<Response>, delays: readonly number[], signal: AbortSignal): Promise<Response> {
++  for (let attempt = 0; ; attempt++) {
++    try {
++      const response = await send();
++      if (!response.ok) {
++        const error = await response.clone().json().catch(() => ({})) as { code?: string };
++        // Typed errors contain the save/uncertainty contract, possibly the only copy of an unsaved answer.
++        if (error.code?.startsWith("typed_")) return response;
++      }
++      if (![502, 503, 504].includes(response.status) || attempt >= delays.length) return response;
++      await response.body?.cancel().catch(() => undefined);
++    } catch (error) {
++      if (signal.aborted || attempt >= delays.length) throw error;
++    }
++    await new Promise<void>((resolve, reject) => {
++      const abort = () => { clearTimeout(timer); reject(new DOMException("Stopped", "AbortError")); };
++      const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, delays[attempt]);
++      signal.addEventListener("abort", abort, { once: true });
++      if (signal.aborted) abort();
++    });
++  }
++}
++
++/** Keeps the exact stage body and completed tool results for retry; nothing already executed is rerun. */
++export async function runPersistedTypedTurn(state: TypedRequest, post: TypedPost, signal: AbortSignal, tool: (call: NonNullable<TypedReply["tool_calls"]>[number], commandIndex: number) => Promise<string>, delays: readonly number[] = [400, 1200, 3000]): Promise<string> {
++  const turn = state.turn ??= { messages: [{ role: "user", content: state.text }], step: 0, commands: 0 };
++  for (; turn.step < 5; turn.step++) {
++    turn.body ??= JSON.parse(JSON.stringify({ ...state.options, messages: turn.messages, typed: true, requestId: state.requestId, turnIndex: turn.step, ...(state.conversationId ? { conversationId: state.conversationId } : {}) }));
++    let response: Response;
++    try { response = await postTypedStage(() => post("/voice/free/turn", turn.body, signal), delays, signal); }
++    catch (error) {
++      throw new TypedPersistenceFailure(`The typed reply is not confirmed saved: ${failure(error, "connection lost")}. Retry this same request; earlier tools will not be rerun.`, state.pendingAnswer, signal.aborted ? false : true);
++    }
++    const parsed = await response.json().catch(() => ({})) as TypedReply & { error?: string; code?: string; persistence?: { requestId?: string; conversationId?: string; saved?: boolean; complete?: boolean } };
++    if (typeof parsed.content === "string" && !parsed.tool_calls?.length) state.pendingAnswer = parsed.content;
++    if (!response.ok) throw new TypedPersistenceFailure(`${parsed.error || `Jarvis answered HTTP ${response.status}.`} The typed request was not completed; no command fallback was run.`, state.pendingAnswer, (parsed.code === "typed_save_failed" || parsed.code === "typed_save_busy" || (!parsed.code && [502, 503, 504].includes(response.status))));
++    const ack = parsed.persistence;
++    const terminal = !parsed.tool_calls?.length;
++    if (!ack || ack.saved !== true || ack.requestId !== state.requestId || ack.conversationId !== state.conversationId || ack.complete !== terminal) throw new TypedPersistenceFailure("The typed reply has no matching save acknowledgement. Execution is paused; do not resend it as a new request.", terminal && typeof parsed.content === "string" ? parsed.content : undefined);
++    if (terminal) {
++      if (typeof parsed.content !== "string" || !parsed.content.trim()) throw new TypedPersistenceFailure("The saved typed reply was empty. Execution is paused.");
++      state.saved = true;
++      state.pendingAnswer = undefined;
++      return parsed.content;
++    }
++    if (turn.messages.filter((message) => message.role === "tool").length + parsed.tool_calls!.length > 20) throw new TypedPersistenceFailure("Jarvis reached the tool limit. Earlier tools may have run; do not resend this as a new request.");
++    turn.messages.push({ role: "assistant", content: parsed.content ?? null, tool_calls: parsed.tool_calls });
++    for (const call of parsed.tool_calls!) {
++      const result = await tool(call, call.function.name === "jarvis_command" ? turn.commands++ : turn.commands);
++      turn.messages.push({ role: "tool", tool_call_id: call.id, content: String(result ?? "").slice(0, 4000) });
++    }
++    turn.body = undefined;
++  }
++  throw new TypedPersistenceFailure("Jarvis reached the step limit. Earlier tools may have run; do not resend this as a new request.");
++}
+--- /dev/null
++++ b/src/lib/typed-persistence.test.ts
+@@ -0,0 +1,309 @@
++// @ts-ignore: bun:test is supplied by the isolated test runner.
++import { describe, expect, test } from "bun:test";
++import { captureTypedRequest, cancelTypedAdmission, hasTypedAdmissionCapacity, captureTypedExecutionContext, assertTypedExecutionContext, commandExecutionContext, resolvedTypedExecutionContext, durableTypedScope, runTypedRequestForScope, runScopedBotTypedTurn, runPersistedTypedRequest, runPersistedTypedTurn, saveTypedPart, TypedPersistenceFailure, type TypedPost } from "./typed-persistence";
++import { acceptJarvisRequest, rejectJarvisRequest, startJarvisRequest, onJarvisRequestCancelled, retryRequestId, sendJarvisRequest, readInterruptedRequest, rememberInterruptedRequest } from "./jarvis-send";
++import { createTypedQueue } from "./typed-send";
++const ID = "jr-plain-review-1";
++const CONVERSATION = "00000000-0000-0000-0000-000000000001";
++const TEXT = "Reply with QA JARVIS 20261005 only.";
++const ANSWER = "QA JARVIS 20261005";
++const signal = () => new AbortController().signal;
++const json = (body: unknown, status = 200) => Response.json(body, { status });
++const ack = () => json({ saved: true, requestId: ID, conversationId: CONVERSATION });
++const terminal = () => json({ content: ANSWER, persistence: { saved: true, requestId: ID, conversationId: CONVERSATION, complete: true } });
++
++describe("durable typed request and real composer event adapter", () => {
++  test("failed user append retains text+identity, visibly rejects, and blocks every effect; same-ID retry saves both", async () => {
++    const bus = new EventTarget();
++    const state = captureTypedRequest(ID, TEXT, {});
++    let effects = 0;
++    let fail = true;
++    const calls: unknown[] = [];
++    const post: TypedPost = async (path, body) => {
++      calls.push(body);
++      if (path.endsWith("/say")) return fail ? json({ error: "disk full", code: "typed_save_failed" }, 503) : ack();
++      return terminal();
++    };
++    const send = () => sendJarvisRequest(TEXT, { target: bus, requestId: ID, slowMs: 1000 });
++    const run = async () => {
++      try {
++        await runPersistedTypedRequest(state, async () => { effects++; return runPersistedTypedTurn(state, post, signal(), async () => { throw Error("No tool expected"); }, []); }, post, signal());
++        acceptJarvisRequest({ requestId: ID }, bus);
++      } catch (e) { rejectJarvisRequest(ID, (e as Error).message, bus); }
++    };
++    const first = send();
++    await run();
++    expect(await first.done).toBe("rejected");
++    expect(first.failure).toContain("disk full");
++    expect(first.text).toBe(TEXT);
++    expect(retryRequestId(first, TEXT)).toBe(ID);
++    expect(effects).toBe(0);
++    fail = false;
++    const retry = send();
++    await run();
++    expect(await retry.done).toBe("accepted");
++    expect(effects).toBe(1);
++    expect(state.answer).toBe(ANSWER);
++    expect(state.saved).toBe(true);
++    expect((calls[0] as any).requestId).toBe((calls[1] as any).requestId);
++    expect(calls.length).toBe(3); // user failed, user saved, server terminal reply saved; no duplicate client reply append
++  });
++
++  test("an answered route retries only the reply save, retaining all answer bytes", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    const answer = `  ${ANSWER}\n${"x".repeat(4100)}\n`;
++    let effects = 0;
++    let fails = true;
++    const saves: any[] = [];
++    const post: TypedPost = async (_path, body) => { saves.push(body); return (body as any).part === "reply" && fails ? json({ error: "full" }, 503) : ack(); };
++    const effect = async () => { effects++; return answer; };
++    try { await runPersistedTypedRequest(state, effect, post, signal()); throw Error("Expected failure"); }
++    catch (e) { expect(e).toBeInstanceOf(TypedPersistenceFailure); expect((e as TypedPersistenceFailure).answer).toBe(answer); }
++    expect(state.answer).toBe(answer);
++    fails = false;
++    expect(await runPersistedTypedRequest(state, effect, post, signal())).toBe(answer);
++    expect(effects).toBe(1);
++    expect(saves[1]).toEqual(saves[2]);
++    expect(saves[2].text).toBe(answer);
++  });
++
++  test("typed reply-save failure resumes exact stage body, preserves the answer, and never replays completed tools", async () => {
++    const options = { replyStyle: "short", origin: { page: "/jarvis" } };
++    const state = captureTypedRequest(ID, TEXT, options);
++    let tools = 0;
++    let fail = true;
++    const bodies: any[] = [];
++    const post: TypedPost = async (path, body) => {
++      if (path.endsWith("/say")) return ack();
++      bodies.push(JSON.parse(JSON.stringify(body)));
++      if ((body as any).turnIndex === 0) return json({ content: null, tool_calls: [{ id: "tool-1", type: "function", function: { name: "jarvis_command", arguments: "{}" } }], persistence: { requestId: ID, conversationId: CONVERSATION, saved: true, complete: false } });
++      return fail ? json({ error: "reply not saved", code: "typed_save_failed", saved: false, content: ANSWER }, 503) : terminal();
++    };
++    const effect = () => runPersistedTypedTurn(state, post, signal(), async () => { tools++; return "finished tool"; }, []);
++    await expect(runPersistedTypedRequest(state, effect, post, signal())).rejects.toMatchObject({ answer: ANSWER, retryable: true });
++    options.replyStyle = "long";
++    options.origin.page = "/different";
++    fail = false;
++    expect(await runPersistedTypedRequest(state, effect, post, signal())).toBe(ANSWER);
++    expect(tools).toBe(1);
++    expect(bodies.map(b => b.turnIndex)).toEqual([0, 1, 1]);
++    expect(bodies[1]).toEqual(bodies[2]);
++    expect(bodies[2].origin.page).toBe("/jarvis");
++    expect(bodies[2].requestId).toBe(ID);
++    expect(bodies[2].messages.at(-1).content).toBe("finished tool");
++  });
++
++  test.each(["typed_request_conflict", "typed_outcome_unknown", "typed_conversation_forbidden", "typed_reply_too_large"])("%s blocks fallback and future effect retries", async (code: string) => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    let turns = 0;
++    let commands = 0;
++    const post: TypedPost = async path => path.endsWith("/say") ? ack() : (turns++, json({ code, error: code }, 409));
++    const effect = () => runPersistedTypedTurn(state, post, signal(), async () => { commands++; return "bad"; }, []);
++    await expect(runPersistedTypedRequest(state, effect, post, signal())).rejects.toThrow(code);
++    await expect(runPersistedTypedRequest(state, effect, post, signal())).rejects.toThrow(code);
++    expect(turns).toBe(1);
++    expect(commands).toBe(0);
++  });
++
++  test("HTTP 200 without a matching durable acknowledgement is an explicit failure", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    state.conversationId = CONVERSATION;
++    await expect(runPersistedTypedTurn(state, async () => json({ content: ANSWER }), signal(), async () => "", [])).rejects.toMatchObject({ answer: ANSWER, retryable: false });
++  });
++
++  test("a user-save acknowledgement for another conversation cannot authorize an effect", async () => {
++    const state = captureTypedRequest(ID, TEXT, { conversationId: CONVERSATION });
++    await expect(saveTypedPart(state, "user", TEXT, async () => json({ saved: true, requestId: ID, conversationId: "00000000-0000-0000-0000-000000000002" }), signal())).rejects.toThrow("not confirmed saved");
++    expect(state.userSaved).toBe(false);
++  });
++
++  test("HTTP/network retry uses an unchanged stage and identity", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    state.conversationId = CONVERSATION;
++    const bodies: unknown[] = [];
++    const post: TypedPost = async (_path, body) => { bodies.push(JSON.parse(JSON.stringify(body))); return bodies.length === 1 ? json({}, 502) : terminal(); };
++    expect(await runPersistedTypedTurn(state, post, signal(), async () => "", [0])).toBe(ANSWER);
++    expect(bodies[0]).toEqual(bodies[1]);
++  });
++
++  test("session storage preserves the interrupted identity across reload; edited words do not reuse it", () => {
++    const data = new Map<string, string>();
++    const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); }, removeItem: (key: string) => { data.delete(key); } };
++    rememberInterruptedRequest({ requestId: ID, text: TEXT }, storage);
++    expect(readInterruptedRequest(storage)).toEqual({ requestId: ID, text: TEXT });
++    expect(retryRequestId(readInterruptedRequest(storage), TEXT)).toBe(ID);
++    expect(retryRequestId(readInterruptedRequest(storage), "changed words")).toBeUndefined();
++    rememberInterruptedRequest(null, storage);
++    expect(readInterruptedRequest(storage)).toBeNull();
++  });
++
++  test("a later connection failure does not discard the already generated unsaved answer", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    let phase = 0;
++    const post: TypedPost = async path => {
++      if (path.endsWith("/say")) return ack();
++      if (phase++ === 0) return json({ error: "disk", code: "typed_save_failed", content: ANSWER }, 503);
++      throw new Error("connection lost");
++    };
++    const effect = () => runPersistedTypedTurn(state, post, signal(), async () => "", []);
++    await expect(runPersistedTypedRequest(state, effect, post, signal())).rejects.toMatchObject({ answer: ANSWER });
++    await expect(runPersistedTypedRequest(state, effect, post, signal())).rejects.toMatchObject({ answer: ANSWER, retryable: true });
++  });
++
++  test("aborting during the initial append prevents routing even if that save finishes", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    const controller = new AbortController();
++    let effects = 0;
++    const post: TypedPost = async () => { controller.abort(); return ack(); };
++    await expect(runPersistedTypedRequest(state, async () => { effects++; return ANSWER; }, post, controller.signal)).rejects.toThrow();
++    expect(effects).toBe(0);
++    await expect(runPersistedTypedRequest(state, async () => { effects++; return ANSWER; }, post, signal())).rejects.toThrow();
++    expect(effects).toBe(0);
++  });
++
++  test("the bounded tool checkpoint refuses an oversized tool batch before executing it", async () => {
++    const state = captureTypedRequest(ID, TEXT, {});
++    state.conversationId = CONVERSATION;
++    let tools = 0;
++    const post: TypedPost = async () => json({ tool_calls: Array.from({ length: 21 }, (_, i) => ({ id: String(i), type: "function", function: { name: "anything", arguments: "{}" } })), persistence: { saved: true, requestId: ID, conversationId: CONVERSATION, complete: false } });
++    await expect(runPersistedTypedTurn(state, post, signal(), async () => { tools++; return ""; }, [])).rejects.toThrow("tool limit");
++    expect(tools).toBe(0);
++  });
++
++
++  test("scoped bot input stays on the legacy turn path with its exact conversation and target", async () => {
++    const options = { conversationId: CONVERSATION, target: { bot: "builder-agent" }, replyStyle: "brief" };
++    const state = captureTypedRequest(ID, TEXT, options);
++    const calls: { path: string; body: any }[] = [];
++    const post: TypedPost = async (path, body) => { calls.push({ path, body }); return json({ content: ANSWER }); };
++    expect(durableTypedScope(options)).toBe(false);
++    expect(await runTypedRequestForScope(state, () => runScopedBotTypedTurn(state, post, signal(), async () => ""), post, signal())).toBe(ANSWER);
++    expect(calls).toHaveLength(1);
++    expect(calls[0].path).toBe("/voice/free/turn");
++    expect(calls[0].body).toEqual({ ...options, messages: [{ role: "user", content: TEXT }], typed: true });
++    expect(calls[0].body.requestId).toBeUndefined();
++    expect(calls[0].body.turnIndex).toBeUndefined();
++    expect(state.userSaved).toBe(false);
++  });
++
++
++  test("the actual command context boundary never reads live replacement scope/page or model-supplied context", () => {
++    const live = { pageContext: { page: { path: "/jarvis" } }, routeContext: { page: "A" }, pathname: "/jarvis", personId: "owner-a", scope: { conversationId: CONVERSATION, target: { bot: "bot-a" } }, spokenYes: "original-yes" };
++    const captured = captureTypedExecutionContext(live);
++    live.pageContext.page.path = "/different";
++    live.scope.target.bot = "bot-b";
++    const state = captureTypedRequest(ID, TEXT, captured.scope);
++    let liveReads = 0;
++    const boundary = commandExecutionContext(resolvedTypedExecutionContext(state, captured), () => { liveReads++; return live; });
++    const forgedModelArgs = { conversationId: "forged", target: { bot: "forged" }, pageContext: "forged" };
++    const actualCommand = { ...forgedModelArgs, pageContext: boundary.pageContext, spokenYes: boundary.spokenYes, ...boundary.scope };
++    expect(liveReads).toBe(0);
++    expect(actualCommand).toEqual({ conversationId: CONVERSATION, target: { bot: "bot-a" }, pageContext: { page: { path: "/jarvis" } }, spokenYes: null });
++    expect(commandExecutionContext(undefined, () => live)).toBe(live); // existing voice path still uses live context
++  });
++
++  test("scope changing while user-save is awaited blocks the actual route adapter before any effect", async () => {
++    let current = { pageContext: null, routeContext: { page: "A" }, pathname: "/jarvis", personId: "owner-a", scope: {}, spokenYes: null };
++    const captured = captureTypedExecutionContext(current);
++    const state = captureTypedRequest(ID, TEXT, {});
++    let effects = 0;
++    const post: TypedPost = async () => { current = { ...current, routeContext: { page: "B" } }; return ack(); };
++    await expect(runPersistedTypedRequest(state, async () => { assertTypedExecutionContext(captured, current); effects++; return ANSWER; }, post, signal())).rejects.toThrow("page or conversation changed");
++    expect(effects).toBe(0);
++  });
++
++  test("scope changing during model await cannot retarget a jarvis_command tool", async () => {
++    let current = { pageContext: null, routeContext: { page: "A" }, pathname: "/jarvis", personId: "owner-a", scope: { conversationId: CONVERSATION }, spokenYes: null };
++    const captured = captureTypedExecutionContext(current);
++    const state = captureTypedRequest(ID, TEXT, captured.scope);
++    let commands = 0;
++    const post: TypedPost = async path => {
++      if (path.endsWith("/say")) return ack();
++      current = { ...current, scope: { conversationId: "00000000-0000-0000-0000-000000000002" } };
++      return json({ tool_calls: [{ id: "retarget", type: "function", function: { name: "jarvis_command", arguments: "{}" } }], persistence: { saved: true, requestId: ID, conversationId: CONVERSATION, complete: false } });
++    };
++    await expect(runPersistedTypedRequest(state, () => runPersistedTypedTurn(state, post, signal(), async () => { assertTypedExecutionContext(captured, current); commands++; return "bad"; }, []), post, signal())).rejects.toThrow("page or conversation changed");
++    expect(commands).toBe(0);
++  });
++
++  test("cancel before companion microtask or while queued removes admission and preserves FIFO for other requests", async () => {
++    const bus = new EventTarget();
++    const queue = createTypedQueue<{ requestId: string }>();
++    const records = new Map();
++    const cancelled = new Set<string>();
++    const remove = onJarvisRequestCancelled(id => { cancelTypedAdmission(id, records, cancelled, queue); }, bus);
++    const before = sendJarvisRequest(TEXT, { requestId: ID, target: bus });
++    before.cancel();
++    expect(await before.done).toBe("cancelled");
++    expect(cancelled.has(ID)).toBe(true); // execute's pre-microtask admission guard
++    const second = captureTypedRequest("jr-queued-review", TEXT, {});
++    records.set(second.requestId, second);
++    queue.push({ requestId: "jr-first" }); queue.push({ requestId: second.requestId }); queue.push({ requestId: "jr-last" });
++    const queued = sendJarvisRequest(TEXT, { requestId: second.requestId, target: bus });
++    queued.cancel();
++    expect(await queued.done).toBe("cancelled");
++    expect(queue.drain()).toEqual([{ requestId: "jr-first" }, { requestId: "jr-last" }]);
++    expect(second.blocked?.name).toBe("AbortError");
++    remove();
++  });
++
++  test("cancelling during initial append aborts pre-effect admission; editing after started only detaches the waiter", async () => {
++    const bus = new EventTarget();
++    const state = captureTypedRequest(ID, TEXT, {});
++    state.controller = new AbortController();
++    const records = new Map([[ID, state]]);
++    const cancelled = new Set<string>();
++    const queue = createTypedQueue<{ requestId: string }>();
++    const remove = onJarvisRequestCancelled(id => { cancelTypedAdmission(id, records, cancelled, queue); }, bus);
++    const pending = sendJarvisRequest(TEXT, { requestId: ID, target: bus });
++    let effects = 0;
++    await expect(runPersistedTypedRequest(state, async () => { effects++; return ANSWER; }, async () => { pending.cancel(); return ack(); }, state.controller.signal)).rejects.toThrow();
++    expect(effects).toBe(0);
++    expect(state.controller.signal.aborted).toBe(true);
++    const started = sendJarvisRequest(TEXT, { requestId: "jr-started-review", target: bus });
++    startJarvisRequest(started.requestId, bus);
++    expect(started.started).toBe(true);
++    started.cancel();
++    expect(await started.done).toBe("cancelled");
++    expect(cancelled.has(started.requestId)).toBe(false); // no claim that already owned effects were cancelled
++    remove();
++  });
++
++
++  test("own job/timestamp/source updates during a tool do not reject the next tool on the same page", async () => {
++    let context = { pageContext: null, routeContext: { page: { path: "/jarvis", destination: "jarvis", title: "Jarvis" }, selection: { kind: "lead", id: "lead-a", label: "Before", facts: { amount: "1" } }, focused: null, job: null as unknown, at: 1, sources: [] as unknown[] }, pathname: "/jarvis", scope: {}, spokenYes: null };
++    const captured = captureTypedExecutionContext(context);
++    const state = captureTypedRequest(ID, TEXT, {});
++    let steps = 0;
++    let tools = 0;
++    const post: TypedPost = async path => {
++      if (path.endsWith("/say")) return ack();
++      if (steps++ > 0) return terminal();
++      return json({ tool_calls: [1, 2].map(id => ({ id: `tool-${id}`, type: "function", function: { name: "jarvis_command", arguments: "{}" } })), persistence: { saved: true, requestId: ID, conversationId: CONVERSATION, complete: false } });
++    };
++    const result = await runPersistedTypedRequest(state, () => runPersistedTypedTurn(state, post, signal(), async () => {
++      assertTypedExecutionContext(captured, context);
++      tools++;
++      context = { ...context, routeContext: { ...context.routeContext, job: { id: "own-job", state: "running" }, at: 99, sources: [{ lastSuccess: "new" }], selection: { ...context.routeContext.selection, label: "Refreshed", facts: { amount: "2" } } } };
++      return "done";
++    }, []), post, signal());
++    expect(result).toBe(ANSWER);
++    expect(tools).toBe(2);
++    expect(() => assertTypedExecutionContext(captured, { ...context, routeContext: { ...context.routeContext, selection: { ...context.routeContext.selection, id: "lead-b" } } })).toThrow("page or conversation changed");
++  });
++
++  test("saturated cancellation tombstones stop fresh admission but still cancel known unstarted work", () => {
++    const cancelled = new Set(Array.from({ length: 64 }, (_, i) => `jr-cancelled-${i}`));
++    const state = captureTypedRequest(ID, TEXT, {});
++    state.controller = new AbortController();
++    const records = new Map([[ID, state]]);
++    const queue = createTypedQueue<{ requestId: string }>();
++    queue.push({ requestId: ID });
++    expect(hasTypedAdmissionCapacity(new Map(), cancelled)).toBe(false);
++    expect(cancelTypedAdmission(ID, records, cancelled, queue)).toBe(true);
++    expect(state.controller.signal.aborted).toBe(true);
++    expect(queue.size).toBe(0);
++    expect(cancelled.size).toBe(64);
++  });
++
++});

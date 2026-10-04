@@ -11,7 +11,7 @@
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { mayUseBots, type Principal } from "../identity/principal";
-import { botThreadId, parseBotConversationKey } from "../conversations";
+import { botThreadId, parseBotConversationKey, ConversationForbidden, TypedPersistenceError } from "../conversations";
 import { SUBJECT_REF } from "../jobs/types";
 import { COMMAND_ROUTE_HEADER, COMPANION_EXECUTORS, MAX_REMOTE_STEPS, type CommandBody, type CommandStreamEvent, type ExecutorName, type RemoteStep } from "./contracts";
 import type { CommandService } from "./service";
@@ -146,14 +146,21 @@ export async function commandRoute(input: {
   }
   // POST /screen/command/thread/say { requestId, part, role, text }: a typed request or its reply saved into the caller's own default Jarvis thread.
   if (path === "/screen/command/thread/say" && method === "POST") {
-    const b = (body ?? {}) as { requestId?: unknown; part?: unknown; role?: unknown; text?: unknown };
+    const b = (body ?? {}) as { requestId?: unknown; part?: unknown; role?: unknown; text?: unknown; conversationId?: unknown };
     const requestId = typeof b.requestId === "string" && /^[\w:.-]{6,80}$/.test(b.requestId) ? b.requestId : "";
     const part = b.part === "user" || b.part === "reply" || b.part === "note" ? b.part : null;
     const role = b.role === "user" || b.role === "assistant" ? b.role : null;
-    const text = typeof b.text === "string" ? b.text.trim().slice(0, 4000) : "";
-    if (!requestId || !part || !role || !text) return send({ ok: false, error: "Say what to save." }, 400), true;
-    const id = service.threadSay(principal, { requestId, part, role, text });
-    return send(id ? { ok: true, conversationId: id } : { ok: false, error: "The Jarvis thread couldn't be written." }, id ? 200 : 503), true;
+    const text = typeof b.text === "string" ? b.text : "";
+    const conversationId = typeof b.conversationId === "string" && /^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(b.conversationId) ? b.conversationId : undefined;
+    if (!requestId || !part || !role || !text.trim() || text.length > 20_000 || (b.conversationId !== undefined && !conversationId) || role !== (part === "user" ? "user" : "assistant")) return send({ ok: false, error: "Say what to save." }, 400), true;
+    try {
+      const id = service.threadSay(principal, { requestId, part, role, text, ...(conversationId ? { conversationId } : {}) });
+      return send(id ? { ok: true, saved: true, requestId, conversationId: id } : { ok: false, code: "typed_save_failed", error: "The Jarvis thread couldn't be written." }, id ? 200 : 503), true;
+    } catch (error) {
+      const forbidden = error instanceof ConversationForbidden;
+      const conflict = error instanceof TypedPersistenceError;
+      return send({ ok: false, code: forbidden ? "typed_conversation_forbidden" : conflict ? error.status === 403 ? "typed_identity_required" : error.code : "typed_save_failed", error: forbidden || conflict ? (error as Error).message : "The typed message could not be saved. Keep it and retry with the same request id." }, forbidden ? 403 : conflict ? error.status : 503), true;
+    }
   }
   // { jobId } stops that job; { eventId } (his Stop before the job id reached him) stops that command, before it starts if it hasn't.
   // 200 only for a confirmed stop (or one prevented before any job existed); 409 with `outcome` otherwise ("already-ended", "unconfirmed").
