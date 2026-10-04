@@ -69,7 +69,7 @@ import {
   type VoiceEmailReview,
 } from "@/lib/voice-email-review";
 import { startOpenAIVoice, prepareVoiceImage } from "@/lib/openai-voice-client";
-import { startFreeVoice, TOO_MANY_STEPS, type ChatMessage, type ToolCall as FreeToolCall } from "@/lib/free-voice-client";
+import { startFreeVoice } from "@/lib/free-voice-client";
 import { pageReadEnvelope } from "@/lib/page-read";
 // Track 1 (AUDIT-F4 F2/F3/F9): the typed box asks the ONE command registry first, then runs the SAME voice
 // turn as speech (rules, Jev, tools), so typed and spoken land in the same place.
@@ -89,12 +89,12 @@ import { getVoiceScope, newTurn, speakerOf, transcriptSections, voiceLabels, voi
 import { useVoiceScope } from "@/lib/use-voice-scope";
 import { useActivity } from "@/lib/use-activity";
 import { parseThreadEvent } from "@/lib/thread-events";
-import { acceptJarvisRequest } from "@/lib/jarvis-send";
+import { acceptJarvisRequest, rejectJarvisRequest, startJarvisRequest, onJarvisRequestCancelled } from "@/lib/jarvis-send";
 import { createThreadFeed, createUnreadStore, entryInScope, entryKeyOfInterjection, settleClaim, type ThreadFeed, type UnreadStore } from "@/lib/voice-completions";
 import { UnreadResults } from "./voice-unread";
-import { commandEventId, createTypedQueue, PAUSED_LINE, QUEUED_LINE, pageChangedLine, TurnFailed, turnWithRetry, TYPED_STOP, typedRequestId, typedSendGate } from "@/lib/typed-send";
+import { commandEventId, createTypedQueue, PAUSED_LINE, QUEUED_LINE, pageChangedLine, TurnFailed, TYPED_STOP, typedRequestId, typedSendGate } from "@/lib/typed-send";
+import { captureTypedRequest, cancelTypedAdmission, hasTypedAdmissionCapacity, captureTypedExecutionContext, assertTypedExecutionContext, commandExecutionContext, resolvedTypedExecutionContext, type TypedExecutionContext, durableTypedScope, runTypedRequestForScope, runPersistedTypedTurn, runScopedBotTypedTurn, TypedPersistenceFailure, type TypedRequest } from "@/lib/typed-persistence";
 import { clientDone, codingDraftHref, commandPageContext, commandResultText, isOsPath, localDone, runJarvisCommand, voiceRouteFor, type VoiceRoute } from "@/lib/jarvis-command";
-import { readPageContext } from "@/lib/page-context";
 import { commandLesson, currentLesson, lessonTurn, startCourse, startLesson } from "@/lib/screen-lesson";
 import { pointAt, setTutor, tutorTurn } from "@/lib/screen-companion";
 import type { LessonCommand } from "@/lib/lesson-words";
@@ -598,7 +598,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
   }
   function stop() {
     generation.current++;
-    typedQueue.current.clear(); // a stop drops what was waiting behind the stopped request
+    rejectQueuedTyped(() => "Stopped before this queued request ran.");
     // Final review B2: the typed turn's requests (its first hop, its command, the command-path fallback) end too, so a Stop before the job event
     // reaches the hub as a Stop by event id (runJarvisCommand), never only a local change.
     typedTurnAbort.current?.abort();
@@ -715,15 +715,9 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       // throttling), so the send waited on the page being shown again (round 11). The send needs no render; it goes now.
       if (typeof request === "string" && request.trim()) {
         const words = request.trim().slice(0, 600);
-        // Taken only when it will run or wait its turn (release re-check minor): paused or a full queue is not "accepted", so the composer keeps
-        // its text; the conversation still says why it didn't run.
-        const gate = typedSendGate({ busy: busyRef.current, paused: pausedRef.current, request: words });
-        const taken = gate === "run" || gate === "stop" || (gate === "queue" && !typedQueue.current.full);
-        // The composer's one id for this request goes on as the command eventId, so a resend from here is the same request at the hub (R11).
         const requestId = typedRequestId((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId);
+        // The inactive typed lane acknowledges durable user+reply saves. A failed append leaves the composer text and id intact.
         queueMicrotask(() => void executeRef.current(words, requestId));
-        // R11: tell the sender (the /jarvis composer) it was taken, so its box only clears once a request is really queued here.
-        if (taken) acceptJarvisRequest((event as CustomEvent).detail);
       }
       // Focus goes to the text box he is about to type in (review item 11).
       else window.setTimeout(() => document.querySelector<HTMLInputElement>('input[aria-label="Voice companion command"]')?.focus(), 60);
@@ -1401,92 +1395,113 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     }
     return r.said;
   }
+  type CapturedTypedContext = TypedExecutionContext<ReturnType<typeof commandPageContext>, ReturnType<typeof readPageContextT1>>;
+  type ContextualTypedRequest = TypedRequest & { execution: CapturedTypedContext };
+  const readTypedExecutionContext = (): CapturedTypedContext => ({
+    pageContext: commandPageContext(), routeContext: readPageContextT1(), pathname: runtime.current.pathname,
+    personId: runtime.current.personId, scope: voiceScopeCommandOptions(), spokenYes: spokenYesFor(latestUserRequest.current),
+  });
   /** Typed with no voice session: the same /voice/free/turn loop the voice client runs, tools included. */
-  async function typedTurn(current: number, request: string, requestId?: string): Promise<string> {
-    // ONE controller for the typed request, in a ref, so stop() (the panel's Stop, Escape, a typed stop) aborts it (final review B2).
-    const controller = new AbortController();
+  async function typedTurn(current: number, state: ContextualTypedRequest, controller: AbortController): Promise<string> {
     typedTurnAbort.current = controller;
-    let commands = 0;
-    const history: ChatMessage[] = [{ role: "user", content: request }];
-    for (let step = 0; step < 5; step++) {
-      // The same transient-retry rule as the command send (release re-check M6); the last failure is said as it is, never swapped for another answer.
-      const response = await turnWithRetry(() => voicePost("/voice/free/turn", { messages: history, replyStyle: loadReplyStyle(), replyPersonality: loadPersonality(), typed: true, ...voiceScopeCommandOptions() }, controller.signal));
-      const parsed = (await response.json().catch(() => ({}))) as { content?: string | null; tool_calls?: FreeToolCall[]; error?: string };
-      if (!response.ok) throw new Error(parsed.error || `Jarvis answered HTTP ${response.status}, so nothing ran.`);
-      const reply = parsed;
-      if (current !== generation.current) return "";
-      if (!reply.tool_calls?.length) return reply.content ?? "";
-      history.push({ role: "assistant", content: reply.content ?? null, tool_calls: reply.tool_calls });
-      for (const call of reply.tool_calls) {
-        let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(call.function.arguments || "{}");
-        } catch {
-          /* no arguments */
-        }
-        // Typed turn: the command it runs is recorded as typed (round 11: a typed coding request was labelled "by voice").
-        // Its eventId is the typed request's own id (numbered after the first), so a resend is the same command at the hub, never a second run.
-        const out = await dispatchTool(current, call.function.name, call.function.name === "jarvis_command" ? { ...args, typed: true, ...(requestId ? { eventId: commandEventId(requestId, commands++) } : {}) } : args, controller.signal);
-        history.push({ role: "tool", tool_call_id: call.id, content: String(out ?? "").slice(0, 4000) });
-      }
-    }
-    return TOO_MANY_STEPS;
+    const run = durableTypedScope(state.options) ? runPersistedTypedTurn : runScopedBotTypedTurn;
+    return run(state, voicePost, controller.signal, async (call, commandIndex) => {
+      if (current !== generation.current || controller.signal.aborted) throw new DOMException("Stopped", "AbortError");
+      assertTypedExecutionContext(state.execution, readTypedExecutionContext());
+      let args: Record<string, unknown> = {};
+      try { args = JSON.parse(call.function.arguments || "{}"); } catch { /* no arguments */ }
+      return String(await dispatchTool(current, call.function.name, call.function.name === "jarvis_command" ? { ...args, typed: true, eventId: commandEventId(state.requestId, commandIndex) } : args, controller.signal, undefined, resolvedTypedExecutionContext(state, state.execution)) ?? "");
+    });
   }
-  /** The typed request in flight (its turn, its command, the command-path fallback): stop() aborts it. */
+  /** The typed request in flight: stop() aborts its save, turn and command calls. */
   const typedTurnAbort = useRef<AbortController | null>(null);
   const executeRef = useRef<(request: string, requestId?: string) => Promise<void>>(async () => undefined);
   executeRef.current = (request: string, requestId?: string) => execute(request, false, requestId);
   // A typed request is never dropped silently (src/lib/typed-send.ts): it waits for the running one, or the conversation says why not.
   const typedQueue = useRef(createTypedQueue<{ request: string; requestId: string }>());
-  /**
-   * Typed requests and their replies (plain answers too) are saved into the person's own default Jarvis thread, the one /jarvis reads, so the page
-   * shows the whole conversation and it survives a reload. Keyed by the request id, so a repeat writes nothing twice. Best effort: the reply is
-   * already shown here.
-   */
-  const sayToThread = (requestId: string, part: "user" | "reply" | "note", role: "user" | "assistant", text: string) => {
-    if (!text.trim()) return;
-    void voicePost("/screen/command/thread/say", { requestId, part, role, text: text.slice(0, 4000) }, AbortSignal.timeout(8000))
-      .then((r) => { void r.body?.cancel().catch(() => undefined); if (r.ok) window.dispatchEvent(new CustomEvent("operator:conversations-changed")); })
-      .catch(() => undefined);
+  const typedRequests = useRef(new Map<string, ContextualTypedRequest>());
+  const cancelledTypedRequests = useRef(new Set<string>());
+  useEffect(() => onJarvisRequestCancelled((requestId) => {
+    cancelTypedAdmission(requestId, typedRequests.current, cancelledTypedRequests.current, typedQueue.current);
+  }), []);
+  const companionRetry = useRef<{ requestId: string; text: string } | null>(null);
+  // Cancellation still drops queued work; also release its waiting composer with an explicit outcome.
+  const rejectQueuedTyped = (reason: (request: string) => string) => {
+    for (const waiting of typedQueue.current.drain()) {
+      const state = typedRequests.current.get(waiting.requestId);
+      if (state) { state.running = false; state.blocked = new Error(reason(waiting.request)); }
+      rejectJarvisRequest(waiting.requestId, reason(waiting.request));
+    }
   };
   const busyOwner = useRef<object | null>(null);
   // A request waiting its turn belongs to the page it was typed on: when the page changes, each one is reported as not run (never run against
   // another page's context, never dropped silently).
   // Every Stop empties the queue (release re-check M3): the pill's Stop here; typed and spoken stops in execute/jarvisCommand; Escape via stop().
-  useEffect(() => onDrivingStop(() => typedQueue.current.clear()), []);
+  useEffect(() => onDrivingStop(() => rejectQueuedTyped(() => "Stopped before this queued request ran.")), []);
   const queuedFor = useRef(pathname);
   useEffect(() => {
     if (queuedFor.current === pathname) return;
     queuedFor.current = pathname;
     for (const waiting of typedQueue.current.drain()) {
       append("assistant", pageChangedLine(waiting.request));
-      sayToThread(waiting.requestId, "reply", "assistant", pageChangedLine(waiting.request));
+      const state = typedRequests.current.get(waiting.requestId);
+      if (state) { state.running = false; state.blocked = new Error(pageChangedLine(waiting.request)); }
+      rejectJarvisRequest(waiting.requestId, pageChangedLine(waiting.request));
     }
     // append is stable enough for this: it only adds turns
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
   async function execute(request: string, queued = false, givenId?: string) {
     if (!request.trim()) return;
-    const requestId = typedRequestId(givenId);
+    const requestId = typedRequestId(givenId ?? (companionRetry.current?.text === request ? companionRetry.current.requestId : undefined));
+    if (cancelledTypedRequests.current.has(requestId)) return;
+    let persisted = typedRequests.current.get(requestId);
+    if (persisted && persisted.text !== request) {
+      rejectJarvisRequest(requestId, "This request ID belongs to different words. Nothing new was run.");
+      return;
+    }
+    if (!persisted) {
+      // Bound volatile stage/tool checkpoints. Never evict an uncertain request and silently rerun it.
+      if (!hasTypedAdmissionCapacity(typedRequests.current, cancelledTypedRequests.current)) {
+        rejectJarvisRequest(requestId, "This page has reached its typed request checkpoint limit. Check that every earlier request is saved before reloading.");
+        return;
+      }
+      try {
+        const execution = captureTypedExecutionContext({ ...readTypedExecutionContext(), spokenYes: null });
+        persisted = { ...captureTypedRequest(requestId, request, { replyStyle: loadReplyStyle(), replyPersonality: loadPersonality(), ...execution.scope }), execution };
+        typedRequests.current.set(requestId, persisted);
+      } catch (error) {
+        rejectJarvisRequest(requestId, (error as Error).message);
+        setError((error as Error).message);
+        return;
+      }
+    }
+    const durable = persisted;
+    if (durable.started) startJarvisRequest(requestId);
+    if (durable.saved) { acceptJarvisRequest({ requestId }); return; }
+    if (durable.running && !queued) return;
     const gate = typedSendGate({ busy: busyRef.current, paused: pausedRef.current, request });
     // A typed Stop while something runs: stop it now (stop() also empties the queue), then the Stop goes on as a command so the hub stops his jobs too.
     if (gate === "stop") stop();
     else if (gate !== "run") {
-      if (!queued) { append("user", request); sayToThread(requestId, "user", "user", request); }
       const waits = gate === "queue" && typedQueue.current.push({ request, requestId });
+      if (waits) durable.running = true;
       const line = waits ? QUEUED_LINE : gate === "paused" ? PAUSED_LINE : "I'm still working through earlier requests, so I didn't take that one. Send it again in a moment.";
       append("assistant", line);
-      sayToThread(requestId, waits ? "note" : "reply", "assistant", line);
+      if (!waits) rejectJarvisRequest(requestId, line);
       return;
     }
     const current = generation.current;
     const owner = {};
     const recentIntent = recentVoiceIntent(request);
+    // Preserve the existing active non-browser voice-session path; its transcript lifecycle is separate.
     if (activeRef.current && engineRef.current !== "browser") {
       try {
         session.current?.sendUserMessage(request);
+        acceptJarvisRequest({ requestId });
       } catch (e) {
         setError((e as Error).message);
+        rejectJarvisRequest(requestId, (e as Error).message);
       }
       setText("");
       return;
@@ -1498,13 +1513,22 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     setText("");
     setInterim("");
     recognition.current?.abort();
-    if (!queued) { append("user", request); sayToThread(requestId, "user", "user", request); }
+    durable.running = true;
+    const controller = new AbortController();
+    durable.controller = controller;
+    typedTurnAbort.current = controller;
     setPhase("thinking");
     try {
+      const reply = await runTypedRequestForScope(durable, async () => {
+      if (durable.turn) return typedTurn(current, durable, controller);
+      assertTypedExecutionContext(durable.execution, readTypedExecutionContext());
+      controller.signal.throwIfAborted();
+      durable.started = true;
+      startJarvisRequest(requestId);
+      append("user", request);
       const intent = voiceIntent(request);
       let routed: JarvisRoute | null = null;
       let reply: string;
-      let provenance: VoiceTurnContext | undefined;
       if (recentIntent) {
         reply = summarizeRecent(await fetchRecent(recentIntent));
       } else if (
@@ -1532,10 +1556,11 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         reply = "Your memory sources are here. Toggle what you want me to use.";
       } else if (
         (routed = await Promise.all([loadRouting(), loadRegistry()]).then(([routing, registry]) =>
-          routing.routeJarvisText(request, { index: registry.buildCommandIndex(cachedApps() ? { apps: cachedApps()! } : {}), context: readPageContextT1(), personId: runtime.current.personId }),
+          routing.routeJarvisText(request, { index: registry.buildCommandIndex(cachedApps() ? { apps: cachedApps()! } : {}), context: durable.execution.routeContext, personId: durable.execution.personId }),
         ))
       ) {
         // The ONE command registry first, exactly as the spoken turn does (scripts/commands/voice-route.ts).
+        assertTypedExecutionContext(durable.execution, readTypedExecutionContext());
         reply = await runRoute(routed);
       } else if (
         /^(?:show|bring up|pull up)(?: me)? (?:my |the )?(?:memories|memory|brain|calendar|business|images)\s*[.!?]?$/i.test(
@@ -1554,39 +1579,40 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       // The older page shortcut never takes money or action words (REVIEW-T1 fix 2): those go whole to the turn.
       else if (intent.kind === "navigate" && !(await import("@/lib/commands/action-guard")).actsOrPays(request)) reply = await navigate(intent.path);
       else {
-        // Memory questions included: the turn's shared-memory lane answers them as it does for speech
-        // (the old legacy /__operator/search branch here disagreed with voice, AUDIT-F4 F12).
-        // The same turn as speech (rules, Jev, tools). The chat model answers only if that turn fails.
-        // A failed turn is said plainly (release re-check M6): it used to fall back silently to a tool-less chat answer.
-        // When the turn itself can't run here (no voice model configured: it answers an error, not a transient failure), the typed request goes
-        // straight to the ONE command path the /jarvis box uses, with the same request id: the same kind of answer, never a different one.
-        reply = await typedTurn(current, request, requestId).catch(async (e: Error) => {
-          if (e instanceof TurnFailed || (e as Error)?.name === "AbortError") return e instanceof TurnFailed ? e.message : "Stopped.";
-          // Through the companion's own command tool (final review B2): the Stop pill, the Stop by event id and the hub's own stop wording, with a
-          // signal stop() aborts.
-          const fallback = new AbortController();
-          typedTurnAbort.current = fallback;
-          const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, fallback.signal);
-          try {
-            return String((JSON.parse(out) as { said?: unknown }).said ?? out);
-          } catch {
-            return out;
-          }
+        // Persistence errors/unknown outcomes must never trigger a second command path.
+        reply = await typedTurn(current, durable, controller).catch(async (error: Error) => {
+          if (durableTypedScope(durable.options) || error instanceof TypedPersistenceFailure) throw error;
+          // Preserve the old scoped-bot fallback; it is not opted into founder-thread persistence.
+          if (error instanceof TurnFailed || error.name === "AbortError") return error instanceof TurnFailed ? error.message : "Stopped.";
+          const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, controller.signal, undefined, resolvedTypedExecutionContext(durable, durable.execution));
+          try { return String((JSON.parse(out) as { said?: unknown }).said ?? out); } catch { return out; }
         });
       }
+      return reply;
+      }, voicePost, controller.signal);
+      window.dispatchEvent(new CustomEvent("operator:conversations-changed"));
+      acceptJarvisRequest({ requestId });
+      if (companionRetry.current?.requestId === requestId) companionRetry.current = null;
       if (current !== generation.current) return;
-      append("assistant", reply, provenance);
-      sayToThread(requestId, "reply", "assistant", reply);
+      append("assistant", reply);
       busyRef.current = false;
       setBusy(false);
       if (activeRef.current) speak(reply, current);
       else setPhase("idle");
     } catch (e) {
+      const answer = (e instanceof TypedPersistenceFailure ? e.answer : undefined) ?? durable.answer ?? durable.pendingAnswer;
+      const reason = `${answer ? `${answer}\n\n` : ""}${(e as Error).message}`;
+      companionRetry.current = { requestId, text: request };
+      rejectJarvisRequest(requestId, reason);
       if (current === generation.current) {
+        if (answer) append("assistant", answer);
+        setText(request);
         if ((e as Error).name !== "AbortError") setError((e as Error).message);
         setPhase(activeRef.current ? "listening" : "idle");
       }
     } finally {
+      durable.running = false;
+      durable.controller = undefined;
       if (current === generation.current) {
         busyRef.current = false;
         setBusy(false);
@@ -1975,11 +2001,12 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
    * through the job service; a dropped stream re-attaches inside the client. The result is the
    * `command_result` JSON the server's follow-up rule speaks as-is.
    */
-  async function jarvisCommand(args: Record<string, unknown>, toolSignal: AbortSignal, say?: (line: string) => void): Promise<string> {
+  async function jarvisCommand(args: Record<string, unknown>, toolSignal: AbortSignal, say?: (line: string) => void, typedContext?: CapturedTypedContext): Promise<string> {
+    const execution = commandExecutionContext(typedContext, readTypedExecutionContext);
     const utterance = typeof args.utterance === "string" ? args.utterance.trim().slice(0, 600) : "";
     if (!utterance) return commandResultText(clientDone("What should I do, sir?", null, { kind: "ask", ask: true }));
     // A spoken (or typed-turn) stop empties what was waiting behind the running request, as every Stop does (release re-check M3).
-    if (TYPED_STOP.test(utterance)) typedQueue.current.clear();
+    if (TYPED_STOP.test(utterance)) rejectQueuedTyped(() => "Stopped before this queued request ran.");
     let spokenTarget = typeof args.spokenTarget === "string" && args.spokenTarget.trim() ? args.spokenTarget.trim().slice(0, 80) : undefined;
     // Track 1's ONE resolver first (the same one the palette uses): pages, sections and answers open
     // here, a website takes the open_url path, ambiguity asks; device plans and anything unresolved
@@ -1988,7 +2015,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     // A request the voice rules marked as an agent bot's ("use the builder agent", "builder, open Chrome") goes straight to the server, which runs it
     // on that bot's own computer: never a page the words happen to resemble.
     if (args.bot !== true) try {
-      route = voiceRouteFor(utterance, readPageContext());
+      route = voiceRouteFor(utterance, execution.routeContext);
     } catch {
       /* The resolver failing never blocks the server path. */
     }
@@ -2019,11 +2046,11 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
         utterance,
         source: args.typed === true ? "typed" : "voice",
         spokenTarget,
-        pageContext: commandPageContext(),
-        spokenYes: spokenYesFor(latestUserRequest.current),
+        pageContext: execution.pageContext,
+        spokenYes: execution.spokenYes,
         ...(typeof args.eventId === "string" ? { eventId: args.eventId } : {}),
         // A bot's chat scopes the open voice session to that bot: its conversation id and target ride on the request (none: default thread).
-        ...voiceScopeCommandOptions(),
+        ...execution.scope,
         signal: controller.signal,
         post: voicePost,
         onEvent: (event) => {
@@ -2183,13 +2210,14 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
     args: Record<string, unknown>,
     toolSignal: AbortSignal,
     say?: (line: string) => void,
+    typedContext?: CapturedTypedContext,
   ): Promise<string> {
     if (current !== generation.current || toolSignal.aborted) return "This call has ended.";
     if (pausedRef.current)
       return "The conversation is paused. Wait for the user to resume.";
     if (name === "control_pc") return controlPc(args, toolSignal);
     if (name === "screen_act") return screenAct(args, toolSignal, say);
-    if (name === "jarvis_command") return jarvisCommand(args, toolSignal, say);
+    if (name === "jarvis_command") return jarvisCommand(args, toolSignal, say, typedContext);
     if (name === "screen_teach") return screenTeach(args);
     if (name === "screen_point") return screenPoint(args, toolSignal);
     if (name === "screen_tutor") return screenTutor(args);
@@ -2251,7 +2279,7 @@ export function VoiceCompanion({ onAsk, onOpen, modelLabel, localModel, onPropos
       // Folders, media keys, volume and lock retain their direct executor.
       try {
         if (args.action === "open_app" && typeof args.target === "string") {
-          const result = await jarvisCommand({utterance:`open ${args.target.slice(0,80)} app`},toolSignal,say);
+          const result = await jarvisCommand({utterance:`open ${args.target.slice(0,80)} app`},toolSignal,say,typedContext);
           try { return JSON.parse(result).said || result; } catch { return result; }
         }
         const result = await operatorRequest<{ ok: boolean; said: string }>("/pc/act", {

@@ -12,7 +12,7 @@ import { ENTRY_LABEL, entryKind, hasSavedResult, jobIdOf, openJobHref, type Entr
 import { useDraft } from "@/lib/use-draft";
 import { cn } from "@/lib/utils";
 import { openJarvis } from "../jarvis-slot";
-import { sendDecision, sendJarvisRequest, type PendingSend } from "@/lib/jarvis-send";
+import { sendDecision, sendJarvisRequest, retryRequestId, readInterruptedRequest, rememberInterruptedRequest, type InterruptedRequest, type PendingSend } from "@/lib/jarvis-send";
 import { readSent, rememberSent, unshownSent, type SentRequest } from "@/lib/jarvis-sent";
 import { openJobs } from "@/lib/handoff-status";
 import { stopJobFromThread } from "@/lib/thread-stop";
@@ -143,28 +143,58 @@ export function JarvisThread() {
   // M5: one identity per composed request. While it waits (the companion may still be loading; the shell replays it then), the words
   // stay, Send on the same words is the same request, and editing them cancels it.
   const pendingRef = useRef<PendingSend | null>(null);
+  const retryRef = useRef<PendingSend | null>(null);
+  const [sendError, setSendError] = useState("");
+  const interruptedRef = useRef<InterruptedRequest | null>(null);
+  useEffect(() => {
+    const interrupted = readInterruptedRequest();
+    interruptedRef.current = interrupted;
+    if (interrupted) setSendError(`Request ${interrupted.requestId} was interrupted by a reload. Its outcome is unknown. Check the saved conversation before starting a new request; browser tool steps cannot be safely replayed.`);
+  }, []);
   const [waiting, setWaiting] = useState<"no" | "sending" | "slow">("no");
   const send = (e?: FormEvent) => {
     e?.preventDefault();
     if (!hydrated || !request.trim()) return;
     if (sendDecision(pendingRef.current, request) === "same") return;
-    const p = sendJarvisRequest(request, { onSlow: () => pendingRef.current === p && setWaiting("slow") });
+    if (interruptedRef.current?.text === request.trim()) return;
+    const p = sendJarvisRequest(request, { requestId: retryRequestId(retryRef.current, request), onSlow: () => pendingRef.current === p && setWaiting("slow") });
     pendingRef.current = p;
+    rememberInterruptedRequest({ requestId: p.requestId, text: p.text });
     setWaiting("sending");
+    setSendError("");
     void p.done.then((outcome) => {
       if (pendingRef.current !== p) return;
       pendingRef.current = null;
       setWaiting("no");
+      if (outcome === "rejected") {
+        retryRef.current = p;
+        setSendError(p.failure || "Not confirmed saved. Retry this same request.");
+        return;
+      }
       if (outcome !== "accepted") return;
+      retryRef.current = null;
+      rememberInterruptedRequest(null);
       setSent(rememberSent({ requestId: p.requestId, text: p.text, at: Date.now() }));
       setRequest("");
       window.setTimeout(refresh, 2500);
     });
   };
   const edit = (next: string) => {
-    // Changed or cleared words are no longer the request that is waiting: cancel it (the shell drops its queued replay).
+    if (interruptedRef.current && next.trim() !== interruptedRef.current.text) {
+      interruptedRef.current = null;
+      rememberInterruptedRequest(null);
+      setSendError("");
+    }
+    if (retryRef.current && next.trim() !== retryRef.current.text) {
+      retryRef.current = null;
+      rememberInterruptedRequest(null);
+      setSendError("");
+    }
+    // Before effects begin, editing cancels queued admission. Afterward it only detaches this draft waiter; owned work continues.
     if (pendingRef.current && next.trim() !== pendingRef.current.text) {
+      const hadStarted = pendingRef.current.started;
       pendingRef.current.cancel();
+      if (!hadStarted) rememberInterruptedRequest(null);
       pendingRef.current = null;
       setWaiting("no");
     }
@@ -213,7 +243,7 @@ export function JarvisThread() {
           value={request}
           onChange={(e) => edit(e.target.value)}
           onKeyDown={onKey}
-          aria-describedby={waiting === "slow" ? "jarvis-send-status" : undefined}
+          aria-describedby={waiting === "slow" || sendError ? "jarvis-send-status" : undefined}
           readOnly={!hydrated}
           maxLength={600}
           rows={1}
@@ -227,9 +257,10 @@ export function JarvisThread() {
           <Send className="h-4 w-4" aria-hidden="true" /> <span className="hidden @xl:inline">Send</span>
         </Button>
       </form>
+      {sendError && <p id="jarvis-send-status" role="alert" className="mx-auto mt-2 w-full max-w-4xl whitespace-pre-wrap text-sm text-muted-foreground">{sendError}</p>}
       {waiting === "slow" && (
         <p id="jarvis-send-status" role="status" className="mx-auto mt-2 w-full max-w-4xl text-sm text-muted-foreground">
-          Still connecting to Jarvis… your request will be sent when it's ready. Change the words to cancel it.
+          Waiting for Jarvis to confirm your request and reply are saved. Keep these words to retry with the same request ID if saving fails.
         </p>
       )}
     </section>

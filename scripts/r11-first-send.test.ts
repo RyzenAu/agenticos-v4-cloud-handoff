@@ -7,6 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { commandEventId, createTypedQueue, pageChangedLine, PAUSED_LINE, QUEUED_LINE, TurnFailed, turnWithRetry, typedRequestId, typedSendGate } from "../src/lib/typed-send";
+import { captureTypedRequest, runPersistedTypedRequest, runPersistedTypedTurn, TypedPersistenceFailure } from "../src/lib/typed-persistence";
 
 const read = (p: string) => readFileSync(join(import.meta.dir, "..", p), "utf8");
 
@@ -62,8 +63,11 @@ describe("a typed request is never dropped silently", () => {
     expect(composer.indexOf('if (outcome !== "accepted") return;')).toBeLessThan(composer.indexOf('setRequest("");'));
     // never "nothing was sent" while the shell may still replay it
     expect(composer).not.toContain("nothing was sent");
-    expect(composer).toContain("Still connecting to Jarvis");
-    expect(read("src/components/operator/voice-companion.tsx")).toContain("acceptJarvisRequest((event as CustomEvent).detail);");
+    // PR #7: the slow line now says it waits for the request AND reply to be confirmed saved; an explicit rejection keeps the words and id.
+    expect(composer).toContain("Waiting for Jarvis to confirm your request and reply are saved.");
+    expect(composer).toContain('if (outcome === "rejected") {');
+    expect(composer.indexOf('if (outcome === "rejected") {')).toBeLessThan(composer.indexOf('setRequest("");'));
+    expect(read("src/components/operator/voice-companion.tsx")).toContain("acceptJarvisRequest({ requestId });");
   });
 });
 
@@ -104,8 +108,13 @@ describe("release re-check (round 11): every Stop empties the queue; the typed t
     }
     expect(cleared).toBe(1);
     const vc = read("src/components/operator/voice-companion.tsx");
-    expect(vc).toContain("useEffect(() => onDrivingStop(() => typedQueue.current.clear()), []);");
-    expect(vc).toContain("if (TYPED_STOP.test(utterance)) typedQueue.current.clear();");
+    // PR #7: every Stop still empties the queue, and now also tells each waiting composer its request was not run (rejectQueuedTyped drains it).
+    expect(vc).toContain('useEffect(() => onDrivingStop(() => rejectQueuedTyped(() => "Stopped before this queued request ran.")), []);');
+    expect(vc).toContain('if (TYPED_STOP.test(utterance)) rejectQueuedTyped(() => "Stopped before this queued request ran.");');
+    const rejectBody = vc.slice(vc.indexOf("const rejectQueuedTyped = "), vc.indexOf("const rejectQueuedTyped = ") + 300);
+    expect(rejectBody).toContain("for (const waiting of typedQueue.current.drain())");
+    const stopBody = vc.slice(vc.indexOf("  function stop() {"), vc.indexOf("  function stop() {") + 300);
+    expect(stopBody).toContain("rejectQueuedTyped(");
   });
 
   test("the first hop retries a 503 with the same request, then succeeds", async () => {
@@ -122,8 +131,16 @@ describe("release re-check (round 11): every Stop empties the queue; the typed t
     expect(err).toBeInstanceOf(TurnFailed);
     expect(String(err.message)).toMatch(/didn't go through.*HTTP 503.*Nothing ran/);
     const vc = read("src/components/operator/voice-companion.tsx");
-    expect(vc).not.toMatch(/typedTurn\(current, request\)\.catch\(\(\) => null\)/);
-    expect(vc).toContain("turnWithRetry(() => voicePost(\"/voice/free/turn\"");
+    expect(vc).not.toMatch(/typedTurn\([^)]*\)\.catch\(\(\) => null\)/);
+    // PR #7 moved the turn loop into src/lib/typed-persistence.ts: the scoped-bot lane keeps turnWithRetry; the durable founder lane
+    // retries the identical stage on 502/503/504 and then fails as itself, never as a substituted answer or a command fallback.
+    expect(read("src/lib/typed-persistence.ts")).toContain('turnWithRetry(() => post("/voice/free/turn", body, signal))');
+    let calls = 0;
+    const state = captureTypedRequest("jr-r11-retry", "hello", {});
+    const failed = await runPersistedTypedTurn(state, async () => { calls++; return new Response("", { status: 503 }); }, new AbortController().signal, async () => { throw new Error("no tool may run"); }, [0, 0]).catch((e) => e);
+    expect(calls).toBe(3);
+    expect(failed).toBeInstanceOf(TypedPersistenceFailure);
+    expect(String(failed.message)).toMatch(/HTTP 503.*no command fallback was run/);
   });
 
   test("a 400 is not retried", async () => {
@@ -139,7 +156,11 @@ describe("release re-check (round 11): every Stop empties the queue; the typed t
     q.push("a");
     expect(q.full).toBe(true);
     const vc = read("src/components/operator/voice-companion.tsx");
-    expect(vc).toContain("if (taken) acceptJarvisRequest((event as CustomEvent).detail);");
+    // PR #7: "accepted" now means durably saved (request and reply). Paused or a full queue is an explicit rejection, so the composer keeps its text.
+    expect(vc).toContain("if (!waits) rejectJarvisRequest(requestId, line);");
+    expect(vc.indexOf("acceptJarvisRequest({ requestId });\n      if (companionRetry")).toBeGreaterThan(vc.indexOf("const reply = await runTypedRequestForScope("));
+    const launch = vc.slice(vc.indexOf("const launchText = "), vc.indexOf("const launchText = ") + 1200);
+    expect(launch).not.toContain("acceptJarvisRequest");
   });
 
   test("bot coding drafts and starts record their origin; voice-turn drafts use the scoped conversation", () => {
@@ -158,23 +179,44 @@ describe("round 11 (UI-core follow-up): the composer's request id is the command
     expect(commandEventId("jr-abc12345", 1)).toBe("jr-abc12345.2");
     const vc = read("src/components/operator/voice-companion.tsx");
     expect(vc).toContain("const requestId = typedRequestId((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId);");
-    expect(vc).toContain("eventId: commandEventId(requestId, commands++)");
-    expect(vc).toContain("reply = await typedTurn(current, request, requestId)");
+    // PR #7: the turn loop numbers commands itself (commandIndex); the typed request's id is still the command eventId.
+    expect(vc).toContain("eventId: commandEventId(state.requestId, commandIndex)");
+    expect(vc).toContain("reply = await typedTurn(current, durable, controller)");
   });
 
-  test("the typed request and its reply (plain answers too) go to /screen/command/thread/say", () => {
+  test("the durable turn numbers each jarvis_command after the first, from the composer's request id", async () => {
+    const state = captureTypedRequest("jr-abc12345", "do two things", {});
+    state.conversationId = "11111111-2222-3333-4444-555555555555";
+    const seen: number[] = [];
+    let step = 0;
+    const ack = (complete: boolean) => ({ requestId: "jr-abc12345", conversationId: "11111111-2222-3333-4444-555555555555", saved: true, complete });
+    const call = (id: string) => ({ id, type: "function" as const, function: { name: "jarvis_command", arguments: "{}" } });
+    const reply = await runPersistedTypedTurn(state, async () => Response.json(step++ === 0 ? { content: null, tool_calls: [call("a"), call("b")], persistence: ack(false) } : { content: "done", persistence: ack(true) }), new AbortController().signal, async (_c, i) => { seen.push(i); return "ok"; }, []);
+    expect(reply).toBe("done");
+    expect(seen.map((i) => commandEventId("jr-abc12345", i))).toEqual(["jr-abc12345", "jr-abc12345.2"]);
+  });
+
+  test("the typed request and its reply (plain answers too) go to /screen/command/thread/say", async () => {
+    // PR #7: the saves moved into runPersistedTypedRequest and are awaited: the request is saved BEFORE anything runs, the reply after.
     const vc = read("src/components/operator/voice-companion.tsx");
-    expect(vc).toContain('voicePost("/screen/command/thread/say"');
-    expect(vc).toContain('sayToThread(requestId, "user", "user", request)');
-    expect(vc).toContain('sayToThread(requestId, "reply", "assistant", reply)');
+    expect(vc).toContain("const reply = await runTypedRequestForScope(durable, async () => {");
+    const order: string[] = [];
+    const state = captureTypedRequest("jr-say-0001", "Reply with QA JARVIS 20261005 only.", {});
+    const post = async (path: string, body: { part?: string; requestId?: string }) => { order.push(`${path}:${body.part}`); return Response.json({ saved: true, requestId: body.requestId, conversationId: "11111111-2222-3333-4444-555555555555" }); };
+    const answer = await runPersistedTypedRequest(state, async () => { order.push("effect"); return "QA JARVIS 20261005"; }, post as never, new AbortController().signal);
+    expect(answer).toBe("QA JARVIS 20261005");
+    expect(order).toEqual(["/screen/command/thread/say:user", "effect", "/screen/command/thread/say:reply"]);
   });
 });
 
 describe("round 11 staging: a turn that can't run on this hub goes to the command path, never a different kind of answer", () => {
   test("a non-transient turn error runs the typed request through runJarvisCommand with the same request id; a transient one says it failed", () => {
+    // PR #7: only the scoped-bot lane keeps this fallback (same request id, the request's own Stop signal). The durable founder lane rethrows:
+    // an unknown or unsaved outcome must never become a second, different command.
     const vc = read("src/components/operator/voice-companion.tsx");
-    expect(vc).toContain('const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, fallback.signal);');
-    expect(vc).toContain("if (e instanceof TurnFailed || (e as Error)?.name === \"AbortError\") return e instanceof TurnFailed ? e.message : \"Stopped.\";");
+    expect(vc).toContain("if (durableTypedScope(durable.options) || error instanceof TypedPersistenceFailure) throw error;");
+    expect(vc).toContain("const out = await jarvisCommand({ utterance: request, typed: true, eventId: commandEventId(requestId, 0) }, controller.signal, undefined, resolvedTypedExecutionContext(durable, durable.execution));");
+    expect(vc).toContain('if (error instanceof TurnFailed || error.name === "AbortError") return error instanceof TurnFailed ? error.message : "Stopped.";');
   });
 });
 
@@ -185,7 +227,10 @@ describe("final review B2: a Stop from the panel or Escape reaches the typed req
     expect(stopBody).toContain("typedTurnAbort.current?.abort();");
     const turnBody = vc.slice(vc.indexOf("async function typedTurn("), vc.indexOf("async function typedTurn(") + 400);
     expect(turnBody).toContain("typedTurnAbort.current = controller;");
-    expect(vc).toContain("typedTurnAbort.current = fallback;");
+    // PR #7: one controller per typed request, set before its save/route/turn, covers the scoped-bot fallback too (no separate fallback controller).
+    const execBody = vc.slice(vc.indexOf("  async function execute("));
+    expect(execBody.indexOf("typedTurnAbort.current = controller;")).toBeLessThan(execBody.indexOf("const reply = await runTypedRequestForScope("));
+    expect(vc).toContain("}, voicePost, controller.signal);");
     // No typed-request command call without a signal any more.
     expect(vc).not.toContain('runJarvisCommand({ utterance: request, source: "typed"');
   });

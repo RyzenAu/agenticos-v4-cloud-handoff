@@ -10,6 +10,8 @@
  * principal gains nothing it did not already have.
  */
 import { createHash } from "node:crypto";
+import { businessClauses } from "./business-clauses";
+import { findQuoted } from "./quotes";
 import type { Principal } from "../identity/principal";
 import { crmRefString, type CrmRef } from "../../src/lib/crm-ref";
 import { formatAud } from "../../src/lib/receptionist-packages";
@@ -65,7 +67,11 @@ const NEXT = /^(?:what(?:'s|\s+is|\s+are)|show(?:\s+me)?|tell\s+me)\s+(?:the\s+|
 const DRAFTS = /^(?:show(?:\s+me)?|view|open|list|pull\s+up|what\s+are)\s+(?:the\s+|our\s+|any\s+|all\s+)?(?:existing\s+|unsent\s+|draft\s+)*(outreach(?:\s+packs?|\s+drafts?)?|meeting\s+packs?|reply\s+drafts?)(?:\s+(?:for|on|to)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
 
 const SELF = /^(?:this|that|the\s+open|the\s+current|open|current)$/i;
-const tidyName = (s: string) => clean(s.replace(/[.!?]+$/, ""));
+const tidyName = (s: string) => {
+  const name = clean(s.replace(/[.!?]+$/, ""));
+  const quoted = findQuoted(name);
+  return quoted && quoted.index === 0 && quoted.length === name.length ? quoted.text : name;
+};
 /** "open the deal", "open it": an article or pronoun is not a name, so nothing is taken. */
 const NOT_A_NAME = /^(?:the|a|an|this|that|it|my|our|one|any|some)$/i;
 /** "open the file synthetic proposal", "open my Word document quote": a file, app or page the other lanes own, never a CRM name. */
@@ -73,15 +79,25 @@ const OTHER_LANE = /^(?:(?:the|my|a|an)\s+)?(?:file|folder|document|doc|pdf|app|
 
 /** Pure: the business intent in an utterance, or null. Every form names a business word; none can take ordinary speech. */
 export function businessIntentIn(utterance: string): BusinessIntent | null {
+  const intent = singleBusinessIntent(utterance);
+  // Check raw text before unquoting a captured name: separators inside quoted names are data.
+  // Note/task payloads may contain instructions to record; only their target is a name.
+  if (!intent) return null;
+  if (intent.kind === "named-note" || intent.kind === "task") return intent;
+  return businessClauses(utterance).length > 1 ? null : intent;
+}
+
+function singleBusinessIntent(utterance: string): BusinessIntent | null {
   const t = clean(utterance.replace(PREAMBLE, "")).replace(/[.!?]+$/, "");
   let m: RegExpExecArray | null;
 
   if ((m = NOTE_KIND.exec(t)) && !SELF.test(m[1].trim()))
-    return { kind: "named-note", name: tidyName(m[1]), kinds: [kindOf(m[2])!], text: clean(m[3]) };
+    return businessClauses(m[1]).length > 1 ? null : { kind: "named-note", name: tidyName(m[1]), kinds: [kindOf(m[2])!], text: clean(m[3]) };
   if ((m = NOTE_CRM.exec(t)) && !SELF.test(m[1].trim()))
-    return { kind: "named-note", name: tidyName(m[1]), kinds: ["company", "deal", "project", "contact"], text: clean(m[2]) };
+    return businessClauses(m[1]).length > 1 ? null : { kind: "named-note", name: tidyName(m[1]), kinds: ["company", "deal", "project", "contact"], text: clean(m[2]) };
 
-  const task = (name: string, kinds: BusinessKind[], rest: string): BusinessIntent => {
+  const task = (name: string, kinds: BusinessKind[], rest: string): BusinessIntent | null => {
+    if (businessClauses(name).length > 1) return null;
     let title = clean(rest);
     let dueAt: string | null = null;
     let owner: "usman" | "mehroz" | "" = "";

@@ -1,3 +1,6 @@
+import { conversationStore } from "./conversations";
+import { createTypedTurnPersistence } from "./jarvis-command/typed-turn-persistence";
+import type { Principal } from "./identity/principal";
 import { parseScreenResult } from "../src/lib/screen-result";
 import { replyStyleInstructions } from "../src/lib/voice-style";
 import { personalityInstructions } from "../src/lib/voice-personality";
@@ -442,7 +445,7 @@ export function skillContext(messages: Message[]): SkillContext {
   return context;
 }
 
-const INSTRUCTIONS = `You are Jarvis, Usman's voice assistant on his Windows PC (Agentic OS). He runs M&U Ventures with his co-founder Mehroz; you're on their side.
+const INSTRUCTIONS = `You are Jarvis, Usman's voice assistant on his Windows PC (Agentic OS). He runs M&U Ventures with co-founder Mehroz; you're on their side.
 Character: the film J.A.R.V.I.S. Dry British wit; calm, confident, loyal, a touch cheeky. "Sir" about one reply in four, never every line, never tacked on the end. Humour at most one reply in four, never forced; no tea, weather or butler clichés; none when he's stressed or rushed, or on his deen, money, health, family or bad news. Never joke about religion, race or nationality. Wit never bends a fact.
 Tone: specific to what he said, never stock lines like "How can I assist you today?". A mistake gets "My mistake." and the fix, no apology speech. Never promise an action you aren't taking with a tool.
 Brevity: you are heard, not read. One or two short sentences, then stop. Act, don't explain; go long only when he asks ("explain", "walk me through"). No markdown, lists, IDs, paths, JSON or URLs; summarise tool results. Suggest a next step only when it clearly helps.
@@ -719,6 +722,21 @@ export function brainFirst(utterance: string) {
   if (u.length < 8 || u.length > 400) return false;
   if (!/^(?:what|who|why|how|when|where|which|explain|tell me|should|is|are|would|do you|does|give me (?:a|an|one|some) (?:tip|idea|joke|example|reason|fact))\b/.test(u)) return false;
   return !/\b(?:my|mine|screen|e-?mails?|inbox|mail|calendar|schedule|meetings?|saved?|remember|memor(?:y|ies)|notes?|timers?|remind(?:er)?s?|clipboard|open|close|play|pause|click|tabs?|page|window|volume|status|tracking|time is it|what time|date|day is it|battery|cpu|disk|ram|leads?|calls?|business|revenue|downloads?|folder|files?|apps?|this|that|here|it)\b/.test(u);
+}
+
+/**
+ * "Reply with QA JARVIS 20261005 only.", "respond with OK only", "say exactly: done": words addressed to Jarvis himself, asking for a
+ * plain reply. Nothing is named to act on (no person, app, message, page or device), so it is the brain's answer, never a routing decision:
+ * a remote founder's turn would otherwise send it to the command controller, which can only ask "where should that run?" (5 Oct, PR #7 QA).
+ */
+export function plainReplyRequest(utterance: string): boolean {
+  const u = utterance.replace(/[’`]/g, "'").replace(/^\s*(?:(?:hey\s+)?jarvis[,\s]+)/i, "").trim();
+  if (u.length < 6 || u.length > 300) return false;
+  const m = /^(?:please\s+)?(?:(?:reply|respond|answer)\s+(?:only\s+)?with\s+(.+?)\s+only|(?:just\s+)?say\s+exactly:?\s+(.+?))[.!]?$/i.exec(u);
+  const said = m?.[1] ?? m?.[2];
+  if (!said) return false;
+  // Anything that names someone or somewhere to send it is outbound or an action, never a plain reply.
+  return !/\b(?:to|on|in|via|email|e-?mails?|mail|message|messages|text|sms|whatsapp|telegram|slack|chat|client|him|her|them|screen|window|tab|page)\b/i.test(said);
 }
 
 /**
@@ -1100,6 +1118,7 @@ function stripThinking(value: string | null | undefined) {
 }
 
 export function freeVoice(root: string, dependencies: Dependencies = {}) {
+  const persistTypedTurn = createTypedTurnPersistence(conversationStore(root));
   const request = dependencies.fetch ?? fetch;
   const key = dependencies.key ?? ((name: string) => providerKey(root, name));
   const receipts = dependencies.sink ?? new DeferredReceipts(() => defaultReceiptSink(root));
@@ -1489,6 +1508,9 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       // "What device is this?", "where is the OS running?", "I am at the PC": answered from what the hub knows, never the screen-share line or a guess.
       const asksDevice = deviceQuestion(last.content);
       if (asksDevice) return { content: deviceAnswer(asksDevice, deviceFacts(remote, device, caller)), model: "rules", route: { intent: `device.${asksDevice}` } };
+      // A plain reply he asked Jarvis for ("Reply with X only."): conversation, like a question. The brain answers with no action tools, local or
+      // remote, Jev or not; it never goes to the command controller, which can only ask where it should run (PR #7 QA, 5 Oct).
+      if (plainReplyRequest(last.content)) return { ...(await think([], undefined, true)), router: { intent: "brain.plain-reply", source: "rules" as const } };
       // Round 10 (owner review): a founder not at the hub, Jev configured: only Stop and an answer to a question are handled before Jev. Every
       // other task (memory, coding, lessons, pages, his device...) goes to the ONE command path, whose controller asks Jev once with his
       // constraints (a named agent, device, pin or page item) and runs it on HIS device or that agent. Conversation (a plain question) stays.
@@ -2218,7 +2240,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     status,
     speakStream,
     /** `caller`: the host's verified request identity (only the memory rule uses it). */
-    async handle(path: string, body: unknown, caller?: unknown) {
+    async handle(path: string, body: unknown, caller?: unknown, principal?: Principal, /** Host-only policy refusal, never copied from the request body. */ blockedReply?: string) {
       if (path === "/voice/free/reflex") return reflexPartial(body);
       // Latency instrumentation only (scripts/voice-latency.ts, scripts/voice-latency-report.ts):
       // one JSONL line per command, speech end → route decided → action started → action done.
@@ -2233,7 +2255,7 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       }
       if (path === "/voice/free/configure") return configure(body);
       if (path === "/voice/free/stt") return transcribe(body);
-      if (path === "/voice/free/turn") return turn(body, caller);
+      if (path === "/voice/free/turn") return persistTypedTurn(body, principal, () => blockedReply ? Promise.resolve({ content: blockedReply, model: "rules" }) : turn(body, caller));
       if (path === "/voice/free/tts") return speak(body);
       if (path === "/voice/free/eleven-voices") return elevenVoices();
       throw new Error("Unknown voice action.");

@@ -1,3 +1,4 @@
+import { TypedPersistenceError } from "../conversations";
 /**
  * The command service (Track 2): the ONE path typed and spoken Jarvis commands take on the server.
  *
@@ -17,7 +18,7 @@
  * job unknown and never re-runs it (JobService.recover).
  */
 import { isStopCommand } from "../coding/stop-words";
-import { mayUseBots, type Principal } from "../identity/principal";
+import { isBrowserPrincipal, mayUseBots, type Principal } from "../identity/principal";
 import { hubRole, type HubRole } from "../cloud/hub-role";
 import { stopOutcome, type JobService, type ExecutorContext, type StopOutcome } from "../jobs/service";
 import type { JevDecisionRef, JobKind, Step } from "../jobs/types";
@@ -56,6 +57,7 @@ import { thresholdsFor } from "./thresholds";
 import { createRecentTargets, resolveSwitch, switchBackIn, targetFrom, type SwitchRef } from "./recent-targets";
 import { codingDraftFor } from "./coding";
 import { crmIntentIn, type CrmAnswer, type CrmIntent } from "./crm";
+import { businessQuestionsIn } from "./compound-questions";
 import { BOT_NEEDS_SESSION, createLinkedRunner, type RunMeta } from "./linked-run";
 import { commandRequestId, type CommandAdmissionKey } from "../jobs/command-admission";
 import type { JobThreads } from "./threads";
@@ -773,6 +775,19 @@ export function createCommandService(deps: CommandServiceDeps) {
     }
 
 
+    // A compound read request with an unsupported/action clause must never execute a prefix or
+    // reach a different mutating delegate. With Jev, keep its decision/evidence, then ask below.
+    const businessQuestions = businessQuestionsIn(utterance);
+    if (businessQuestions?.kind === "unsupported") {
+      if (jevLed) return jevFirst(body.target?.bot ? { bot: body.target.bot } : {});
+      return start("none", async (ctx, out) => {
+        const d = decisionOf({ op: "crm.questions", confidence: 1, policy: "ask", source: "rules", why: "not every clause is a supported read-only business question" });
+        out({ type: "decision", decision: d, seq: 0 });
+        note(ctx, { intent: d.why, executor: "none", jev: d, outcome: "asked" });
+        return { type: "done", ok: false, ask: true, said: "I can combine up to four supported read-only business questions. This request includes something else, so I haven't run any of it. Ask those parts separately.", kind: "ask", decision: d, verified: null, jobId: null, runId: "", targetDeviceId: "none" };
+      });
+    }
+
     // 1c. An agent bot's request (Agents workspace; linked-run.ts resolved the bot and put it in `body.target`): it runs on THAT bot's computer, or as
     // that bot's coding job, and nothing here ever falls through to the person's own device or the hub. A money action is refused by name; a code
     // change that only NAMES a money feature is still code. The bot's own words about what it did come back as the one line.
@@ -828,7 +843,7 @@ export function createCommandService(deps: CommandServiceDeps) {
 
     // Shared cloud computers ("use the research computer to ...", "show me the research bot", "continue that job"): before page context,
     // which would otherwise read "that job" as a page item. Money or secret words never reach a computer from here.
-    if (deps.delegates?.computers && !moneyRead && !goalRefusal && !codingMoneyRefusal(raw) && source !== "acceptance") {
+    if (businessQuestions?.kind !== "questions" && deps.delegates?.computers && !moneyRead && !goalRefusal && !codingMoneyRefusal(raw) && source !== "acceptance") {
       // A NEW task on a shared computer he named: the name fixes the target, Jev decides the task. ("Show" and "continue" are about the job
       // and computer already there: no new routing decision, so its established route and pins stay as they are.)
       const named = jevLed ? parseComputerCommand(utterance, []) : null;
@@ -851,7 +866,7 @@ export function createCommandService(deps: CommandServiceDeps) {
     // 2. Page context: "explain this margin", "open that call". Resolved, or asked; never guessed.
     // A whole-utterance answer ("start it", "yes") answers the pending question; its "it" is never a page reference (production 4 Oct: a typed
     // "start it" from /jarvis arrived with the page context and got "I can't tell which item you mean" instead of starting the draft).
-    const ref = isAnswer ? null : commandContext.reference;
+    const ref = isAnswer || businessQuestions?.kind === "questions" ? null : commandContext.reference;
     // "open this lead's website": the lead the page shows, its website from the CRM, opened on the person's own device like any typed step.
     if (ref && commandContext.resolution?.kind === "resolved" && SITE_KINDS.has(commandContext.resolution.item.kind) && OPEN_SITE.test(utterance)) {
       const item = commandContext.resolution.item;
@@ -895,7 +910,7 @@ export function createCommandService(deps: CommandServiceDeps) {
     //    harness isn't running here. Nothing starts from this line.
     // An explicit business-record request ("draft a quote for the Orchard website deal", "create a task for the Orchard site deal: ...") is the CRM's even
     // when it says "site" or "website": the CRM forms each name a record kind and are tried before the coding words (business owner, r10).
-    const crmWords = !!crmIntentIn(utterance);
+    const crmWords = businessQuestions?.kind === "questions" || !!crmIntentIn(utterance);
     if (deps.delegates?.coding && !crmWords && !moneyBlocked && !routine && source !== "away" && source !== "acceptance") {
       // An account or model named as the worker ("using Opus on Claude Max 2") is a PIN for this job only: passed as structured fields,
       // saved on the job so retries and the automatic fallback never move it; an account this server doesn't have is refused by name with
@@ -1115,6 +1130,20 @@ export function createCommandService(deps: CommandServiceDeps) {
       // A decision Jev made carries that call's evidence (latency, request id, model, the options offered, cached and its age) on the job and a receipt.
       const jd = (d: Omit<JevDecision, "calibrationRunId">): JevDecision =>
         decisionOf({ ...d, ...(d.source === "jev" ? { ms: decision.ms, options, cached, ...(decision.cacheAgeMs !== undefined ? { cacheAgeMs: decision.cacheAgeMs } : {}), ...(decision.evidence ? { requestId: decision.evidence.requestId, model: decision.evidence.model } : {}) } : {}) });
+
+      // One boundary BEFORE every Jev lane and every outage fallback: an unsupported business
+      // compound can only ask/refuse, never execute an isolated page, skill, coding or device prefix.
+      if (businessQuestions?.kind === "unsupported") {
+        const missing = decision.kind === "unavailable";
+        if (missing) jevMiss = { ...(decision.evidence ? { requestId: decision.evidence.requestId } : {}), ms: decision.ms };
+        return start("none", async (ctx, out) => {
+          if (decision.kind === "unavailable") recordJevMiss(ctx.jobId, decision.reason);
+          const d = jd({ op: missing ? "jev.unavailable" : "crm.questions", confidence: decision.kind === "unavailable" ? 0 : decision.confidence, policy: missing ? "done" : "ask", source: missing ? "rules" : "jev", why: `unsupported read-only business compound; Jev ${decision.kind === "decided" ? `chose ${decision.lane}` : decision.kind}; no lane or fallback may execute a prefix` });
+          out({ type: "decision", decision: d, seq: 0 });
+          note(ctx, { intent: d.why, executor: "none", jev: d, outcome: missing ? "refused" : "asked" });
+          return { type: "done", ok: false, ...(missing ? {} : { ask: true }), said: decision.kind === "unavailable" ? jevOutageLine(decision.reason) : "I can combine up to four supported read-only business questions. This request includes something else, so I haven't run any of it. Ask those parts separately.", kind: missing ? "unavailable" : "ask", decision: d, numbers: { jev: { state: missing ? "unavailable" : "ask", ...(decision.kind === "unavailable" ? { reason: decision.reason } : {}), options } }, verified: null, ...base };
+        });
+      }
 
       // ── Jev unavailable: the labelled deterministic fallback for supported, safe exact actions; the outage line for everything else ──
       if (decision.kind === "unavailable") {
@@ -1624,8 +1653,32 @@ export function createCommandService(deps: CommandServiceDeps) {
         if (m.kind === "question") return finish(false, r.said, null, { ask: true, awaiting: true });
         return finish(false, r.said, m.kind === "not-done" ? false : null);
       }
+      if (rule.op === "crm.questions") {
+        const plan = businessQuestionsIn(utterance);
+        if (plan?.kind !== "questions") return finish(false, "I couldn't separate those into supported read-only questions, so nothing ran.", null, { ask: true });
+        if (body.spokenTarget || splitSpokenTarget(String(body.utterance ?? "")).spokenTarget) return finish(false, "Those questions name a device. I can't answer them on that device through the business services, so nothing ran.", null, { ask: true });
+        if (!isBrowserPrincipal(principal)) return finish(false, "Only a signed-in founder can read the CRM from here.", null);
+        // Check all required services first. Never run only a prefix then silently drop the rest.
+        if (plan.questions.some(q => q.to === "crm" ? !deps.delegates?.crm : !deps.delegates?.leads)) return finish(false, "A service needed for those questions isn't connected here, so I haven't answered any of them.", null);
+        const answers: string[] = [];
+        for (const [i, q] of plan.questions.entries()) {
+          if (ctx.signal.aborted) return finish(false, [...answers, "Stopped. The remaining questions were not answered."].join("\n"), null, { stopped: true });
+          const r: CrmAnswer = await (q.to === "crm"
+            ? deps.delegates!.crm!(q.intent, principal, (body.pageContext as PageContext | undefined) ?? null)
+            : deps.delegates!.leads!(q.action, principal)).catch(() => ({ ok: false, said: "That service didn't answer, so I won't guess.", verified: null }));
+          if (ctx.signal.aborted) return finish(false, [...answers, "Stopped. The remaining questions were not answered."].join("\n"), null, { stopped: true });
+          answers.push(`${i + 1}. ${r.said}`);
+          note(ctx, { intent: `business question ${i + 1}/${plan.questions.length}: ${q.words.slice(0, 120)}`, executor: q.to, jev: d, outcome: r.ok && r.verified === true ? "ok" : "failed", verification: { method: `${q.to}-service`, ok: r.verified } });
+          if (!r.ok || r.verified !== true) {
+            if (i + 1 < plan.questions.length) answers.push("The remaining questions were not answered.");
+            return finish(false, answers.join("\n"), r.verified, r.ask ? { ask: true } : {});
+          }
+        }
+        return finish(true, answers.join("\n"), true);
+      }
       if (rule.to === "leads") {
         const action = leadActionIn(utterance);
+        if (action?.action === "count" && !isBrowserPrincipal(principal)) return finish(false, "Only a signed-in founder can read the CRM from here.", null);
         if (!action || !deps.delegates?.leads) return finish(false, "The leads service isn't connected here, so nothing in the CRM changed.", null);
         const r = await deps.delegates.leads(action, principal, typeof body.eventId === "string" ? body.eventId : undefined, ctx.jobId).catch((e: Error) => ({ ok: false, said: `The CRM didn't take it: ${e.message.slice(0, 120)}`, verified: false as boolean | null }));
         return finish(r.ok && r.verified !== false, r.said, r.verified, r.ok ? {} : { ask: /which one/i.test(r.said) });
@@ -1753,8 +1806,12 @@ export function createCommandService(deps: CommandServiceDeps) {
   }
 
   /** Round 11: a typed request or its reply into this verified person's own default Jarvis thread (keyed: a repeat writes nothing). */
-  function threadSay(principal: Principal, input: { requestId: string; part: "user" | "reply" | "note"; role: "user" | "assistant"; text: string }) {
-    return deps.threads?.say(principal.personId, { key: `${input.requestId}:${input.part}`, role: input.role, text: input.text }) ?? null;
+  function threadSay(principal: Principal, input: { requestId: string; part: "user" | "reply" | "note"; role: "user" | "assistant"; text: string; conversationId?: string }) {
+    // Dot's own Jarvis (scripts/gateway/hub-ops.ts /tasks): the gate-verified gateway principal saves into Dot's OWN default thread only
+    // (personId "dot", never a founder's, never a caller-chosen conversation). Everyone else needs a verified founder session.
+    const gateway = principal.via === "gateway" && principal.actor === "process";
+    if (gateway ? input.conversationId !== undefined : principal.actor !== "human" || !["paired-session", "loopback-owner"].includes(principal.via)) throw new TypedPersistenceError("A verified founder session is needed to save this typed request.", 403);
+    return deps.threads?.say(principal.personId, { key: `${input.requestId}:${input.part}`, role: input.role, text: input.text, ...(input.conversationId ? { conversationId: input.conversationId } : {}) }) ?? null;
   }
 
   /** Is this one of the person's conversations with an agent bot? */

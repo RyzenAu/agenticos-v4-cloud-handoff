@@ -429,7 +429,12 @@ export function createGatewayOps(options: GatewayOpsOptions) {
         // Dot's request, and later a plain answer, go into Dot's OWN Jarvis thread (never a founder's): /jarvis in Dot's browser reads it
         // back. Keyed by the request id, so a retried eventId writes nothing twice. A job's own lines are appended by the thread watcher.
         const requestId = eventId ?? `gw-${randomUUID()}`;
-        service.threadSay?.(actor, { requestId, part: "user", role: "user", text: utterance });
+        // A thread write never decides the task: the strict typed store can refuse (a retried eventId with changed words, a full thread),
+        // and the request still runs or is deduplicated by its eventId exactly as before.
+        const say = (part: "user" | "reply", role: "user" | "assistant", words: string) => {
+          try { service.threadSay?.(actor, { requestId, part, role, text: words }); } catch { /* not saved; the job record still has it */ }
+        };
+        say("user", "user", utterance);
         let jobId: string | null = null;
         const run = service.run({ principal: actor, body: { utterance, source: "typed", ...(eventId ? { eventId } : {}) } }, (e) => {
           if (typeof e.jobId === "string" && e.jobId) jobId = e.jobId;
@@ -442,7 +447,7 @@ export function createGatewayOps(options: GatewayOpsOptions) {
             if (typeof reply.said !== "string" || !reply.said.trim()) return;
             const startedJob = (typeof reply.jobId === "string" && reply.jobId) || jobId;
             const job = startedJob ? (await jobs()).get(startedJob) : null;
-            if (!job || job.kind === "command") service.threadSay?.(actor, { requestId, part: "reply", role: "assistant", text: reply.said });
+            if (!job || job.kind === "command") say("reply", "assistant", reply.said);
           })
           .catch(() => undefined);
         // Answer when the command finishes, or after a short wait with the job id so Dot follows it at /__gateway/jobs/<id>.

@@ -5,16 +5,18 @@
 //   - ONE identity per composed request: the composer makes the request id once and carries it through the handover (`requestId`,
 //     shaped like a command eventId so the companion can use it as one). Pressing Send again on the same words while that request is
 //     still waiting is the same request: nothing new is dispatched.
-//   - It is only "sent" when the companion says it took it (`operator:voice-text-accepted` for that id). Until then the composer keeps
-//     the words and, after a while, says it is still connecting; it never claims "nothing was sent" while a replay is still possible.
+//   - It is only "sent" when the companion says it took it (`operator:voice-text-accepted` for that id after durable completion in the typed lane). Until then the composer keeps
+//     the words and, after a while, says it is waiting for save confirmation; it never claims "nothing was sent" while a replay is still possible.
 //   - Editing or clearing the words cancels that request: the shell drops it from its replay queue (`late:cancel-queued`).
 import { isDotGatewayUi } from "./dot-gateway";
 
 export const VOICE_TEXT = "operator:voice-text";
 export const VOICE_TEXT_ACCEPTED = "operator:voice-text-accepted";
+export const VOICE_TEXT_STARTED = "operator:voice-text-started";
+export const VOICE_TEXT_REJECTED = "operator:voice-text-rejected";
 /** The shell's replay queue drops a captured event whose detail.requestId matches. */
 export const CANCEL_QUEUED = "late:cancel-queued";
-/** After this long without an acceptance, the composer says it is still connecting (it keeps waiting). */
+/** After this long without an acceptance, the composer says it is waiting for completion (it keeps waiting). */
 export const SLOW_MS = 8_000;
 
 let seq = 0;
@@ -24,44 +26,65 @@ export const newRequestId = () => `jr-${Date.now().toString(36)}-${(++seq).toStr
 export type PendingSend = {
   readonly requestId: string;
   readonly text: string;
-  /** Resolves "accepted" when the companion took it, "cancelled" when the person edited or cleared it first. */
-  readonly done: Promise<"accepted" | "cancelled">;
-  /** Edited or cleared before it was taken: stop waiting and drop it from the shell's replay queue. */
+  /** Resolves accepted after durable completion, rejected on an explicit failure, or cancelled on editing. */
+  readonly done: Promise<"accepted" | "cancelled" | "rejected">;
+  /** Durable admission/completion failed; keep this identity and the composed words for retry. */
+  readonly failure?: string;
+  /** Effects have begun; editing only detaches this waiter and cannot promise cancellation. */
+  readonly started: boolean;
+  /** Stop waiting. Before effects start, also cancel shell replay and companion queue admission. */
   cancel(): void;
 };
 
 /**
- * Hand one composed request to the companion. `onSlow` runs once if it hasn't been taken after `slowMs` (the request stays queued).
- * Waits until accepted or cancelled; there is no give-up that could make the person send it again under a new identity.
+ * Hand one composed request to the companion. `onSlow` runs once if completion has not arrived after `slowMs`.
+ * Waits until accepted, rejected or cancelled; there is no give-up that could make the person send it again under a new identity.
  */
 export function sendJarvisRequest(text: string, opts: { requestId?: string; target?: EventTarget; slowMs?: number; onSlow?: () => void } = {}): PendingSend {
   if (isDotGatewayUi()) return sendDotTask(text, opts);
   const target = opts.target ?? window;
   const requestId = opts.requestId ?? newRequestId();
   const words = text.trim();
-  let settle: (r: "accepted" | "cancelled") => void = () => undefined;
-  const done = new Promise<"accepted" | "cancelled">((resolve) => (settle = resolve));
+  let settle: (r: "accepted" | "cancelled" | "rejected") => void = () => undefined;
+  const done = new Promise<"accepted" | "cancelled" | "rejected">((resolve) => (settle = resolve));
   let finished = false;
-  const finish = (r: "accepted" | "cancelled") => {
+  let failure: string | undefined;
+  let started = false;
+  const finish = (r: "accepted" | "cancelled" | "rejected") => {
     if (finished) return;
     finished = true;
     target.removeEventListener(VOICE_TEXT_ACCEPTED, onAccepted);
+    target.removeEventListener(VOICE_TEXT_REJECTED, onRejected);
+    target.removeEventListener(VOICE_TEXT_STARTED, onStarted);
     clearTimeout(slow);
     settle(r);
   };
   const onAccepted = (event: Event) => {
     if ((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId === requestId) finish("accepted");
   };
+  const onStarted = (event: Event) => {
+    if ((event as CustomEvent<{ requestId?: unknown }>).detail?.requestId === requestId) started = true;
+  };
+  const onRejected = (event: Event) => {
+    const detail = (event as CustomEvent<{ requestId?: unknown; reason?: string }>).detail;
+    if (detail?.requestId !== requestId) return;
+    failure = detail.reason || "The request is not confirmed saved. Retry the same request.";
+    finish("rejected");
+  };
   target.addEventListener(VOICE_TEXT_ACCEPTED, onAccepted);
+  target.addEventListener(VOICE_TEXT_REJECTED, onRejected);
+  target.addEventListener(VOICE_TEXT_STARTED, onStarted);
   const slow = setTimeout(() => !finished && opts.onSlow?.(), opts.slowMs ?? SLOW_MS);
   target.dispatchEvent(new CustomEvent(VOICE_TEXT, { detail: { request: words, requestId } }));
   return {
     requestId,
     text: words,
     done,
+    get failure() { return failure; },
+    get started() { return started; },
     cancel() {
       if (finished) return;
-      target.dispatchEvent(new CustomEvent(CANCEL_QUEUED, { detail: { type: VOICE_TEXT, requestId } }));
+      if (!started) target.dispatchEvent(new CustomEvent(CANCEL_QUEUED, { detail: { type: VOICE_TEXT, requestId } }));
       finish("cancelled");
     },
   };
@@ -94,13 +117,14 @@ export function sendDotTask(text: string, opts: { requestId?: string; slowMs?: n
     requestId,
     text: words,
     done,
+    started: false,
     cancel() {
       cancelled = true;
     },
   };
 }
 
-/** The companion's side: say a typed request was taken (it is then queued to run). */
+/** The companion acknowledges only after the request and answer have durable save acknowledgements. */
 export function acceptJarvisRequest(detail: unknown, target: EventTarget = window) {
   const requestId = (detail as { requestId?: unknown } | null | undefined)?.requestId;
   if (typeof requestId === "string") target.dispatchEvent(new CustomEvent(VOICE_TEXT_ACCEPTED, { detail: { requestId } }));
@@ -109,4 +133,41 @@ export function acceptJarvisRequest(detail: unknown, target: EventTarget = windo
 /** Pure: does a Send press start a new request, or is it the same one still waiting? */
 export function sendDecision(pending: { text: string } | null, words: string): "new" | "same" {
   return pending && pending.text === words.trim() ? "same" : "new";
+}
+
+/** An explicit failure unlocks Send without losing its identity or words. */
+export function rejectJarvisRequest(requestId: string, reason: string, target: EventTarget = window) {
+  target.dispatchEvent(new CustomEvent(VOICE_TEXT_REJECTED, { detail: { requestId, reason } }));
+}
+
+/** The composer retains a failed identity until its words change; a retry never becomes a fresh request. */
+export function retryRequestId(previous: { requestId: string; text: string } | null, text: string): string | undefined {
+  return previous?.text === text.trim() ? previous.requestId : undefined;
+}
+
+const INTERRUPTED_KEY = "jarvis-pending-durable-request";
+export type InterruptedRequest = { requestId: string; text: string };
+/** Store only the current composer identity. A reload cannot reconstruct completed browser tool steps safely. */
+export function rememberInterruptedRequest(request: InterruptedRequest | null, storage?: Pick<Storage, "setItem" | "removeItem">): void {
+  try { const target = storage ?? sessionStorage; if (request) target.setItem(INTERRUPTED_KEY, JSON.stringify(request)); else target.removeItem(INTERRUPTED_KEY); } catch { /* session storage unavailable */ }
+}
+export function readInterruptedRequest(storage?: Pick<Storage, "getItem">): InterruptedRequest | null {
+  try {
+    const saved = JSON.parse((storage ?? sessionStorage).getItem(INTERRUPTED_KEY) || "null") as InterruptedRequest | null;
+    return saved && typeof saved.requestId === "string" && /^[\w:.-]{6,80}$/.test(saved.requestId) && typeof saved.text === "string" && saved.text.length <= 600 ? saved : null;
+  } catch { return null; }
+}
+
+
+/** Admission and completion are distinct: the draft still waits for saving after effects have begun. */
+export function startJarvisRequest(requestId: string, target: EventTarget = window): void {
+  target.dispatchEvent(new CustomEvent(VOICE_TEXT_STARTED, { detail: { requestId } }));
+}
+export function onJarvisRequestCancelled(cancel: (requestId: string) => void, target: EventTarget = window): () => void {
+  const listener = (event: Event) => {
+    const detail = (event as CustomEvent<{ type?: string; requestId?: unknown }>).detail;
+    if (detail?.type === VOICE_TEXT && typeof detail.requestId === "string" && /^[\w:.-]{6,80}$/.test(detail.requestId)) cancel(detail.requestId);
+  };
+  target.addEventListener(CANCEL_QUEUED, listener);
+  return () => target.removeEventListener(CANCEL_QUEUED, listener);
 }

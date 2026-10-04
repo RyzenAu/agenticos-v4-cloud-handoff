@@ -30,7 +30,7 @@ export function maskJobText(text: unknown, max = 300): string {
   return maskJobTextRaw(guarded, max + refs.length * 12).replace(/§jobref(\d+)§/g, (_m, i: string) => refs[Number(i)] ?? "").slice(0, max);
 }
 import type { JobEvent, Step } from "../jobs/types";
-import { botThreadId, isJobThread, jarvisThreadId, type ThreadBlocker, type ThreadEntry, type ThreadJobLink } from "../conversations";
+import { botThreadId, isJobThread, jarvisThreadId, type ThreadBlocker, type ThreadEntry, type ThreadJobLink, type TypedBinding } from "../conversations";
 import { isOpenState, type ActiveJob } from "./followup";
 export { isOpenState };
 
@@ -49,6 +49,7 @@ export type ThreadStore = {
   get(id: unknown): { id: string; jobs?: ThreadJobLink[]; personId?: string; thread?: string; bot?: string } | null;
   list(): Array<{ id: string; thread?: string; bot?: string; jobs?: ThreadJobLink[] }>;
   entriesAfter(id: string, seq: number): ThreadEntry[];
+  saveTypedPart?(binding: TypedBinding, part: "user" | "reply" | "note", role: "user" | "assistant", text: string): string;
   /** A keyed plain message (a typed request or its reply); optional so a plain test store still works. */
   appendMessage?(id: string, m: { key: string; role: "user" | "oracle"; text: string }): boolean;
   /**
@@ -409,10 +410,13 @@ export function createJobThreads(deps: JobThreadsDeps) {
      * Round 11: a typed request or its reply, saved into the person's OWN default Jarvis thread (the one /jarvis reads), keyed by the request id.
      * Returns the conversation id, or null when nothing could be written.
      */
-    say(personId: string, input: { key: string; role: "user" | "assistant"; text: string }): string | null {
-      const thread = deps.conversations.ensureThread({ personId });
+    say(personId: string, input: { key: string; role: "user" | "assistant"; text: string; conversationId?: string }): string | null {
+      const match = /^(.+):(user|reply|note)$/.exec(input.key);
+      if (deps.conversations.saveTypedPart && match) return deps.conversations.saveTypedPart({ personId, requestId: match[1], ...(input.conversationId ? { conversationId: input.conversationId } : {}) }, match[2] as "user" | "reply" | "note", input.role, input.text);
+      const thread = deps.conversations.ensureThread({ personId, ...(input.conversationId ? { id: input.conversationId } : {}) });
       if (!thread || !deps.conversations.appendMessage) return null;
-      deps.conversations.appendMessage(thread.id, { key: input.key, role: input.role === "user" ? "user" : "oracle", text: maskJobText(input.text, 20_000) });
+      // Compatibility stores cannot prove a false append was a duplicate rather than a failed/capacity write.
+      if (input.text.length > 20_000 || !deps.conversations.appendMessage(thread.id, { key: input.key, role: input.role === "user" ? "user" : "oracle", text: input.text })) return null;
       return thread.id;
     },
     onEntry(listener: (e: ThreadNotice) => void) {
