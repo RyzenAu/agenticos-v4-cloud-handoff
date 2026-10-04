@@ -124,6 +124,15 @@ export class ConversationConflict extends Error {
     );
   }
 }
+const MAX_MESSAGES = 500;
+const MAX_THREAD_ENTRIES = 300;
+/** Capacity is a refusal, never the successful no-op used for an already saved typed request. */
+export class ConversationCapacityError extends Error {
+  constructor() {
+    super(`A conversation can contain up to ${MAX_MESSAGES} messages. This update was not saved.`);
+    this.name = "ConversationCapacityError";
+  }
+}
 /** Someone tried to read or change a conversation that belongs to another person. */
 export class ConversationForbidden extends Error {
   readonly status = 403;
@@ -307,7 +316,8 @@ export function conversationStore(root: string) {
       let added = false;
       mutate(safeId(id), (c) => {
         const via = `say:${m.key.slice(0, 120)}`;
-        if (c.messages.some((x) => x.via === via) || c.messages.length >= 500) return;
+        if (c.messages.some((x) => x.via === via)) return;
+        if (c.messages.length >= MAX_MESSAGES) throw new ConversationCapacityError();
         c.messages.push({ role: m.role, text: m.text.slice(0, 20_000), via });
         c.updatedAt = new Date().toISOString();
         added = true;
@@ -329,7 +339,7 @@ export function conversationStore(root: string) {
         const seq = (c.entries.at(-1)?.seq ?? 0) + 1;
         added = { seq, key: entry.key.slice(0, 120), at: entry.at ?? new Date().toISOString(), jobId: entry.jobId, state: entry.state, text: entry.text.slice(0, entry.state === "report" ? REPORT_TEXT_MAX : ENTRY_TEXT_MAX), ...(entry.speak ? { speak: entry.speak.slice(0, 200) } : {}), ...(typeof entry.ok === "boolean" ? { ok: entry.ok } : {}), ...(entry.stopped ? { stopped: true } : {}), ...(entry.unverified ? { unverified: true } : {}), ...(entry.jobKind ? { jobKind: entry.jobKind } : {}), ...(entry.blocker ? { blocker: { kind: entry.blocker.kind, ...(entry.blocker.approvalId ? { approvalId: entry.blocker.approvalId.slice(0, 80) } : {}), ...(entry.blocker.recovery ? { recovery: entry.blocker.recovery.slice(0, 240) } : {}), ...(entry.blocker.held ? { held: entry.blocker.held } : {}) } } : {}), afterMessages: c.messages.length };
         c.entries.push(added);
-        if (c.entries.length > 300) c.entries.splice(0, c.entries.length - 300);
+        if (c.entries.length > MAX_THREAD_ENTRIES) c.entries.splice(0, c.entries.length - MAX_THREAD_ENTRIES);
         const j = c.jobs?.find((x) => x.jobId === entry.jobId);
         if (j && !NOT_JOB_STATE.has(entry.state)) j.state = entry.state; // a report or progress entry says nothing about the job's own state
         c.updatedAt = added.at;
@@ -355,10 +365,11 @@ export function conversationStore(root: string) {
       // The true reason for each refusal: a save with no messages list at all is not "too many messages". An empty list is a valid save.
       if (!Array.isArray(body.messages))
         throw new Error("Saving a conversation needs its messages as a list (an empty list is fine).");
-      if (body.messages.length > 500)
-        throw new Error(
-          "A conversation can contain up to 500 messages. Start a new conversation to continue.",
-        );
+      // A read may include all client messages plus the separate, bounded server entries. A legacy over-cap
+      // record may round-trip its existing history for a metadata-only save; it may not grow or alter it above
+      // the cap. Bound the input before filtering/validation to that existing size plus the server entries.
+      const messageBound = Math.max(MAX_MESSAGES, old?.messages.length ?? 0);
+      if (body.messages.length > messageBound + MAX_THREAD_ENTRIES) throw new ConversationCapacityError();
       // The tab was shown job entries merged into its messages. They are not stored as messages; where it showed each one is where it stays.
       const placed = new Map<string, number>();
       let kept = 0;
@@ -368,6 +379,7 @@ export function conversationStore(root: string) {
         placed.set(via, kept);
         return false;
       });
+      if (clientMessages.length > messageBound) throw new ConversationCapacityError();
       const messages: SavedMessage[] = clientMessages.map((m: any) => {
         if (
           !m ||
@@ -394,6 +406,10 @@ export function conversationStore(root: string) {
       if (old) old.messages.forEach((m, idx) => {
         if (typeof m.via === "string" && m.via.startsWith("say:") && !messages.some((x) => x.via === m.via)) messages.splice(Math.min(idx, messages.length), 0, m);
       });
+      // A transcript snapshot can omit typed messages appended since it was taken. Preserving those must
+      // not silently create an over-capacity conversation; refuse atomically and leave the stored copy intact.
+      const unchangedMessages = !!old && JSON.stringify(old.messages) === JSON.stringify(messages);
+      if (messages.length > MAX_MESSAGES && !unchangedMessages) throw new ConversationCapacityError();
       const now = new Date().toISOString();
       const conversation: SavedConversation = {
         id,
@@ -437,7 +453,7 @@ export function conversationStore(root: string) {
           !!old.pinned === !!conversation.pinned &&
           old.modelKey === conversation.modelKey &&
           old.persona === conversation.persona &&
-          JSON.stringify(old.messages) === JSON.stringify(messages);
+          unchangedMessages;
         if (same) return view(old);
         throw new ConversationConflict();
       }

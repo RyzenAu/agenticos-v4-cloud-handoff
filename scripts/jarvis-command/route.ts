@@ -11,7 +11,7 @@
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { mayUseBots, type Principal } from "../identity/principal";
-import { botThreadId, parseBotConversationKey } from "../conversations";
+import { botThreadId, ConversationCapacityError, parseBotConversationKey } from "../conversations";
 import { SUBJECT_REF } from "../jobs/types";
 import { COMMAND_ROUTE_HEADER, COMPANION_EXECUTORS, MAX_REMOTE_STEPS, type CommandBody, type CommandStreamEvent, type ExecutorName, type RemoteStep } from "./contracts";
 import type { CommandService } from "./service";
@@ -152,8 +152,14 @@ export async function commandRoute(input: {
     const role = b.role === "user" || b.role === "assistant" ? b.role : null;
     const text = typeof b.text === "string" ? b.text.trim().slice(0, 4000) : "";
     if (!requestId || !part || !role || !text) return send({ ok: false, error: "Say what to save." }, 400), true;
-    const id = service.threadSay(principal, { requestId, part, role, text });
-    return send(id ? { ok: true, conversationId: id } : { ok: false, error: "The Jarvis thread couldn't be written." }, id ? 200 : 503), true;
+    try {
+      const id = service.threadSay(principal, { requestId, part, role, text });
+      return send(id ? { ok: true, conversationId: id } : { ok: false, error: "The Jarvis thread couldn't be written." }, id ? 200 : 503), true;
+    } catch (error) {
+      // Keep the existing failed-save shape/status. A full thread must not acknowledge a message it dropped.
+      if (error instanceof ConversationCapacityError) return send({ ok: false, error: error.message }, 503), true;
+      throw error;
+    }
   }
   // { jobId } stops that job; { eventId } (his Stop before the job id reached him) stops that command, before it starts if it hasn't.
   // 200 only for a confirmed stop (or one prevented before any job existed); 409 with `outcome` otherwise ("already-ended", "unconfirmed").
