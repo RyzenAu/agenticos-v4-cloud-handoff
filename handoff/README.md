@@ -8,7 +8,7 @@ no keys and no evidence screenshots.
 Read in this order: this file, `ARCHITECTURE.md`, `CONTRACTS.md`, `CONFIG.md`, `VERIFY.md`, `OPERATIONS.md`,
 `BACKEND-BACKLOG.md`, then `briefs/`.
 
-> **Updated 5 Oct 2026, 21:50 AEDT:** this branch now matches production **`d83f8f8b`** (adds Dot PRs #11 CRM references across restart and #12 founder CRM write proof; earlier #9 research duration and #10 artifact containment) (gateway, Dot's own Jarvis,
+> **Updated 5 Oct 2026, 23:45 AEDT:** this branch now matches production **`f677ba18`** (adds Dot PR #13 routing clarification keeps the original request; earlier #11 CRM references across restart and #12 founder CRM write proof; earlier #9 research duration and #10 artifact containment) (gateway, Dot's own Jarvis,
 > durable command admission, R12 redesign, debug ops), with the same sanitisation as below. Base new PRs on THIS head.
 > The "Baseline" table below describes the first snapshot (`8aeb6311`); the mapping rules are unchanged.
 
