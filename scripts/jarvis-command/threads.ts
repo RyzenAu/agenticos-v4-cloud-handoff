@@ -30,7 +30,7 @@ export function maskJobText(text: unknown, max = 300): string {
   return maskJobTextRaw(guarded, max + refs.length * 12).replace(/§jobref(\d+)§/g, (_m, i: string) => refs[Number(i)] ?? "").slice(0, max);
 }
 import type { JobEvent, Step } from "../jobs/types";
-import { botThreadId, isJobThread, jarvisThreadId, type ThreadBlocker, type ThreadEntry, type ThreadJobLink, type TypedBinding } from "../conversations";
+import { botThreadId, isJobThread, jarvisThreadId, type ThreadBlocker, type ThreadEntry, type ThreadJobLink, type TypedBinding, type CrmRecordReference, parseBotConversationKey } from "../conversations";
 import { isOpenState, type ActiveJob } from "./followup";
 export { isOpenState };
 
@@ -42,6 +42,8 @@ export function takeoverBlocker(holder: string, owner: string): ThreadBlocker {
 }
 
 export type ThreadStore = {
+  crmRecord?(personId: string, id: string, now: number): CrmRecordReference | null;
+  rememberCrmRecord?(personId: string, id: string, reference: CrmRecordReference | null, generation: string): boolean;
   ensureThread(input: { id?: string; personId: string; bot?: string; title?: string }): { id: string; jobs?: ThreadJobLink[] } | null;
   linkJob(id: string, link: { jobId: string; kind: "job" | "coding"; title: string; state: string; at?: string }): unknown;
   touchJob(id: string, jobId: string, patch?: { state?: string; addContext?: string; at?: string }): unknown;
@@ -536,6 +538,19 @@ export function createJobThreads(deps: JobThreadsDeps) {
     },
     noteLocal: (personId: string) => rememberLocal(personId),
     isLocal: (personId: string) => local.has(personId),
+    /** CRM continuity uses the same owned conversation store, never personal memory or a cross-thread fallback. */
+    crmRecord(personId: string, conversationId: unknown, at: number): CrmRecordReference | null {
+      const id = crmConversationId(personId, conversationId);
+      return id ? deps.conversations.crmRecord?.(personId, id, at) ?? null : null;
+    },
+    rememberCrmRecord(personId: string, conversationId: unknown, reference: CrmRecordReference | null, generation: string): boolean {
+      const id = crmConversationId(personId, conversationId);
+      if (!id || !deps.conversations.rememberCrmRecord) return false;
+      const existing = deps.conversations.get(id);
+      if (existing && existing.personId !== personId) return false;
+      if (!existing && deps.conversations.ensureThread({ id, personId })?.id !== id) return false;
+      return deps.conversations.rememberCrmRecord(personId, id, reference, generation);
+    },
     /** The person's thread (created empty when missing); null when that conversation id is someone else's. */
     thread(personId: string, conversationId?: string, bot?: { id: string; name?: string }) {
       if (bot) return deps.conversations.ensureThread({ personId, bot: bot.id, ...(bot.name ? { title: bot.name } : {}) });
@@ -593,6 +608,15 @@ export function createJobThreads(deps: JobThreadsDeps) {
     reconcile: poll,
     watching: () => [...watches.keys()],
   };
+}
+
+/** An omitted id is the default thread; an invalid/foreign bot key is never the default thread. */
+function crmConversationId(personId: string, value: unknown): string | null {
+  if (value === undefined || value === null) return jarvisThreadId(personId);
+  if (typeof value !== "string") return null;
+  if (/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(value)) return value;
+  const bot = parseBotConversationKey(value);
+  return bot?.personId === personId ? botThreadId(personId, bot.botId) : null;
 }
 
 export type JobThreads = ReturnType<typeof createJobThreads>;

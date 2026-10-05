@@ -13,13 +13,13 @@ import { createHash } from "node:crypto";
 import { businessClauses } from "./business-clauses";
 import { findQuoted } from "./quotes";
 import type { Principal } from "../identity/principal";
-import { crmRefString, type CrmRef } from "../../src/lib/crm-ref";
+import { crmRefString, isCrmRef, type CrmRef } from "../../src/lib/crm-ref";
 import { formatAud } from "../../src/lib/receptionist-packages";
 import { pickFromHits, type BusinessHit, type BusinessKind } from "../crm/business";
 import type { CrmAnswer, CrmOperationsLike } from "./crm";
 
 export type PackageWord = "receptionist-essential" | "receptionist-professional" | "receptionist-premium";
-export type BusinessIntent =
+export type BusinessIntent = (
   | { kind: "search"; query: string; kinds: BusinessKind[] }
   | { kind: "open"; name: string; kinds: BusinessKind[] }
   | { kind: "named-note"; name: string; kinds: BusinessKind[]; text: string }
@@ -28,7 +28,8 @@ export type BusinessIntent =
   | { kind: "invoice"; name: string; portion: "full" | "deposit" }
   | { kind: "next"; name: string | null }
   | { kind: "stage"; name: string }
-  | { kind: "drafts"; name: string | null; what: "outreach" | "meeting" | "all" };
+  | { kind: "drafts"; name: string | null; what: "outreach" | "meeting" | "all" }
+) & { /** Bound by the server from this owner's recent CRM answer, never parsed from user words. */ reference?: CrmRef };
 
 const KIND_WORDS: Record<string, BusinessKind> = {
   client: "company", clients: "company", company: "company", companies: "company", customer: "company", customers: "company",
@@ -191,6 +192,16 @@ export async function runBusinessIntent(
     return fail("Confirm this browser before I draft a quote or invoice, so nothing was drafted.");
 
   const find = async (name: string, kinds: readonly BusinessKind[]): Promise<{ hit: BusinessHit } | { stop: CrmAnswer }> => {
+    if (intent.reference) {
+      const ref = intent.reference;
+      if (!isCrmRef(ref) || (kinds.length > 0 && !kinds.includes(ref.kind as BusinessKind))) return { stop: fail("That reference is a different kind of record. Name the CRM record you mean.", null, { ask: true }) };
+      const out = await call("crm.record.get", { ref });
+      if ("stop" in out) return out;
+      const record = out.r.data as { id?: string; name?: string; title?: string; companyId?: string; archivedAt?: string | null; mergedInto?: string | null } | undefined;
+      if (out.r.ok === false || !record || record.id !== ref.id || record.archivedAt || record.mergedInto)
+        return { stop: fail("That CRM record is no longer available. Name or open the record you mean.", null, { ask: true }) };
+      return { hit: { kind: ref.kind as BusinessKind, id: ref.id, ref, title: record.title ?? record.name ?? name, detail: "", href: `/crm?ref=${encodeURIComponent(crmRefString(ref))}`, companyId: ref.kind === "company" ? ref.id : record.companyId ?? null, score: 1 } };
+    }
     const out = await call("crm.search", { query: name, ...(kinds.length ? { kinds } : {}), limit: 25 });
     if ("stop" in out) return out;
     if (out.r.ok === false) return { stop: refused(out.r) };
@@ -327,6 +338,7 @@ export async function runBusinessIntent(
     const data = snap.r.data as { deals?: { id: string; companyId: string; title: string; pipelineId: string; stageId: string; nextAction?: string; nextActionDue?: string | null; archivedAt?: string | null }[]; pipelines?: { id: string; stages: { id: string; name: string }[] }[] } | undefined;
     const deals = (data?.deals ?? []).filter((d) => !d.archivedAt);
     let deal = f.hit.kind === "deal" ? deals.find((d) => d.id === f.hit.id) : undefined;
+    if (!deal && f.hit.kind === "deal") return fail("That deal is no longer active. Name or open the deal you mean.", null, { ask: true });
     if (!deal) {
       // A client was named (or followed up on): its one deal, or he is asked which, once.
       const companyId = f.hit.kind === "company" ? f.hit.id : f.hit.companyId;
