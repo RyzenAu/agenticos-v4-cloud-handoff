@@ -5,6 +5,16 @@ import { validateChatAttachments } from "./chat-attachments";
 import type { ChatAttachment } from "../src/lib/chat-attachments";
 import { dataDirFor } from "./cloud/data-dir";
 import { createHash } from "node:crypto";
+import { isCrmRef, type CrmRef } from "../src/lib/crm-ref";
+
+/** Short-lived server-owned CRM context, not personal memory or a client-supplied message. */
+export type CrmRecordReference = CrmRef & { title: string; at: number };
+export const CRM_REFERENCE_TTL_MS = 15 * 60_000;
+export function validCrmRecordReference(value: unknown, now: number): value is CrmRecordReference {
+  const r = value as CrmRecordReference | null;
+  return isCrmRef(r) && typeof r.title === "string" && r.title.length > 0 && r.title.length <= 300 &&
+    Number.isFinite(r.at) && r.at <= now && now - r.at <= CRM_REFERENCE_TTL_MS;
+}
 
 /**
  * Jarvis threads (Open Dot V): a conversation can be one person's durable Jarvis thread. The server links the jobs
@@ -126,6 +136,8 @@ export type SavedConversation = {
   jobs?: ThreadJobLink[];
   entries?: ThreadEntry[];
   typedRequests?: TypedRequest[];
+  /** Internal reference only; snapshot saves cannot set it and reads do not expose it. */
+  crmRecordReference?: CrmRecordReference | { pending: string };
 };
 export class ConversationConflict extends Error {
   readonly status = 409;
@@ -224,7 +236,7 @@ export function conversationStore(root: string) {
   /** The conversation as a reader sees it: server entries merged into the messages where they were appended. */
   const entryMessage = (e: ThreadEntry): SavedMessage => ({ role: "oracle", text: e.text, via: `${JOB_VIA}${e.key}` });
   const view = (saved: SavedConversation): SavedConversation => {
-    const { typedRequests: _receipts, ...c } = saved; // Internal replay receipts never leave the store through conversation reads.
+    const { typedRequests: _receipts, crmRecordReference: _crmReference, ...c } = saved; // Internal replay receipts never leave the store through conversation reads.
     if (!c.entries?.length) return c;
     const out: SavedMessage[] = [];
     const sorted = [...c.entries].sort((a, b) => a.seq - b.seq);
@@ -382,6 +394,23 @@ export function conversationStore(root: string) {
       write([created, ...items]);
       return created;
     },
+    /** Read only this owner's exact conversation; stale, malformed and future-dated references never resolve. */
+    crmRecord: (personId: string, id: string, now: number): CrmRecordReference | null => {
+      const c = load().find((x) => x.id === safeId(id));
+      return c?.personId === personId && validCrmRecordReference(c.crmRecordReference, now) ? c.crmRecordReference : null;
+    },
+    /** The CRM delegate alone supplies this reference. No adoption, fallback conversation or client snapshot input. */
+    rememberCrmRecord: (personId: string, id: string, reference: CrmRecordReference | null, generation: string): boolean => {
+      if (!/^[\da-f-]{36}$/i.test(generation) || reference && !validCrmRecordReference(reference, reference.at)) return false;
+      const items = load();
+      const c = items.find((x) => x.id === safeId(id));
+      if (!c || c.personId !== personId) return false;
+      // A delayed older result cannot restore context after a newer lookup invalidated it.
+      if (reference && (!c.crmRecordReference || !("pending" in c.crmRecordReference) || c.crmRecordReference.pending !== generation)) return false;
+      c.crmRecordReference = reference ? { kind: reference.kind, id: reference.id, title: reference.title, at: reference.at } : { pending: generation };
+      write(items);
+      return true;
+    },
     /** Link a job to the thread (idempotent): the conversation then knows which jobs are its own. */
     linkJob: (id: string, link: Omit<ThreadJobLink, "startedAt" | "lastReferencedAt" | "context"> & { context?: string[]; at?: string }) =>
       mutate(safeId(id), (c) => {
@@ -534,6 +563,7 @@ export function conversationStore(root: string) {
               ...(old?.bot ? { bot: old.bot } : {}),
               jobs: old?.jobs,
               typedRequests: old?.typedRequests,
+              crmRecordReference: old?.crmRecordReference,
               // An entry the tab showed keeps its place; one it hadn't seen yet (appended after it loaded) goes after what it just saved.
               entries: old?.personId ? (old.entries ?? []).map((e) => {
                 const at = placed.get(e.key);

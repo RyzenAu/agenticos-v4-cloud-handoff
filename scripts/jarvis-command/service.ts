@@ -1,4 +1,6 @@
-import { TypedPersistenceError } from "../conversations";
+import { TypedPersistenceError, validCrmRecordReference, type CrmRecordReference } from "../conversations";
+import type { CrmRef } from "../../src/lib/crm-ref";
+import { randomUUID } from "node:crypto";
 /**
  * The command service (Track 2): the ONE path typed and spoken Jarvis commands take on the server.
  *
@@ -377,30 +379,39 @@ export function createCommandService(deps: CommandServiceDeps) {
     return done.timing ? done : { ...done, timing: { decisionMs: null, dispatchMs: null, completeMs: Date.now() - receivedAt } };
   }
 
-  // The ONE business record the last CRM answer in a conversation was about (ids and titles only, 15 minutes): what "that deal" means next.
-  const lastRecords = new Map<string, { record: { kind: string; id: string; title: string }; at: number }>();
+  // Production uses the owned conversation store; the bounded map only supports services without thread persistence.
+  const lastRecords = new Map<string, CrmRecordReference | { pending: string }>();
   const nowOf = () => (deps.now ?? Date.now)();
   const recordsKey = (personId: string, conversationId: unknown) => `${personId}|${typeof conversationId === "string" ? conversationId : ""}`;
-  const rememberRecord = (key: string, record: { kind: string; id: string; title: string }) => {
+  const rememberRecord = (principal: Principal, conversationId: unknown, record: { kind: string; id: string; title: string }, generation: string) => {
+    const reference = { ...record, at: nowOf() };
+    if (!isBrowserPrincipal(principal) || !validCrmRecordReference(reference, reference.at)) return false;
+    if (deps.threads) {
+      try { return deps.threads.rememberCrmRecord(principal.personId, conversationId, reference, generation); } catch { return false; }
+    }
+    const key = recordsKey(principal.personId, conversationId);
+    const pending = lastRecords.get(key);
+    if (!pending || !("pending" in pending) || pending.pending !== generation) return false;
     lastRecords.delete(key);
-    lastRecords.set(key, { record, at: nowOf() });
+    lastRecords.set(key, reference);
     while (lastRecords.size > 200) lastRecords.delete(lastRecords.keys().next().value!);
+    return true;
   };
   const FOLLOW_NOUN = /\b(?:that|this|the same)\s+(deal|opportunity|client|company|customer|project|contact|record|one)\b/i;
-  /** His words with "that deal" / "it" replaced by the remembered record's name, or null when they refer to nothing remembered. */
-  function followUpWords(words: string, key: string, now: number): string | null {
-    const last = lastRecords.get(key);
-    if (!last || now - last.at > 15 * 60_000) return null;
-    const kindWord = last.record.kind === "company" ? "client" : last.record.kind;
+  /** Only a parsed CRM target may refer back; pronouns inside a note/task payload are literal text. */
+  function followUpWords(words: string, principal: Principal, conversationId: unknown, now: number): { words: string; record: CrmRef | null } | null {
+    if (!isBrowserPrincipal(principal)) return null;
+    let targetName = "recent CRM record";
+    while (words.replace(/\s+/g, " ").toLowerCase().includes(targetName.toLowerCase())) targetName += " reference";
     const noun = FOLLOW_NOUN.exec(words);
-    if (noun) {
-      const said = noun[1].toLowerCase();
-      const word = said === "record" || said === "one" ? kindWord : said === "opportunity" ? "deal" : said === "customer" ? "client" : said;
-      return words.replace(FOLLOW_NOUN, () => `the ${last.record.title} ${word}`);
-    }
-    // A bare "it" only in the CRM's own question forms ("what stage is it in", "what's the next action for it").
-    if (/\b(?:stage|next\s+actions?)\b/i.test(words) && /\bit\b/i.test(words)) return words.replace(/\bit\b/i, () => `the ${last.record.title} ${kindWord}`);
-    return null;
+    const rewritten = noun ? words.replace(FOLLOW_NOUN, () => `the ${targetName} ${noun[1].toLowerCase() === "opportunity" ? "deal" : noun[1].toLowerCase() === "customer" ? "client" : noun[1].toLowerCase() === "record" || noun[1].toLowerCase() === "one" ? "company" : noun[1]}`)
+      : /\b(?:stage|next\s+actions?)\b/i.test(words) && /\bit\b/i.test(words) ? words.replace(/\bit\b/i, () => `the ${targetName} company`) : null;
+    if (!rewritten) return null;
+    const intent = crmIntentIn(rewritten);
+    if (!intent || !("name" in intent) || intent.name !== targetName) return null;
+    let last: CrmRecordReference | { pending: string } | null | undefined;
+    try { last = deps.threads ? deps.threads.crmRecord(principal.personId, conversationId, now) : lastRecords.get(recordsKey(principal.personId, conversationId)); } catch { /* Ask instead of guessing after an unreadable store. */ }
+    return { words: rewritten, record: validCrmRecordReference(last, now) ? { kind: last.kind, id: last.id } : null };
   }
 
   /** Run one command for a verified principal. `emit` receives the stream (job, decision, narrate, step, done). */
@@ -428,9 +439,9 @@ export function createCommandService(deps: CommandServiceDeps) {
     const raw = String(body.utterance ?? "").trim().slice(0, 600);
     const split = splitSpokenTarget(raw);
     // "that deal", "that client", "it" right after a find/open/stage answer in the same conversation mean that record (5 Oct). The words are
-    // rewritten to name it, then parsed as usual; with nothing remembered they stay as said and the usual "which record?" is asked.
-    const followed = followUpWords(split.utterance || raw, recordsKey(principal.personId, body.conversationId), nowOf());
-    const utterance = followed ?? (split.utterance || raw);
+    // parsed with a neutral target, then bound to the exact saved ID; without a valid reference the delegate asks which record.
+    const followed = followUpWords(split.utterance || raw, principal, body.conversationId, nowOf());
+    const utterance = followed?.words ?? (split.utterance || raw);
     const spokenTarget = typeof body.spokenTarget === "string" && body.spokenTarget.trim() ? body.spokenTarget.trim().slice(0, 60) : split.spokenTarget;
     const slots = goalSlots(utterance);
     const nowMs = (deps.now ?? Date.now)();
@@ -862,7 +873,7 @@ export function createCommandService(deps: CommandServiceDeps) {
       // A deal's stage or next action: the CRM's own typed reads (never a write, never a search the brain paraphrases).
       const crmRead = crmIntentIn(utterance);
       if (deps.delegates?.crm && crmRead && "kind" in crmRead && (crmRead.kind === "stage" || crmRead.kind === "next"))
-        return delegate({ lane: "delegate", to: "crm", op: "crm.operation", why: `a CRM read (${crmRead.kind}): the CRM's own typed operations, by rule` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note);
+        return delegate({ lane: "delegate", to: "crm", op: "crm.operation", why: `a CRM read (${crmRead.kind}): the CRM's own typed operations, by rule` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, undefined, undefined, followed?.record);
     }
 
     // 1c. An agent bot's request (Agents workspace; linked-run.ts resolved the bot and put it in `body.target`): it runs on THAT bot's computer, or as
@@ -1025,7 +1036,7 @@ export function createCommandService(deps: CommandServiceDeps) {
 
     // 3'. Deterministic delegates: memory, leads, reminders, receptionist (their own services; recorded here).
     const rule = planRules(utterance);
-    if (rule?.lane === "delegate") return delegate(rule, principal, input.memoryCaller, utterance, body, start, decisionOf, note);
+    if (rule?.lane === "delegate") return delegate(rule, principal, input.memoryCaller, utterance, body, start, decisionOf, note, undefined, undefined, followed?.record);
     // A command with a step no executor runs in the same breath ("type 'hi' then email it"): nothing runs,
     // and he's told exactly which step (REVIEW-T2 #2). Never half-done and called done.
     const goalOnCompanion = () => {
@@ -1241,7 +1252,7 @@ export function createCommandService(deps: CommandServiceDeps) {
           if (!ctxItem && skillName && deps.delegates?.skill) return fbStart(async (ctx, out) => skillAnswer(ctx, out, skillName, fb));
           if (!ctxItem && page) return fbStart(async (ctx, out) => pageOpen(ctx, out, page, fb));
           // A business record in an explicit CRM form (a note, a task, a quote or invoice DRAFT, a search): internal, read back, nothing sent.
-          if (!ctxItem && exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "crm" || exactRule.to === "leads")) return delegate({ ...exactRule, why: `deterministic fallback (Jev unavailable: ${reason}): ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, { source: "fallback", confidence: 1 }, (jobId) => recordJevMiss(jobId, reason));
+          if (!ctxItem && exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "crm" || exactRule.to === "leads")) return delegate({ ...exactRule, why: `deterministic fallback (Jev unavailable: ${reason}): ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, { source: "fallback", confidence: 1 }, (jobId) => recordJevMiss(jobId, reason), followed?.record);
         }
         // A QUESTION is not refused for Jev's outage (5 Oct): the brain answers it, labelled as the fallback it is. Answering is not acting:
         // the handoff is answer-only (free-voice offers the brain no action tools for it), so nothing runs without a decision.
@@ -1342,7 +1353,7 @@ export function createCommandService(deps: CommandServiceDeps) {
       if (decision.lane === "answer") {
         if (margin || prices) return start("none", async (ctx, out) => exactAnswer(ctx, out, jevMk));
         if (skillName && deps.delegates?.skill) return start("none", async (ctx, out) => skillAnswer(ctx, out, skillName, jevMk));
-        if (exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "reminder")) return delegate({ ...exactRule, why: `${jevWhy}; filled by rule: ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence });
+        if (exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "reminder")) return delegate({ ...exactRule, why: `${jevWhy}; filled by rule: ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence }, undefined, followed?.record);
         if (moneyRead) return start("none", async (ctx, out) => brainHandoff(ctx, out, jevMk, "money.question"));
         return ask("Jev chose a built-in answer, but no built-in skill reads these words", "I don't have a built-in answer for that. Should I ask the chat brain instead?");
       }
@@ -1350,9 +1361,9 @@ export function createCommandService(deps: CommandServiceDeps) {
       if (decision.lane === "crm") {
         const crmRule = exactRule?.lane === "delegate" && (exactRule.to === "crm" || exactRule.to === "leads") ? exactRule : crmIntentIn(utterance) ? ({ lane: "delegate", to: "crm", op: "crm.operation", why: "the CRM's typed operations" } as const) : null;
         if (!crmRule) return ask("Jev chose the CRM, but the words name no record or operation it can run", "Which record do you mean, and what should I do with it? Nothing has changed.");
-        return delegate({ ...crmRule, why: `${jevWhy}; filled by rule: ${crmRule.why}` }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence });
+        return delegate({ ...crmRule, why: `${jevWhy}; filled by rule: ${crmRule.why}` }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence }, undefined, followed?.record);
       }
-      if (decision.lane === "memory") return delegate({ lane: "delegate", to: "memory", op: "memory.voice", why: jevWhy }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence });
+      if (decision.lane === "memory") return delegate({ lane: "delegate", to: "memory", op: "memory.voice", why: jevWhy }, principal, input.memoryCaller, utterance, body, start, jd, note, { source: "jev", confidence: decision.confidence }, undefined, followed?.record);
       if (decision.lane === "coding" && deps.delegates?.coding) {
         earlyDispatch = Date.now();
         // His own words first (a status question about the coding job reads as it was said); "have a builder" only to frame a plain task.
@@ -1723,6 +1734,7 @@ export function createCommandService(deps: CommandServiceDeps) {
     by?: { source: "jev" | "fallback"; confidence: number },
     /** Called with the job this delegate runs in (the fallback records Jev's miss on it as a receipt). */
     onJob?: (jobId: string) => void,
+    followRecord?: CrmRef | null,
   ): Promise<CommandDoneEvent> {
     return start("none", async (ctx, out) => {
       onJob?.(ctx.jobId);
@@ -1779,9 +1791,24 @@ export function createCommandService(deps: CommandServiceDeps) {
       }
       if (rule.to === "crm") {
         const intent = crmIntentIn(utterance);
+        if (intent && intent.kind !== "typed" && "name" in intent && followRecord) intent.reference = followRecord;
         if (!intent || !deps.delegates?.crm) return finish(false, "The CRM isn't connected here, so nothing in it changed.", null);
+        if (followRecord === null) return finish(false, "Which CRM record do you mean? Name or open it first.", null, { ask: true });
+        const referenceGeneration = randomUUID();
+        // Invalidate before a new result-producing lookup. If its final reference write fails, an older record must not survive it.
+        if (["search", "open", "stage"].includes(intent.kind)) {
+          if (deps.threads && isBrowserPrincipal(principal)) {
+            try {
+              if (!deps.threads.rememberCrmRecord(principal.personId, body.conversationId, null, referenceGeneration)) return finish(false, "I couldn't save context in this conversation, so that CRM lookup was not run.", null);
+            } catch { return finish(false, "I couldn't save context in this conversation, so that CRM lookup was not run.", null); }
+          } else {
+            lastRecords.set(recordsKey(principal.personId, body.conversationId), { pending: referenceGeneration });
+            while (lastRecords.size > 200) lastRecords.delete(lastRecords.keys().next().value!);
+          }
+        }
         const r = await deps.delegates.crm(intent, principal, (body.pageContext as PageContext | undefined) ?? null, typeof body.eventId === "string" ? body.eventId : undefined).catch((): CrmAnswer => ({ ok: false, said: "The CRM didn't answer, so nothing changed.", verified: null }));
-        if (r.ok && r.record) rememberRecord(recordsKey(principal.personId, body.conversationId), r.record);
+        if (r.ok && r.verified === true && r.record && !rememberRecord(principal, body.conversationId, r.record, referenceGeneration))
+          r.said += " I couldn't save its conversation reference. Name the record explicitly in your next request.";
         // A question never navigates (5 Oct: a stage question took the page from /jarvis to the CRM and the conversation left the screen).
         // The read's record is a link in the typed answer; only an explicit "open ..." (and the CRM's own writes) open a page.
         const reading = "kind" in intent && (intent.kind === "search" || intent.kind === "next" || intent.kind === "stage" || intent.kind === "drafts");
