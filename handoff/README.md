@@ -8,7 +8,7 @@ no keys and no evidence screenshots.
 Read in this order: this file, `ARCHITECTURE.md`, `CONTRACTS.md`, `CONFIG.md`, `VERIFY.md`, `OPERATIONS.md`,
 `BACKEND-BACKLOG.md`, then `briefs/`.
 
-> **Updated 5 Oct 2026, 06:10 AEDT:** this branch now matches production **`8476b9c6`** (adds Jarvis read lanes, Jev retry and diagnostics, follow-up references) (gateway, Dot's own Jarvis,
+> **Updated 5 Oct 2026, 06:10 AEDT:** this branch now matches production **`d56f306c`** (adds Dot PRs #9 research duration and #10 artifact containment) (gateway, Dot's own Jarvis,
 > durable command admission, R12 redesign, debug ops), with the same sanitisation as below. Base new PRs on THIS head.
 > The "Baseline" table below describes the first snapshot (`8aeb6311`); the mapping rules are unchanged.
 
