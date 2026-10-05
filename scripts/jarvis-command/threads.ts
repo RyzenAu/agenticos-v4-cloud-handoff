@@ -1,3 +1,4 @@
+import type { ClarificationReply, ClarificationTransition, PendingClarification } from "./clarification";
 /**
  * Jarvis threads: the link between the jobs Jarvis starts for a person and that person's durable conversation (Open Dot V).
  *
@@ -42,6 +43,8 @@ export function takeoverBlocker(holder: string, owner: string): ThreadBlocker {
 }
 
 export type ThreadStore = {
+  beginRoutingTurn?(personId: string, id: string, generation: string, reply: Omit<ClarificationReply, "personId" | "conversationId">): ClarificationTransition | null;
+  saveRoutingQuestion?(personId: string, id: string, generation: string, question: PendingClarification): boolean;
   crmRecord?(personId: string, id: string, now: number): CrmRecordReference | null;
   rememberCrmRecord?(personId: string, id: string, reference: CrmRecordReference | null, generation: string): boolean;
   ensureThread(input: { id?: string; personId: string; bot?: string; title?: string }): { id: string; jobs?: ThreadJobLink[] } | null;
@@ -538,6 +541,20 @@ export function createJobThreads(deps: JobThreadsDeps) {
     },
     noteLocal: (personId: string) => rememberLocal(personId),
     isLocal: (personId: string) => local.has(personId),
+    /** Routing questions use their own private slot, independent of CRM references and approvals. */
+    beginRoutingTurn(personId: string, conversationId: unknown, generation: string, reply: Omit<ClarificationReply, "personId" | "conversationId">): { conversationId: string; transition: ClarificationTransition } | null {
+      const id = crmConversationId(personId, conversationId);
+      if (!id || !deps.conversations.beginRoutingTurn) return null;
+      const existing = deps.conversations.get(id);
+      if (existing && existing.personId !== personId) return null;
+      if (!existing && deps.conversations.ensureThread({ id, personId })?.id !== id) return null;
+      const transition = deps.conversations.beginRoutingTurn(personId, id, generation, reply);
+      return transition ? { conversationId: id, transition } : null;
+    },
+    saveRoutingQuestion(personId: string, conversationId: string, generation: string, question: PendingClarification): boolean {
+      const id = crmConversationId(personId, conversationId);
+      return !!id && !!deps.conversations.saveRoutingQuestion?.(personId, id, generation, question);
+    },
     /** CRM continuity uses the same owned conversation store, never personal memory or a cross-thread fallback. */
     crmRecord(personId: string, conversationId: unknown, at: number): CrmRecordReference | null {
       const id = crmConversationId(personId, conversationId);

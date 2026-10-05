@@ -1,3 +1,4 @@
+import { prepareRoutingTurn, routingAuthority } from "./clarification-turn";
 /**
  * The conversation-aware front of the ONE command path (Open Dot V). `createCommandService` hands its own `run` (the core) here and exposes
  * the result as `run`, so typed and spoken commands, the palette and the voice tool all get exactly this and nothing else:
@@ -49,8 +50,12 @@ export function createLinkedRunner(deps: {
   threads?: JobThreads;
   jobs: () => JobService;
   now?: () => number;
+  /** Legacy exact-rule services never create router questions. */
+  routingEnabled?: boolean;
   /** The whole-request stop words (service.ts STOP_WORDS). */
   isStop: (utterance: string) => boolean;
+  /** Cancel the exact resumed admission while it is still routing, before a task exists. */
+  cancelAdmittedEvent?: (eventId: string, principal: RunInput["principal"]) => Promise<{ outcome: string; jobId?: string }>;
   deviceLabel?: (id: string) => string;
   /** The coding delegate (its own stop words and per-person state), for "stop that task" on a coding job. */
   coding?: (utterance: string, turn: { personId: string; actor: "human" | "process"; via: string; spokenYes: string | null }) => Promise<{ say: string } | null>;
@@ -62,6 +67,7 @@ export function createLinkedRunner(deps: {
   bots?: { scope(input: { principal: RunInput["principal"]; utterance: string; body: RunInput["body"] }): BotScope | null; nameOf(botId: string): string; /** This person's conversation ids with every bot. */ threadIds(personId: string): string[] };
 }) {
   const now = deps.now ?? Date.now;
+  const routingRuns = new Map<string, RunInput>();
   /** Per person+eventId: the first run's outcome, and its stream so far (a resend replays it, the `job` event included, then follows it live). */
   const events = new Map<string, { at: number; binding: string; failed: boolean; settled: boolean; promise: Promise<CommandDoneEvent>; seen: CommandStreamEvent[]; followers: Set<(e: CommandStreamEvent) => void> }>();
 
@@ -98,11 +104,11 @@ export function createLinkedRunner(deps: {
       if (job!.kind === "coding") {
         // The job the words were about, by its id (round 10): never "the newest coding job", which could be another task.
         const r = await deps.coding?.(`stop the coding job ${job!.jobId}`, { personId: principal.personId, actor: principal.actor === "human" ? "human" : "process", via: principal.via === "loopback-owner" ? "local" : "tailnet", spokenYes: null }).catch(() => null);
-        threads.touch(tid, job!.jobId);
+        try { threads.touch(tid, job!.jobId); } catch { /* Stop must not depend on transcript persistence. */ }
         return r ? done(r.say, { jobId: job!.jobId, stopped: true }) : done("I couldn't reach the coding harness to stop it, so it is unchanged.", { ok: false, jobId: job!.jobId });
       }
       const res = await deps.jobs().cancel(job!.jobId).catch(() => null);
-      threads.touch(tid, job!.jobId, res?.state ? { state: res.state } : {});
+      try { threads.touch(tid, job!.jobId, res?.state ? { state: res.state } : {}); } catch { /* The job stop result is authoritative even when its conversation is unwritable. */ }
       // Only a confirmed cancelled state is "Stopped" (release re-check M1): a quarantined/unknown stop, or one that hadn't settled, says so.
       const outcome = stopOutcome(res);
       if (outcome === "stopped") return done("Stopped it. Nothing further will run.", { jobId: job!.jobId, stopped: true, numbers: { jobId: job!.jobId, state: res!.state } });
@@ -138,8 +144,44 @@ export function createLinkedRunner(deps: {
    * written there too. Every entry has a stable key (`<commandId>:request`, `:ack`), so a replayed command writes nothing twice.
    */
   async function runLinked(input: RunInput, emit: (e: CommandStreamEvent) => void): Promise<CommandDoneEvent> {
-    const { principal, body } = input;
     if (input.admission && deps.jobs().commandAdmission(input.admission.personId, input.admission.eventId)?.stoppedAt != null) return commandPrevented();
+    const words = String(input.body.utterance ?? "").trim();
+    const resolvedScope = deps.bots?.scope({ principal: input.principal, utterance: words, body: input.body }) ?? null;
+    const explicitStop = deps.isStop(resolvedScope?.kind === "bot" ? resolvedScope.utterance.trim() : words);
+    if (explicitStop && resolvedScope?.kind === "refuse") return done(resolvedScope.said, { ok: false, kind: "refused", refused: true });
+    if (explicitStop && resolvedScope?.kind === "ask") return done(resolvedScope.said, { ok: false, kind: "ask", ask: true });
+    const stopScope = resolvedScope?.kind === "bot" ? resolvedScope.conversationId : resolvedScope?.kind === "default" ? resolvedScope.conversationId : input.body.conversationId === undefined ? jarvisThreadId(input.principal.personId) : conversationOf(input.principal.personId, input.body.conversationId);
+    const scopedStops: Array<{ outcome: string; jobId?: string }> = [];
+    if (stopScope && explicitStop && deps.cancelAdmittedEvent) {
+      const authority = routingAuthority(input.principal);
+      for (const running of [...routingRuns.values()]) {
+        const turn = running.routing!;
+        const botScope = turn.selection?.kind === "bot" ? botThreadId(running.principal.personId, turn.selection.bot) : null;
+        if (!authority || turn.authority !== authority || running.principal.personId !== input.principal.personId || turn.conversationId !== stopScope && botScope !== stopScope || !running.body.eventId) continue;
+        scopedStops.push(await deps.cancelAdmittedEvent(running.body.eventId, input.principal).catch(() => ({ outcome: "unconfirmed" })));
+      }
+    }
+    const pendingStops = scopedStops.filter(s => s.outcome === "unconfirmed").length;
+    const confirmedStops = scopedStops.filter(s => s.outcome === "stopped" || s.outcome === "prevented");
+    const prepareInput = explicitStop && resolvedScope?.kind === "bot" ? { ...input, body: { ...input.body, utterance: resolvedScope.utterance, target: { bot: resolvedScope.bot.id } } } : input;
+    const prepared = deps.routingEnabled === false ? prepareInput : prepareRoutingTurn(prepareInput, deps.threads, now(), deps.isStop);
+    if ("type" in prepared) return prepared;
+    const annotate = (result: CommandDoneEvent): CommandDoneEvent => {
+      const dropped = prepared.routingCancelled ? " Dropped the request waiting for your route choice." : "";
+      const failed = prepared.routingContextFailed ? " I couldn't clear the saved route question. Send a full new request rather than answering that old question." : "";
+      const waiting = pendingStops ? " Stop was also requested for the resumed request still starting; its final stop is not yet confirmed." : "";
+      const stopped = confirmedStops.length ? " Stopped the resumed request." : "";
+      const lead = confirmedStops.length && /^Nothing .*running/i.test(result.said) ? "" : result.said;
+      return dropped || failed || waiting || stopped ? { ...result, said: `${lead}${dropped}${failed}${stopped}${waiting}`.trim(), ...(confirmedStops.length ? { stopped: true, jobId: result.jobId ?? confirmedStops.find(s => s.jobId)?.jobId ?? null } : {}), ...(pendingStops ? { ok: false, outcome: "unverified" as const } : {}), numbers: { ...result.numbers, ...(dropped ? { clarificationCancelled: true } : {}), ...(failed ? { clarificationContextFailed: true } : {}), ...(waiting ? { pendingClarificationStops: pendingStops } : {}), ...(confirmedStops.length ? { stoppedClarificationRequests: confirmedStops.length } : {}) } } : result;
+    };
+    const runKey = prepared.routing?.selection ? `${prepared.principal.personId}|${prepared.body.eventId ?? prepared.routing.generation}` : null;
+    if (runKey) routingRuns.set(runKey, prepared);
+    const routedEmit = prepared.routingCancelled || prepared.routingContextFailed || scopedStops.length ? (e: CommandStreamEvent) => emit(e.type === "done" ? annotate(e) : e) : emit;
+    try { return annotate(await runLinkedPrepared(prepared, routedEmit)); }
+    finally { if (runKey) routingRuns.delete(runKey); }
+  }
+  async function runLinkedPrepared(input: RunInput, emit: (e: CommandStreamEvent) => void): Promise<CommandDoneEvent> {
+    const { principal, body } = input;
     const source = body?.source;
     const threads = deps.threads;
     const eligible = !!threads && source !== "acceptance" && source !== "away" && !body?.steps?.length;
@@ -157,6 +199,8 @@ export function createLinkedRunner(deps: {
     if (!mayUseBots(principal)) return done(BOT_NEEDS_SESSION, { ok: false, kind: "refused", refused: true });
     const commandId = typeof body.eventId === "string" && EVENT_ID.test(body.eventId) ? body.eventId : randomUUID();
     const botTurn: RunInput = { ...input, body: { ...body, utterance: scope.utterance, conversationId: scope.conversationId, target: { bot: scope.bot.id }, ...(scope.subjects.length ? { subjects: scope.subjects } : {}) } };
+    // A Stop cannot be held behind a request/ack transcript write. The owned job stop is its receipt.
+    if (deps.isStop(scope.utterance.trim())) return runPlain(botTurn, emit, scope.conversationId, scope.bot);
     // The same event id again after a restart (the in-memory dedupe is gone) or after its window: the conversation already holds the command, so
     // it is answered from the record and never run a second time. Nothing here can start a job.
     let prior: ReturnType<NonNullable<typeof threads>["priorCommand"]> = null;
@@ -183,7 +227,7 @@ export function createLinkedRunner(deps: {
     let result: CommandDoneEvent;
     try {
       // Round 10: a bot named from ANOTHER conversation ("Ask Research to ..." typed to Jarvis, or found from the open page) returns its result there too.
-      const origin = scope.via === "words" || scope.via === "page" ? (conversationId ?? jarvisThreadId(principal.personId)) : undefined;
+      const origin = input.routing?.selection ? input.routing.conversationId : scope.via === "words" || scope.via === "page" ? (conversationId ?? jarvisThreadId(principal.personId)) : undefined;
       result = await runPlain(botTurn, emit, scope.conversationId, scope.bot, origin !== scope.conversationId ? origin : undefined);
     } catch (error) {
       // The run threw: write the reply anyway, so the conversation never holds a request with no answer. If something may have started, say the
@@ -225,11 +269,17 @@ export function createLinkedRunner(deps: {
         const f = await followUp({ ...input, principal, body: { ...body, utterance: "stop that task" } }, conversationId, active, true).catch(() => null);
         if (f) return f;
       }
-      const handled = await followUp(input, conversationId, active, !!bot).catch(() => null);
+      // The restored request already passed follow-up interpretation before its route question.
+      const handled = input.routing?.selection ? null : await followUp(input, conversationId, active, !!bot).catch(() => null);
       if (handled) return handled;
     }
     const meta: RunMeta = {};
-    const result = await deps.core(input, emit, meta);
+    const provenance = input.routing?.questionId ? { questionId: input.routing.questionId, askJobId: input.routing.askJobId, originalEventId: input.routing.originalEventId, answerEventId: body.eventId ?? null } : null;
+    const annotate = (result: CommandDoneEvent): CommandDoneEvent => provenance ? { ...result, numbers: { ...result.numbers, clarification: provenance } } : result;
+    let result = annotate(await deps.core(input, emit, meta));
+    if (provenance) {
+      if (result.jobId) try { deps.jobs().step(result.jobId, { intent: `routing clarification ${provenance.questionId}: original ${provenance.originalEventId ?? "unkeyed"}; answer ${provenance.answerEventId ?? "unkeyed"}; ask job ${provenance.askJobId ?? "none"}`, executor: "context", outcome: "note", ms: 0 }); } catch { /* The admitted task and private question still retain their binding. */ }
+    }
     if (!eligible) return result;
 
     // A bare "stop" that the core found nothing of his own to stop: the jobs left going in his thread are what he means.

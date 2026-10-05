@@ -1,3 +1,4 @@
+import { beginClarificationTurn, saveClarificationQuestion, type ClarificationSlot, type ClarificationReply, type ClarificationTransition, type PendingClarification } from "./jarvis-command/clarification";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -138,6 +139,8 @@ export type SavedConversation = {
   typedRequests?: TypedRequest[];
   /** Internal reference only; snapshot saves cannot set it and reads do not expose it. */
   crmRecordReference?: CrmRecordReference | { pending: string };
+  /** Private routing state: a client cannot read or overwrite it. */
+  routingClarification?: ClarificationSlot;
 };
 export class ConversationConflict extends Error {
   readonly status = 409;
@@ -236,7 +239,7 @@ export function conversationStore(root: string) {
   /** The conversation as a reader sees it: server entries merged into the messages where they were appended. */
   const entryMessage = (e: ThreadEntry): SavedMessage => ({ role: "oracle", text: e.text, via: `${JOB_VIA}${e.key}` });
   const view = (saved: SavedConversation): SavedConversation => {
-    const { typedRequests: _receipts, crmRecordReference: _crmReference, ...c } = saved; // Internal replay receipts never leave the store through conversation reads.
+    const { typedRequests: _receipts, crmRecordReference: _crmReference, routingClarification: _routing, ...c } = saved; // Internal replay receipts never leave the store through conversation reads.
     if (!c.entries?.length) return c;
     const out: SavedMessage[] = [];
     const sorted = [...c.entries].sort((a, b) => a.seq - b.seq);
@@ -411,6 +414,27 @@ export function conversationStore(root: string) {
       write(items);
       return true;
     },
+    /** Claim/consume routing context in the same synchronous durable transaction as its generation. */
+    beginRoutingTurn(personId: string, id: string, generation: string, reply: Omit<ClarificationReply, "personId" | "conversationId">): ClarificationTransition | null {
+      const items = load();
+      const c = items.find(x => x.id === safeId(id));
+      if (!c || c.personId !== personId) return null;
+      const result = beginClarificationTurn(c.routingClarification, generation, { ...reply, personId, conversationId: c.id });
+      c.routingClarification = result.slot;
+      write(items);
+      return result.transition;
+    },
+    /** A late router answer cannot replace a newer conversation turn or another owner's context. */
+    saveRoutingQuestion(personId: string, id: string, generation: string, question: PendingClarification): boolean {
+      const items = load();
+      const c = items.find(x => x.id === safeId(id));
+      if (!c || c.personId !== personId || question.personId !== personId || question.conversationId !== c.id) return false;
+      const next = saveClarificationQuestion(c.routingClarification, generation, question);
+      if (!next) return false;
+      c.routingClarification = next;
+      write(items);
+      return true;
+    },
     /** Link a job to the thread (idempotent): the conversation then knows which jobs are its own. */
     linkJob: (id: string, link: Omit<ThreadJobLink, "startedAt" | "lastReferencedAt" | "context"> & { context?: string[]; at?: string }) =>
       mutate(safeId(id), (c) => {
@@ -564,6 +588,7 @@ export function conversationStore(root: string) {
               jobs: old?.jobs,
               typedRequests: old?.typedRequests,
               crmRecordReference: old?.crmRecordReference,
+              routingClarification: old?.routingClarification,
               // An entry the tab showed keeps its place; one it hadn't seen yet (appended after it loaded) goes after what it just saved.
               entries: old?.personId ? (old.entries ?? []).map((e) => {
                 const at = placed.get(e.key);
