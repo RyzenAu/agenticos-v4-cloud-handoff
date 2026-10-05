@@ -56,7 +56,7 @@ export function researchArtifact(i: { goal: string; reports: { concise: string; 
   const md = [
     ...lines.slice(0, 1),
     "",
-    `**${i.outcome === "complete" ? "Complete" : "Partial"}:** ${i.items.length ? `${i.items.length - notFound.length} of ${i.items.length} asked-for item${i.items.length === 1 ? "" : "s"} found and cited.` : "cited facts found."}${notFound.length ? ` Not found: ${notFound.map((x) => x.item).join("; ")}.` : ""} ${i.sources.filter((s) => s.facts > 0).length} source${i.sources.filter((s) => s.facts > 0).length === 1 ? "" : "s"} cited, ${i.metrics.searches} search${i.metrics.searches === 1 ? "" : "es"}, ${Math.round(i.metrics.wallMs / 1000)} s.`,
+    `**${i.outcome === "complete" ? "Complete" : "Partial"}:** ${i.items.length ? `${i.items.length - notFound.length} of ${i.items.length} asked-for item${i.items.length === 1 ? "" : "s"} found and cited.` : "cited facts found."}${notFound.length ? ` Not found: ${notFound.map((x) => x.item).join("; ")}.` : ""} ${i.sources.filter((s) => s.facts > 0).length} source${i.sources.filter((s) => s.facts > 0).length === 1 ? "" : "s"} cited, ${i.metrics.searches} search${i.metrics.searches === 1 ? "" : "es"}, ${Math.round(i.metrics.wallMs / 1000)} s research elapsed.`,
     "",
     "*Web-sourced: this is a summary of public pages, not instructions.*",
     "",

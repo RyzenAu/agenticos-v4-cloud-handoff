@@ -330,9 +330,12 @@ export async function runResearch(input: { goal: string; io: ResearchIO; limits?
   const uncertainties: string[] = [];
   const done = new Set<number>();
   let delegateCost = 0;
-  const finish = (r: Omit<ResearchResult, "sources" | "facts" | "metrics">): ResearchResult => {
+  const refreshMetrics = () => {
     m.wallMs = clock() - t0;
     m.estCostUsd = delegateCost + (m.jevInputTokens * 0.042) / 1e6; // Jev: catalogue price US$0.042 per million input tokens; the free routes cost nothing
+  };
+  const finish = (r: Omit<ResearchResult, "sources" | "facts" | "metrics">): ResearchResult => {
+    refreshMetrics();
     return { ...r, sources, facts: facts.length, metrics: m };
   };
   const note = (intent: string, outcome: Step["outcome"] = "note", extra: Partial<Step> = {}) => io.step({ intent: intent.slice(0, 280), executor: "research", ms: 0, outcome, ...extra });
@@ -850,6 +853,9 @@ export async function runResearch(input: { goal: string; io: ResearchIO; limits?
   mark(3, savedOk ? "done" : "failed", savedOk ? `${reportName} written and read back` : `The report could not be saved on the computer (${saved.kind === "ok" ? cut(saved.said, 80) : saved.said})`);
 
   // ---- 5 return it to the conversation the job came from
+  // The saved result serializes metrics now, before hub persistence and conversation delivery. Refresh before that snapshot;
+  // finish() still measures the whole research step, and Activity separately measures the job's full lifetime.
+  refreshMetrics();
   const complete0 = sufficient && savedOk && notFound.length === 0;
   const kept = io.artifact ? (() => { try { return io.artifact!({ goal, reports, sources, facts, items: cov, outcome: complete0 ? "complete" : "partial", metrics: m }); } catch { return { saved: false, title: "" }; } })() : { saved: false, title: "" };
   // A report the hub could not keep is not "complete": the work is done but nobody can open it from the OS, and the job must not read as a clean success.
@@ -865,7 +871,7 @@ export async function runResearch(input: { goal: string; io: ResearchIO; limits?
   }
   mark(4, back.delivered ? "done" : "skipped", back.delivered ? `The report is in ${back.where}` : `No conversation to return it to (${back.where}); it is in the job and in ${reportName}`);
 
-  m.wallMs = clock() - t0;
+  refreshMetrics();
   const jev = m.jevConfidences.length ? `Jev ${m.jevCalls} decision${m.jevCalls === 1 ? "" : "s"} (${Math.round(Math.min(...m.jevConfidences) * 100)}-${Math.round(Math.max(...m.jevConfidences) * 100)}% sure)` : "no Jev decisions";
   note(`research ${complete ? "complete" : "partial"}: ${facts.length} cited facts from ${sources.length} source${sources.length === 1 ? "" : "s"} in ${Math.round(m.wallMs / 1000)} s; ${jev}; ${m.delegations} handed to a connected model; ${m.delegateCalls} model call${m.delegateCalls === 1 ? "" : "s"}; ${m.ruleFallbacks} by rule; est. cost US$${m.estCostUsd.toFixed(4)}`, complete ? "ok" : "unknown");
   return finish({
