@@ -191,6 +191,8 @@ export type CrmAnswer = {
   navigate?: { path: string };
   /** The answer is a question (which one?) that waits for the person. */
   ask?: boolean;
+  /** The ONE business record this answer was about (a find with one match, an open, a stage): what "that deal" / "it" means next. */
+  record?: { kind: string; id: string; title: string };
 };
 
 /** Run one CRM intent through the typed registry with the verified principal. Never throws: an unavailable CRM is a plain sentence. */
@@ -210,6 +212,7 @@ export async function runCrmIntent(
     intent.kind === "quote" ||
     intent.kind === "invoice" ||
     intent.kind === "next" ||
+    intent.kind === "stage" ||
     intent.kind === "drafts"
   )
     return runBusinessIntent(

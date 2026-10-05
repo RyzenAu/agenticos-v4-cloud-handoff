@@ -38,6 +38,7 @@ import type { Principal as MemoryPrincipal } from "./memory/types";
 import { createDevicesService } from "./devices/service";
 import { mountComputers } from "./computers/plugin";
 import { provideGatewayServices } from "./gateway/hub-services";
+import { aiUsageSnapshot } from "./ai-usage/plugin";
 import { mountActivityStream } from "./events/plugin";
 import { connectCrmToHub } from "./crm/hub-integration";
 import { crmRuntime } from "./crm/runtime";
@@ -693,6 +694,20 @@ export function operatorPlugin({
     const [front, chrome] = await Promise.all([screenHands.frontPid(), jarvisChromePid()]);
     return !!front && !!chrome && front === chrome;
   };
+  // "What needs me?": the same two workspace panels the Home page's "Needs you" list reads (scripts/workspace/needs-you-voice.ts). One reader
+  // for the voice turn and the typed command path, so Jarvis and Home can't disagree.
+  const needsYouSources = async () => {
+    const get = loopbackJson(() => ownOrigin);
+    const signal = AbortSignal.timeout(14_000);
+    const [needsYou, today] = await Promise.all([get("/__workspace/needs-you", signal), get("/__workspace/today", signal)]);
+    // Coding drafts and decisions are waiting on the same person: read from the coding store (null when it can't be read, which is said).
+    // The same 14 s bound as the two panels beside it: a coding runtime that is slow to open is "couldn't be read", not a stalled answer.
+    const coding = await Promise.race([
+      codingRuntime(root).then((rt) => codingWaiting(rt.store), () => null),
+      new Promise<null>((resolve) => void setTimeout(() => resolve(null), 14_000).unref?.()),
+    ]).catch(() => null);
+    return { needsYou, today, coding };
+  };
   const freeVoice = freeVoiceEngine(root, {
     pinCatalogue: () => codingPinCatalogue(root),
     jarvisChromeInFront,
@@ -701,18 +716,7 @@ export function operatorPlugin({
     shorthand: () => readShorthand(root),
     status: () => jarvisStatus.snapshot(),
     // "What needs me?": the same two workspace panels the Home page's "Needs you" list reads (scripts/workspace/needs-you-voice.ts).
-    needsYou: async () => {
-      const get = loopbackJson(() => ownOrigin);
-      const signal = AbortSignal.timeout(14_000);
-      const [needsYou, today] = await Promise.all([get("/__workspace/needs-you", signal), get("/__workspace/today", signal)]);
-      // Coding drafts and decisions are waiting on the same person: read from the coding store (null when it can't be read, which is said).
-      // The same 14 s bound as the two panels beside it: a coding runtime that is slow to open is "couldn't be read", not a stalled answer.
-      const coding = await Promise.race([
-        codingRuntime(root).then((rt) => codingWaiting(rt.store), () => null),
-        new Promise<null>((resolve) => void setTimeout(() => resolve(null), 14_000).unref?.()),
-      ]).catch(() => null);
-      return { needsYou, today, coding };
-    },
+    needsYou: () => needsYouSources(),
     warmHermes: () => warmHermes(),
     lessonActive: () => screenHands.lessons.active,
     away: async (utterance) => {
@@ -1287,6 +1291,11 @@ export function operatorPlugin({
         jarvisChromeInFront,
         coding: async () => createCodingCommandEntry({ voice: await codingVoiceFor(root), store: (await codingRuntime(root)).store }),
         codingVoice: () => existingCodingVoice(root),
+        // Read lanes for the OS's own data: the saved calendar events (the Calendar page's own list) and Home's needs-you panels.
+        calendarEvents: () => peek().events ?? [],
+        needsYou: () => needsYouSources(),
+        // AI spend: the /__ai_usage snapshot the Finance page's "AI spend" tile reads (business spend: Dot reads it too).
+        aiTotals: () => aiUsageSnapshot(),
       } satisfies Parameters<typeof createLiveCommandService>[0];
       const commands = createLiveCommandService(commandWiring);
       // The Dot gateway's collaborator (scripts/gateway/hub-ops.ts), owner 5 Oct: "give it the full Jarvis". The founders' wiring and delegates
@@ -1301,7 +1310,8 @@ export function operatorPlugin({
         mail: archive,
         // threads: Dot's requests, replies and job results land in Dot's OWN default Jarvis thread (jarvisThreadId("dot")), never a founder's;
         // /jarvis in Dot's browser reads it back through /__gateway/ui/jarvis/thread.
-        commands: createLiveCommandService({ ...commandWiring, entry: () => null, memoryTurn: undefined, jarvisChromeInFront: undefined }),
+        // (The founders' calendar and their Home needs-you panels are theirs: not read for Dot.)
+        commands: createLiveCommandService({ ...commandWiring, entry: () => null, memoryTurn: undefined, jarvisChromeInFront: undefined, calendarEvents: undefined, needsYou: undefined }),
         // A plain question the command path hands to "the chat brain": the founders' typed-lane brain answers it, server-side.
         brain: (utterance) => freeVoice.answer(utterance),
       });

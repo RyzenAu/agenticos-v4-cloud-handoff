@@ -26,7 +26,15 @@ export const JEV_MODEL = providerModelId("typesafe/jev-latest");
 export type JevAnswer = { type?: string; choice?: string; noul?: number; score?: number; confidence?: number; probabilities?: Record<string, number> };
 export type JevAnswers = Record<string, JevAnswer>;
 
-type Policy = { budgetMs: number; retries: number; task?: "jev.decision" | "approval.guardian" };
+type Policy = {
+  budgetMs: number;
+  retries: number;
+  task?: "jev.decision" | "approval.guardian";
+  /** One attempt's own time limit inside the budget. With it, ONE timed-out attempt is tried again (a decision is a read: asking twice changes nothing). */
+  attemptMs?: number;
+  /** Extra attempts after a transport failure (a reset or stale pooled connection, a DNS blip) while the budget lasts. */
+  transportRetries?: number;
+};
 
 /**
  * One timeout policy per surface: `budgetMs` bounds the whole decision including retries (the
@@ -41,7 +49,9 @@ export const JEV_SURFACES = {
   "hermes.guardian": { budgetMs: 2500, retries: 1, task: "approval.guardian" },
   "away.route": { budgetMs: 1200, retries: 1 },
   /** The command controller's one decision for a request no exact rule planned (scripts/jev-controller.ts). */
-  "command.controller": { budgetMs: 1500, retries: 1 },
+  // 5 Oct: one 1.5 s attempt with no second try turned a slow first call or a dropped connection into "Jev isn't answering" for a typed
+  // question. Now each attempt has 1.8 s, a timed-out or dropped attempt is tried once more, and the whole decision still ends by 4 s.
+  "command.controller": { budgetMs: 4000, retries: 1, attemptMs: 1800, transportRetries: 1 },
   "inbox.triage": { budgetMs: 2500, retries: 2 },
   "crm.duplicates": { budgetMs: 4000, retries: 2 },
   "leads.phone": { budgetMs: 6000, retries: 2 },
@@ -82,7 +92,16 @@ export type JevCall = {
 };
 
 export type JevOk = { ok: true; answers: JevAnswers; ms: number; httpStatus: number; attempts: number; receipt: RouterReceipt; raw: unknown };
-export type JevFail = { ok: false; reason: "no-key" | "unavailable" | "http" | "timeout" | "cancelled" | "unreadable"; httpStatus: number | null; ms: number; receipt: RouterReceipt | null };
+export type JevFail = {
+  ok: false;
+  reason: "no-key" | "unavailable" | "http" | "timeout" | "cancelled" | "unreadable";
+  httpStatus: number | null;
+  ms: number;
+  receipt: RouterReceipt | null;
+  /** How many requests were sent, and the cause in a few plain words (an error code or class, an HTTP status). Never the key, a header or a body. */
+  attempts?: number;
+  detail?: string;
+};
 export type JevOutcome = JevOk | JevFail;
 
 // TypeSafe also documents 529 for overload; it uses the same bounded budget.
@@ -114,9 +133,16 @@ export async function jevDecide(call: JevCall): Promise<JevOutcome> {
   let attempts = 0;
   let raw: unknown = null;
   let failed: ProviderError | null = null;
+  let detail = "";
+  let softRetries = 0;
   const fail = (e: ProviderError) => {
     failed = e;
     return e;
+  };
+  /** The cause as an error code or class only (ECONNRESET, TimeoutError...): never a message that could carry a header. */
+  const causeOf = (error: unknown) => {
+    const e = error as { code?: unknown; name?: unknown; cause?: { code?: unknown } } | null;
+    return String(e?.code ?? e?.cause?.code ?? e?.name ?? "error").replace(/[^\w.-]/g, "").slice(0, 40) || "error";
   };
   try {
     const run = await runRouted<JevAnswers>({
@@ -135,29 +161,42 @@ export async function jevDecide(call: JevCall): Promise<JevOutcome> {
           const left = budget - (clock() - started);
           if (left <= 0) throw fail(new ProviderError("timeout", "over the surface budget", { sent: attempts > 1 ? "unknown" : false, httpStatus: lastStatus }));
           let res: Response;
+          const attemptMs = Math.min(left, policy.attemptMs ?? left);
           try {
             res = await request(JEV_URL, {
               method: "POST",
               headers: { Authorization: `Bearer ${call.key}`, "Content-Type": "application/json" },
               body,
-              signal: AbortSignal.any([signal, AbortSignal.timeout(left)]),
+              signal: AbortSignal.any([signal, AbortSignal.timeout(attemptMs)]),
             });
           } catch (error) {
             if (signal.aborted) throw fail(new ProviderError("cancelled", "cancelled", { sent: "unknown" }));
-            if ((error as { name?: string })?.name === "TimeoutError") throw fail(new ProviderError("timeout", "timed out", { sent: "unknown" }));
+            const timedOut = (error as { name?: string })?.name === "TimeoutError";
+            detail = timedOut ? `no reply within ${Math.round(attemptMs)} ms` : `transport ${causeOf(error)}`;
+            // One bounded second try for a slow or dropped attempt, only while the surface budget lasts (never for a cancelled call).
+            const mayRetry = timedOut ? policy.attemptMs !== undefined && softRetries < 1 : softRetries < (policy.transportRetries ?? 0);
+            if (mayRetry && budget - (clock() - started) > 250) {
+              softRetries++;
+              continue;
+            }
+            if (timedOut) throw fail(new ProviderError("timeout", "timed out", { sent: "unknown" }));
             throw fail(new ProviderError("transport", "transport failure", { sent: "unknown" }));
           }
           lastStatus = res.status;
           if (res.ok) {
             raw = await res.json().catch(() => null);
             const answers = (raw as { answers?: unknown } | null)?.answers;
-            if (!validJevAnswers(call.questions, answers)) throw fail(new ProviderError("unknown", "unreadable reply", { httpStatus: res.status, sent: "unknown" }));
+            if (!validJevAnswers(call.questions, answers)) {
+              detail = "a reply that did not answer the questions asked";
+              throw fail(new ProviderError("unknown", "unreadable reply", { httpStatus: res.status, sent: "unknown" }));
+            }
             const usage = (raw as { usage?: { input_tokens?: number; prompt_tokens?: number } })?.usage;
             const input = usage?.input_tokens ?? usage?.prompt_tokens;
             return { value: answers as JevAnswers, httpStatus: res.status, providerModel: typeof (raw as { model?: unknown })?.model === "string" ? String((raw as { model: string }).model).slice(0, 80) : null, usage: { inputTokens: typeof input === "number" ? input : null, outputTokens: typeof input === "number" ? 0 : null } };
           }
           const text = await res.text().catch(() => "");
           const failure = httpProviderError(res.status, text, res.headers);
+          detail = `HTTP ${res.status} (${failure.code})`;
           // Bounded backoff: only on 429/5xx, only within the retry count and the surface budget.
           const backoff = Math.min(failure.opts.retryAfterMs ?? 100 * 2 ** (attempts - 1), 1000);
           if (!RETRYABLE.has(res.status) || attempts > policy.retries || clock() - started + backoff + 50 >= budget) throw fail(failure);
@@ -180,7 +219,9 @@ export async function jevDecide(call: JevCall): Promise<JevOutcome> {
             : cause.code === "transport"
               ? "unavailable"
               : "http";
-    return { ok: false, reason, httpStatus: lastStatus, ms: clock() - started, receipt: written };
+    if (!cause) detail = `no route: ${causeOf(error)}`;
+    else if (!detail) detail = cause.code === "timeout" ? "over the surface budget" : cause.code;
+    return { ok: false, reason, httpStatus: lastStatus, ms: clock() - started, receipt: written, attempts, detail };
   }
 }
 

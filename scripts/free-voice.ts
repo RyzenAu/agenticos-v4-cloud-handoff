@@ -42,6 +42,7 @@ import { browserSkillIntent, PAGE_ACTIONS } from "./j2/intents";
 import { currentReferent } from "./jarvis-skills/referent";
 import { recordVoiceLatency } from "./voice-latency";
 import { commandIntent } from "./jarvis-command/words";
+import { osQuestionIn } from "./jarvis-command/os-reads";
 import { linkedSteps, rememberToReminder } from "./jarvis-command/plan";
 import { isCodingRequest } from "../src/lib/commands/coding";
 import { resolvePin, type PinCatalogue } from "./jev-pins";
@@ -998,6 +999,15 @@ function commandSaid(content: string): string | null {
     return null;
   }
 }
+/** A handoff made because Jev was out or unsure and the words were a question (service.ts `question.*`): the brain may only answer. */
+function questionHandoff(content: string): boolean {
+  try {
+    const v = JSON.parse(content);
+    return v?.type === "command_result" && typeof v.handoff?.intent === "string" && v.handoff.intent.startsWith("question.");
+  } catch {
+    return false;
+  }
+}
 function commandHandoff(content: string): boolean {
   try {
     const v = JSON.parse(content);
@@ -1514,6 +1524,11 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       // "What device is this?", "where is the OS running?", "I am at the PC": answered from what the hub knows, never the screen-share line or a guess.
       const asksDevice = deviceQuestion(last.content);
       if (asksDevice) return { content: deviceAnswer(asksDevice, deviceFacts(remote, device, caller)), model: "rules", route: { intent: `device.${asksDevice}` } };
+      // The OS's own read questions ("what is Research working on", AI spend, the calendar, what needs him, a deal's stage): the command
+      // path answers them by rule from the real services. BEFORE the brain, at the hub or remote, Jev or not: a "what ..." question used to
+      // stay with the brain, which answered an agent's status from old memory notes (5 Oct).
+      // ("What needs me" keeps its own fast rule below when its source is wired here: the same answer, with no round trip.)
+      if (osQuestionIn(last.content, bots) && !(dependencies.needsYou && needsMeIntent(last.content))) return { ...oneCall("jarvis_command", { utterance: last.content.trim().slice(0, 600) }), route: { intent: "os.read", source: "rules" } };
       // A plain reply he asked Jarvis for ("Reply with X only."): conversation, like a question. The brain answers with no action tools, local or
       // remote, Jev or not; it never goes to the command controller, which can only ask where it should run (PR #7 QA, 5 Oct).
       if (plainReplyRequest(last.content)) return { ...(await think([], undefined, true)), router: { intent: "brain.plain-reply", source: "rules" as const } };
@@ -1863,6 +1878,8 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
       // (The yes gate first, so a bare "yes" is still "not sure what you're saying yes to", and only a real yes keeps `confirmed`.)
       return jevOutageTurn(boundConfirmed(reply), last.content, jevOut);
     }
+    // A question the command path handed over because Jev was out or unsure: answered, never acted on (no action tools are offered).
+    if (last?.role === "tool" && questionHandoff(last.content)) return think(baseLines, undefined, true);
     if (early) return boundConfirmed(await early.result);
     return boundConfirmed(await think([...baseLines, ...(routed?.kind === "brain" && routed.hint ? [routed.hint] : [])]));
 

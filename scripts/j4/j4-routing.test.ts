@@ -493,7 +493,7 @@ describe("8. 'what needs me' comes from the Home page's own source", () => {
     const partial = ok(needsYouFrom({ today: today([{ id: "a", title: "One thing" }]) as never, email: failed as never, agent: { ok: true, count: 0, at: null } }));
     expect(needsYouSaid({ needsYou: partial, today: today([{ id: "a", title: "One thing" }]) } as never)).toMatch(/^At least 1 thing needs you: 1 decision, emails unknown, 0 agent approvals\. The decision waiting: One thing\.$/);
   });
-  test("through the turn: a fast rule (no brain, no Jev), the same words with no source wired go on to the brain", async () => {
+  test("through the turn: a fast rule (no brain, no Jev); with no source wired the words go to the command path, never the brain", async () => {
     const src = build(APPROVALS);
     const wired = makeRig({ persona: "none", needsYou: async () => src });
     const t = await wired.say("what needs me today");
@@ -504,7 +504,11 @@ describe("8. 'what needs me' comes from the Home page's own source", () => {
     const broken = makeRig({ needsYou: async () => { throw new Error("down"); } });
     expect((await broken.say("what needs me")).spoken).toBe("I can't reach the workspace right now, so I won't guess what needs you.");
     broken.close();
-    expect((await one("what needs me")).label).toBe("brain");
+    // 5 Oct: with no source wired in the voice turn, the words go to the command path's read lane (the same Home panels), never the brain,
+    // which used to answer the OS's own questions from old notes.
+    const unwired = await one("what needs me");
+    expect(unwired.calls.map((c) => c.function.name)).toEqual(["jarvis_command"]);
+    expect(unwired.label).not.toBe("brain");
   });
 });
 

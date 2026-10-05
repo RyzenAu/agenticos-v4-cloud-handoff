@@ -27,6 +27,7 @@ export type BusinessIntent =
   | { kind: "quote"; name: string; packageId: PackageWord | null }
   | { kind: "invoice"; name: string; portion: "full" | "deposit" }
   | { kind: "next"; name: string | null }
+  | { kind: "stage"; name: string }
   | { kind: "drafts"; name: string | null; what: "outreach" | "meeting" | "all" };
 
 const KIND_WORDS: Record<string, BusinessKind> = {
@@ -64,6 +65,8 @@ const TASK_IN_CRM = new RegExp(`^(?:create|add|make|new|set\\s+up)\\s+(?:a\\s+|m
 const QUOTE = /^(?:draft|prepare|create|make|write|put\s+together)\s+(?:me\s+)?(?:a\s+|the\s+)?(?:new\s+)?(?:quote|proposal)\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+deal)?(?:\s+(?:with|using|on)\s+(?:the\s+)?(essential|professional|premium)(?:\s+(?:receptionist\s+)?package)?)?$/i;
 const INVOICE = /^(?:draft|prepare|create|make|write|put\s+together)\s+(?:me\s+)?(?:a\s+|an\s+|the\s+)?(?:new\s+)?(deposit\s+)?invoice\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+deal)?(\s+(?:as\s+a\s+|with\s+a\s+)?deposit)?$/i;
 const NEXT = /^(?:what(?:['’]s|\s+is|\s+are)|show(?:\s+me)?|tell\s+me)\s+(?:the\s+|my\s+|our\s+)?next(?:\s+real)?\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$|^next\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
+/** "what stage is the Orchard website deal in", "what's the stage of the Orchard deal", "where is the Orchard deal up to". A read. */
+const STAGE = /^(?:what|which)\s+(?:pipeline\s+)?stage\s+(?:is|['’]s)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?\s+(?:in|at|on|up to)$|^what(?:['’]s|\s+is)\s+the\s+(?:pipeline\s+)?stage\s+(?:of|for)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?$|^where\s+is\s+(?:the\s+)?(.{2,100}?)\s+deal\s+(?:at|up to)$/i;
 const DRAFTS = /^(?:show(?:\s+me)?|view|open|list|pull\s+up|what\s+are)\s+(?:the\s+|our\s+|any\s+|all\s+)?(?:existing\s+|unsent\s+|draft\s+)*(outreach(?:\s+packs?|\s+drafts?)?|meeting\s+packs?|reply\s+drafts?)(?:\s+(?:for|on|to)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
 
 const SELF = /^(?:this|that|the\s+open|the\s+current|open|current)$/i;
@@ -119,6 +122,7 @@ function singleBusinessIntent(utterance: string): BusinessIntent | null {
     return { kind: "quote", name: tidyName(m[1]), packageId: m[2] ? (`receptionist-${m[2].toLowerCase()}` as PackageWord) : null };
 
   if ((m = NEXT.exec(t))) return { kind: "next", name: m[1] || m[2] ? tidyName((m[1] || m[2])!) : null };
+  if ((m = STAGE.exec(t)) && !NOT_A_NAME.test(tidyName((m[1] || m[2] || m[3])!))) return { kind: "stage", name: tidyName((m[1] || m[2] || m[3])!) };
   if ((m = DRAFTS.exec(t))) {
     const word = m[1].toLowerCase();
     return { kind: "drafts", name: m[2] ? tidyName(m[2]) : null, what: word.startsWith("meeting") ? "meeting" : word.startsWith("outreach") ? "outreach" : "all" };
@@ -154,6 +158,8 @@ const money = formatAud;
 const KIND_LABEL: Record<BusinessKind, string> = {
   company: "client", contact: "contact", deal: "deal", project: "project", task: "task", quote: "quote", invoice: "invoice", document: "document", file: "file", workbook: "quote workbook",
 };
+/** The record an answer was about, for a follow-up ("that deal", "it") in the same conversation. Ids and titles only. */
+const recordOf = (h: BusinessHit): NonNullable<CrmAnswer["record"]> => ({ kind: h.kind, id: h.id, title: h.title });
 const label = (h: BusinessHit) => `${h.title} (${KIND_LABEL[h.kind]}${h.detail ? `, ${h.detail.split(" · ")[0]}` : ""})`;
 const askWhich = (name: string, hits: readonly BusinessHit[]): CrmAnswer =>
   fail(`${hits.length} records match "${name}": ${hits.slice(0, 4).map(label).join("; ")}. Which one?`, null, { ask: true });
@@ -209,13 +215,13 @@ export async function runBusinessIntent(
     const data = out.r.data as { total: number; hits: BusinessHit[] };
     if (!data.hits.length) return { ok: true, said: `Nothing in the business records matches "${intent.query}".`, verified: true };
     const shown = data.hits.slice(0, 4).map(label).join("; ");
-    return { ok: true, said: `${data.total} match${data.total === 1 ? "" : "es"} for "${intent.query}": ${shown}.${data.hits.length === 1 ? " Say \"open it\" by name to go there." : ""}`, verified: true };
+    return { ok: true, said: `${data.total} match${data.total === 1 ? "" : "es"} for "${intent.query}": ${shown}.${data.hits.length === 1 ? " Say \"open it\" by name to go there." : ""}`, verified: true, ...(data.hits.length === 1 ? { record: recordOf(data.hits[0]) } : {}) };
   }
   if (intent.kind === "open") {
     const f = await find(intent.name, intent.kinds);
     if ("stop" in f) return f.stop;
     const path = f.hit.href ?? "/crm";
-    return { ok: true, said: `Opened ${label(f.hit)}.`, verified: true, navigate: { path } };
+    return { ok: true, said: `Opened ${label(f.hit)}.`, verified: true, navigate: { path }, record: recordOf(f.hit) };
   }
   if (intent.kind === "named-note") {
     const f = await find(intent.name, intent.kinds);
@@ -311,6 +317,27 @@ export async function runBusinessIntent(
     const p = doc.versions?.find((v) => v.number === doc.currentVersion)?.pricing;
     const total = p ? `One-off ${money(p.oneOffCents)}${p.recurringCents ? `, then ${money(p.recurringCents)} a month` : ""} (${p.gstTreatment === "inclusive" ? "incl. GST" : p.gstTreatment === "exclusive" ? "ex GST" : "no GST"} as agreed).` : "";
     return { ok: true, said: `Quote draft saved on ${deal.title}. ${total} Not sent, and no invoice was created.`.replace(/\s+/g, " "), verified: true, navigate: { path: out.r.href ?? "/crm" } };
+  }
+  if (intent.kind === "stage") {
+    const f = await find(intent.name, ["deal", "company"]);
+    if ("stop" in f) return f.stop;
+    const snap = await call("crm.snapshot", {});
+    if ("stop" in snap) return snap.stop;
+    if (snap.r.ok === false) return refused(snap.r);
+    const data = snap.r.data as { deals?: { id: string; companyId: string; title: string; pipelineId: string; stageId: string; nextAction?: string; nextActionDue?: string | null; archivedAt?: string | null }[]; pipelines?: { id: string; stages: { id: string; name: string }[] }[] } | undefined;
+    const deals = (data?.deals ?? []).filter((d) => !d.archivedAt);
+    let deal = f.hit.kind === "deal" ? deals.find((d) => d.id === f.hit.id) : undefined;
+    if (!deal) {
+      // A client was named (or followed up on): its one deal, or he is asked which, once.
+      const companyId = f.hit.kind === "company" ? f.hit.id : f.hit.companyId;
+      const theirs = deals.filter((d) => d.companyId === companyId);
+      if (!theirs.length) return { ok: true, said: `${f.hit.title} has no deal in the CRM, so there is no stage to give.`, verified: true, record: recordOf(f.hit) };
+      if (theirs.length > 1) return fail(`${f.hit.title} has ${theirs.length} deals: ${theirs.slice(0, 4).map((d) => d.title).join("; ")}. Which one?`, null, { ask: true });
+      deal = theirs[0];
+    }
+    const stage = (data?.pipelines ?? []).find((p) => p.id === deal!.pipelineId)?.stages.find((s) => s.id === deal!.stageId)?.name ?? deal.stageId;
+    const next = deal.nextAction?.trim() ? ` Next action: ${deal.nextAction.trim().slice(0, 140)}${deal.nextActionDue ? ` (due ${deal.nextActionDue.slice(0, 10)})` : ""}.` : "";
+    return { ok: true, said: `${deal.title} is in the ${stage} stage.${next}`, verified: true, navigate: { path: `/crm?ref=${encodeURIComponent(`crm:deal:${deal.id}`)}&tab=deals` }, record: { kind: "deal", id: deal.id, title: deal.title } };
   }
   if (intent.kind === "next") {
     let scope: { companyId?: string; dealId?: string } = {};

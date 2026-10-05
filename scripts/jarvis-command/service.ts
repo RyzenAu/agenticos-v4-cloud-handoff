@@ -58,6 +58,7 @@ import { createRecentTargets, resolveSwitch, switchBackIn, targetFrom, type Swit
 import { codingDraftFor } from "./coding";
 import { crmIntentIn, type CrmAnswer, type CrmIntent } from "./crm";
 import { businessQuestionsIn } from "./compound-questions";
+import { agentStatusSaid, aiSpendAsked, aiSpendSaid, calendarSaid, isQuestion, osReadIn, type AiTotalsLike, type CalendarEventLike } from "./os-reads";
 import { BOT_NEEDS_SESSION, createLinkedRunner, type RunMeta } from "./linked-run";
 import { commandRequestId, type CommandAdmissionKey } from "../jobs/command-admission";
 import type { JobThreads } from "./threads";
@@ -75,6 +76,11 @@ export type Delegates = {
   memory?: (utterance: string, caller: unknown, spokenYes: string | null) => Promise<{ said: string; outcome: string } | null>;
   /** The receptionist's state from its own feed (never invented). */
   receptionist?: (utterance: string) => Promise<{ ok: boolean; said: string; verified?: boolean | null }>;
+  /**
+   * Read lanes for the OS's own data (os-reads.ts): the saved calendar events the Calendar page shows, and the "what needs me" answer from
+   * the same panels Home reads. Read only; absent, those questions say the service isn't connected here.
+   */
+  reads?: { calendar?: () => readonly CalendarEventLike[] | Promise<readonly CalendarEventLike[]>; needsYou?: (principal: Principal) => Promise<string>; /** The AI usage snapshot the Finance page's "AI spend" tile reads (/__ai_usage). */ aiTotals?: () => Promise<AiTotalsLike> };
   /**
    * Coding by words, typed or spoken (scripts/coding/command-entry.ts): the SAME shaper and per-person voice state, so
    * "assign a builder to fix X and a reviewer to check it" drafts one job (models chosen, reasons said) and only a
@@ -371,6 +377,32 @@ export function createCommandService(deps: CommandServiceDeps) {
     return done.timing ? done : { ...done, timing: { decisionMs: null, dispatchMs: null, completeMs: Date.now() - receivedAt } };
   }
 
+  // The ONE business record the last CRM answer in a conversation was about (ids and titles only, 15 minutes): what "that deal" means next.
+  const lastRecords = new Map<string, { record: { kind: string; id: string; title: string }; at: number }>();
+  const nowOf = () => (deps.now ?? Date.now)();
+  const recordsKey = (personId: string, conversationId: unknown) => `${personId}|${typeof conversationId === "string" ? conversationId : ""}`;
+  const rememberRecord = (key: string, record: { kind: string; id: string; title: string }) => {
+    lastRecords.delete(key);
+    lastRecords.set(key, { record, at: nowOf() });
+    while (lastRecords.size > 200) lastRecords.delete(lastRecords.keys().next().value!);
+  };
+  const FOLLOW_NOUN = /\b(?:that|this|the same)\s+(deal|opportunity|client|company|customer|project|contact|record|one)\b/i;
+  /** His words with "that deal" / "it" replaced by the remembered record's name, or null when they refer to nothing remembered. */
+  function followUpWords(words: string, key: string, now: number): string | null {
+    const last = lastRecords.get(key);
+    if (!last || now - last.at > 15 * 60_000) return null;
+    const kindWord = last.record.kind === "company" ? "client" : last.record.kind;
+    const noun = FOLLOW_NOUN.exec(words);
+    if (noun) {
+      const said = noun[1].toLowerCase();
+      const word = said === "record" || said === "one" ? kindWord : said === "opportunity" ? "deal" : said === "customer" ? "client" : said;
+      return words.replace(FOLLOW_NOUN, () => `the ${last.record.title} ${word}`);
+    }
+    // A bare "it" only in the CRM's own question forms ("what stage is it in", "what's the next action for it").
+    if (/\b(?:stage|next\s+actions?)\b/i.test(words) && /\bit\b/i.test(words)) return words.replace(/\bit\b/i, () => `the ${last.record.title} ${kindWord}`);
+    return null;
+  }
+
   /** Run one command for a verified principal. `emit` receives the stream (job, decision, narrate, step, done). */
   async function runCoreInner(input: RunInput, emit: (e: CommandStreamEvent) => void, meta: RunMeta, receivedAt: number): Promise<CommandDoneEvent> {
     const { principal } = input;
@@ -378,11 +410,13 @@ export function createCommandService(deps: CommandServiceDeps) {
     let earlyDispatch: number | undefined;
     let jevMs: number | undefined;
     /** Jev's failed call, when there was one (its request id and latency go on the fallback's receipt). */
-    let jevMiss: { requestId?: string; ms: number } | null = null;
+    let jevMiss: { requestId?: string; ms: number; detail?: string; httpStatus?: number | null; attempts?: number } | null = null;
+    /** The miss as the job record keeps it: reason, the cause in plain words, HTTP status, requests sent and time (never the key). */
+    const jevMissFacts = () => ({ ...(jevMiss?.detail ? { detail: jevMiss.detail } : {}), ...(jevMiss?.httpStatus !== undefined ? { httpStatus: jevMiss.httpStatus } : {}), ...(jevMiss?.attempts !== undefined ? { attempts: jevMiss.attempts } : {}), ...(jevMiss ? { ms: Math.round(jevMiss.ms) } : {}) });
     /** Jev was unavailable: a job receipt says so, with the reason (timeout, error, no key), whatever ran instead. */
     const recordJevMiss = (jobId: string, reason: string) => {
       try {
-        deps.jobs().receipt(jobId, { requestId: jevMiss?.requestId ?? `jev-unavailable-${reason}`, provider: "typesafe", model: "typesafe/jev-latest", route: "metered", selectedBy: "rule", reason: `Jev unavailable (${reason})${reason === "no-key" ? ": no call made" : ""}; deterministic fallback or outage line, nothing guessed`, inputTokens: null, outputTokens: null, costUsd: null, latencyMs: jevMiss?.ms ?? null, outcome: reason === "timeout" ? "timed_out" : "failed", fallbackFrom: null });
+        deps.jobs().receipt(jobId, { requestId: jevMiss?.requestId ?? `jev-unavailable-${reason}`, provider: "typesafe", model: "typesafe/jev-latest", route: "metered", selectedBy: "rule", reason: `Jev unavailable (${reason}${jevMiss?.detail ? `: ${jevMiss.detail}` : ""}${jevMiss?.attempts ? `, ${jevMiss.attempts} request${jevMiss.attempts === 1 ? "" : "s"}` : ""})${reason === "no-key" ? ": no call made" : ""}; deterministic fallback, a question answered by the brain, or the outage line; nothing guessed`, inputTokens: null, outputTokens: null, costUsd: null, latencyMs: jevMiss?.ms ?? null, outcome: reason === "timeout" ? "timed_out" : "failed", fallbackFrom: null });
       } catch {
         /* read-only store: the step still says it */
       }
@@ -393,7 +427,10 @@ export function createCommandService(deps: CommandServiceDeps) {
     const thresholds = (deps.thresholds ?? thresholdsFor)(surface);
     const raw = String(body.utterance ?? "").trim().slice(0, 600);
     const split = splitSpokenTarget(raw);
-    const utterance = split.utterance || raw;
+    // "that deal", "that client", "it" right after a find/open/stage answer in the same conversation mean that record (5 Oct). The words are
+    // rewritten to name it, then parsed as usual; with nothing remembered they stay as said and the usual "which record?" is asked.
+    const followed = followUpWords(split.utterance || raw, recordsKey(principal.personId, body.conversationId), nowOf());
+    const utterance = followed ?? (split.utterance || raw);
     const spokenTarget = typeof body.spokenTarget === "string" && body.spokenTarget.trim() ? body.spokenTarget.trim().slice(0, 60) : split.spokenTarget;
     const slots = goalSlots(utterance);
     const nowMs = (deps.now ?? Date.now)();
@@ -543,6 +580,9 @@ export function createCommandService(deps: CommandServiceDeps) {
         if (!done.ok && !done.stopped && done.outcome === "uncertain") return { ok: false, settle: "unknown", note: done.said.slice(0, 200) };
         if (!done.ok && done.kind === "handoff" && done.handoff)
           return { ok: false, settle: "handed-off", note: `Handed off to ${done.handoff.to}; nothing ran here.` };
+        // A clarifying question ("Which record do you mean?", "Should it be on your PC or an answer from me?") is not a failure (5 Oct):
+        // nothing ran and nothing went wrong. It settles as asked, so Home and Activity never list it as Failed.
+        if (!done.ok && !done.stopped && done.ask && !done.refused) return { ok: false, settle: "asked", note: `Asked: ${done.said.slice(0, 180)}` };
         // Stopped while a step that can't be cancelled was running: the note hedges until it lands (REVIEW-T2 R4 F1).
         const lateNote = done.stopped && lateOf(done) ? "Stopped; a step it had already started may still finish (updated here when it does)." : undefined;
         return { ok: done.ok, note: done.said.slice(0, 200), ...(lateNote ? { stopNote: lateNote } : {}) };
@@ -786,6 +826,43 @@ export function createCommandService(deps: CommandServiceDeps) {
         note(ctx, { intent: d.why, executor: "none", jev: d, outcome: "asked" });
         return { type: "done", ok: false, ask: true, said: "I can combine up to four supported read-only business questions. This request includes something else, so I haven't run any of it. Ask those parts separately.", kind: "ask", decision: d, verified: null, jobId: null, runId: "", targetDeviceId: "none" };
       });
+    }
+
+    // 1b'. Read lanes for the OS's own data (5 Oct): a plain question about the calendar, what needs him, AI spend, a deal's stage or next
+    // action, or what an agent is doing is answered from the real service by rule. No Jev decision is needed to READ, so a Jev outage or an
+    // unsure Jev never turns these into "nothing ran" or "where should that run?". Never for a bot's turn, a named device or an answer word.
+    if (!body.target?.bot && !spokenTarget && !isAnswer && businessQuestions?.kind !== "questions" && source !== "acceptance" && source !== "away" && isBrowserPrincipal(principal)) {
+      const mk = (op: string, to: "voice-tools", why: string) => decisionOf({ op, confidence: 1, policy: "delegate", delegateTo: to, source: "rules", why });
+      const answer = (op: string, to: "voice-tools", why: string, read: () => Promise<{ ok: boolean; said: string }>) =>
+        start("none", async (ctx, out) => {
+          const d = mk(op, to, why);
+          out({ type: "decision", decision: d, seq: 0 });
+          const r = await read().catch(() => ({ ok: false, said: "That service didn't answer, so I won't guess." }));
+          note(ctx, { intent: `${op}: ${r.said.slice(0, 160)}`, executor: to, jev: d, outcome: r.ok ? "ok" : "failed", verification: { method: `${to}-service`, ok: r.ok } });
+          return { type: "done", ok: r.ok, said: r.said, kind: r.ok ? "answer" : "unavailable", jobId: null, runId: "", targetDeviceId: "none", decision: d, verified: r.ok };
+        });
+      const bots = mayUseBots(principal) ? (deps.bots?.list?.() ?? []) : [];
+      const read = osReadIn(utterance, bots);
+      if (read?.kind === "calendar")
+        return answer("os.read.calendar", "voice-tools", "today's or tomorrow's saved calendar events, read by rule", async () => {
+          const events = deps.delegates?.reads?.calendar ? await deps.delegates.reads.calendar() : null;
+          return events ? { ok: true, said: calendarSaid(events, read.day, nowOf()) } : { ok: false, said: "The calendar isn't connected on this server, so I can't read it from here." };
+        });
+      if (read?.kind === "needs")
+        return answer("os.read.needs-you", "voice-tools", "what needs him: the same panels Home reads, by rule", async () => (deps.delegates?.reads?.needsYou ? { ok: true, said: await deps.delegates.reads.needsYou(principal) } : { ok: false, said: "The needs-you list isn't connected on this server, so I can't read it from here." }));
+      if (read?.kind === "agent")
+        return answer("os.read.agent-status", "voice-tools", `the ${read.name} agent's jobs, read from the job store by rule`, async () => ({ ok: true, said: agentStatusSaid(read.name, deps.jobs().list({ bot: read.botId, limit: 20 }), nowOf()) }));
+      // AI spend ("how much have we spent on AI this month"): the same snapshot the Finance page's "AI spend" tile shows, for a confirmed
+      // founder wherever he is (the ai_usage skill is for the PC itself and refused a remote session, 5 Oct).
+      const spend = aiSpendAsked(utterance);
+      if (spend && deps.delegates?.reads?.aiTotals)
+        return answer("os.read.ai-spend", "voice-tools", "AI spend: the usage snapshot the Finance page reads, by rule", async () => ({ ok: true, said: aiSpendSaid(await deps.delegates!.reads!.aiTotals!(), spend.month) }));
+      if (!deps.delegates?.reads?.aiTotals && deps.delegates?.skill?.match(utterance) === "ai_usage")
+        return answer("skill.ai_usage", "voice-tools", "the AI usage figures, read by rule", () => deps.delegates!.skill!.run(utterance, principal));
+      // A deal's stage or next action: the CRM's own typed reads (never a write, never a search the brain paraphrases).
+      const crmRead = crmIntentIn(utterance);
+      if (deps.delegates?.crm && crmRead && "kind" in crmRead && (crmRead.kind === "stage" || crmRead.kind === "next"))
+        return delegate({ lane: "delegate", to: "crm", op: "crm.operation", why: `a CRM read (${crmRead.kind}): the CRM's own typed operations, by rule` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note);
     }
 
     // 1c. An agent bot's request (Agents workspace; linked-run.ts resolved the bot and put it in `body.target`): it runs on THAT bot's computer, or as
@@ -1148,7 +1225,7 @@ export function createCommandService(deps: CommandServiceDeps) {
       // ── Jev unavailable: the labelled deterministic fallback for supported, safe exact actions; the outage line for everything else ──
       if (decision.kind === "unavailable") {
         const reason = decision.reason;
-        jevMiss = { ...(decision.evidence ? { requestId: decision.evidence.requestId } : {}), ms: decision.ms };
+        jevMiss = { ...(decision.evidence ? { requestId: decision.evidence.requestId } : {}), ms: decision.ms, ...(decision.detail ? { detail: decision.detail } : {}), ...(decision.httpStatus !== undefined ? { httpStatus: decision.httpStatus } : {}), ...(decision.attempts !== undefined ? { attempts: decision.attempts } : {}) };
         const fb = (d: Omit<JevDecision, "calibrationRunId" | "source" | "why"> & { why: string }) => decisionOf({ ...d, source: "fallback", why: `deterministic fallback (Jev unavailable: ${reason}): ${d.why}` });
         const fbStart = (work: (ctx: ExecutorContext, out: (e: CommandStreamEvent) => void) => Promise<CommandDoneEvent>) =>
           start("none", async (ctx, out) => {
@@ -1166,12 +1243,22 @@ export function createCommandService(deps: CommandServiceDeps) {
           // A business record in an explicit CRM form (a note, a task, a quote or invoice DRAFT, a search): internal, read back, nothing sent.
           if (!ctxItem && exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "crm" || exactRule.to === "leads")) return delegate({ ...exactRule, why: `deterministic fallback (Jev unavailable: ${reason}): ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, { source: "fallback", confidence: 1 }, (jobId) => recordJevMiss(jobId, reason));
         }
+        // A QUESTION is not refused for Jev's outage (5 Oct): the brain answers it, labelled as the fallback it is. Answering is not acting:
+        // the handoff is answer-only (free-voice offers the brain no action tools for it), so nothing runs without a decision.
+        if (!fixedAgent && !pin && !ctxItem && catalogue.brain && isQuestion(utterance))
+          return start("none", async (ctx, out) => {
+            recordJevMiss(ctx.jobId, reason);
+            const d = decisionOf({ op: "delegate.brain", confidence: 0, policy: "delegate", delegateTo: "brain", source: "fallback", options, why: `Jev unavailable (${reason}): a question, so the brain answers it; nothing acts` });
+            out({ type: "decision", decision: d, seq: 0 });
+            note(ctx, { intent: `Jev unavailable (${reason}${decision.detail ? `: ${decision.detail}` : ""}); a question: handed to the brain to answer, nothing acts`, executor: "handoff", jev: d, outcome: "note" });
+            return { type: "done", ok: false, kind: "handoff", said: "That's a question for the chat brain; nothing was opened or changed.", handoff: { to: "brain", intent: "question.jev-unavailable", reason: d.why, utterance }, numbers: { jev: { state: "unavailable", reason, recovery: "brain-answer", ...jevMissFacts() } }, decision: d, verified: null, ...base };
+          });
         return start("none", async (ctx, out) => {
           recordJevMiss(ctx.jobId, reason);
           const d = decisionOf({ op: "jev.unavailable", confidence: 0, policy: "done", source: "rules", options, why: `Jev unavailable (${reason}): no router was substituted; only supported exact actions run` });
           out({ type: "decision", decision: d, seq: 0 });
-          note(ctx, { intent: `Jev unavailable (${reason}); not a supported exact action, nothing ran`, executor: "none", jev: d, outcome: "refused" });
-          return { type: "done", ok: false, said: jevOutageLine(reason), kind: "unavailable", numbers: { jev: { state: "unavailable", reason } }, decision: d, verified: null, ...base };
+          note(ctx, { intent: `Jev unavailable (${reason}${decision.detail ? `: ${decision.detail}` : ""}); not a supported exact action, nothing ran`, executor: "none", jev: d, outcome: "refused" });
+          return { type: "done", ok: false, said: jevOutageLine(reason), kind: "unavailable", numbers: { jev: { state: "unavailable", reason, ...jevMissFacts() } }, decision: d, verified: null, ...base };
         });
       }
 
@@ -1190,6 +1277,13 @@ export function createCommandService(deps: CommandServiceDeps) {
           out({ type: "decision", decision: d, seq: 0 });
           note(ctx, { intent: `Jev: ask (${why})`, executor: "none", jev: d, outcome: "asked" });
           return { type: "done", ok: false, ask: true, said, kind: "ask", decision: d, numbers: { jev: { state: "ask", confidence: decision.confidence, options } }, verified: null, ...base };
+        });
+      if (decision.kind === "ask" && !fixedAgent && !pin && !ctxItem && catalogue.brain && isQuestion(utterance))
+        return start("none", async (ctx, out) => {
+          const d = jd({ op: "delegate.brain", confidence: decision.confidence, policy: "delegate", delegateTo: "brain", source: "jev", why: `Jev was unsure (${decision.why}); a question, so the brain answers it; nothing acts` });
+          out({ type: "decision", decision: d, seq: 0 });
+          note(ctx, { intent: "Jev unsure; a question: handed to the brain to answer, nothing acts", executor: "handoff", jev: d, outcome: "note" });
+          return { type: "done", ok: false, kind: "handoff", said: "That's a question for the chat brain; nothing was opened or changed.", handoff: { to: "brain", intent: "question.jev-unsure", reason: d.why, utterance }, numbers: { jev: { state: "ask", confidence: decision.confidence, options, recovery: "brain-answer" } }, decision: d, verified: null, ...base };
         });
       if (decision.kind === "ask") {
         const choices = fixedAgent
@@ -1687,7 +1781,12 @@ export function createCommandService(deps: CommandServiceDeps) {
         const intent = crmIntentIn(utterance);
         if (!intent || !deps.delegates?.crm) return finish(false, "The CRM isn't connected here, so nothing in it changed.", null);
         const r = await deps.delegates.crm(intent, principal, (body.pageContext as PageContext | undefined) ?? null, typeof body.eventId === "string" ? body.eventId : undefined).catch((): CrmAnswer => ({ ok: false, said: "The CRM didn't answer, so nothing changed.", verified: null }));
-        return finish(r.ok && r.verified !== false, r.said, r.verified, { ...(r.navigate ? { navigate: r.navigate } : {}), ...(r.ask ? { ask: true } : {}) });
+        if (r.ok && r.record) rememberRecord(recordsKey(principal.personId, body.conversationId), r.record);
+        // A question never navigates (5 Oct: a stage question took the page from /jarvis to the CRM and the conversation left the screen).
+        // The read's record is a link in the typed answer; only an explicit "open ..." (and the CRM's own writes) open a page.
+        const reading = "kind" in intent && (intent.kind === "search" || intent.kind === "next" || intent.kind === "stage" || intent.kind === "drafts");
+        const link = reading && r.ok && r.navigate && body.source !== "voice" && /^\/crm\?ref=[\w%:.-]+(?:&tab=[a-z]+)?$/.test(r.navigate.path) ? ` Open it: ${r.navigate.path}` : "";
+        return finish(r.ok && r.verified !== false, `${r.said}${link}`, r.verified, { ...(r.navigate && !reading ? { navigate: r.navigate } : {}), ...(r.ask ? { ask: true } : {}) });
       }
       if (rule.to === "reminder") {
         const words = rememberToReminder(utterance);

@@ -15,6 +15,8 @@ import { loadCodingDetector } from "./coding";
 import { spokenConfirmations } from "../jarvis-execution/voice-confirmation";
 import { backgroundJobsDisabled } from "../preview-guard";
 import { runLeadAction, type LeadsApiLike } from "./leads";
+import type { AiTotalsLike, CalendarEventLike } from "./os-reads";
+import { needsYouSaid, type NeedsYouSources } from "../workspace/needs-you-voice";
 import { runCrmIntent, type CrmOperationsLike } from "./crm";
 import { hubRole } from "../cloud/hub-role";
 import { skillIntent } from "../jarvis-skills";
@@ -45,6 +47,12 @@ export function createLiveCommandService(options: {
   crm?: () => CrmOperationsLike;
   /** The Jarvis skills (timers, alarms, reminders): "remember to …" becomes a real reminder. */
   skills?: () => { run(body: unknown, options?: { remote?: boolean; desk?: boolean }): Promise<{ ok: boolean; said: string }> } | undefined;
+  /** The saved calendar events the Calendar page shows (read only): "what's on my calendar today". */
+  calendarEvents?: () => readonly CalendarEventLike[];
+  /** The AI usage snapshot (/__ai_usage, the Finance page's "AI spend" source): "how much have we spent on AI this month". */
+  aiTotals?: () => Promise<AiTotalsLike>;
+  /** The two workspace panels Home's "Needs you" list reads (and the coding store): "what needs my attention". */
+  needsYou?: () => Promise<NeedsYouSources>;
   /** The same frontmost Jarvis Chrome check used by voice for current-page actions. */
   jarvisChromeInFront?: () => Promise<boolean>;
   /** Jarvis threads: job results land in the person's durable conversation (scripts/jarvis-command/threads.ts). */
@@ -101,6 +109,9 @@ export function createLiveCommandService(options: {
         }
       : {}),
     ...(options.computers ? { computers: options.computers } : {}),
+    ...(options.calendarEvents || options.needsYou || options.aiTotals
+      ? { reads: { ...(options.calendarEvents ? { calendar: () => options.calendarEvents!() } : {}), ...(options.needsYou ? { needsYou: async () => needsYouSaid(await options.needsYou!()) } : {}), ...(options.aiTotals ? { aiTotals: () => options.aiTotals!() } : {}) } }
+      : {}),
     ...(options.memoryTurn ? { memory: (utterance: string, caller: unknown, spokenYes: string | null) => options.memoryTurn!(caller, utterance, spokenYes) } : {}),
     // A lead's website is read from the CRM by id (the page's own words never name the address that gets opened).
     leadSite: async (leadId) => {

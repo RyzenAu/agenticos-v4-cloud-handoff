@@ -241,9 +241,10 @@ export type Execution = {
   /**
    * How work that didn't run to an outcome here settles: `awaiting-approval` (it asked a question and is
    * waiting for the person's answer), `handed-off` (it passed the request to another tool; nothing ran here,
-   * recorded as succeeded with the note). Never used after a stop.
+   * recorded as succeeded with the note), `asked` (a clarifying question; nothing ran and nothing failed, recorded as succeeded with
+   * the question as its note). Never used after a stop.
    */
-  settle?: "awaiting-approval" | "handed-off" | "unknown";
+  settle?: "awaiting-approval" | "handed-off" | "unknown" | "asked";
   /** `ok: false` after a stop: the note to record instead of "Stopped on request." (e.g. "a step may still finish"). */
   stopNote?: string;
 };
@@ -673,6 +674,8 @@ export class JobService {
         (to = "cancelled"), (note = entry.settledLate ? "Stopped late: it didn't settle within the grace period after the stop." : (result.stopNote ?? "Stopped on request."));
       else if (result.settle === "awaiting-approval") (to = "awaiting-approval"), (note = result.note);
       else if (result.settle === "handed-off") (to = "succeeded"), (note = result.note ?? "Handed off to another tool; nothing ran here.");
+      // It asked a clarifying question and nothing ran: not a failure. Recorded as ended with the question as its note ("Asked: ...").
+      else if (result.settle === "asked") (to = "succeeded"), (note = result.note ?? "Asked a question; nothing ran.");
       // It may or may not have happened (a device dropped after the command was delivered): never "failed", never retried.
       else if (result.settle === "unknown") (to = "unknown"), (note = result.note ?? "The outcome is unknown.");
       else (to = result.ok ? "succeeded" : "failed"), (note = result.note);

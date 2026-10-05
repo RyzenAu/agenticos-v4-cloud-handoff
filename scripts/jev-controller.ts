@@ -58,7 +58,7 @@ export type ControllerDecision =
   | ({ kind: "ask"; confidence: number; ms: number; why: string } & Shown)
   /** Jev chose a lane the request's constraints (named target, pins, permissions, availability) don't allow: never acted on, never reinterpreted. */
   | ({ kind: "rejected"; choice: string; confidence: number; ms: number } & Shown)
-  | { kind: "unavailable"; reason: "no-key" | "timeout" | "unavailable" | "http" | "unreadable" | "cancelled" | "invalid"; ms: number; options?: string[]; cached?: boolean; evidence?: JevEvidence; cacheAgeMs?: number };
+  | { kind: "unavailable"; reason: "no-key" | "timeout" | "unavailable" | "http" | "unreadable" | "cancelled" | "invalid"; ms: number; options?: string[]; cached?: boolean; evidence?: JevEvidence; cacheAgeMs?: number; /** The cause in a few plain words and how many requests were sent (jev-client): for the job record and the hub log. */ detail?: string; httpStatus?: number | null; attempts?: number };
 
 /** Below this Jev's lane is not acted on: he gets one clarifying question instead. */
 export const CONTROLLER_ACT = 0.6;
@@ -149,6 +149,8 @@ export type ControllerDeps = {
   /** Injectable for tests; default the one Jev client. */
   decide?: (call: Parameters<typeof jevDecide>[0]) => Promise<JevOutcome>;
   request?: typeof fetch;
+  /** Where the one-line "Jev unavailable" record goes (default: the hub log, console.warn). */
+  log?: (line: string) => void;
   /** The decision cache (normalised words + the options offered → Jev's answers). Default: one per process; null turns it off. */
   cache?: ControllerCache | null;
 };
@@ -199,7 +201,11 @@ export async function decideTask(input: { utterance: string; catalogue: Catalogu
   const out = await (deps.decide ?? jevDecide)({ surface: "command.controller", caller: "scripts/jev-controller.ts", key, state, questions, request: deps.request }).catch(
     (): JevOutcome => ({ ok: false, reason: "unavailable", httpStatus: null, ms: 0, receipt: null }),
   );
-  if (!out.ok) return { kind: "unavailable", reason: out.reason, ms: out.ms, options: offeredLanes(input.catalogue) };
+  if (!out.ok) {
+    // One line in the hub log for every Jev miss, so "isn't answering" can be diagnosed (5 Oct: nothing was logged). Never the key or the words.
+    (deps.log ?? ((line: string) => console.warn(line)))(`[jev] unavailable surface=command.controller reason=${out.reason} http=${out.httpStatus ?? "none"} attempts=${out.attempts ?? 0} ms=${Math.round(out.ms)} detail="${(out.detail ?? "").slice(0, 80)}"`);
+    return { kind: "unavailable", reason: out.reason, ms: out.ms, options: offeredLanes(input.catalogue), ...(out.detail ? { detail: out.detail } : {}), httpStatus: out.httpStatus, ...(out.attempts !== undefined ? { attempts: out.attempts } : {}) };
+  }
   const evidence: JevEvidence | undefined = out.receipt ? { requestId: out.receipt.requestId, model: out.receipt.model, inputTokens: out.receipt.inputTokens } : undefined;
   const decision = validateDecision(out.answers, input.catalogue, out.ms);
   // Only a decision worth repeating is cached (a valid choice); an invalid answer is asked again next time.
@@ -212,6 +218,6 @@ export async function decideTask(input: { utterance: string; catalogue: Catalogu
  * deterministic commands), and the one fix. Never a guess, never another model choosing instead.
  */
 export function jevOutageLine(reason: string): string {
-  const why = reason === "no-key" ? "Jev, my decision layer, isn't set up on this hub (no TypeSafe key)" : reason === "timeout" ? "Jev, my decision layer, didn't answer in time" : "Jev, my decision layer, isn't answering right now";
+  const why = reason === "no-key" ? "Jev, my decision layer, isn't set up on this hub (no TypeSafe key)" : reason === "timeout" ? "Jev, my decision layer, didn't answer in time" : reason === "http" ? "Jev, my decision layer, answered with an error" : reason === "unreadable" || reason === "invalid" ? "Jev, my decision layer, gave an answer I couldn't use" : "Jev, my decision layer, couldn't be reached just now";
   return `${why}, so I won't guess where that should go, and nothing ran. Exact commands still work: open a website or an app, search Google for something, or name an agent like "Research, ...".${reason === "no-key" ? " Adding the TypeSafe key to the hub's configuration turns Jev on." : " Try again in a moment."}`;
 }

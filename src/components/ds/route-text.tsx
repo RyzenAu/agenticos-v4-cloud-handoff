@@ -8,7 +8,9 @@ export const LINKABLE_ROUTES = [
   "inbox", "calendar", "jarvis", "websites", "design", "motion", "activity", "automations", "skills", "usage", "workspaces",
 ] as const;
 
-const ROUTE_RE = new RegExp(String.raw`(^|[\s(])(/(?:${LINKABLE_ROUTES.join("|")}))(?=$|[\s).,;:!?])`, "g");
+/** A CRM record's own link ("/crm?ref=crm%3Adeal%3A<id>&tab=deals"), as a read answer gives it: shown as "Open in CRM". */
+const CRM_RECORD = String.raw`/crm\?ref=[\w%:.-]+(?:&tab=[a-z]+)?`;
+const ROUTE_RE = new RegExp(String.raw`(^|[\s(])(${CRM_RECORD}|/(?:${LINKABLE_ROUTES.join("|")}))(?=$|[\s).,;:!?])`, "g");
 
 /** Pure: splits text into plain and route segments. Exported for tests. */
 export function splitRoutes(text: string): Array<{ text: string; to?: string }> {
@@ -32,7 +34,11 @@ export function RouteText({ children }: { children: string }): ReactNode {
   return (
     <>
       {splitRoutes(children).map((part, i) =>
-        part.to ? (
+        part.to?.startsWith("/crm?") ? (
+          <a key={i} href={part.to} className="font-medium text-foreground underline underline-offset-2 hover:text-brand">
+            Open in CRM
+          </a>
+        ) : part.to ? (
           <Link key={i} to={part.to as never} className="font-medium text-foreground underline underline-offset-2 hover:text-brand">
             {pageName(part.to)}
           </Link>
