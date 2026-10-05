@@ -1,3 +1,5 @@
+import type { RoutingTurn } from "./clarification-turn";
+import { createClarification, type ClarificationChoice } from "./clarification";
 import { TypedPersistenceError, validCrmRecordReference, type CrmRecordReference } from "../conversations";
 import type { CrmRef } from "../../src/lib/crm-ref";
 import { randomUUID } from "node:crypto";
@@ -178,11 +180,11 @@ export type CommandServiceDeps = {
 type Live = { events: CommandStreamEvent[]; listeners: Set<(e: CommandStreamEvent) => void>; done: CommandDoneEvent | null; grace?: ReturnType<typeof setTimeout>; personId: string; seq: number };
 
 /** `memoryCaller`: the memory plugin's own verified caller for this request (its principalFor(req)). */
-export type RunInput = { principal: Principal; body: CommandBody; memoryCaller?: unknown; /** Internal only: never accepted from an HTTP body. */ admission?: CommandAdmissionKey };
+export type RunInput = { principal: Principal; body: CommandBody; memoryCaller?: unknown; /** Internal only: never accepted from an HTTP body. */ admission?: CommandAdmissionKey; /** Server-only routing snapshot, after admission. Never accepted from HTTP. */ routing?: RoutingTurn; routingCancelled?: boolean; routingContextFailed?: boolean };
 
 const HANDOFF_SPECIALISTS: SpecialistId[] = ["brain", "vision", "voice-tools"];
 /** A whole-request stop. Anything longer ("stop the music and open Notepad") is a new request. */
-export const STOP_WORDS = /^(?:jarvis,?\s+)?(?:(?:stop|cancel|abort)(?: it| that| this| the| my| now)?(?: (?:task|job|command|goal|request|one))?|never ?mind|hold on|forget it)[.!]?$/i;
+export const STOP_WORDS = /^(?:jarvis,?\s+)?(?:please\s+)?(?:(?:stop|cancel|abort)(?: it| that| this| the| my| now)?(?: (?:task|job|command|goal|request|one))?|never ?mind|hold on|forget it)[.!]?$/i;
 
 /** How long "your PC has no companion" stays said: within this, the next refusal is the short version (never the same line twice running). */
 const NO_COMPANION_REPEAT_MS = 15 * 60_000;
@@ -446,10 +448,10 @@ export function createCommandService(deps: CommandServiceDeps) {
     const slots = goalSlots(utterance);
     const nowMs = (deps.now ?? Date.now)();
     // Typed and spoken take the same resolver; only a spoken command may fall back to this person's last page.
-    const commandContext = resolveCommandContext({ utterance, pageContext: body.pageContext, remembered: pageMemory.recall(principal.personId, nowMs), allowMemory: source === "voice", now: nowMs });
+    const commandContext = resolveCommandContext({ utterance, pageContext: body.pageContext, remembered: pageMemory.recall(principal.personId, nowMs), allowMemory: source === "voice" && !input.routing?.selection, now: nowMs });
     const pageContext = commandContext.context;
     meta.pageContext = pageContext;
-    if (commandContext.from === "sent") pageMemory.remember(principal.personId, pageContext, nowMs);
+    if (commandContext.from === "sent" && !input.routing?.selection) pageMemory.remember(principal.personId, pageContext, nowMs);
     const jobs = deps.jobs();
     const kind: JobKind = source === "voice" ? "voice" : "command";
     // Final review B1: lanes that start work before a job exists here (the coding harness, an agent, a shared computer) check his Stop just before
@@ -603,9 +605,11 @@ export function createCommandService(deps: CommandServiceDeps) {
       if (lateWork) recordLate(job.id, lateWork);
       const { lateWork: _dropped, ...doneOnly } = (box.done ?? {}) as CommandDoneEvent & { lateWork?: unknown };
       void _dropped;
-      const final: CommandDoneEvent = box.done
+      let final: CommandDoneEvent = box.done
         ? { ...(doneOnly as CommandDoneEvent), jobId: job.id, targetDeviceId }
         : { type: "done", ok: false, said: result.reason === "quarantined" ? "Jarvis commands are on hold after a stop that wasn't confirmed; release it in the job log first." : "That didn't start.", kind: "unavailable", jobId: job.id, runId: "", targetDeviceId };
+      // Include provenance even when jobs.run refuses before calling the executor (for example quarantine).
+      if (input.routing?.questionId) final = { ...final, numbers: { ...final.numbers, clarification: { questionId: input.routing.questionId, askJobId: input.routing.askJobId, originalEventId: input.routing.originalEventId, answerEventId: body.eventId ?? null } } };
       publish(job.id, final);
       return final;
     };
@@ -645,6 +649,9 @@ export function createCommandService(deps: CommandServiceDeps) {
       } catch (error) {
         target = { ok: false, reason: `couldn't resolve the device (${(error as Error).message.slice(0, 60)})` };
       }
+      // Recheck after every router await: the original offered device is a constraint at dispatch too.
+      if (target.ok && input.routing?.selection?.kind === "device" && input.routing.targetDeviceId && target.deviceId !== input.routing.targetDeviceId)
+        target = { ok: false, reason: "the originally offered computer is no longer the resolved target; nothing ran on another computer" };
       // A shared agent cloud computer (owner "shared") runs as a computer job under a control lease (scripts/computers), never as a typed Jarvis step.
       if (target.ok && target.owner === "shared") target = { ok: false, reason: "that is a shared cloud computer: it runs as a computer job with a control lease (Computers), not as a Jarvis step", deviceId: target.deviceId };
       if (!target.ok) {
@@ -722,6 +729,8 @@ export function createCommandService(deps: CommandServiceDeps) {
       } catch {
         return null;
       }
+      if (t.ok && input.routing?.selection?.kind === "device" && input.routing.targetDeviceId && t.deviceId !== input.routing.targetDeviceId)
+        return Promise.resolve({ type: "done", ok: false, refused: true, kind: "refused", said: "The originally offered computer changed before dispatch. Nothing ran on another computer.", jobId: null, runId: "", targetDeviceId: "none" });
       if (!t.ok || t.deviceId === deps.hubDeviceId || !deps.supports(t.deviceId, "target.focus")) return null;
       const deviceId = t.deviceId;
       return start(deviceId, async (ctx, out) => {
@@ -1118,6 +1127,7 @@ export function createCommandService(deps: CommandServiceDeps) {
      *     a job receipt; everything else gets the plain outage line. Nothing is guessed.
      */
     async function jevFirst(constraint: JevConstraint = {}): Promise<CommandDoneEvent> {
+      const selection = input.routing?.selection;
       const newCoding = deps.delegates?.codingMatches ? deps.delegates.codingMatches(utterance) : isCodingRequest(utterance);
       // An answer to the coding harness's own question ("start it", "yes"): the harness's (an answer, not a new routing decision).
       if (isAnswer && deps.delegates?.coding && !moneyBlocked && !constraint.bot && !constraint.computer) {
@@ -1146,6 +1156,8 @@ export function createCommandService(deps: CommandServiceDeps) {
       if (!fixedAgent && spokenTarget && target && !target.ok) return toDevice(exactRule, undefined);
       const atHub = !!target?.ok && !!deps.hubDeviceId && target.deviceId === deps.hubDeviceId;
       const ownDevice = target?.ok && target.owner !== "shared" ? target.deviceId : null;
+      if (selection?.kind === "device" && input.routing?.targetDeviceId && ownDevice !== input.routing.targetDeviceId)
+        return { type: "done", ok: false, refused: true, kind: "refused", said: "The computer offered for that request is no longer the resolved target. Nothing ran on another computer. Send the full request naming the computer you want.", jobId: null, runId: "", targetDeviceId: "none" };
       const screen = atHub || (!!ownDevice && !!deps.supports?.(ownDevice, "screen.goal"));
       const margin = parseMarginQuery(utterance);
       const prices = margin ? null : parsePriceQuery(utterance);
@@ -1170,13 +1182,16 @@ export function createCommandService(deps: CommandServiceDeps) {
           return { type: "done", ok: false, refused: true, said: pinned.said, kind: "refused", numbers: { pin: "refused", alternatives: pinned.alternatives }, decision: d, verified: null, ...base };
         });
       const pin = pinned.kind === "pin" ? pinned.pin : null;
+      const expectedPin = selection ? input.routing?.pin : null;
+      if (expectedPin && (!pin || pin.accountSlot !== expectedPin.accountSlot || pin.model !== expectedPin.model))
+        return { type: "done", ok: false, refused: true, kind: "refused", said: "The original account or model pin can no longer be met. Nothing was substituted or started. Send the full request with the account and model you want.", jobId: null, runId: "", targetDeviceId: "none" };
 
       // ── the options, built from the constraints ──
       const agentList = mayUseBots(principal) ? (deps.bots?.list?.() ?? []).map((b) => ({ id: b.id, name: b.name, purpose: b.purpose ?? b.name })) : [];
       const fixedBot = constraint.bot ? (agentList.find((b) => b.id === constraint.bot) ?? { id: constraint.bot, name: deps.bots?.nameOf(constraint.bot) ?? constraint.bot, purpose: "the agent he named" }) : null;
       const deviceOption = { label: ownDevice ? label(ownDevice) : "his own computer", screen: ownDevice ? screen : true };
       const ctxItem = constraint.context?.item;
-      const catalogue: Catalogue = fixedBot
+      let catalogue: Catalogue = fixedBot
         ? { device: null, brain: false, coding: false, bots: [fixedBot] }
         : constraint.computer
           ? { device: null, brain: false, coding: false, bots: [], computer: { name: constraint.computer } }
@@ -1200,6 +1215,12 @@ export function createCommandService(deps: CommandServiceDeps) {
                       crm: !!(deps.delegates?.crm || deps.delegates?.leads),
                       memory: !!deps.delegates?.memory && !!input.memoryCaller,
                     };
+      // The answer narrows the original catalogue; it never becomes fresh task words or widens a pin.
+      if (selection?.kind === "coding") catalogue = { device: null, brain: false, coding: catalogue.coding, bots: [] };
+      else if (selection?.kind === "brain") catalogue = { device: null, brain: catalogue.brain, coding: false, bots: [] };
+      else if (selection?.kind === "device") catalogue = { device: catalogue.device, brain: false, coding: false, bots: [] };
+      else if (selection?.kind === "bot") catalogue = { device: null, brain: false, coding: false, bots: catalogue.bots.filter(b => b.id === selection.bot) };
+      else if (selection?.kind === "computer") catalogue = { device: null, brain: false, coding: false, bots: [], computer: catalogue.computer?.name === selection.computer ? catalogue.computer : null };
       const constraintWhy = fixedBot ? `the agent ${fixedBot.name} you named` : constraint.computer ? `the ${constraint.computer} computer you named` : constraint.context ? "the item on the page" : pin ? "the account or model you named" : spokenTarget && ownDevice ? "the device you named" : "what can run for you right now";
       // Ids only, never extra words: the page and the record he is looking at, the device or agent his request is fixed to.
       const pageItem = ctxItem ?? pageContext?.focused ?? pageContext?.selected?.[0];
@@ -1210,6 +1231,7 @@ export function createCommandService(deps: CommandServiceDeps) {
         ...(fixedBot ? { agent: fixedBot.id } : {}),
         ...(constraint.computer ? { computer: constraint.computer } : {}),
         ...(pin ? { pin: [pin.accountSlot, pin.model].filter(Boolean).join("/") } : {}),
+        ...(selection ? { clarifiedRoute: selection.kind === "bot" ? `bot:${selection.bot}` : selection.kind === "computer" ? `computer:${selection.computer}` : selection.kind } : {}),
       };
       const decision = await decideTask({ utterance, catalogue, context, principal: principal.personId }, deps.controller!);
       jevMs = decision.ms;
@@ -1244,15 +1266,15 @@ export function createCommandService(deps: CommandServiceDeps) {
             const done = await work(ctx, out);
             return { ...done, numbers: { ...(done.numbers ?? {}), jev: { state: "unavailable", reason, recovery: "exact-rule" } } };
           });
-        if (!fixedAgent && !pin) {
+        if (!fixedAgent && !pin && (!selection || selection.kind === "device")) {
           if (constraint.context?.step) return toDevice(null, [constraint.context.step], { fromWords: true, recovery: reason });
           if (!ctxItem && linked && linked.length > 1 && !goalRefusal) return toDevice(null, linked.map((s) => ({ executor: s.executor, args: s.args })), { fromWords: true, recovery: reason });
           if (!ctxItem && routine) return toDevice(exactRule, undefined, { recovery: reason });
-          if (!ctxItem && (margin || prices)) return fbStart(async (ctx, out) => exactAnswer(ctx, out, fb));
-          if (!ctxItem && skillName && deps.delegates?.skill) return fbStart(async (ctx, out) => skillAnswer(ctx, out, skillName, fb));
-          if (!ctxItem && page) return fbStart(async (ctx, out) => pageOpen(ctx, out, page, fb));
+          if (!selection && !ctxItem && (margin || prices)) return fbStart(async (ctx, out) => exactAnswer(ctx, out, fb));
+          if (!selection && !ctxItem && skillName && deps.delegates?.skill) return fbStart(async (ctx, out) => skillAnswer(ctx, out, skillName, fb));
+          if (!selection && !ctxItem && page) return fbStart(async (ctx, out) => pageOpen(ctx, out, page, fb));
           // A business record in an explicit CRM form (a note, a task, a quote or invoice DRAFT, a search): internal, read back, nothing sent.
-          if (!ctxItem && exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "crm" || exactRule.to === "leads")) return delegate({ ...exactRule, why: `deterministic fallback (Jev unavailable: ${reason}): ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, { source: "fallback", confidence: 1 }, (jobId) => recordJevMiss(jobId, reason), followed?.record);
+          if (!selection && !ctxItem && exactRule?.lane === "delegate" && (exactRule.to === "receptionist" || exactRule.to === "crm" || exactRule.to === "leads")) return delegate({ ...exactRule, why: `deterministic fallback (Jev unavailable: ${reason}): ${exactRule.why}` }, principal, input.memoryCaller, utterance, body, start, decisionOf, note, { source: "fallback", confidence: 1 }, (jobId) => recordJevMiss(jobId, reason), followed?.record);
         }
         // A QUESTION is not refused for Jev's outage (5 Oct): the brain answers it, labelled as the fallback it is. Answering is not acting:
         // the handoff is answer-only (free-voice offers the brain no action tools for it), so nothing runs without a decision.
@@ -1282,8 +1304,18 @@ export function createCommandService(deps: CommandServiceDeps) {
           return { type: "done", ok: false, ask: true, kind: "ask", said: `I couldn't work out how to do that within ${constraintWhy}, so nothing ran. Could you say what you want done another way?`, decision: d, numbers: { jev: { state: "rejected", choice: decision.choice, options } }, verified: null, ...base };
         });
 
-      const ask = (why: string, said: string) =>
+      const ask = (why: string, said: string, routingChoices?: ClarificationChoice[]) =>
         start("none", async (ctx, out) => {
+          if (routingChoices?.length && input.routing && deps.threads) {
+            const turn = input.routing;
+            try {
+              const question = createClarification({ authority: turn.authority, id: randomUUID(), personId: principal.personId, conversationId: turn.conversationId, originalEventId: turn.originalEventId, askJobId: ctx.jobId, createdAt: nowOf(), request: { ...turn.request, target: body.target, subjects: body.subjects ?? turn.request.subjects, pageContext: pageContext ?? undefined, ...(spokenTarget ? { spokenTarget } : {}) }, offeredLanes: options, choices: routingChoices, pin, targetDeviceId: ownDevice });
+              if (!deps.threads.saveRoutingQuestion(principal.personId, turn.conversationId, turn.generation, question))
+                return { type: "done", ok: false, kind: "unavailable", said: "A newer request replaced this question, or its context could not be saved. Nothing ran. Send the full request again if you still want it.", verified: null, ...base };
+            } catch {
+              return { type: "done", ok: false, kind: "unavailable", said: "I couldn't save the original request for a route answer, so nothing ran. Send the full request again and name the agent or computer.", verified: null, ...base };
+            }
+          }
           const d = jd({ op: "jev.ask", confidence: decision.confidence, policy: "ask", source: "jev", why });
           out({ type: "decision", decision: d, seq: 0 });
           note(ctx, { intent: `Jev: ask (${why})`, executor: "none", jev: d, outcome: "asked" });
@@ -1300,7 +1332,14 @@ export function createCommandService(deps: CommandServiceDeps) {
         const choices = fixedAgent
           ? [`a task for ${fixedBot?.name ?? constraint.computer}`]
           : [catalogue.device ? `on ${catalogue.device.label}` : null, catalogue.bots.length ? `one of your agents (${catalogue.bots.map((b) => b.name).join(", ")})` : null, catalogue.coding ? "a coding job" : null, catalogue.brain ? "an answer from me" : null].filter(Boolean) as string[];
-        return ask(decision.why, `I'm not sure how you want that done, so nothing ran. ${choices.length > 1 ? `Should it be ${choices.slice(0, -1).join(", ")} or ${choices.at(-1)}?` : `What exactly should ${choices[0]} be?`}`);
+        const routingChoices: ClarificationChoice[] = [
+          ...(catalogue.device ? [{ id: "device", label: `on ${catalogue.device.label}`, aliases: ["my computer", "on my computer", "my PC", "on my PC", "own computer", catalogue.device.label], route: { kind: "device" as const } }] : []),
+          ...catalogue.bots.map(b => ({ id: `bot:${b.id}`, label: b.name, aliases: [b.id, `${b.name} bot`, `${b.name} agent`, `the ${b.name} bot`, `the ${b.name} agent`], route: { kind: "bot" as const, bot: b.id } })),
+          ...(catalogue.computer ? [{ id: "computer", label: catalogue.computer.name, aliases: [`the ${catalogue.computer.name} computer`], route: { kind: "computer" as const, computer: catalogue.computer.name } }] : []),
+          ...(catalogue.coding ? [{ id: "coding", label: "a coding job", aliases: ["coding", "coding job"], route: { kind: "coding" as const } }] : []),
+          ...(catalogue.brain ? [{ id: "brain", label: "an answer from me", aliases: ["an answer from you", "answer from you", "an answer", "answer", "chat brain"], route: { kind: "brain" as const } }] : []),
+        ];
+        return ask(decision.why, `I'm not sure how you want that done, so nothing ran. ${choices.length > 1 ? `Should it be ${choices.slice(0, -1).join(", ")} or ${choices.at(-1)}?` : `What exactly should ${choices[0]} be?`}`, routingChoices);
       }
       const jevWhy = `Jev chose ${decision.lane}${decision.bot ? ` (${deps.bots?.nameOf(decision.bot) ?? decision.bot})` : ""} at ${Math.round(decision.confidence * 100)}% from ${options.join("/")}${cached ? " (cached)" : ""}`;
       const jevMk = (d: Omit<JevDecision, "calibrationRunId" | "source" | "why"> & { why: string }) => jd({ ...d, source: "jev", why: `${jevWhy}; ${d.why}` });
@@ -1917,10 +1956,12 @@ export function createCommandService(deps: CommandServiceDeps) {
   // The conversation-aware front (event dedupe, follow-ups, thread links): the same single path, wrapped, never a second one.
   const run = createLinkedRunner({
     core: runCore,
+    routingEnabled: !!deps.controller,
     threads: deps.threads,
     jobs: deps.jobs,
     now: deps.now,
     isStop: (utterance) => STOP_WORDS.test(utterance),
+    cancelAdmittedEvent: cancelEvent,
     deviceLabel: label,
     ...(deps.bots ? { bots: { scope: deps.bots.scope, nameOf: deps.bots.nameOf, threadIds: deps.bots.threadIds } } : {}),
     coding: deps.delegates?.coding ? (utterance, turn) => deps.delegates!.coding!(utterance, turn) : undefined,
