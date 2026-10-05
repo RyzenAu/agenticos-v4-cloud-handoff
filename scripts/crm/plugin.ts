@@ -3,7 +3,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { ZodError } from "zod";
-import { requestPrincipal, pageTokenMatches, nonCanonicalTarget } from "../identity/gate";
+import { requestPrincipal, requestPageTokenMatches, nonCanonicalTarget } from "../identity/gate";
 import { authorise, isBrowserPrincipal, type Principal } from "../identity/principal";
 import { serverWorkAllowed, SERVER_WORK_NEEDS_SESSION } from "../identity/operator-sites";
 import { hubRole, type HubRole } from "../cloud/hub-role";
@@ -225,7 +225,7 @@ export function createCrmMiddleware(options: CrmHttpOptions) {
             "This is a quiet read-only copy. CRM changes need the owning hub or an isolated write-enabled development workspace.",
         });
       const token = typeof options.token === "function" ? options.token() : options.token;
-      if (!pageTokenMatches(principal, req.headers["x-claude-os-token"], token))
+      if (!requestPageTokenMatches(req, principal, token))
         return send(403, { ok: false, error: "Refresh this page and try again." });
       const role = (options.role ?? hubRole)();
       if (

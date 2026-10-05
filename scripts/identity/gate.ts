@@ -69,6 +69,9 @@ export function nonCanonicalTarget(url: string): string | null {
 }
 
 const identities = new WeakMap<object, RequestIdentity>();
+// The gate's legacy token substitution must not erase the caller's own CSRF proof for modern
+// handlers. Request-private state only: never populated from unvalidated client-controlled data.
+const forwardedPageTokens = new WeakMap<object, { principal: Principal; presented: string }>();
 
 /** Connect's own prefix rule (case-insensitive, then "/", "." or the end), so the gate matches what mounts. */
 export function under(path: string, prefix: string) {
@@ -103,6 +106,15 @@ export function requestPrincipal(req: ReqLike, ctx?: Partial<IdentityContext>): 
 export function pageTokenMatches(principal: Principal | null, presented: unknown, internalToken: string): boolean {
   if (!principal || !isBrowserPrincipal(principal) || typeof presented !== "string" || !presented || !internalToken) return false;
   return safeEqual(presented, pageTokenFor(principal, internalToken));
+}
+
+/** Check the caller's OWN token even after this gate translated it for a legacy handler. */
+export function requestPageTokenMatches(req: ReqLike, principal: Principal | null, internalToken: string): boolean {
+  const presented = req.headers?.[TOKEN_HEADER];
+  const forwarded = forwardedPageTokens.get(req);
+  if (!forwarded) return pageTokenMatches(principal, presented, internalToken);
+  return forwarded.principal === principal && typeof presented === "string" &&
+    safeEqual(presented, internalToken) && pageTokenMatches(principal, forwarded.presented, internalToken);
 }
 
 /** The CSRF check for a shared route's write: the caller's OWN page token (internal only at this PC). */
@@ -239,6 +251,8 @@ export function createPrincipalGate(options: GateOptions) {
   }
 
   return function principalGate(req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) {
+    // A second gate pass is a fresh decision, never a replay of an earlier token translation.
+    forwardedPageTokens.delete(req);
     // The Dot gateway (scripts/gateway): a request carrying its assertion is verified and held to the capability table here,
     // before anything else resolves an identity. Refused outright when it does not verify; null (no assertion) changes nothing.
     const viaGateway = gateway.screen(req);
@@ -332,7 +346,11 @@ export function createPrincipalGate(options: GateOptions) {
       // page token, hand the handlers the internal one they compare against. Any other value is left as sent.
       grantServerFounder(req);
       const presented = req.headers[TOKEN_HEADER];
-      if (pageTokenMatches(id.principal, presented, options.internalToken())) req.headers[TOKEN_HEADER] = options.internalToken();
+      const internal = options.internalToken();
+      if (typeof presented === "string" && pageTokenMatches(id.principal, presented, internal)) {
+        forwardedPageTokens.set(req, { principal: id.principal, presented });
+        req.headers[TOKEN_HEADER] = internal;
+      }
     }
     return next();
   }
