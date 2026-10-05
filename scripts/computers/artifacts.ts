@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { randomUUID } from "node:crypto";
+import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readSync, realpathSync, renameSync, unlinkSync, writeFileSync, type Stats } from "node:fs";
+import { join, relative, resolve } from "node:path";
 
 /**
  * Saved results of bot-computer workflows (research, builder, website audit, business preparation).
@@ -41,85 +42,178 @@ const MAX_TOTAL = 12 * 1024 * 1024;
 const MIME: Record<string, string> = { md: "text/markdown; charset=utf-8", txt: "text/plain; charset=utf-8", json: "application/json", csv: "text/csv; charset=utf-8", html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/plain; charset=utf-8", diff: "text/plain; charset=utf-8", patch: "text/plain; charset=utf-8", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg" };
 export const mimeOf = (name: string) => MIME[name.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream";
 
+const MAX_META = 64 * 1024;
+// Reject aliases on Windows even on other hosts, so an artifact stays safe when moved.
+const usableName = (name: unknown): name is string => typeof name === "string" && ARTIFACT_FILE.test(name) && !name.endsWith(".") && name.toLowerCase() !== "meta.json" && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name);
+const samePath = (a: string, b: string) => relative(a, b) === "";
+const sameFile = (a: Stats, b: Stats) => a.dev === b.dev && a.ino === b.ino;
+const regularFile = (s: Stats) => s.isFile() && !s.isSymbolicLink() && s.nlink === 1;
+const hasPath = (path: string) => {
+  try { lstatSync(path); return true; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+};
+function validMeta(value: unknown, id: string): value is ArtifactMeta {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const m = value as ArtifactMeta;
+  if (m.id !== id.toLowerCase() || typeof m.personId !== "string" || !m.personId || !["research", "builder", "audit", "bizprep"].includes(m.kind)) return false;
+  if (![m.title, m.summary, m.host, m.computer, m.outcome, m.createdAt].every((x) => typeof x === "string") || !Number.isFinite(Date.parse(m.createdAt))) return false;
+  if (!usableName(m.main) || !Array.isArray(m.files) || !m.files.length || m.files.length > MAX_FILES) return false;
+  const names = new Set<string>();
+  let total = 0;
+  for (const file of m.files) {
+    if (!file || !usableName(file.name) || names.has(file.name.toLowerCase()) || !Number.isSafeInteger(file.bytes) || file.bytes < 0 || file.mime !== mimeOf(file.name)) return false;
+    names.add(file.name.toLowerCase());
+    total += file.bytes;
+    if (total > MAX_TOTAL) return false;
+  }
+  return m.files.some((file) => file.name === m.main);
+}
+
 export function createArtifactStore(dir: string, now: () => number = Date.now) {
-  mkdirSync(dir, { recursive: true });
-  const folder = (id: string) => (ID.test(id) ? join(dir, id.toLowerCase()) : null);
-  const readMeta = (id: string): ArtifactMeta | null => {
-    const f = folder(id);
-    if (!f || !existsSync(join(f, "meta.json"))) return null;
+  const configuredRoot = resolve(dir);
+  let root: { path: string; stat: Stats } | null = null;
+  try {
+    if (!hasPath(configuredRoot)) mkdirSync(configuredRoot, { recursive: true });
+    const stat = lstatSync(configuredRoot);
+    if (stat.isDirectory() && !stat.isSymbolicLink()) root = { path: realpathSync(configuredRoot), stat };
+  } catch { /* An unavailable or linked root is not an artifact store. */ }
+  // Ancestor aliases (such as macOS /tmp) are fine. Pin the actual root, then reject links at or below it.
+  const rootSafe = () => {
     try {
-      return JSON.parse(readFileSync(join(f, "meta.json"), "utf8")) as ArtifactMeta;
-    } catch {
-      return null;
+      const stat = lstatSync(configuredRoot);
+      return !!root && stat.isDirectory() && !stat.isSymbolicLink() && sameFile(stat, root.stat) && samePath(realpathSync(configuredRoot), root.path);
+    } catch { return false; }
+  };
+  const folder = (id: string, create = false): string | null => {
+    if (typeof id !== "string" || !ID.test(id) || !rootSafe() || !root) return null;
+    const path = join(root.path, id.toLowerCase());
+    try {
+      if (create && !hasPath(path)) mkdirSync(path);
+      const stat = lstatSync(path);
+      return stat.isDirectory() && !stat.isSymbolicLink() && samePath(realpathSync(path), path) ? path : null;
+    } catch { return null; }
+  };
+  const checkedFile = (f: string, name: string) => {
+    const path = join(f, name);
+    const stat = lstatSync(path);
+    if (!regularFile(stat) || !samePath(realpathSync(path), path)) throw new Error("Unsafe artifact file.");
+    return stat;
+  };
+  // Fixed-size descriptor reads: a large/growing file cannot turn a small stat into an unbounded readFileSync.
+  // NOFOLLOW/NONBLOCK help on platforms that support them. This is not an OS sandbox against concurrent hostile
+  // directory replacement: portable Node filesystem APIs do not expose a handle-relative, no-follow path walk.
+  const readBounded = (id: string, name: string, limit: number): Buffer | null => {
+    let fd: number | undefined;
+    try {
+      const f = folder(id);
+      if (!f) return null;
+      const before = checkedFile(f, name);
+      if (before.size > limit) return null;
+      fd = openSync(join(f, name), constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0));
+      const opened = fstatSync(fd);
+      if (!regularFile(opened) || !sameFile(before, opened) || opened.size > limit) return null;
+      const data = Buffer.alloc(opened.size + 1);
+      let bytes = 0;
+      while (bytes < data.length) {
+        const n = readSync(fd, data, bytes, data.length - bytes, bytes);
+        if (!n) break;
+        bytes += n;
+      }
+      const after = fstatSync(fd);
+      if (bytes !== opened.size || after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs || !folder(id) || !sameFile(after, checkedFile(f, name))) return null;
+      return data.subarray(0, bytes);
+    } catch { return null; } finally { if (fd !== undefined) closeSync(fd); }
+  };
+  const readMeta = (id: string): ArtifactMeta | null => {
+    try {
+      const data = readBounded(id, "meta.json", MAX_META);
+      if (!data) return null;
+      const meta: unknown = JSON.parse(data.toString("utf8"));
+      return validMeta(meta, id) ? meta : null;
+    } catch { return null; }
+  };
+  const writable = (id: string, f: string, name: string) => {
+    if (folder(id) !== f) throw new Error("Unsafe artifact folder.");
+    if (hasPath(join(f, name))) checkedFile(f, name);
+  };
+  const writeAtomic = (id: string, f: string, name: string, data: Uint8Array) => {
+    // A previous crash or a planted <name>.tmp must never redirect the write.
+    const temp = join(f, `.artifact-${randomUUID()}.tmp`);
+    let fd: number | undefined;
+    let created = false;
+    try {
+      writable(id, f, name);
+      fd = openSync(temp, "wx", 0o600);
+      created = true;
+      writeFileSync(fd, data);
+      closeSync(fd); fd = undefined;
+      writable(id, f, name);
+      renameSync(temp, join(f, name));
+      created = false;
+    } finally {
+      if (fd !== undefined) closeSync(fd);
+      if (created && folder(id) === f) { try { unlinkSync(temp); } catch { /* Leave an uncommitted temp if cleanup fails. */ } }
     }
+  };
+  const listAll = (): ArtifactMeta[] => {
+    try {
+      if (!rootSafe() || !root) return [];
+      const out: ArtifactMeta[] = [];
+      for (const name of readdirSync(root.path)) {
+        const meta = readMeta(name);
+        if (meta) out.push(meta);
+      }
+      return rootSafe() ? out.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) : [];
+    } catch { return []; }
   };
   return {
     dir,
     /** Save a job's artifact. Idempotent per job: the first save wins and later ones return it unchanged. */
     save(input: ArtifactInput): { ok: true; meta: ArtifactMeta; created: boolean } | { ok: false; reason: string } {
-      const f = folder(input.jobId);
-      if (!f) return { ok: false, reason: "That is not a job id." };
+      if (typeof input.jobId !== "string" || !ID.test(input.jobId)) return { ok: false, reason: "That is not a job id." };
       const old = readMeta(input.jobId);
       if (old) return { ok: true, meta: old, created: false };
       if (!input.files.length || input.files.length > MAX_FILES) return { ok: false, reason: `An artifact holds 1 to ${MAX_FILES} files.` };
       const names = new Set<string>();
       let total = 0;
       for (const file of input.files) {
-        if (!ARTIFACT_FILE.test(file.name) || names.has(file.name) || file.name === "meta.json") return { ok: false, reason: `"${file.name}" is not a usable file name.` };
-        names.add(file.name);
+        if (!usableName(file.name) || names.has(file.name.toLowerCase())) return { ok: false, reason: `"${file.name}" is not a usable file name.` };
+        names.add(file.name.toLowerCase());
         total += typeof file.data === "string" ? Buffer.byteLength(file.data) : file.data.byteLength;
       }
       if (total > MAX_TOTAL) return { ok: false, reason: "That artifact is too large to keep." };
-      if (!names.has(input.main)) return { ok: false, reason: "The main file is not among the files." };
-      mkdirSync(f, { recursive: true });
-      const metas: ArtifactFileMeta[] = [];
-      for (const file of input.files) {
-        const bytes = typeof file.data === "string" ? Buffer.from(file.data, "utf8") : Buffer.from(file.data);
-        const path = join(f, file.name);
-        writeFileSync(`${path}.tmp`, bytes, { mode: 0o600 });
-        renameSync(`${path}.tmp`, path);
-        metas.push({ name: file.name, bytes: bytes.length, mime: mimeOf(file.name) });
-      }
-      const meta: ArtifactMeta = { id: input.jobId.toLowerCase(), personId: input.personId, kind: input.kind, title: input.title.slice(0, 160), summary: input.summary.slice(0, 600), host: input.host.slice(0, 120), computer: input.computer.slice(0, 40), createdAt: new Date(now()).toISOString(), main: input.main, files: metas, outcome: input.outcome.slice(0, 40) };
-      // meta.json is written LAST: an artifact exists only when it is complete (a crash mid-save leaves no half artifact that opens).
-      writeFileSync(join(f, "meta.json.tmp"), JSON.stringify(meta, null, 2), { mode: 0o600 });
-      renameSync(join(f, "meta.json.tmp"), join(f, "meta.json"));
-      return { ok: true, meta, created: true };
+      if (!input.files.some((file) => file.name === input.main)) return { ok: false, reason: "The main file is not among the files." };
+      try {
+        const metas = input.files.map((file) => ({ name: file.name, bytes: typeof file.data === "string" ? Buffer.byteLength(file.data) : file.data.byteLength, mime: mimeOf(file.name) }));
+        const meta: ArtifactMeta = { id: input.jobId.toLowerCase(), personId: input.personId, kind: input.kind, title: input.title.slice(0, 160), summary: input.summary.slice(0, 600), host: input.host.slice(0, 120), computer: input.computer.slice(0, 40), createdAt: new Date(now()).toISOString(), main: input.main, files: metas, outcome: input.outcome.slice(0, 40) };
+        const metadata = Buffer.from(JSON.stringify(meta, null, 2));
+        if (!validMeta(meta, input.jobId) || metadata.length > MAX_META) return { ok: false, reason: "That artifact has invalid metadata." };
+        const f = folder(input.jobId, true);
+        // Existing but unreadable/corrupt metadata is not permission to replace a committed result.
+        if (!f || hasPath(join(f, "meta.json"))) return { ok: false, reason: "That artifact's storage is not safe to write." };
+        for (const file of input.files) writable(input.jobId, f, file.name);
+        for (const file of input.files) writeAtomic(input.jobId, f, file.name, typeof file.data === "string" ? Buffer.from(file.data, "utf8") : file.data);
+        // meta.json is written LAST: an artifact exists only when it is complete.
+        writeAtomic(input.jobId, f, "meta.json", metadata);
+        return { ok: true, meta, created: true };
+      } catch { return { ok: false, reason: "That artifact could not be safely kept." }; }
     },
-    /** The artifact, only for the person it belongs to. */
+    /** The artifact, only for the person it belongs to. Routes retain their existing shared-result authorization. */
     get(id: string, personId: string): ArtifactMeta | null {
       const m = readMeta(id);
       return m && m.personId === personId ? m : null;
     },
     /** Who a result belongs to (null when there is none), for the routes' shared-bot rule. */
-    ownerOf(id: string): string | null {
-      return readMeta(id)?.personId ?? null;
-    },
+    ownerOf(id: string): string | null { return readMeta(id)?.personId ?? null; },
     /** Every result on the hub (the routes filter it by who may see what). */
-    listAll(): ArtifactMeta[] {
-      const out: ArtifactMeta[] = [];
-      for (const name of existsSync(dir) ? readdirSync(dir) : []) {
-        const m = readMeta(name);
-        if (m) out.push(m);
-      }
-      return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    },
-    list(personId: string): ArtifactMeta[] {
-      const out: ArtifactMeta[] = [];
-      for (const name of existsSync(dir) ? readdirSync(dir) : []) {
-        const m = readMeta(name);
-        if (m && m.personId === personId) out.push(m);
-      }
-      return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    },
+    listAll,
+    list(personId: string): ArtifactMeta[] { return listAll().filter((m) => m.personId === personId); },
     file(id: string, personId: string, name: string): { meta: ArtifactMeta; data: Buffer; mime: string } | null {
+      if (!usableName(name)) return null;
       const meta = this.get(id, personId);
       const entry = meta?.files.find((f) => f.name === name);
-      const f = folder(id);
-      if (!meta || !entry || !f) return null;
-      const path = resolve(f, name);
-      if (!path.startsWith(resolve(f) + sep) || !existsSync(path) || statSync(path).size > MAX_TOTAL) return null;
-      return { meta, data: readFileSync(path), mime: entry.mime };
+      if (!meta || !entry) return null;
+      const data = readBounded(id, name, MAX_TOTAL);
+      return data && data.length === entry.bytes ? { meta, data, mime: entry.mime } : null;
     },
   };
 }
