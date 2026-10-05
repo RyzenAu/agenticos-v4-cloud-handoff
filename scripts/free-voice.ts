@@ -1117,6 +1117,9 @@ function stripThinking(value: string | null | undefined) {
   return cleaned || null;
 }
 
+/** Turn bodies the host (never a request) marked as answer-only brain turns: see `answer` below. */
+const HOST_BRAIN_ONLY = new WeakSet<object>();
+
 export function freeVoice(root: string, dependencies: Dependencies = {}) {
   const persistTypedTurn = createTypedTurnPersistence(conversationStore(root));
   const request = dependencies.fetch ?? fetch;
@@ -1485,6 +1488,9 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     // clicks. A take-over that names something outbound ("take over and pay the invoice") isn't a
     // lesson: it falls through to control_pc's gate.
     if (last?.role === "user") {
+      // The host asked for the brain's answer only (Dot's gateway: a plain question the command path handed to the brain): no rule lane,
+      // router or action tool. Marked by the host on the body object itself, so no request field can ask for it.
+      if (HOST_BRAIN_ONLY.has(body as object)) return think([], undefined, true);
       // Meeting mode first: while consent is pending, "they agreed" must never reach a model.
       const meeting = meetingIntent(last.content, dependencies.meetingGate?.() ?? "idle");
       if (meeting) return oneCall("meeting", { ...meeting });
@@ -2240,6 +2246,18 @@ export function freeVoice(root: string, dependencies: Dependencies = {}) {
     status,
     speakStream,
     /** `caller`: the host's verified request identity (only the memory rule uses it). */
+    /**
+     * The brain's plain answer to one request, server-side, with no rule lanes, router or action tools (Dot's gateway Jarvis: the same brain
+     * the founders' typed lane answers with). Null when it gave no spoken answer. Nothing is saved here; the caller owns its thread.
+     */
+    async answer(utterance: string, options: { replyStyle?: unknown; replyPersonality?: unknown } = {}): Promise<string | null> {
+      const text = typeof utterance === "string" ? utterance.trim().slice(0, 8_000) : "";
+      if (!text) return null;
+      const body = { messages: [{ role: "user", content: text }], typed: true, ...options };
+      HOST_BRAIN_ONLY.add(body);
+      const out = (await turn(body)) as { content?: unknown };
+      return typeof out?.content === "string" && out.content.trim() ? out.content : null;
+    },
     async handle(path: string, body: unknown, caller?: unknown, principal?: Principal, /** Host-only policy refusal, never copied from the request body. */ blockedReply?: string) {
       if (path === "/voice/free/reflex") return reflexPartial(body);
       // Latency instrumentation only (scripts/voice-latency.ts, scripts/voice-latency-report.ts):

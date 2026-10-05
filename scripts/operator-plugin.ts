@@ -1264,7 +1264,8 @@ export function operatorPlugin({
         server.httpServer?.once("close", stopMemory);
       }
       mountAgentsRoutes(server, agents.routes);
-      const commands = createLiveCommandService({
+      // ONE wiring for the command path: the founders' service, and Dot's (below) built from the same delegates with Dot's principal.
+      const commandWiring = {
         pinCatalogue: () => codingPinCatalogue(root),
         threads: jarvisThreads,
         bots: ({ coding }) => agents.botCommands(coding),
@@ -1286,18 +1287,23 @@ export function operatorPlugin({
         jarvisChromeInFront,
         coding: async () => createCodingCommandEntry({ voice: await codingVoiceFor(root), store: (await codingRuntime(root)).store }),
         codingVoice: () => existingCodingVoice(root),
-      });
-      // The Dot gateway's collaborator (scripts/gateway/hub-ops.ts): its OWN command service over the same job store and the same Jev
-      // controller, built with only the lanes the gateway may use. No hub screen (entry is null), no bot conversations, no receptionist,
-      // leads, memory-by-voice, skills or coding-by-words: those have their own capability-checked gateway routes or are not Dot's at all.
-      // "dot" owns no device, so a device lane resolves to nothing (scripts/devices/route.ts).
+      } satisfies Parameters<typeof createLiveCommandService>[0];
+      const commands = createLiveCommandService(commandWiring);
+      // The Dot gateway's collaborator (scripts/gateway/hub-ops.ts), owner 5 Oct: "give it the full Jarvis". The founders' wiring and delegates
+      // with Dot's principal: business, CRM and leads (through Dot's CRM capabilities), compound questions, agents on the shared bot computers,
+      // coding as Dot, skills (remote: nothing that acts on this PC), the receptionist snapshot. Kept out, and only these:
+      //   - the hub's own desktop: no entry and no Jarvis Chrome check; "dot" owns no device, so a device lane resolves to nothing (devices/route.ts);
+      //   - the founders' private conversations, mail and vault: no memory-by-words (Dot's memory is the shared-bucket /__gateway/memory route);
+      //   - sending, payments and final restricted actions keep their existing approvals in the delegates themselves.
       provideGatewayServices(root, {
         computers,
         // The hub's ONE mail archive (read only by the gateway, for founder-authorised mailboxes: scripts/gateway/mail.ts).
         mail: archive,
         // threads: Dot's requests, replies and job results land in Dot's OWN default Jarvis thread (jarvisThreadId("dot")), never a founder's;
         // /jarvis in Dot's browser reads it back through /__gateway/ui/jarvis/thread.
-        commands: createLiveCommandService({ screen: screenHands, entry: () => null, devices, jobs: () => jobsRuntime(root).jobs, crm: () => crmRuntime(root).operations, threads: jarvisThreads }),
+        commands: createLiveCommandService({ ...commandWiring, entry: () => null, memoryTurn: undefined, jarvisChromeInFront: undefined }),
+        // A plain question the command path hands to "the chat brain": the founders' typed-lane brain answers it, server-side.
+        brain: (utterance) => freeVoice.answer(utterance),
       });
       if (background) void awayMode.away.start();
       server.httpServer?.once("close", () => awayMode.away.close());

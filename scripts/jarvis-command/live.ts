@@ -112,6 +112,11 @@ export function createLiveCommandService(options: {
     leads: async (action, principal, eventId, jobId) => {
       const api = options.leads?.();
       if (!api) return { ok: false, said: "The leads service isn't running here, so nothing in the CRM changed.", verified: null };
+      // Dot (the gateway): the same CRM capabilities its /crm routes need. Reading leads needs crm.read, changing one needs crm.write.
+      if (principal.via === "gateway") {
+        const need = action.action === "count" || action.action === "next" ? "crm.read" : "crm.write";
+        if (!(principal.capabilities ?? []).includes(need as never)) return { ok: false, said: `That needs Dot's ${need} permission, so nothing in the CRM was read or changed.`, verified: null };
+      }
       return runLeadAction(api, action, principal, { ...(eventId ? { eventId } : {}), ...(jobId ? { jobId } : {}) });
     },
     ...(options.crm

@@ -399,10 +399,11 @@ export function isBrowserPrincipal(p: Principal | null): p is Principal {
 /**
  * May this caller use the agent bots and their conversations (Agents workspace)? A confirmed person (actor human), the owner at the hub (even a
  * local script holding the owner proof), or the hub's own scheduler running a routine. A bare Tailscale login (actor process) may not: it has no
- * confirmed session, so nothing is written for it and no job starts.
+ * confirmed session, so nothing is written for it and no job starts. The Dot gateway (owner, 5 Oct: "give it the full Jarvis") may: the gate
+ * verified its signed assertion and holds it to its capability table, and its bot turns are Dot's own (Dot's bot conversations, Dot's jobs).
  */
 export function mayUseBots(p: Pick<Principal, "via" | "actor"> | null): boolean {
-  return !!p && (p.actor === "human" || p.via === "loopback-owner" || p.via === "routine");
+  return !!p && (p.actor === "human" || p.via === "loopback-owner" || p.via === "routine" || p.via === "gateway");
 }
 
 /** At this PC in person: the only principal the hub's own screen, mic and settings act for. */

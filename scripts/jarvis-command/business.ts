@@ -63,7 +63,7 @@ const TASK_IN_CRM = new RegExp(`^(?:create|add|make|new|set\\s+up)\\s+(?:a\\s+|m
 
 const QUOTE = /^(?:draft|prepare|create|make|write|put\s+together)\s+(?:me\s+)?(?:a\s+|the\s+)?(?:new\s+)?(?:quote|proposal)\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+deal)?(?:\s+(?:with|using|on)\s+(?:the\s+)?(essential|professional|premium)(?:\s+(?:receptionist\s+)?package)?)?$/i;
 const INVOICE = /^(?:draft|prepare|create|make|write|put\s+together)\s+(?:me\s+)?(?:a\s+|an\s+|the\s+)?(?:new\s+)?(deposit\s+)?invoice\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+deal)?(\s+(?:as\s+a\s+|with\s+a\s+)?deposit)?$/i;
-const NEXT = /^(?:what(?:'s|\s+is|\s+are)|show(?:\s+me)?|tell\s+me)\s+(?:the\s+|my\s+|our\s+)?next(?:\s+real)?\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$|^next\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
+const NEXT = /^(?:what(?:['’]s|\s+is|\s+are)|show(?:\s+me)?|tell\s+me)\s+(?:the\s+|my\s+|our\s+)?next(?:\s+real)?\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$|^next\s+actions?(?:\s+(?:for|on)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
 const DRAFTS = /^(?:show(?:\s+me)?|view|open|list|pull\s+up|what\s+are)\s+(?:the\s+|our\s+|any\s+|all\s+)?(?:existing\s+|unsent\s+|draft\s+)*(outreach(?:\s+packs?|\s+drafts?)?|meeting\s+packs?|reply\s+drafts?)(?:\s+(?:for|on|to)\s+(?:the\s+)?(.{2,100}?)(?:\s+(?:deal|client|company|project))?)?$/i;
 
 const SELF = /^(?:this|that|the\s+open|the\s+current|open|current)$/i;

@@ -1,6 +1,7 @@
 // Activity (audit F3-04): the jobs the OS actually recorded, read from the durable job history
 // (GET /__jobs, scripts/jobs). It used to be a hard-coded empty list that said "No runs yet" as if
 // that had been measured. Every state here says what was (or wasn't) read.
+import { resultLinkProps } from "@/lib/dot-gateway";
 import { Link } from "@tanstack/react-router";
 import { History } from "lucide-react";
 import type { Job, JobState, JobSummary } from "../../../scripts/jobs/types";
@@ -165,7 +166,7 @@ function SelectedJob({ selected, workspace, onClose }: { selected: SelectedRead;
             )}
             {saved && (
               <Button asChild variant="accent">
-                <a href={saved} target="_blank" rel="noopener noreferrer">Open saved result</a>
+                <a href={saved} {...resultLinkProps()}>Open saved result</a>
               </Button>
             )}
           </>
@@ -198,7 +199,7 @@ function SelectedJob({ selected, workspace, onClose }: { selected: SelectedRead;
           {finished && Number.isFinite(created) && Number.isFinite(updated) ? ` · took ${formatDuration(updated - created)}` : " · still going"}
         </span>
         {saved && (
-          <a className="ml-auto rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent" href={saved} target="_blank" rel="noopener noreferrer">
+          <a className="ml-auto rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent" href={saved} {...resultLinkProps()}>
             Open saved result
           </a>
         )}

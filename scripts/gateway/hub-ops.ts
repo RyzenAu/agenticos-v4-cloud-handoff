@@ -58,7 +58,7 @@ import { businessOnlyLedger, jobEventsFor, jobShape, sharedComputers } from "./u
 import { createGatewayMail, MailRefusal, type GatewayMail } from "./mail";
 import { ReleaseRefusal, type ReleaseDesk } from "./release";
 import { ControlFile, expiryView, listIdentities } from "./store";
-import { gatewayServices } from "./hub-services";
+import { gatewayServices, type GatewayBrain } from "./hub-services";
 import { CAPABILITIES, CAPABILITY_SUMMARY, type Capability } from "./policy";
 import { isKilled } from "./store";
 import { createDebugOps, DebugRefusal, type DebugOptions } from "./debug-ops";
@@ -125,6 +125,8 @@ export type GatewayOpsOptions = {
   files?: GatewayFiles;
   jobs?: () => JobsLike | Promise<JobsLike>;
   commands?: () => CommandsLike | undefined;
+  /** The founders' typed-lane brain (the free-voice engine's answer-only turn), run server-side for Dot: a "that's one for the chat brain" handoff is answered here. */
+  brain?: () => GatewayBrain | undefined;
   memory?: () => MemoryLike | undefined;
   coding?: () => Promise<{ rt: CodingLike; route: CodingRoute; verified(p: ApprovalPrincipal): unknown; isRefusal(e: unknown): e is { message: string; status: number } }>;
   computers?: () => ComputersLike | undefined;
@@ -269,6 +271,7 @@ export function createGatewayOps(options: GatewayOpsOptions) {
   const crm = options.crm ?? (async () => (await import("../crm/runtime")).crmRuntime(options.root).operations as unknown as CrmOps);
   const jobs = options.jobs ?? (async () => (await import("../jobs/runtime")).jobsRuntime(options.root).jobs as unknown as JobsLike);
   const commands = options.commands ?? (() => gatewayServices(options.root).commands as unknown as CommandsLike | undefined);
+  const brain = options.brain ?? (() => gatewayServices(options.root).brain);
   /** Stop one of Dot's own jobs: a bot job through the computers service (it waits for the run to settle), a command through its own service. */
   const stopOwnJob = async (store: JobsLike, job: JobLike, actor: never): Promise<{ ok: boolean; state: string | null }> => {
     const bots = job.kind === "control" ? computers() : undefined;
@@ -438,6 +441,14 @@ export function createGatewayOps(options: GatewayOpsOptions) {
         let jobId: string | null = null;
         const run = service.run({ principal: actor, body: { utterance, source: "typed", ...(eventId ? { eventId } : {}) } }, (e) => {
           if (typeof e.jobId === "string" && e.jobId) jobId = e.jobId;
+        }).then(async (d) => {
+          // The founders' typed lane hands a plain question to the brain ("that's one for the chat brain"); Dot's browser has no voice
+          // client to do that, so the same brain answers it here, server-side, and its answer is the reply.
+          const ev = d as CommandEvent & { kind?: string; handoff?: { to?: string; utterance?: string } };
+          const answer = brain();
+          if (ev.kind !== "handoff" || ev.handoff?.to !== "brain" || !answer) return d;
+          const said = await answer(typeof ev.handoff.utterance === "string" && ev.handoff.utterance.trim() ? ev.handoff.utterance : utterance, actor).catch(() => null);
+          return (said ? { ...ev, ok: true, kind: "answer", said, handoff: undefined } : { ...ev, said: "The chat brain didn't answer just now, so I won't guess. Ask again in a moment." }) as typeof d;
         });
         // The reply is saved unless it is about real work the thread watcher follows: every command keeps its own "command" record (that is
         // the request, answered here), while a job it started (research, a bot, coding) gets its started/finished lines from the watcher.

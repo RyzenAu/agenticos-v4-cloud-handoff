@@ -23,7 +23,21 @@ type Run = { service: Service; phase: "asking" | "restarting" | "done" | "failed
 export function DotRestartPanel() {
   const [confirm, setConfirm] = useState<Service | null>(null);
   const [run, setRun] = useState<Run | null>(null);
+  const [log, setLog] = useState<{ name: string; text: string } | null>(null);
   if (!isDotGatewayUi()) return null;
+  // Shown in the page itself: Dot's browser blocks links that open new tabs.
+  const openLog = async (name: string, query: string) => {
+    setLog({ name, text: "Reading…" });
+    try {
+      const r = await fetch(`/__gateway/diagnostics/logs?${query}`);
+      const j = (await r.json().catch(() => null)) as { files?: { name?: string; lines?: string[] }[]; error?: string; note?: string } | null;
+      if (!r.ok) return setLog({ name, text: j?.error ?? `The hub refused (${r.status}).` });
+      const text = (j?.files ?? []).map((f) => [`== ${f.name ?? "log"} ==`, ...(f.lines ?? [])].join("\n")).join("\n\n") || j?.note || "Empty.";
+      setLog({ name, text });
+    } catch {
+      setLog({ name, text: "The request didn't reach the hub." });
+    }
+  };
   const busy = run?.phase === "asking" || run?.phase === "restarting";
 
   const restart = async (service: Service) => {
@@ -77,16 +91,22 @@ export function DotRestartPanel() {
         </div>
       ) : null}
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <span className="text-muted-foreground">Open logs:</span>
+        <span className="text-muted-foreground">Show log:</span>
         {LOGS.map((l) => (
-          <a key={l} className="underline underline-offset-4" href={`/__gateway/diagnostics/logs?source=${l}&tail=300`} target="_blank" rel="noreferrer">
+          <button key={l} type="button" className="underline underline-offset-4" onClick={() => void openLog(l, `source=${l}&tail=300`)}>
             {l}
-          </a>
+          </button>
         ))}
-        <a className="underline underline-offset-4" href="/__gateway/diagnostics/logs?source=hub&tail=300&previous=1" target="_blank" rel="noreferrer">
+        <button type="button" className="underline underline-offset-4" onClick={() => void openLog("hub (before last restart)", "source=hub&tail=300&previous=1")}>
           hub (before last restart)
-        </a>
+        </button>
       </div>
+      {log ? (
+        <div className="mt-3" data-dot-log>
+          <div className="mb-1 flex items-center justify-between text-sm"><span className="font-medium">{log.name}</span><button type="button" className="underline underline-offset-4" onClick={() => setLog(null)}>Close</button></div>
+          <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-inset p-3 text-xs">{log.text}</pre>
+        </div>
+      ) : null}
     </Widget>
   );
 }

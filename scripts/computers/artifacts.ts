@@ -133,13 +133,13 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
  * links and images. Everything is escaped first; a link is kept only when it is http(s) or one of this artifact's own files, an image only when it is
  * one of this artifact's own files. Pure.
  */
-export function renderMarkdown(md: string, ownFiles: ReadonlySet<string>, fileUrl: (name: string) => string): string {
+export function renderMarkdown(md: string, ownFiles: ReadonlySet<string>, fileUrl: (name: string) => string, sameTab = false): string {
   const inline = (raw: string) => {
     let s = esc(raw);
     s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_m, alt: string, src: string) => (ownFiles.has(src) ? `<img src="${esc(fileUrl(src))}" alt="${alt}" loading="lazy">` : alt));
     s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, text: string, href: string) => {
-      if (/^https?:\/\/[^\s"'<>]+$/i.test(href)) return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">${text}</a>`;
-      if (ownFiles.has(href)) return `<a href="${esc(fileUrl(href))}" target="_blank" rel="noopener">${text}</a>`;
+      if (/^https?:\/\/[^\s"'<>]+$/i.test(href)) return `<a href="${href}"${sameTab ? ' rel="noreferrer nofollow"' : ' target="_blank" rel="noopener noreferrer nofollow"'}>${text}</a>`;
+      if (ownFiles.has(href)) return `<a href="${esc(fileUrl(href))}"${sameTab ? "" : ' target="_blank" rel="noopener"'}>${text}</a>`;
       return text;
     });
     s = s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,;:])/g, "$1<em>$2</em>");
@@ -193,13 +193,14 @@ export function renderMarkdown(md: string, ownFiles: ReadonlySet<string>, fileUr
 const KIND_WORDS: Record<ArtifactKind, string> = { research: "Research report", builder: "Builder result", audit: "Website audit", bizprep: "Business preparation" };
 
 /** The page an artifact opens as: the result itself, then its files. Static HTML, no script, own styles, light and dark. */
-export function artifactPage(meta: ArtifactMeta, mainText: string | null, base: string): string {
+export function artifactPage(meta: ArtifactMeta, mainText: string | null, base: string, options: { /** A browser that blocks new tabs (the Dot gateway): links open in place. */ sameTab?: boolean } = {}): string {
   const own = new Set(meta.files.map((f) => f.name));
+  const newTab = options.sameTab ? "" : ' target="_blank" rel="noopener"';
   const url = (n: string) => `${base}/f/${encodeURIComponent(n)}`;
   const mainIsMd = /\.md$/i.test(meta.main);
   const mainIsHtml = /\.html?$/i.test(meta.main);
-  const body = mainIsMd && mainText !== null ? renderMarkdown(mainText, own, url) : mainIsHtml ? `<p><a class="btn" href="${esc(url(meta.main))}" target="_blank" rel="noopener">Open the page this made</a></p>` : mainText !== null ? `<pre><code>${esc(mainText)}</code></pre>` : "<p>The main file could not be read.</p>";
-  const files = meta.files.map((f) => `<li><a href="${esc(url(f.name))}" target="_blank" rel="noopener">${esc(f.name)}</a> <span>${f.bytes < 1024 ? `${f.bytes} B` : `${Math.round(f.bytes / 1024)} KB`}</span> <a class="dl" href="${esc(url(f.name))}?download=1" download="${esc(f.name)}">Download</a></li>`).join("");
+  const body = mainIsMd && mainText !== null ? renderMarkdown(mainText, own, url, options.sameTab === true) : mainIsHtml ? `<p><a class="btn" href="${esc(url(meta.main))}"${newTab}>Open the page this made</a></p>` : mainText !== null ? `<pre><code>${esc(mainText)}</code></pre>` : "<p>The main file could not be read.</p>";
+  const files = meta.files.map((f) => `<li><a href="${esc(url(f.name))}"${newTab}>${esc(f.name)}</a> <span>${f.bytes < 1024 ? `${f.bytes} B` : `${Math.round(f.bytes / 1024)} KB`}</span> <a class="dl" href="${esc(url(f.name))}?download=1" download="${esc(f.name)}">Download</a></li>`).join("");
   // The page a builder made is shown in a sandboxed frame (no network, no access to the OS) above its summary.
   const previewFile = mainIsHtml ? meta.main : meta.files.some((f) => f.name === "preview.html") ? "preview.html" : null;
   const preview = previewFile ? `<iframe class="preview" title="Preview" sandbox="allow-scripts" src="${esc(url(previewFile))}"></iframe>` : "";

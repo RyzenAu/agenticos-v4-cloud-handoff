@@ -1,3 +1,4 @@
+import { resultLinkProps } from "@/lib/dot-gateway";
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowUpRight, Building2, Check, FileText, Plus } from "lucide-react";
@@ -622,8 +623,7 @@ function ActivityRow({ activity, timezone }: { activity: Activity; timezone: str
           <a
             className="ds-interactive rounded text-sm underline underline-offset-4"
             href={artifact}
-            target="_blank"
-            rel="noopener noreferrer"
+            {...resultLinkProps()}
           >
             Open saved result ↗
           </a>
@@ -838,8 +838,7 @@ export function DocumentVersions({
                   <a
                     className="ds-interactive mt-2 inline-block rounded text-sm underline"
                     href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    {...resultLinkProps()}
                   >
                     Open version result ↗
                   </a>

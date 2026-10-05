@@ -15,6 +15,8 @@ import { GATEWAY_CRM_READS } from "../../scripts/gateway/crm-policy";
 
 declare const __MU_GATEWAY_UI__: boolean;
 export const isDotGatewayUi = (): boolean => typeof __MU_GATEWAY_UI__ !== "undefined" && __MU_GATEWAY_UI__ === true;
+/** A saved-result link's target: a new tab for the founders; in place for Dot, whose browser blocks new tabs. */
+export const resultLinkProps = (): { target?: "_blank"; rel: string } => (isDotGatewayUi() ? { rel: "noreferrer" } : { target: "_blank", rel: "noopener noreferrer" });
 
 /** GET requests the gateway answers through a filtered adapter, in the founder route's shape. */
 export const DOT_UI_REMAP: ReadonlyArray<{ test: RegExp; to: (path: string) => string }> = [

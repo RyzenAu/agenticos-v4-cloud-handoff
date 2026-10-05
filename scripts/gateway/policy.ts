@@ -127,6 +127,10 @@ export const HUB_RULES: readonly PolicyRule[] = [
   // ── the OS pages, answered in their founder routes' shape and filtered for Dot (scripts/gateway/ui-adapters.ts) ────
   //    The gateway's UI bundle sends a page's /__crm/snapshot (etc.) here instead (src/lib/dot-gateway.ts); the founder
   //    routes themselves stay closed. docs/gateway/DOT-UI-ROUTES.md has the page-by-page table.
+  // A saved result's page and files ("Open the result" on Jarvis, Activity and company pages): the computers route serves Dot only its
+  // OWN results and agent-bot results (the founders' shared-bot rule); a founder's own non-bot result is "no saved result" (scripts/computers/routes.ts).
+  { capability: "tasks.run", methods: READ, pattern: "/__computers/artifacts/*", why: "a saved result's page: Dot's own, or an agent bot's" },
+  { capability: "tasks.run", methods: READ, pattern: "/__computers/artifacts/*/f/*", why: "a file of a saved result Dot may open (served sandboxed, as for founders)" },
   { capability: "tasks.run", methods: READ, pattern: "/__gateway/ui/jarvis/thread", why: "the Jarvis page in Dot's browser: Dot's OWN Jarvis thread (its requests, replies and job lines); no founder thread" },
   { capability: "tasks.run", methods: ["POST"], pattern: "/__gateway/ui/jarvis/stop", why: "Stop on the Jarvis page: one of Dot's own jobs only (as POST /__gateway/jobs/<id>/stop)" },
   { capability: "crm.read", methods: READ, pattern: "/__gateway/ui/crm/snapshot", why: "the CRM page's snapshot (what /__gateway/crm/read crm.snapshot returns)" },

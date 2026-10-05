@@ -82,13 +82,15 @@ export function createComputersRoutes(options: ComputersRoutesOptions) {
     }
   }
 
-  function artifactRoute(res: ServerResponse, path: string, person: string, download = false, shared = false) {
+  function artifactRoute(res: ServerResponse, path: string, person: string, download = false, shared = false, sameTab = false) {
     const store = options.artifacts;
     /** Whose result this is for THIS caller: their own; or, for a shared bot's job and a confirmed founder, its owner's (both founders see a bot's work). */
     const holder = (id: string): string | null => {
       if (!store) return null;
       if (store.get(id, person)) return person;
       const owner = store.ownerOf(id);
+      // The Dot gateway (sameTab is only set for it) opens every saved result: they are business work (owner's instruction, 5 Oct).
+      if (sameTab && owner) return owner;
       return shared && owner && options.isBotResult?.(id.toLowerCase()) ? owner : null;
     };
     const html = (status: number, page: string) => {
@@ -112,7 +114,7 @@ export function createComputersRoutes(options: ComputersRoutesOptions) {
       const meta = owner ? store.get(m[1], owner) : null;
       if (!meta || !owner) return missing();
       const main = store.file(m[1], owner, meta.main);
-      return html(200, artifactPage(meta, main && !/^(?:image|application\/octet)/.test(main.mime) ? main.data.toString("utf8") : null, `/__computers/artifacts/${meta.id}`));
+      return html(200, artifactPage(meta, main && !/^(?:image|application\/octet)/.test(main.mime) ? main.data.toString("utf8") : null, `/__computers/artifacts/${meta.id}`, { sameTab }));
     }
     let name = "";
     try {
@@ -151,6 +153,13 @@ export function createComputersRoutes(options: ComputersRoutesOptions) {
       const url = new URL(req.url || "/", "http://localhost");
       const path = url.pathname.replace(/^\/__computers(?=\/|$)/, "").replace(/\/+$/, "") || "/";
       const method = req.method || "GET";
+      // The Dot gateway (its gate verified the request and its tasks.run capability): one saved result's page or file, never the list. Dot's
+      // own results ("dot"), or an agent bot's (the same shared-bot rule a founder's session gets); a founder's own non-bot result stays theirs.
+      // Its browser blocks new tabs, so the page's links open in the same tab.
+      if (method === "GET" && /^\/artifacts\/[0-9a-f-]{36}(?:\/f\/[^/]+)?$/i.test(path)) {
+        const viaGateway = devices.identify(req).verified;
+        if (viaGateway?.via === "gateway") return artifactRoute(res, path, viaGateway.personId, url.searchParams.get("download") === "1", true, true);
+      }
       const who = caller(req, path, method);
       if ("error" in who) return send(res, who.error!.status, { error: who.error!.message });
       const needPerson = () => (who.human && who.session ? null : "Only a person using a confirmed browser or paired device can do that, not a program.");
