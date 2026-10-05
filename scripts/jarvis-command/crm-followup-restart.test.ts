@@ -6,6 +6,7 @@ import { conversationStore, jarvisThreadId, CRM_REFERENCE_TTL_MS } from "../conv
 import { closeCrmRuntime, crmRuntime } from "../crm/runtime";
 import type { Principal } from "../identity/principal";
 import { JobService } from "../jobs/service";
+import { closeJobsRuntime } from "../jobs/runtime";
 import { runCrmIntent, type CrmIntent } from "./crm";
 import { createCommandService } from "./service";
 import { createJobThreads } from "./threads";
@@ -38,7 +39,7 @@ function rig(options: { verified?: boolean } = {}) {
     });
   };
   let service = make();
-  cleanup.push(() => { jobs.close(); closeCrmRuntime(root); rmSync(root, { recursive: true, force: true }); });
+  cleanup.push(() => { jobs.close(); closeCrmRuntime(root); closeJobsRuntime(root); rmSync(root, { recursive: true, force: true }); });
   return {
     root, rt, company, deal,
     now: () => now,
