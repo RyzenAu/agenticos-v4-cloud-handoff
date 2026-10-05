@@ -12,7 +12,7 @@ import { createCrmMiddleware } from './plugin';
 import { createGatewayTrust } from '../gateway/hub';
 import { signAssertion } from '../gateway/assertion';
 import { ASSERTION_HEADER, VIA_VALUE, FILES } from '../gateway/config';
-import { createLocalOwnerProof, readLocalOwnerToken } from '../identity/local-owner-token';
+import { createLocalOwnerProof, readLocalOwnerToken, writeProtectedSecret } from '../identity/local-owner-token';
 
 
 // Real identity/session/gateway and CRM transport composed together. Only the CRM data service is
@@ -40,7 +40,7 @@ test("paired founder CRM writes retain their own CSRF proof through the real ide
     const pending = store.mintSession('usman', 'Synthetic pending', 'tailnet', { pending: true });
     const dir = join(process.env.MU_DATA_DIR, 'gateway');
     mkdirSync(dir);
-    writeFileSync(join(dir, FILES.secret), gatewayKey, { mode: 0o600 });
+    writeProtectedSecret(join(dir, FILES.secret), gatewayKey);
     const trust = createGatewayTrust({ root, dir, enabled: true, internalToken: () => internal, env: { MU_DATA_DIR: process.env.MU_DATA_DIR } });
     const gateOptions = { root, internalToken: () => internal, role: 'server', store, tailnetName, tailnet: syntheticTailnetForTests(tailnetName, ['100.64.0.1']), servePeer: () => true, localOwnerProof: { check: () => false }, gateway: trust };
     const gate = createPrincipalGate(gateOptions);
@@ -149,4 +149,4 @@ test("paired founder CRM writes retain their own CSRF proof through the real ide
     else process.env.MU_DATA_DIR = previousDataDir;
     rmSync(root, { recursive: true, force: true });
   }
-});
+}, 60_000); // Windows verifies fixture ACLs through native subprocesses.
